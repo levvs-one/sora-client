@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -134,10 +135,25 @@ namespace v2rayN.Handler
                         Process[] existing = Process.GetProcessesByName(vName);
                         foreach (Process p in existing)
                         {
-                            string path = p.MainModule.FileName;
-                            if (path == $"{Utils.GetPath(vName)}.exe")
+                            try
                             {
-                                KillProcess(p);
+                                string path = p.MainModule?.FileName;
+                                if (string.Equals(path, $"{Utils.GetPath(vName)}.exe", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    KillProcess(p);
+                                }
+                            }
+                            catch (Win32Exception)
+                            {
+                                // A non-elevated client cannot inspect an unrelated elevated process.
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                // The process can exit between enumeration and path inspection.
+                            }
+                            finally
+                            {
+                                p.Dispose();
                             }
                         }
                     }

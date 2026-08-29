@@ -124,21 +124,7 @@ namespace v2rayN.Handler
                 return;
             }
 
-            SaveFileDialog fileDialog = new SaveFileDialog
-            {
-                Filter = "Config|*.json",
-                FilterIndex = 2,
-                RestoreDirectory = true
-            };
-            if (fileDialog.ShowDialog() != DialogResult.OK)
-            {
-                return;
-            }
-            string fileName = fileDialog.FileName;
-            if (Utils.IsNullOrEmpty(fileName))
-            {
-                return;
-            }
+            string fileName = GetSoraExportPath("client");
             //Config configCopy = Utils.DeepCopy(config);
             //configCopy.index = index;
             if (V2rayConfigHandler.Export2ClientConfig(item, fileName, out string msg) != 0)
@@ -164,21 +150,7 @@ namespace v2rayN.Handler
                 return;
             }
 
-            SaveFileDialog fileDialog = new SaveFileDialog
-            {
-                Filter = "Config|*.json",
-                FilterIndex = 2,
-                RestoreDirectory = true
-            };
-            if (fileDialog.ShowDialog() != DialogResult.OK)
-            {
-                return;
-            }
-            string fileName = fileDialog.FileName;
-            if (Utils.IsNullOrEmpty(fileName))
-            {
-                return;
-            }
+            string fileName = GetSoraExportPath("server");
             //Config configCopy = Utils.DeepCopy(config);
             //configCopy.index = index;
             if (V2rayConfigHandler.Export2ServerConfig(item, fileName, out string msg) != 0)
@@ -200,18 +172,9 @@ namespace v2rayN.Handler
             }
             else
             {
-                SaveFileDialog fileDialog = new SaveFileDialog
-                {
-                    FileName = fileName,
-                    Filter = "guiNConfig|*.json",
-                    FilterIndex = 2,
-                    RestoreDirectory = true
-                };
-                if (fileDialog.ShowDialog() != DialogResult.OK)
-                {
-                    return;
-                }
-                fileName = fileDialog.FileName;
+                string directory = GetSoraBackupDirectory();
+                Directory.CreateDirectory(directory);
+                fileName = Path.Combine(directory, fileName);
             }
             if (Utils.IsNullOrEmpty(fileName))
             {
@@ -222,8 +185,7 @@ namespace v2rayN.Handler
             {
                 if (ret == 0)
                 {
-
-                    UI.Show(ResUI.OperationSuccess);
+                    UI.Show("Резервная копия сохранена без системного окна:\r\n" + fileName);
                 }
                 else
                 {
@@ -234,23 +196,29 @@ namespace v2rayN.Handler
 
         public bool RestoreGuiNConfig(ref Config config)
         {
-            var fileContent = string.Empty;
-            using (OpenFileDialog fileDialog = new OpenFileDialog())
+            string latest = GetGuiNConfigBackups().FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(latest))
             {
-                fileDialog.InitialDirectory = Utils.GetBackupPath("");
-                fileDialog.Filter = "guiNConfig|*.json|All|*.*";
-                fileDialog.FilterIndex = 2;
-                fileDialog.RestoreDirectory = true;
-
-                if (fileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    fileContent = Utils.LoadResource(fileDialog.FileName);
-                }
-                else
-                {
-                    return false;
-                }
+                UI.ShowWarning("Резервных копий Sora пока нет.");
+                return false;
             }
+            return RestoreGuiNConfig(ref config, latest);
+        }
+
+        public IReadOnlyList<string> GetGuiNConfigBackups()
+        {
+            var directories = new[] { GetSoraBackupDirectory(), Utils.GetBackupPath(string.Empty) };
+            return directories
+                .Where(Directory.Exists)
+                .SelectMany(directory => Directory.GetFiles(directory, "guiNConfig_*.json", SearchOption.TopDirectoryOnly))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .ToList();
+        }
+
+        public bool RestoreGuiNConfig(ref Config config, string fileName)
+        {
+            string fileContent = Utils.LoadResource(fileName);
             if (Utils.IsNullOrEmpty(fileContent))
             {
                 UI.ShowWarning(ResUI.OperationFailed);
@@ -270,6 +238,25 @@ namespace v2rayN.Handler
             LazyConfig.Instance.SetConfig(ref config);
 
             return true;
+        }
+
+        private static string GetSoraBackupDirectory()
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Sora", "Backups");
+        }
+
+        private static string GetSoraExportPath(string kind)
+        {
+            string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Sora", "Exports");
+            Directory.CreateDirectory(directory);
+            string prefix = Path.Combine(directory, "Sora-" + kind + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+            string path = prefix + ".json";
+            int suffix = 2;
+            while (File.Exists(path))
+            {
+                path = prefix + "-" + suffix++ + ".json";
+            }
+            return path;
         }
 
         public void UpdateTask(Config config, Action<bool, string> update)

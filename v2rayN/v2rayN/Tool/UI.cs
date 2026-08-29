@@ -94,11 +94,9 @@ namespace v2rayN
                 {
                     Location = new Point(width - 54, 16),
                     Size = new Size(38, 38),
-                    Text = "×",
                     FlatStyle = FlatStyle.Flat,
                     BackColor = dialog.BackColor,
-                    ForeColor = Color.FromArgb(196, 196, 201),
-                    Font = new Font("Segoe UI", 16F),
+                    Image = HappIconLoader.Load("x", Color.FromArgb(196, 196, 201)),
                     Cursor = Cursors.Hand,
                     TabStop = false,
                     DialogResult = buttons == MessageBoxButtons.YesNo ? DialogResult.No : DialogResult.OK

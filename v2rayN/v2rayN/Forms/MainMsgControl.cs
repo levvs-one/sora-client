@@ -177,6 +177,10 @@ namespace v2rayN.Forms
             cmsMsgBox.BackColor = surface;
             cmsMsgBox.ForeColor = text;
             cmsMsgBox.ShowImageMargin = false;
+            cmsMsgBox.Items.Clear();
+            cmsMsgBox.Items.Add("Копировать", null, menuMsgBoxCopy_Click);
+            cmsMsgBox.Items.Add("Копировать всё", null, menuMsgBoxCopyAll_Click);
+            cmsMsgBox.Items.Add("Очистить", null, menuMsgBoxClear_Click);
             foreach (ToolStripItem item in cmsMsgBox.Items)
             {
                 item.BackColor = surface;
@@ -260,14 +264,6 @@ namespace v2rayN.Forms
         {
             ClearMsg();
         }
-        private void menuMsgBoxAddRoutingRule_Click(object sender, EventArgs e)
-        {
-            menuMsgBoxCopy_Click(null, null);
-            var fm = new RoutingSettingForm();
-            fm.ShowDialog();
-
-        }
-
         private void txtMsgBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Control)
@@ -280,27 +276,10 @@ namespace v2rayN.Forms
                     case Keys.C:
                         menuMsgBoxCopy_Click(null, null);
                         break;
-                    case Keys.V:
-                        menuMsgBoxAddRoutingRule_Click(null, null);
-                        break;
-
                 }
             }
 
         }
-        private void menuMsgBoxFilter_Click(object sender, EventArgs e)
-        {
-            var fm = new MsgFilterSetForm();
-            fm.MsgFilter = _msgFilter;
-            fm.ShowDefFilter = true;
-            if (fm.ShowDialog() == DialogResult.OK)
-            {
-                _msgFilter = fm.MsgFilter;
-                gbMsgTitle.Text = string.Format(ResUI.MsgInformationTitle, _msgFilter);
-                Utils.RegWriteValue(Global.MyRegPath, Utils.MainMsgFilterKey, _msgFilter);
-            }
-        }
-
         private void ssMain_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
         {
             if (!Utils.IsNullOrEmpty(e.ClickedItem.Text))

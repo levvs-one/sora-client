@@ -38,6 +38,9 @@ namespace v2rayN.Forms
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll")]
+        private static extern bool ShowScrollBar(IntPtr handle, int bar, bool show);
+
         private void ApplyHappLayout()
         {
             SuspendLayout();
@@ -52,6 +55,7 @@ namespace v2rayN.Forms
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             notifyMain.Icon = Icon;
             notifyMain.Text = "Sora";
+            notifyMain.ContextMenuStrip = BuildSoraTrayMenu();
             ApplyRoundedCorners(this, 9);
 
             tsMain.Visible = false;
@@ -87,6 +91,7 @@ namespace v2rayN.Forms
                 }
                 lvServers.HeaderStyle = ColumnHeaderStyle.None;
                 lvServers.GridLines = false;
+                ConfigureSoraServerList();
                 UpdateCommunityActiveServer();
                 if (config != null && config.sysProxyType == ESysProxyType.ForcedChange && config.GetVmessItem(config.indexId) == null)
                 {
@@ -105,21 +110,22 @@ namespace v2rayN.Forms
             var bar = new Panel { Dock = DockStyle.Fill, BackColor = HappTitle, Margin = Padding.Empty };
             var brand = new Panel { Dock = DockStyle.Left, Width = 190, BackColor = HappTitle };
             var logo = new PictureBox { Location = new Point(9, 7), Size = new Size(18, 18), Image = HappIconLoader.LoadSoraLogo(), SizeMode = PictureBoxSizeMode.Zoom, BackColor = HappTitle };
-            var title = new Label { Location = new Point(31, 0), Size = new Size(155, 32), Text = "Sora 0.1.0", ForeColor = Color.White, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 8.5F) };
+            var title = new Label { Location = new Point(31, 0), Size = new Size(155, 32), Text = "Sora 0.2.0", ForeColor = Color.White, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 8.5F) };
             title.MouseDown += DragHappWindow;
             logo.MouseDown += DragHappWindow;
             brand.MouseDown += DragHappWindow;
             bar.MouseDown += DragHappWindow;
             brand.Controls.Add(logo); brand.Controls.Add(title); bar.Controls.Add(brand);
-            bar.Controls.Add(CreateWindowButton("−", () => WindowState = FormWindowState.Minimized));
-            bar.Controls.Add(CreateWindowButton("□", ToggleHappMaximize));
-            bar.Controls.Add(CreateWindowButton("×", () => Close()));
+            bar.Controls.Add(CreateWindowButton("minus", () => WindowState = FormWindowState.Minimized));
+            bar.Controls.Add(CreateWindowButton("square", ToggleHappMaximize));
+            bar.Controls.Add(CreateWindowButton("x", () => Close()));
             return bar;
         }
 
-        private Button CreateWindowButton(string text, Action action)
+        private Button CreateWindowButton(string icon, Action action)
         {
-            var button = new Button { Dock = DockStyle.Right, Width = 46, Text = text, FlatStyle = FlatStyle.Flat, BackColor = HappTitle, ForeColor = Color.White, Font = new Font("Segoe UI", 11F), Cursor = Cursors.Hand, TabStop = false };
+            string accessibleName = icon == "minus" ? "Свернуть" : icon == "square" ? "Развернуть или восстановить" : "Закрыть";
+            var button = new Button { Dock = DockStyle.Right, Width = 42, FlatStyle = FlatStyle.Flat, BackColor = HappTitle, Image = HappIconLoader.Load(icon, Color.White), Cursor = Cursors.Hand, TabStop = false, AccessibleName = accessibleName };
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 48);
             button.Click += (sender, args) => action();
@@ -198,6 +204,7 @@ namespace v2rayN.Forms
             var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(12, 9, 42, 5) };
             ApplyRoundedSurface(searchBox, 5, Color.FromArgb(100, 100, 105));
             _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = "Введите текст для поиска", TabStop = false };
+            _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
             searchBox.Controls.Add(_communitySearch);
             var searchIcon = new PictureBox { Dock = DockStyle.Right, Width = 30, Image = HappIconLoader.Load("magnifying-glass", HappMuted), SizeMode = PictureBoxSizeMode.CenterImage, BackColor = HappNav };
@@ -218,13 +225,31 @@ namespace v2rayN.Forms
             lvServers.GridLines = false;
             lvServers.OwnerDraw = true;
             lvServers.DrawSubItem += DrawHappServerSubItem;
-            _communityRowHeight = new ImageList(components) { ImageSize = new Size(1, 46), ColorDepth = ColorDepth.Depth32Bit };
+            lvServers.ContextMenuStrip = null;
+            lvServers.MouseUp += SoraServersMouseUp;
+            lvServers.HandleCreated += (sender, args) => HideSoraServerScrollbars();
+            lvServers.Layout += (sender, args) => HideSoraServerScrollbars();
+            lvServers.DoubleClick -= lvServers_DoubleClick;
+            lvServers.DoubleClick += SoraServersDoubleClick;
+            lvServers.KeyDown -= lvServers_KeyDown;
+            lvServers.KeyDown += SoraServersKeyDown;
+            lvServers.Resize += (sender, args) => ConfigureSoraServerList();
+            _communityRowHeight = new ImageList(components) { ImageSize = new Size(1, 58), ColorDepth = ColorDepth.Depth32Bit };
             lvServers.SmallImageList = _communityRowHeight;
             _communityEmptyState = BuildHappEmptyState();
             listHost.Controls.Add(_communityEmptyState);
             _communityEmptyState.BringToFront();
             pane.Controls.Add(listHost, 0, 2);
             return pane;
+        }
+
+        private void HideSoraServerScrollbars()
+        {
+            if (!lvServers.IsHandleCreated)
+            {
+                return;
+            }
+            ShowScrollBar(lvServers.Handle, 0, false);
         }
 
         private void WireHappSearch()
@@ -317,23 +342,59 @@ namespace v2rayN.Forms
         private void DrawHappServerSubItem(object sender, DrawListViewSubItemEventArgs args)
         {
             bool selected = args.Item.Selected;
-            Color background = selected ? HappAccent : args.ItemIndex % 2 == 0 ? HappPane : Color.FromArgb(31, 31, 33);
-            Color foreground = selected ? HappTitle : args.Item.ForeColor;
+            Color background = selected ? Color.FromArgb(55, 55, 58) : args.ItemIndex % 2 == 0 ? HappPane : Color.FromArgb(29, 29, 31);
             using (var fill = new SolidBrush(background)) args.Graphics.FillRectangle(fill, args.Bounds);
-            TextFormatFlags flags = TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
-            if (args.ColumnIndex == lvServers.Columns.Count - 1) flags |= TextFormatFlags.Right;
-            else flags |= TextFormatFlags.Left;
-            var textBounds = new Rectangle(args.Bounds.X + 7, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 14), args.Bounds.Height);
-            TextRenderer.DrawText(args.Graphics, args.SubItem.Text, args.Item.Font ?? lvServers.Font, textBounds, foreground, flags);
-            using (var line = new Pen(Color.FromArgb(58, 58, 62))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+            VmessItem item = args.ItemIndex >= 0 && args.ItemIndex < lstVmess.Count ? lstVmess[args.ItemIndex] : null;
+            if (args.ColumnIndex == 0)
+            {
+                if (item != null && config.IsActiveNode(item))
+                {
+                    using (var marker = new SolidBrush(HappAccent)) args.Graphics.FillRectangle(marker, args.Bounds.Left, args.Bounds.Top + 10, 3, args.Bounds.Height - 20);
+                }
+                string country = GetSoraCountryCode(item?.remarks);
+                if (!string.IsNullOrWhiteSpace(country))
+                {
+                    using (var badge = new SolidBrush(Color.FromArgb(61, 61, 65))) args.Graphics.FillRectangle(badge, args.Bounds.Left + 7, args.Bounds.Top + 19, 22, 18);
+                    using (var badgeFont = new Font("Segoe UI Semibold", 7F)) TextRenderer.DrawText(args.Graphics, country, badgeFont, new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 19, 22, 18), HappText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                }
+                else if (item != null && config.IsActiveNode(item))
+                {
+                    using (Image check = HappIconLoader.Load("check", HappText)) args.Graphics.DrawImage(check, new Rectangle(args.Bounds.Left + 8, args.Bounds.Top + 18, 18, 18));
+                }
+            }
+            else if (args.ColumnIndex == (int)EServerColName.remarks && item != null)
+            {
+                string name = string.IsNullOrWhiteSpace(item.remarks) ? "Сервер без названия" : item.remarks;
+                string details = GetSoraProtocolName(item);
+                if (!string.IsNullOrWhiteSpace(item.network)) details += "  ·  " + item.network.ToUpperInvariant();
+                if (!string.IsNullOrWhiteSpace(item.streamSecurity)) details += "  ·  " + item.streamSecurity.ToUpperInvariant();
+                using (var titleFont = new Font("Segoe UI Semibold", 9.5F))
+                using (var detailFont = new Font("Segoe UI", 7.5F))
+                {
+                    TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 8, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    TextRenderer.DrawText(args.Graphics, details, detailFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 31, Math.Max(0, args.Bounds.Width - 18), 17), HappMuted, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                }
+            }
+            else if (args.ColumnIndex == (int)EServerColName.testResult)
+            {
+                string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? "—" : args.SubItem.Text;
+                TextRenderer.DrawText(args.Graphics, result, lvServers.Font, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), selected ? HappText : HappMuted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            }
+            using (var line = new Pen(Color.FromArgb(47, 47, 50))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
         }
 
         private void ShowHappServerMenu()
         {
             var menu = BuildHappMenu();
-            menu.Items.Add("Добавить URL", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
+            menu.Items.Add("Добавить", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
             menu.Items.Add("Пинг всех", HappIconLoader.Load("gauge", HappText), (sender, args) => TestAllCommunityServers());
-            menu.Items.Add("Свернуть все", null, (sender, args) => lvServers.Focus());
+            if (GetLvSelectedIndex(false) >= 0)
+            {
+                menu.Items.Add(new ToolStripSeparator());
+                menu.Items.Add("Настройки сервера", null, (sender, args) => ShowSoraServerEditor());
+                menu.Items.Add("Копировать ссылку", HappIconLoader.Load("copy", HappText), (sender, args) => menuExport2ShareUrl_Click(null, null));
+                menu.Items.Add("Удалить", HappIconLoader.Load("trash", Color.FromArgb(238, 178, 178)), (sender, args) => DeleteSelectedSoraServers());
+            }
             menu.Show(Cursor.Position);
         }
 

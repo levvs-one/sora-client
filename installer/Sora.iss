@@ -1,5 +1,5 @@
 #define MyAppName "Sora"
-#define MyAppVersion "0.2.1"
+#define MyAppVersion "0.2.2"
 #define MyAppExeName "Sora.exe"
 
 #ifndef StageDir

@@ -829,7 +829,7 @@ namespace v2rayN.Forms
                 return;
             }
             menuSelectAll_Click(this, EventArgs.Empty);
-            Speedtest(ESpeedActionType.Realping);
+            Speedtest(ESpeedActionType.Tcping);
         }
 
         private void SelectBestMeasuredServer()

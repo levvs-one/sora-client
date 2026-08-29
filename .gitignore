@@ -6,6 +6,7 @@
 /v2rayN/v2rayN/bin/Debug/app.publish
 /v2rayN/v2rayN/bin/Debug
 /v2rayN/v2rayN/bin/Release
+/v2rayN/v2rayN/bin/
 /v2rayN/v2rayN/obj/
 /v2rayN/.vs/v2rayN/DesignTimeBuild
 /v2rayN/packages
@@ -14,5 +15,19 @@
 .vs/VSWorkspaceState.json
 /v2rayN/v2rayUpgrade/bin/Debug
 /v2rayN/v2rayUpgrade/bin/Release
+/v2rayN/v2rayUpgrade/bin/
 /v2rayN/v2rayUpgrade/obj/
 *.user
+
+# Local release artifacts and runtime state
+/stage/
+/installer-output/
+/outputs/
+/**/guiLogs/
+/**/guiTemps/
+/**/guiBackups/
+/**/guiConfigs/
+/**/guiNConfig.json
+/**/statistics.json
+/**/user-wininet.json
+*.pdb

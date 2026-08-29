@@ -36,71 +36,7 @@ namespace v2rayN.Handler
 
         public void CheckUpdateGuiN(Config config, Action<bool, string> update, bool preRelease)
         {
-            _config = config;
-            _updateFunc = update;
-            var url = string.Empty;
-
-            DownloadHandle downloadHandle = null;
-            if (downloadHandle == null)
-            {
-                downloadHandle = new DownloadHandle();
-
-                downloadHandle.UpdateCompleted += (sender2, args) =>
-                {
-                    if (args.Success)
-                    {
-                        _updateFunc(false, ResUI.MsgDownloadV2rayCoreSuccessfully);
-
-                        try
-                        {
-                            string fileName = Utils.GetPath(Utils.GetDownloadFileName(url));
-                            fileName = Utils.UrlEncode(fileName);
-                            Process process = new Process
-                            {
-                                StartInfo = new ProcessStartInfo
-                                {
-                                    FileName = "v2rayUpgrade.exe",
-                                    Arguments = "\"" + fileName + "\"",
-                                    WorkingDirectory = Utils.StartupPath()
-                                }
-                            };
-                            process.Start();
-                            if (process.Id > 0)
-                            {
-                                _updateFunc(true, "");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _updateFunc(false, ex.Message);
-                        }
-                    }
-                    else
-                    {
-                        _updateFunc(false, args.Msg);
-                    }
-                };
-                downloadHandle.Error += (sender2, args) =>
-                {
-                    _updateFunc(false, args.GetException().Message);
-                };
-            }
-            AbsoluteCompleted += (sender2, args) =>
-            {
-                if (args.Success)
-                {
-                    _updateFunc(false, string.Format(ResUI.MsgParsingSuccessfully, "v2rayN"));
-
-                    url = args.Msg;
-                    askToDownload(downloadHandle, url, true);
-                }
-                else
-                {
-                    _updateFunc(false, args.Msg);
-                }
-            };
-            _updateFunc(false, string.Format(ResUI.MsgStartUpdating, "v2rayN"));
-            CheckUpdateAsync(ECoreType.v2rayN, preRelease);
+            update(false, "Самообновление Sora отключено: официальные сборки публикуются в репозитории sora-client.");
         }
 
 
@@ -190,7 +126,7 @@ namespace v2rayN.Handler
                     {
                         continue;
                     }
-                    if (!Utils.IsNullOrEmpty(groupId) && item.groupId != groupId)
+                    if (!Utils.IsNullOrEmpty(groupId) && item.groupId != groupId && item.id != groupId)
                     {
                         continue;
                     }
@@ -203,6 +139,11 @@ namespace v2rayN.Handler
                     if (Utils.IsNullOrEmpty(id) || Utils.IsNullOrEmpty(url))
                     {
                         //_updateFunc(false, $"{hashCode}{ResUI.MsgNoValidSubscription}");
+                        continue;
+                    }
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out Uri subscriptionUri) || subscriptionUri.Scheme != Uri.UriSchemeHttps)
+                    {
+                        _updateFunc(false, $"{hashCode}Подписка отклонена: требуется HTTPS.");
                         continue;
                     }
 
@@ -226,12 +167,15 @@ namespace v2rayN.Handler
                     else
                     {
                         _updateFunc(false, $"{hashCode}{ResUI.MsgGetSubscriptionSuccessfully}");
-                        if (result.Length < 99)
-                        {
-                            _updateFunc(false, $"{hashCode}{result}");
-                        }
-
                         int ret = ConfigHandler.AddBatchServers(ref config, result, id, item.groupId.TrimEx());
+                        if (ret > 0 && item.allowInsecure)
+                        {
+                            foreach (var server in config.vmess.Where(server => server.subid == id))
+                            {
+                                server.allowInsecure = "true";
+                            }
+                            ConfigHandler.SaveConfig(ref config, false);
+                        }
                         _updateFunc(false,
                             ret > 0
                                 ? $"{hashCode}{ResUI.MsgUpdateSubscriptionEnd}"

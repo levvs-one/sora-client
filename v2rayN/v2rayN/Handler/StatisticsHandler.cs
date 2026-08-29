@@ -103,7 +103,7 @@ namespace v2rayN.Handler
                         {
                             res = client_.QueryStats(new QueryStatsRequest() { Pattern = "", Reset = true });
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             //Utils.SaveLog(ex.Message, ex);
                         }
@@ -113,7 +113,6 @@ namespace v2rayN.Handler
                             string itemId = config_.indexId;
                             ServerStatItem serverStatItem = GetServerStatItem(itemId);
 
-                            //TODO: parse output
                             ParseOutput(res.Stat, out ulong up, out ulong down);
 
                             serverStatItem.todayUp += up;
@@ -131,7 +130,7 @@ namespace v2rayN.Handler
                     Thread.Sleep(1000 * sleep);
                     channel_.ConnectAsync();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     //Utils.SaveLog(ex.Message, ex);
                 }
@@ -265,7 +264,7 @@ namespace v2rayN.Handler
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 //Utils.SaveLog(ex.Message, ex);
             }

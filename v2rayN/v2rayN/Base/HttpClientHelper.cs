@@ -122,7 +122,6 @@ namespace v2rayN.Base
                             var data = new byte[read];
                             buffer.ToList().CopyTo(0, data, 0, read);
 
-                            // TODO: put here the code to write the file to disk
                             file.Write(data, 0, read);
 
                             totalRead += read;
@@ -198,7 +197,6 @@ namespace v2rayN.Base
                         var data = new byte[read];
                         buffer.ToList().CopyTo(0, data, 0, read);
 
-                        // TODO:   
                         totalRead += read;
 
                         TimeSpan ts = (DateTime.Now - totalDatetime);

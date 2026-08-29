@@ -27,8 +27,8 @@ namespace v2rayN.Handler
         /// <returns></returns>
         public static int LoadConfig(ref Config config)
         {
-            //载入配置文件 
-            string result = Utils.LoadResource(Utils.GetPath(configRes));
+            string configPath = Utils.GetPath(configRes);
+            string result = File.Exists(configPath) ? Utils.LoadResource(configPath) : string.Empty;
             if (!Utils.IsNullOrEmpty(result))
             {
                 //转成Json
@@ -36,7 +36,7 @@ namespace v2rayN.Handler
             }
             else
             {
-                if (File.Exists(Utils.GetPath(configRes)))
+                if (File.Exists(configPath))
                 {
                     Utils.SaveLog("LoadConfig Exception");
                     return -1;

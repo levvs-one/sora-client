@@ -22,16 +22,26 @@ namespace v2rayN.Forms
         private List<VmessItem> lstVmess;
         private string _groupId = string.Empty;
         private string serverFilter = string.Empty;
+        private readonly bool _startHidden;
+        private readonly bool _startTun;
+        private readonly TunModeController _tunModeController;
 
         #region Window 事件
 
-        public MainForm()
+        public MainForm(bool startHidden = false, bool startTun = false)
         {
+            _startHidden = startHidden;
+            _startTun = startTun;
+            _tunModeController = new TunModeController(Utils.StartupPath());
             InitializeComponent();
-            ShowInTaskbar = false;
-            WindowState = FormWindowState.Minimized;
-            HideForm();
-            Text = Utils.GetVersion();
+            ApplyHappLayout();
+            ShowInTaskbar = !startHidden;
+            WindowState = startHidden ? FormWindowState.Minimized : FormWindowState.Normal;
+            if (startHidden)
+            {
+                HideForm();
+            }
+            Text = "Sora — 0.1.0";
             Global.processJob = new Job();
 
             Application.ApplicationExit += (sender, args) =>
@@ -73,20 +83,35 @@ namespace v2rayN.Forms
             }
         }
 
-        private void MainForm_Shown(object sender, EventArgs e)
+        private async void MainForm_Shown(object sender, EventArgs e)
         {
             InitGroupView();
             InitServersView();
             RefreshServers();
             RefreshRoutingsMenu();
             RestoreUI();
+            mainMsgControl.SetToolSslInfo("routing", string.Empty);
+            mainMsgControl.SetToolSslInfo("speed", string.Empty);
 
-            HideForm();
+            if (_startHidden)
+            {
+                HideForm();
+            }
+            else
+            {
+                ShowInTaskbar = true;
+                WindowState = FormWindowState.Normal;
+                Activate();
+            }
 
             MainFormHandler.Instance.UpdateTask(config, UpdateTaskHandler);
             MainFormHandler.Instance.RegisterGlobalHotkey(config, OnHotkeyHandler, UpdateTaskHandler);
 
-            _ = LoadV2ray();
+            await LoadV2ray();
+            if (_startTun)
+            {
+                await StartCommunityTunAsync();
+            }
 
             if (!Utils.CheckForDotNetVersion())
             {
@@ -148,6 +173,7 @@ namespace v2rayN.Forms
                 statistics?.SaveToFile();
                 statistics?.Close();
 
+                _tunModeController.Dispose();
                 v2rayHandler.V2rayStop();
                 Utils.SaveLog("MyAppExit End");
             }
@@ -238,6 +264,8 @@ namespace v2rayN.Forms
             }));
 
             RefreshServersMenu();
+            UpdateCommunityActiveServer();
+            UpdateCommunityEmptyState();
         }
 
         /// <summary>
@@ -248,24 +276,24 @@ namespace v2rayN.Forms
             lvServers.BeginUpdate();
             lvServers.Items.Clear();
 
-            lvServers.GridLines = true;
+            lvServers.GridLines = false;
             lvServers.FullRowSelect = true;
             lvServers.View = View.Details;
             lvServers.Scrollable = true;
             lvServers.MultiSelect = true;
-            lvServers.HeaderStyle = ColumnHeaderStyle.Clickable;
+            lvServers.HeaderStyle = ColumnHeaderStyle.None;
             lvServers.RegisterDragEvent(UpdateDragEventHandler);
 
-            lvServers.Columns.Add("", 30);
-            lvServers.Columns.Add(ResUI.LvServiceType, 80);
-            lvServers.Columns.Add(ResUI.LvAlias, 100);
-            lvServers.Columns.Add(ResUI.LvAddress, 120);
-            lvServers.Columns.Add(ResUI.LvPort, 100);
-            lvServers.Columns.Add(ResUI.LvEncryptionMethod, 120);
-            lvServers.Columns.Add(ResUI.LvTransportProtocol, 120);
-            lvServers.Columns.Add(ResUI.LvTLS, 100);
-            lvServers.Columns.Add(ResUI.LvSubscription, 100);
-            lvServers.Columns.Add(ResUI.LvTestResults, 120, HorizontalAlignment.Right);
+            lvServers.Columns.Add("", 28);
+            lvServers.Columns.Add("Тип", 82);
+            lvServers.Columns.Add("Название", 228);
+            lvServers.Columns.Add("Адрес", 0);
+            lvServers.Columns.Add("Порт", 0);
+            lvServers.Columns.Add("Шифрование", 0);
+            lvServers.Columns.Add("Транспорт", 0);
+            lvServers.Columns.Add("TLS", 0);
+            lvServers.Columns.Add("Подписка", 0);
+            lvServers.Columns.Add("Задержка", 78, HorizontalAlignment.Right);
 
             if (statistics != null && statistics.Enable)
             {
@@ -342,12 +370,12 @@ namespace v2rayN.Forms
 
                 if (k % 2 == 1) // 隔行着色
                 {
-                    lvItem.BackColor = Color.WhiteSmoke;
+                    lvItem.BackColor = CommunityRowAlternate;
                 }
                 if (config.IsActiveNode(item))
                 {
                     //lvItem.Checked = true;
-                    lvItem.ForeColor = Color.DodgerBlue;
+                    lvItem.ForeColor = CommunityAccent;
                     lvItem.Font = new Font(lvItem.Font, FontStyle.Bold);
                 }
 
@@ -457,7 +485,7 @@ namespace v2rayN.Forms
         {
             tabGroup.TabPages.Clear();
 
-            string title = $"  {ResUI.AllGroupServers}   ";
+            string title = "  Все серверы   ";
             var tabPage = new TabPage(title);
             tabPage.Name = "";
             tabGroup.TabPages.Add(tabPage);
@@ -598,6 +626,16 @@ namespace v2rayN.Forms
         }
         private void ShowServerForm(EConfigType configType, int index)
         {
+            if (index >= 0 && index < lstVmess.Count)
+            {
+                string subscriptionId = lstVmess[index].subid;
+                var subscription = config.subItem?.FirstOrDefault(item => item.id == subscriptionId);
+                if (subscription != null && subscription.serverSettingsLocked)
+                {
+                    UI.ShowWarning("Настройки этого сервера скрыты владельцем подписки.");
+                    return;
+                }
+            }
             BaseServerForm fm;
             if (configType == EConfigType.Custom)
             {
@@ -951,13 +989,14 @@ namespace v2rayN.Forms
             }
             if (ConfigHandler.SetDefaultServer(ref config, lstVmess[index]) == 0)
             {
+                bool resumeTun = StopCommunityTun();
                 //RefreshServers();
                 for (int k = 0; k < lstVmess.Count; k++)
                 {
                     if (config.IsActiveNode(lstVmess[k]))
                     {
                         lvServers.Items[k].SubItems[0].Text = Global.CheckMark;
-                        lvServers.Items[k].ForeColor = Color.DodgerBlue;
+                        lvServers.Items[k].ForeColor = CommunityAccent;
                         lvServers.Items[k].Font = new Font(lvServers.Font, FontStyle.Bold);
                     }
                     else
@@ -968,7 +1007,7 @@ namespace v2rayN.Forms
                     }
                 }
                 RefreshServersMenu();
-                _ = LoadV2ray();
+                _ = ReloadCommunityCoreAsync(resumeTun);
             }
             return 0;
         }
@@ -1234,6 +1273,8 @@ namespace v2rayN.Forms
             {
                 up /= (ulong)(config.statisticsFreshRate);
                 down /= (ulong)(config.statisticsFreshRate);
+                System.Threading.Interlocked.Exchange(ref _happUploadRate, up > long.MaxValue ? long.MaxValue : (long)up);
+                System.Threading.Interlocked.Exchange(ref _happDownloadRate, down > long.MaxValue ? long.MaxValue : (long)down);
                 mainMsgControl.SetToolSslInfo("speed", string.Format("{0}/s↑ | {1}/s↓", Utils.HumanFy(up), Utils.HumanFy(down)));
 
                 foreach (var it in statistics)
@@ -1306,7 +1347,6 @@ namespace v2rayN.Forms
             }
             if (ConfigHandler.MoveServer(ref config, ref lstVmess, index, eMove) == 0)
             {
-                //TODO: reload is not good.
                 RefreshServers();
                 //LoadV2ray();
             }
@@ -1356,10 +1396,11 @@ namespace v2rayN.Forms
             ConfigHandler.SaveConfig(ref config, false);
 
             mainMsgControl.DisplayToolStatus(config);
+            UpdateCommunityConnectionState(type);
 
             BeginInvoke(new Action(() =>
             {
-                notifyMain.Icon = Icon = MainFormHandler.Instance.GetNotifyIcon(config, Icon);
+                notifyMain.Icon = Icon;
             }));
         }
 

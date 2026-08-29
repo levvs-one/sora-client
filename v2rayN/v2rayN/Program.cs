@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Diagnostics;
 using System.Threading;
 using System.Windows.Forms;
 using v2rayN.Forms;
@@ -12,8 +14,15 @@ namespace v2rayN
         /// 应用程序的主入口点。
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
+            if (args.Any(arg => string.Equals(arg, "--restore-proxy", StringComparison.OrdinalIgnoreCase)))
+            {
+                Logging.Setup();
+                Environment.ExitCode = Handler.SysProxyHandle.ResetIEProxy() ? 0 : 1;
+                return;
+            }
+            WaitForPreviousInstance(args);
             if (Environment.OSVersion.Version.Major >= 6)
             {
                 Utils.SetProcessDPIAware();
@@ -29,16 +38,18 @@ namespace v2rayN
             if (!IsDuplicateInstance())
             {
                 Logging.Setup();
-                Utils.SaveLog($"v2rayN start up | {Utils.GetVersion()} | {Utils.GetExePath()}");
+            Utils.SaveLog($"Sora start up | {Utils.GetVersion()}");
                 Logging.ClearLogs();
 
                 //设置语言环境
-                string lang = Utils.RegReadValue(Global.MyRegPath, Global.MyRegKeyLanguage, "zh-Hans");
+                string lang = Utils.RegReadValue(Global.MyRegPath, Global.MyRegKeyLanguage, "en");
                 Thread.CurrentThread.CurrentUICulture = new System.Globalization.CultureInfo(lang);
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new MainForm()); 
+                Application.Run(new MainForm(
+                    args.Any(arg => string.Equals(arg, "--silent", StringComparison.OrdinalIgnoreCase)),
+                    args.Any(arg => string.Equals(arg, "--tun", StringComparison.OrdinalIgnoreCase))));
             }
             else
             {
@@ -58,7 +69,23 @@ namespace v2rayN
                     }
                 }
                 catch { }
-                UI.ShowWarning($"v2rayN is already running(v2rayN已经运行)");
+                UI.ShowWarning("Sora уже запущен.");
+            }
+        }
+
+        private static void WaitForPreviousInstance(string[] args)
+        {
+            int marker = Array.FindIndex(args, arg => string.Equals(arg, "--wait-for", StringComparison.OrdinalIgnoreCase));
+            if (marker < 0 || marker + 1 >= args.Length || !int.TryParse(args[marker + 1], out int processId))
+            {
+                return;
+            }
+            try
+            {
+                Process.GetProcessById(processId).WaitForExit(15000);
+            }
+            catch
+            {
             }
         }
 

@@ -549,7 +549,7 @@ namespace v2rayN
         {
             get
             {
-                return $"v2rayNAutoRun_{GetMD5(StartupPath())}";
+                return $"SoraAutoRun_{GetMD5(StartupPath())}";
             }
         }
         private static string autoRunRegPath
@@ -578,7 +578,7 @@ namespace v2rayN
             try
             {
                 string exePath = GetExePath();
-                RegWriteValue(autoRunRegPath, autoRunName, run ? $"\"{exePath}\"" : "");
+                RegWriteValue(autoRunRegPath, autoRunName, run ? $"\"{exePath}\" --silent" : "");
             }
             catch (Exception ex)
             {
@@ -837,13 +837,13 @@ namespace v2rayN
                 string location = GetExePath();
                 if (blFull)
                 {
-                    return string.Format("v2rayN - V{0} - {1}",
+                    return string.Format("Sora - V{0} - {1}",
                             FileVersionInfo.GetVersionInfo(location).FileVersion.ToString(),
                             File.GetLastWriteTime(location).ToString("yyyy/MM/dd"));
                 }
                 else
                 {
-                    return string.Format("v2rayN/{0}",
+                    return string.Format("Sora/{0}",
                         FileVersionInfo.GetVersionInfo(location).FileVersion.ToString());
                 }
             }

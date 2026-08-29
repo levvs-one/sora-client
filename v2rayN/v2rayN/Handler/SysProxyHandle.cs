@@ -12,9 +12,7 @@ namespace v2rayN.Handler
 {
     public static class SysProxyHandle
     {
-        //private const string _userWininetConfigFile = "user-wininet.json";
-
-        //private static string _queryStr;
+        private const string UserWininetConfigFile = "user-wininet.json";
 
         // In general, this won't change
         // format:
@@ -22,8 +20,6 @@ namespace v2rayN.Handler
         //  <proxy-server><CR-LF>
         //  <bypass-list><CR-LF>
         //  <pac-url>
-        private static SysproxyConfig _userSettings = null;
-
         enum RET_ERRORS : int
         {
             RET_NO_ERROR = 0,
@@ -59,14 +55,14 @@ namespace v2rayN.Handler
 
             try
             {
-                int port = config.GetLocalPort(Global.InboundHttp);
-                int portSocks = config.GetLocalPort(Global.InboundSocks);
-                if (port <= 0)
-                {
-                    return false;
-                }
                 if (type == ESysProxyType.ForcedChange)
                 {
+                    int port = config.GetLocalPort(Global.InboundHttp);
+                    int portSocks = config.GetLocalPort(Global.InboundSocks);
+                    if (port <= 0)
+                    {
+                        return false;
+                    }
                     var strExceptions = $"{config.constItem.defIEProxyExceptions};{config.systemProxyExceptions}";
 
                     var strProxy = string.Empty;
@@ -85,7 +81,7 @@ namespace v2rayN.Handler
                 }
                 else if (type == ESysProxyType.ForcedClear)
                 {
-                    ResetIEProxy();
+                    return ResetIEProxy();
                 }
                 else if (type == ESysProxyType.Unchanged)
                 {
@@ -94,6 +90,7 @@ namespace v2rayN.Handler
             catch (Exception ex)
             {
                 Utils.SaveLog(ex.Message, ex);
+                return false;
             }
             return true;
         }
@@ -102,8 +99,7 @@ namespace v2rayN.Handler
         {
             try
             {
-                //TODO To be verified
-                Utils.RegWriteValue(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", "ProxyEnable", 0);
+                ResetIEProxy();
             }
             catch
             {
@@ -113,6 +109,7 @@ namespace v2rayN.Handler
 
         public static void SetIEProxy(bool global, string strProxy, string strExceptions)
         {
+            RecordUserSettings();
             string arguments = global
                 ? $"global {strProxy} {strExceptions}"
                 : $"pac {strProxy}";
@@ -120,26 +117,115 @@ namespace v2rayN.Handler
             ExecSysproxy(arguments);
         }
 
-        // set system proxy to 1 (null) (null) (null)
         public static bool ResetIEProxy()
         {
             try
             {
-                // clear user-wininet.json
-                //_userSettings = new SysproxyConfig();
-                //Save();
-                // clear system setting
-                ExecSysproxy("set 1 - - -");
+                string backupPath = Utils.GetPath(UserWininetConfigFile);
+                SysproxyConfig userSettings = LoadUserSettings(backupPath);
+                if (userSettings?.UserSettingsRecorded == true)
+                {
+                    string arguments = string.Join(" ", new[]
+                    {
+                        "set",
+                        QuoteArgument(userSettings.Flags),
+                        QuoteArgument(userSettings.ProxyServer),
+                        QuoteArgument(userSettings.BypassList),
+                        QuoteArgument(userSettings.PacUrl)
+                    });
+                    ExecSysproxy(arguments);
+                    File.Delete(backupPath);
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Utils.SaveLog(ex.Message, ex);
                 return false;
             }
 
             return true;
         }
 
-        private static void ExecSysproxy(string arguments)
+        private static void RecordUserSettings()
+        {
+            string backupPath = Utils.GetPath(UserWininetConfigFile);
+            if (LoadUserSettings(backupPath)?.UserSettingsRecorded == true)
+            {
+                return;
+            }
+
+            string[] values = ExecSysproxy("query")
+                .Replace("\r\n", "\n")
+                .Split(new[] { '\n' }, StringSplitOptions.None);
+            if (values.Length < 4 || string.IsNullOrWhiteSpace(values[0]))
+            {
+                throw new InvalidDataException("Не удалось сохранить исходные параметры системного прокси.");
+            }
+
+            var settings = new SysproxyConfig
+            {
+                UserSettingsRecorded = true,
+                Flags = values[0].Trim(),
+                ProxyServer = values[1],
+                BypassList = values[2],
+                PacUrl = values[3]
+            };
+            if (Utils.ToJsonFile(settings, backupPath) != 0)
+            {
+                throw new IOException("Не удалось записать резервную копию параметров системного прокси.");
+            }
+        }
+
+        private static SysproxyConfig LoadUserSettings(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+            SysproxyConfig settings = Utils.FromJson<SysproxyConfig>(Utils.LoadResource(path));
+            if (settings == null)
+            {
+                throw new InvalidDataException("Резервная копия параметров системного прокси повреждена.");
+            }
+            return settings;
+        }
+
+        private static string QuoteArgument(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "-";
+            }
+            if (value.IndexOfAny(new[] { '\r', '\n' }) >= 0)
+            {
+                throw new InvalidDataException("Параметры системного прокси содержат недопустимый перевод строки.");
+            }
+            var quoted = new StringBuilder("\"");
+            int backslashes = 0;
+            foreach (char character in value)
+            {
+                if (character == '\\')
+                {
+                    backslashes++;
+                    continue;
+                }
+                if (character == '"')
+                {
+                    quoted.Append('\\', backslashes * 2 + 1);
+                    quoted.Append(character);
+                    backslashes = 0;
+                    continue;
+                }
+                quoted.Append('\\', backslashes);
+                quoted.Append(character);
+                backslashes = 0;
+            }
+            quoted.Append('\\', backslashes * 2);
+            quoted.Append('"');
+            return quoted.ToString();
+        }
+
+        private static string ExecSysproxy(string arguments)
         {
             // using event to avoid hanging when redirect standard output/error
             // ref: https://stackoverflow.com/questions/139593/processstartinfo-hanging-on-waitforexit-why
@@ -196,13 +282,19 @@ namespace v2rayN.Handler
                         process.BeginErrorReadLine();
                         process.BeginOutputReadLine();
 
-                        process.WaitForExit();
+                        if (!process.WaitForExit(10000))
+                        {
+                            process.Kill();
+                            throw new TimeoutException("sysproxy.exe не завершился за 10 секунд.");
+                        }
+                        if (!outputWaitHandle.WaitOne(2000) || !errorWaitHandle.WaitOne(2000))
+                        {
+                            throw new TimeoutException("Не удалось полностью прочитать ответ sysproxy.exe.");
+                        }
                     }
-                    catch (System.ComponentModel.Win32Exception e)
+                    catch (System.ComponentModel.Win32Exception ex)
                     {
-
-                        // log the arguments
-                        throw new Exception(process.StartInfo.Arguments);
+                        throw new Exception("Не удалось запустить sysproxy.exe.", ex);
                     }
                     string stderr = error.ToString();
                     string stdout = output.ToString();
@@ -212,15 +304,7 @@ namespace v2rayN.Handler
                     {
                         throw new Exception(stderr);
                     }
-
-                    //if (arguments == "query")
-                    //{
-                    //    if (stdout.IsNullOrWhiteSpace() || stdout.IsNullOrEmpty())
-                    //    {
-                    //        throw new Exception("failed to query wininet settings");
-                    //    }
-                    //    _queryStr = stdout;
-                    //}
+                    return stdout;
                 }
             }
         }

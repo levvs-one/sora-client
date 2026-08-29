@@ -4,11 +4,25 @@
     <LangVersion>preview</LangVersion>
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
-    <Copyright>Copyright © 2019-2022 (GPLv3)</Copyright>
-    <FileVersion>5.39</FileVersion>
+    <AssemblyName>Sora</AssemblyName>
+    <RootNamespace>v2rayN</RootNamespace>
+    <Product>Sora</Product>
+    <AssemblyTitle>Sora</AssemblyTitle>
+    <PackageId>sora-client</PackageId>
+    <RepositoryUrl>https://github.com/levvs-one/sora-client</RepositoryUrl>
+    <Description>Unofficial community proxy client for Windows 7 x86</Description>
+    <Company>Sora Contributors</Company>
+    <Copyright>Copyright © 2019-2022 v2rayN contributors; 2026 Sora contributors (GPLv3)</Copyright>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <RuntimeIdentifier>win7-x86</RuntimeIdentifier>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>v2rayN.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\Sora\sora.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Sample\custom_routing_black" />
@@ -47,6 +61,12 @@
     <Protobuf Include="Protos\Statistics.proto" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="Assets\Phosphor\png\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Sora\sora-logo-white.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <PackageReference Include="Google.Protobuf">
       <Version>3.21.5</Version>
     </PackageReference>
@@ -59,7 +79,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="log4net">
-      <Version>2.0.15</Version>
+      <Version>3.4.0</Version>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
       <Version>13.0.1</Version>
@@ -73,10 +93,12 @@
     <PackageReference Include="ZXing.Net">
       <Version>0.16.8</Version>
     </PackageReference>
+    <PackageReference Include="System.Resources.Extensions">
+      <Version>10.0.11</Version>
+    </PackageReference>
   </ItemGroup>
   <PropertyGroup>
     <PostBuildEvent>del $(TargetDir)*.xml $(TargetDir)*.so $(TargetDir)*.dylib
 if not "$(ConfigurationName)" == "Debug" del $(TargetDir)*.pdb</PostBuildEvent>
-    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 </Project>

@@ -485,7 +485,8 @@ namespace v2rayN.Handler
             switch (i.streamSecurity)
             {
                 case "tls":
-                    // TODO tls config
+                    i.sni = q["sni"] ?? "";
+                    i.alpn = Utils.String2List(Utils.UrlDecode(q["alpn"] ?? ""));
                     break;
                 default:
                     if (!string.IsNullOrWhiteSpace(i.streamSecurity))
@@ -499,12 +500,11 @@ namespace v2rayN.Handler
                 case "tcp":
                     string t1 = q["type"] ?? "none";
                     i.headerType = t1;
-                    // TODO http option
-
+                    i.requestHost = Utils.UrlDecode(q["host"] ?? "");
                     break;
                 case "kcp":
                     i.headerType = q["type"] ?? "none";
-                    // TODO kcp seed
+                    i.path = Utils.UrlDecode(q["seed"] ?? "");
                     break;
 
                 case "ws":

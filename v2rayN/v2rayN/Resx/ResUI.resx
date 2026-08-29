@@ -124,7 +124,7 @@
     <value>Batch export share URL to clipboard successfully</value>
   </data>
   <data name="CheckServerSettings" xml:space="preserve">
-    <value>Please check the server settings first</value>
+    <value>Добавьте сервер или подписку для подключения.</value>
   </data>
   <data name="ConfigurationFormatIncorrect" xml:space="preserve">
     <value>Invalid configuration format</value>

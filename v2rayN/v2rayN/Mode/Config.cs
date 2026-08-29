@@ -716,6 +716,10 @@ namespace v2rayN.Mode
         {
             get; set;
         } = string.Empty;
+
+        public bool serverSettingsLocked { get; set; }
+
+        public bool allowInsecure { get; set; }
     }
 
     [Serializable]

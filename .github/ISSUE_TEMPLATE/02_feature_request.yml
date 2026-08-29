@@ -1,6 +1,6 @@
-name: Предложить функцию
-description: Идея для улучшения Sora
-title: "[Предложение]: "
+name: Предложить улучшение
+description: Чего не хватает в Sora или что можно сделать удобнее
+title: "[Идея]: "
 labels: ["enhancement"]
 body:
   - type: textarea

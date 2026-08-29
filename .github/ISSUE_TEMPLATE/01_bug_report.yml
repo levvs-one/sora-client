@@ -1,5 +1,5 @@
 name: Сообщить об ошибке
-description: Воспроизводимая проблема в Sora на поддерживаемой системе
+description: Что-то сломалось или работает не так
 title: "[Ошибка]: "
 labels: ["bug"]
 body:
@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Версия Sora
-      placeholder: 0.1.0
+      placeholder: 0.2.2
     validations:
       required: true
   - type: dropdown
@@ -27,7 +27,7 @@ body:
     id: problem
     attributes:
       label: Что произошло
-      description: Опишите фактическое и ожидаемое поведение.
+      description: Что вы увидели и что ожидали увидеть.
     validations:
       required: true
   - type: textarea

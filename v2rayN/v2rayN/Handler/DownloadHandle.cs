@@ -8,6 +8,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Polly;
+using Polly.Retry;
 using v2rayN.Base;
 using v2rayN.Resx;
 
@@ -18,6 +20,20 @@ namespace v2rayN.Handler
     /// </summary>
     class DownloadHandle
     {
+        private static readonly ResiliencePipeline<string> SubscriptionDownloadPipeline =
+            new ResiliencePipelineBuilder<string>()
+                .AddRetry(new RetryStrategyOptions<string>
+                {
+                    ShouldHandle = new PredicateBuilder<string>()
+                        .Handle<HttpRequestException>()
+                        .Handle<TaskCanceledException>(),
+                    MaxRetryAttempts = 1,
+                    Delay = TimeSpan.FromSeconds(1),
+                    BackoffType = DelayBackoffType.Constant,
+                    UseJitter = true
+                })
+                .Build();
+
         public event EventHandler<ResultEventArgs> UpdateCompleted;
 
         public event ErrorEventHandler Error;
@@ -148,29 +164,29 @@ namespace v2rayN.Handler
             try
             {
                 Utils.SetSecurityProtocol(LazyConfig.Instance.GetConfig().enableSecurityProtocolTls13);
-                var client = new HttpClient(new WebRequestHandler()
+                return await SubscriptionDownloadPipeline.ExecuteAsync(async retryToken =>
                 {
-                    Proxy = GetWebProxy(blProxy)
-                });
+                    using (var client = new HttpClient(new WebRequestHandler
+                    {
+                        Proxy = GetWebProxy(blProxy)
+                    }))
+                    using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(retryToken))
+                    {
+                        string requestUserAgent = Utils.IsNullOrEmpty(userAgent)
+                            ? Utils.GetVersion(false)
+                            : userAgent;
+                        client.DefaultRequestHeaders.UserAgent.TryParseAdd(requestUserAgent);
 
-                if (Utils.IsNullOrEmpty(userAgent))
-                {
-                    userAgent = $"{Utils.GetVersion(false)}";
-                }
-                client.DefaultRequestHeaders.UserAgent.TryParseAdd(userAgent);
+                        Uri uri = new Uri(url);
+                        if (!Utils.IsNullOrEmpty(uri.UserInfo))
+                        {
+                            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Utils.Base64Encode(uri.UserInfo));
+                        }
 
-                Uri uri = new Uri(url);
-                //Authorization Header
-                if (!Utils.IsNullOrEmpty(uri.UserInfo))
-                {
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Utils.Base64Encode(uri.UserInfo));
-                }
-
-                var cts = new CancellationTokenSource();
-                cts.CancelAfter(1000 * 30);
-
-                var result = await HttpClientHelper.GetInstance().GetAsync(client, url, cts.Token);
-                return result;
+                        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+                        return await HttpClientHelper.GetInstance().GetAsync(client, url, timeout.Token);
+                    }
+                }, CancellationToken.None);
             }
             catch (Exception ex)
             {

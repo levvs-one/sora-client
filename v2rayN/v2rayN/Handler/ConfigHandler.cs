@@ -7,6 +7,8 @@ using v2rayN.Base;
 using System.Linq;
 using v2rayN.Tool;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace v2rayN.Handler
 {
@@ -462,7 +464,7 @@ namespace v2rayN.Handler
         /// <param name="config"></param>
         /// <param name="vmessItem"></param>
         /// <returns></returns>
-        public static int AddCustomServer(ref Config config, VmessItem vmessItem, bool blDelete)
+        public static int AddCustomServer(ref Config config, VmessItem vmessItem, bool blDelete, bool toFile = true)
         {
             var fileName = vmessItem.address;
             if (!File.Exists(fileName))
@@ -497,7 +499,10 @@ namespace v2rayN.Handler
 
             AddServerCommon(ref config, vmessItem);
 
-            ToJsonFile(config);
+            if (toFile)
+            {
+                ToJsonFile(config);
+            }
 
             return 0;
         }
@@ -848,18 +853,13 @@ namespace v2rayN.Handler
         /// <param name="clipboardData"></param>
         /// <param name="subid"></param>
         /// <returns>成功导入的数量</returns>
-        private static int AddBatchServers(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId)
+        private static int AddBatchServers(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId, bool toFile)
         {
             if (Utils.IsNullOrEmpty(clipboardData))
             {
                 return -1;
             }
 
-            //copy sub items
-            if (!Utils.IsNullOrEmpty(subid))
-            {
-                RemoveServerViaSubid(ref config, subid);
-            }
             //if (clipboardData.IndexOf("vmess") >= 0 && clipboardData.IndexOf("vmess") == clipboardData.LastIndexOf("vmess"))
             //{
             //    clipboardData = clipboardData.Replace("\r\n", "").Replace("\n", "");
@@ -936,11 +936,14 @@ namespace v2rayN.Handler
                 }
             }
 
-            ToJsonFile(config);
+            if (toFile)
+            {
+                ToJsonFile(config);
+            }
             return countServers;
         }
 
-        private static int AddBatchServers4Custom(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId)
+        private static int AddBatchServers4Custom(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId, bool toFile)
         {
             if (Utils.IsNullOrEmpty(clipboardData))
             {
@@ -961,7 +964,7 @@ namespace v2rayN.Handler
 
                 vmessItem.coreType = ECoreType.Xray;
                 vmessItem.address = fileName;
-                vmessItem.remarks = "v2ray_custom";
+                vmessItem.remarks = TryGetSoraXrayRemarks(clipboardData) ?? "v2ray_custom";
             }
             //Is Clash configuration
             else if (clipboardData.IndexOf("port") >= 0
@@ -1014,10 +1017,6 @@ namespace v2rayN.Handler
                 //vmessItem.remarks = "other_custom";
             }
 
-            if (!Utils.IsNullOrEmpty(subid))
-            {
-                RemoveServerViaSubid(ref config, subid);
-            }
             if (lstOriSub != null && lstOriSub.Count == 1)
             {
                 vmessItem.indexId = lstOriSub[0].indexId;
@@ -1030,7 +1029,7 @@ namespace v2rayN.Handler
                 return -1;
             }
 
-            if (AddCustomServer(ref config, vmessItem, true) == 0)
+            if (AddCustomServer(ref config, vmessItem, true, toFile) == 0)
             {
                 return 1;
 
@@ -1041,16 +1040,132 @@ namespace v2rayN.Handler
             }
         }
 
-        private static int AddBatchServers4SsSIP008(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId)
+        private static readonly HashSet<string> SoraXrayOutboundProtocols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            if (Utils.IsNullOrEmpty(clipboardData))
+            "http", "shadowsocks", "socks", "trojan", "vless", "vmess", "wireguard"
+        };
+
+        public static int CountSoraXrayConfigurations(string content)
+        {
+            return ParseSoraXrayConfigurations(content).Count;
+        }
+
+        public static bool TryGetSoraXrayEndpoint(string content, out string address, out int port)
+        {
+            address = string.Empty;
+            port = 0;
+            try
+            {
+                JObject profile = JToken.Parse(content) as JObject;
+                JObject outbound = GetSoraXrayProxyOutbound(profile);
+                JObject settings = outbound?["settings"] as JObject;
+                JObject endpoint = (settings?["vnext"] as JArray)?.OfType<JObject>().FirstOrDefault()
+                    ?? (settings?["servers"] as JArray)?.OfType<JObject>().FirstOrDefault()
+                    ?? settings;
+                address = endpoint?.Value<string>("address")?.Trim()
+                    ?? endpoint?.Value<string>("server")?.Trim()
+                    ?? string.Empty;
+                int.TryParse(endpoint?["port"]?.ToString(), out port);
+                return address.Length > 0 && port > 0 && port <= 65535;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static int AddBatchServers4SoraXrayArray(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId)
+        {
+            List<JObject> profiles = ParseSoraXrayConfigurations(clipboardData);
+            if (profiles.Count == 0)
             {
                 return -1;
             }
 
-            if (!Utils.IsNullOrEmpty(subid))
+            int counter = 0;
+            foreach (JObject profile in profiles)
             {
-                RemoveServerViaSubid(ref config, subid);
+                NormalizeSoraXrayInbounds(profile, config);
+                string remarks = profile.Value<string>("remarks")?.Trim();
+                var vmessItem = new VmessItem
+                {
+                    coreType = ECoreType.Xray,
+                    remarks = string.IsNullOrWhiteSpace(remarks) ? $"Xray {counter + 1}" : remarks,
+                    subid = subid,
+                    groupId = groupId
+                };
+                VmessItem previous = lstOriSub?.FirstOrDefault(item =>
+                    item.configType == EConfigType.Custom && string.Equals(item.remarks, vmessItem.remarks, StringComparison.Ordinal));
+                if (previous != null)
+                {
+                    vmessItem.indexId = previous.indexId;
+                }
+
+                string fileName = Utils.GetTempPath($"{Utils.GetGUID(false)}.json");
+                File.WriteAllText(fileName, profile.ToString(Formatting.None));
+                vmessItem.address = fileName;
+                if (AddCustomServer(ref config, vmessItem, true, false) == 0)
+                {
+                    counter++;
+                }
+            }
+            return counter;
+        }
+
+        private static List<JObject> ParseSoraXrayConfigurations(string content)
+        {
+            try
+            {
+                var array = JToken.Parse(content) as JArray;
+                return array?.OfType<JObject>()
+                    .Where(profile => profile["inbounds"] is JArray && profile["outbounds"] is JArray)
+                    .Where(profile => GetSoraXrayProxyOutbound(profile) != null)
+                    .Select(profile => (JObject)profile.DeepClone())
+                    .ToList() ?? new List<JObject>();
+            }
+            catch (JsonException)
+            {
+                return new List<JObject>();
+            }
+        }
+
+        private static JObject GetSoraXrayProxyOutbound(JObject profile)
+        {
+            return (profile?["outbounds"] as JArray)?.OfType<JObject>().FirstOrDefault(outbound =>
+                SoraXrayOutboundProtocols.Contains(outbound.Value<string>("protocol") ?? string.Empty));
+        }
+
+        private static string TryGetSoraXrayRemarks(string content)
+        {
+            try
+            {
+                return (JToken.Parse(content) as JObject)?.Value<string>("remarks")?.Trim();
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        private static void NormalizeSoraXrayInbounds(JObject profile, Config config)
+        {
+            foreach (JObject inbound in (profile["inbounds"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
+            {
+                string protocol = inbound.Value<string>("protocol");
+                if (string.Equals(protocol, Global.InboundSocks, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(protocol, Global.InboundHttp, StringComparison.OrdinalIgnoreCase))
+                {
+                    inbound["listen"] = Global.Loopback;
+                    inbound["port"] = config.GetLocalPort(protocol);
+                }
+            }
+        }
+
+        private static int AddBatchServers4SsSIP008(ref Config config, string clipboardData, string subid, List<VmessItem> lstOriSub, string groupId, bool toFile)
+        {
+            if (Utils.IsNullOrEmpty(clipboardData))
+            {
+                return -1;
             }
 
             //SsSIP008
@@ -1084,7 +1199,10 @@ namespace v2rayN.Handler
                         counter++;
                     }
                 }
-                ToJsonFile(config);
+                if (toFile)
+                {
+                    ToJsonFile(config);
+                }
                 return counter;
             }
 
@@ -1093,30 +1211,81 @@ namespace v2rayN.Handler
 
         public static int AddBatchServers(ref Config config, string clipboardData, string subid, string groupId)
         {
-            List<VmessItem> lstOriSub = null;
-            if (!Utils.IsNullOrEmpty(subid))
-            {
-                lstOriSub = config.vmess.Where(it => it.subid == subid).ToList();
-            }
-
-            int counter = AddBatchServers(ref config, clipboardData, subid, lstOriSub, groupId);
+            List<VmessItem> lstOriSub = Utils.IsNullOrEmpty(subid)
+                ? new List<VmessItem>()
+                : config.vmess.Where(item => item.subid == subid).ToList();
+            Config candidate = CreateSoraImportCandidate(config, subid);
+            int counter = AddBatchServers(ref candidate, clipboardData, subid, lstOriSub, groupId, false);
             if (counter < 1)
             {
-                counter = AddBatchServers(ref config, Utils.Base64Decode(clipboardData), subid, lstOriSub, groupId);
+                candidate = CreateSoraImportCandidate(config, subid);
+                counter = AddBatchServers(ref candidate, Utils.Base64Decode(clipboardData), subid, lstOriSub, groupId, false);
             }
 
             if (counter < 1)
             {
-                counter = AddBatchServers4SsSIP008(ref config, clipboardData, subid, lstOriSub, groupId);
+                candidate = CreateSoraImportCandidate(config, subid);
+                counter = AddBatchServers4SsSIP008(ref candidate, clipboardData, subid, lstOriSub, groupId, false);
+            }
+
+            if (counter < 1)
+            {
+                candidate = CreateSoraImportCandidate(config, subid);
+                counter = AddBatchServers4SoraXrayArray(ref candidate, clipboardData, subid, lstOriSub, groupId);
             }
 
             //maybe other sub 
             if (counter < 1)
             {
-                counter = AddBatchServers4Custom(ref config, clipboardData, subid, lstOriSub, groupId);
+                candidate = CreateSoraImportCandidate(config, subid);
+                counter = AddBatchServers4Custom(ref candidate, clipboardData, subid, lstOriSub, groupId, false);
+            }
+
+            if (counter > 0)
+            {
+                DeleteReplacedSoraCustomFiles(lstOriSub, candidate.vmess);
+                config.vmess = candidate.vmess;
+                config.subItem = candidate.subItem;
+                config.indexId = candidate.indexId;
+                string activeIndexId = config.indexId;
+                if (!config.vmess.Any(item => item.indexId == activeIndexId))
+                {
+                    config.indexId = config.vmess.FirstOrDefault(item => item.subid == subid)?.indexId
+                        ?? config.vmess.FirstOrDefault()?.indexId
+                        ?? string.Empty;
+                }
+                ToJsonFile(config);
             }
 
             return counter;
+        }
+
+        private static Config CreateSoraImportCandidate(Config config, string subid)
+        {
+            Config candidate = Utils.DeepCopy(config);
+            if (!Utils.IsNullOrEmpty(subid))
+            {
+                candidate.vmess.RemoveAll(item => item.subid == subid);
+            }
+            return candidate;
+        }
+
+        private static void DeleteReplacedSoraCustomFiles(IEnumerable<VmessItem> previousItems, IEnumerable<VmessItem> currentItems)
+        {
+            var retained = new HashSet<string>(currentItems
+                .Where(item => item.configType == EConfigType.Custom)
+                .Select(item => item.address), StringComparer.OrdinalIgnoreCase);
+            foreach (VmessItem item in previousItems.Where(item => item.configType == EConfigType.Custom && !retained.Contains(item.address)))
+            {
+                try
+                {
+                    File.Delete(Utils.GetConfigPath(item.address));
+                }
+                catch (Exception exception)
+                {
+                    Utils.SaveLog("Delete replaced custom configuration", exception);
+                }
+            }
         }
 
 

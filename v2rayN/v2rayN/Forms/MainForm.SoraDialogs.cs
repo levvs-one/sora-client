@@ -77,6 +77,7 @@ namespace v2rayN.Forms
                 {
                     Dock = DockStyle.Fill,
                     Multiline = true,
+                    MaxLength = 4 * 1024 * 1024,
                     AcceptsTab = false,
                     ScrollBars = RichTextBoxScrollBars.None,
                     BorderStyle = BorderStyle.None,
@@ -209,6 +210,18 @@ namespace v2rayN.Forms
                 {
                     return new SoraImportAnalysis { Kind = SoraImportKind.EncodedShareLinks, Title = "Base64-подписка", Detail = "Внутри распознано серверов: " + decodedCount, Count = decodedCount };
                 }
+            }
+
+            int xrayConfigurationCount = ConfigHandler.CountSoraXrayConfigurations(input);
+            if (xrayConfigurationCount > 0)
+            {
+                return new SoraImportAnalysis
+                {
+                    Kind = SoraImportKind.XrayJson,
+                    Title = "Набор конфигураций Xray",
+                    Detail = "Совместимых с Win7 x86 серверов: " + xrayConfigurationCount,
+                    Count = xrayConfigurationCount
+                };
             }
 
             var shadowsocks = Utils.FromJson<List<SsServer>>(input);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -33,13 +34,24 @@ namespace v2rayN.Handler
             _selecteds = new List<ServerTestItem>();
             foreach (var it in selecteds)
             {
-                _selecteds.Add(new ServerTestItem()
+                var testItem = new ServerTestItem
                 {
                     indexId = it.indexId,
                     address = it.address,
                     port = it.port,
                     configType = it.configType
-                });
+                };
+                if (it.configType == EConfigType.Custom)
+                {
+                    string configPath = File.Exists(it.address) ? it.address : Utils.GetConfigPath(it.address);
+                    if (File.Exists(configPath)
+                        && ConfigHandler.TryGetSoraXrayEndpoint(File.ReadAllText(configPath), out string address, out int port))
+                    {
+                        testItem.address = address;
+                        testItem.port = port;
+                    }
+                }
+                _selecteds.Add(testItem);
             }
 
             if (actionType == ESpeedActionType.Ping)
@@ -64,19 +76,19 @@ namespace v2rayN.Handler
         {
             try
             {
-                foreach (var it in _selecteds.Where(it => it.configType != EConfigType.Custom))
+                Parallel.ForEach(_selecteds, new ParallelOptions { MaxDegreeOfParallelism = 12 }, it =>
                 {
                     try
                     {
-                        Task.Run(() => updateFun(it));
+                        _updateFunc(it.indexId, "Проверка…");
+                        updateFun(it);
                     }
                     catch (Exception ex)
                     {
                         Utils.SaveLog(ex.Message, ex);
+                        _updateFunc(it.indexId, FormatOut(-1, "ms"));
                     }
-                }
-
-                Thread.Sleep(10);
+                });
             }
             catch (Exception ex)
             {
@@ -215,26 +227,37 @@ namespace v2rayN.Handler
 
             try
             {
+                if (string.IsNullOrWhiteSpace(url) || port < 1 || port > 65535)
+                {
+                    return responseTime;
+                }
                 if (!IPAddress.TryParse(url, out IPAddress ipAddress))
                 {
-                    IPHostEntry ipHostInfo = System.Net.Dns.GetHostEntry(url);
-                    ipAddress = ipHostInfo.AddressList[0];
+                    IPAddress[] addresses = System.Net.Dns.GetHostAddresses(url);
+                    ipAddress = addresses.FirstOrDefault(address => address.AddressFamily == AddressFamily.InterNetwork)
+                        ?? addresses.FirstOrDefault();
+                }
+                if (ipAddress == null)
+                {
+                    return responseTime;
                 }
 
-                Stopwatch timer = new Stopwatch();
-                timer.Start();
-
                 IPEndPoint endPoint = new IPEndPoint(ipAddress, port);
-                Socket clientSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-                IAsyncResult result = clientSocket.BeginConnect(endPoint, null, null);
-                if (!result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(5)))
-                    throw new TimeoutException("connect timeout (5s): " + url);
-                clientSocket.EndConnect(result);
-
-                timer.Stop();
-                responseTime = timer.Elapsed.Milliseconds;
-                clientSocket.Close();
+                using (var clientSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    var timer = Stopwatch.StartNew();
+                    IAsyncResult result = clientSocket.BeginConnect(endPoint, null, null);
+                    using (WaitHandle waitHandle = result.AsyncWaitHandle)
+                    {
+                        if (!waitHandle.WaitOne(TimeSpan.FromSeconds(5)))
+                        {
+                            return responseTime;
+                        }
+                    }
+                    clientSocket.EndConnect(result);
+                    timer.Stop();
+                    responseTime = Math.Max(1, (int)Math.Round(timer.Elapsed.TotalMilliseconds));
+                }
             }
             catch (Exception ex)
             {

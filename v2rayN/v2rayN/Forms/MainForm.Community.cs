@@ -880,8 +880,8 @@ namespace v2rayN.Forms
         private void ShowCommunityAbout()
         {
             UI.Show(
-                "Sora 0.2.0\r\n\r\nНеофициальный открытый клиент для Windows 7 x86. " +
-                "Основан на GPL-коде v2rayN и использует Xray, sing-box, tun2proxy и Wintun.\r\n\r\n" +
+                "Sora " + SoraVersion + "\r\n\r\nНеофициальный открытый клиент для Windows 7 x86. " +
+                "Использует открытые компоненты Xray, sing-box, tun2proxy и Wintun. Происхождение кода и лицензии перечислены в NOTICE.md.\r\n\r\n" +
                 "Проект не связан с Flyfrog LLC и официальным Happ Desktop.");
         }
     }

@@ -33,6 +33,7 @@ namespace v2rayN
     {
         internal static DialogResult Show(string message, MessageBoxButtons buttons)
         {
+            message = NormalizeSoraMessage(message);
             Form owner = Form.ActiveForm;
             if (owner == null && Application.OpenForms.Count > 0)
             {
@@ -47,6 +48,19 @@ namespace v2rayN
             {
                 return owner == null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
             }
+        }
+
+        private static string NormalizeSoraMessage(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return string.Empty;
+            }
+            if (message.IndexOf("加载GUI配置文件异常", StringComparison.Ordinal) >= 0)
+            {
+                return "Не удалось загрузить настройки Sora. Перезапустите приложение; если ошибка повторится, восстановите последнюю резервную копию.";
+            }
+            return message.Replace("v2rayN", "Sora");
         }
 
         private static Form BuildDialog(string message, MessageBoxButtons buttons)

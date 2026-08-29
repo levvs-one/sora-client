@@ -257,6 +257,15 @@ namespace v2rayN.Forms
             {
                 ShowScrollBar(Content.Handle, SbVert, false);
             }
+            bool needsScroll = _rail.CanScroll;
+            if (_rail.Visible != needsScroll)
+            {
+                _rail.Visible = needsScroll;
+            }
+            if (!needsScroll && Content.AutoScrollPosition.Y != 0)
+            {
+                Content.AutoScrollPosition = Point.Empty;
+            }
             _rail.Invalidate();
         }
     }
@@ -278,6 +287,8 @@ namespace v2rayN.Forms
             _target.SizeChanged += (sender, args) => Invalidate();
             _target.ControlAdded += (sender, args) => Invalidate();
         }
+
+        internal bool CanScroll => GetMaximumScroll() > 0;
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -335,26 +346,43 @@ namespace v2rayN.Forms
 
         private Rectangle GetThumbBounds()
         {
-            int maximum = Math.Max(0, _target.VerticalScroll.Maximum - _target.VerticalScroll.LargeChange + 1);
+            int maximum = GetMaximumScroll();
             if (maximum == 0 || Height < 64)
             {
                 return Rectangle.Empty;
             }
             int trackHeight = Height - 16;
-            int thumbHeight = Math.Max(48, (int)Math.Round(trackHeight * Math.Min(1D, (double)_target.VerticalScroll.LargeChange / (_target.VerticalScroll.Maximum + 1D))));
+            int contentHeight = _target.ClientSize.Height + maximum;
+            int thumbHeight = Math.Max(48, (int)Math.Round(trackHeight * Math.Min(1D, (double)_target.ClientSize.Height / contentHeight)));
             int travel = Math.Max(1, trackHeight - thumbHeight);
-            int top = 8 + (int)Math.Round(travel * (double)_target.VerticalScroll.Value / maximum);
+            int scrollValue = Math.Max(0, -_target.AutoScrollPosition.Y);
+            int top = 8 + (int)Math.Round(travel * (double)scrollValue / maximum);
             return new Rectangle(4, top, 6, thumbHeight);
         }
 
         private void SetScrollFromThumbTop(int top, int thumbHeight)
         {
-            int maximum = Math.Max(0, _target.VerticalScroll.Maximum - _target.VerticalScroll.LargeChange + 1);
+            int maximum = GetMaximumScroll();
             int travel = Math.Max(1, Height - 16 - thumbHeight);
             int clamped = Math.Max(8, Math.Min(8 + travel, top));
             int value = (int)Math.Round(maximum * (double)(clamped - 8) / travel);
             _target.AutoScrollPosition = new Point(0, value);
             Invalidate();
+        }
+
+        private int GetMaximumScroll()
+        {
+            int contentBottom = _target.Padding.Top;
+            int scrollOffset = -_target.AutoScrollPosition.Y;
+            foreach (Control child in _target.Controls)
+            {
+                if (child.Visible)
+                {
+                    contentBottom = Math.Max(contentBottom, child.Bottom + scrollOffset + child.Margin.Bottom);
+                }
+            }
+            int contentHeight = contentBottom + _target.Padding.Bottom;
+            return Math.Max(0, contentHeight - _target.ClientSize.Height);
         }
 
         private static GraphicsPath Rounded(Rectangle bounds, int radius)

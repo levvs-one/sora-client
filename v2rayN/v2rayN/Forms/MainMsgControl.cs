@@ -40,6 +40,7 @@ namespace v2rayN.Forms
 
         public void AppendText(string text)
         {
+            text = SanitizeSoraLogText(text);
             if (!IsHandleCreated)
             {
                 lock (_history)
@@ -68,6 +69,13 @@ namespace v2rayN.Forms
                 //this.txtMsgBox.AppendText(text);
                 ShowMsg(text);
             }
+        }
+
+        private static string SanitizeSoraLogText(string text)
+        {
+            return (text ?? string.Empty)
+                .Replace("v2rayN.", "Sora.")
+                .Replace("v2rayN", "Sora");
         }
 
         /// <summary>
@@ -163,6 +171,8 @@ namespace v2rayN.Forms
             txtMsgBox.BorderStyle = BorderStyle.None;
             txtMsgBox.Font = new Font("Consolas", 9F);
             txtMsgBox.ScrollBars = ScrollBars.Vertical;
+            txtMsgBox.WordWrap = false;
+            txtMsgBox.HideSelection = false;
             ssMain.Parent = this;
             ssMain.Dock = DockStyle.Bottom;
             ssMain.Height = 24;
@@ -190,6 +200,15 @@ namespace v2rayN.Forms
             Controls.Add(ssMain);
             ssMain.BringToFront();
             ResumeLayout(true);
+        }
+
+        internal string GetVisibleText()
+        {
+            if (txtMsgBox.InvokeRequired)
+            {
+                return (string)txtMsgBox.Invoke(new Func<string>(GetVisibleText));
+            }
+            return txtMsgBox.Text;
         }
 
         public void DisplayToolStatus(Config config)

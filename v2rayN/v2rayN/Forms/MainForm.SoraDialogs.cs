@@ -33,87 +33,97 @@ namespace v2rayN.Forms
 
         private void ShowSoraImportDialog()
         {
-            using (var dialog = CreateSoraDialog(new Size(780, 570)))
+            using (var dialog = CreateSoraDialog(new Size(780, 500)))
             {
                 var title = new Label
                 {
-                    Location = new Point(32, 24),
+                    Location = new Point(32, 20),
                     Size = new Size(650, 32),
                     Text = "Добавить в Sora",
-                    Font = new Font("Segoe UI Semibold", 15F),
+                    Font = new Font("Segoe UI Semibold", 14F),
                     ForeColor = HappText,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
                 var subtitle = new Label
                 {
-                    Location = new Point(32, 58),
-                    Size = new Size(700, 38),
-                    Text = "Вставьте HTTPS-подписку, одну или несколько ссылок серверов, Base64, SIP008 или конфигурацию Xray.",
-                    Font = new Font("Segoe UI", 9F),
+                    Location = new Point(32, 54),
+                    Size = new Size(700, 24),
+                    Text = "Подписка, ссылки серверов, Base64, SIP008 или конфигурация Xray — формат определится автоматически.",
+                    Font = new Font("Segoe UI", 8.5F),
                     ForeColor = HappMuted
                 };
                 var close = CreateSoraIconButton("x", () => dialog.Close());
-                close.Location = new Point(724, 18);
+                close.Location = new Point(724, 14);
                 close.AccessibleName = "Закрыть";
                 close.DialogResult = DialogResult.Cancel;
 
+                var inputCaption = new Label
+                {
+                    Location = new Point(32, 88),
+                    Size = new Size(716, 20),
+                    Text = "Ссылка или конфигурация",
+                    ForeColor = HappMuted,
+                    Font = new Font("Segoe UI", 8.5F)
+                };
                 var inputShell = new Panel
                 {
-                    Location = new Point(32, 108),
-                    Size = new Size(716, 214),
-                    Padding = new Padding(14, 12, 14, 12),
+                    Location = new Point(32, 110),
+                    Size = new Size(716, 128),
+                    Padding = new Padding(12, 10, 12, 10),
                     BackColor = Color.FromArgb(29, 29, 31)
                 };
-                ApplyRoundedSurface(inputShell, 7, Color.FromArgb(91, 91, 96));
-                var input = new TextBox
+                ApplyRoundedSurface(inputShell, 6, Color.FromArgb(91, 91, 96));
+                var input = new RichTextBox
                 {
                     Dock = DockStyle.Fill,
                     Multiline = true,
-                    AcceptsReturn = true,
                     AcceptsTab = false,
-                    ScrollBars = ScrollBars.Vertical,
+                    ScrollBars = RichTextBoxScrollBars.None,
                     BorderStyle = BorderStyle.None,
                     BackColor = inputShell.BackColor,
                     ForeColor = HappText,
                     Font = new Font("Consolas", 9.5F),
-                    WordWrap = true
+                    WordWrap = true,
+                    DetectUrls = false
                 };
                 input.ContextMenuStrip = CreateSoraTextContextMenu(input);
+                input.Enter += (sender, args) => inputShell.Invalidate();
+                input.Leave += (sender, args) => inputShell.Invalidate();
                 inputShell.Controls.Add(input);
 
                 var paste = CreateHappButton("Вставить", () => input.Text = Utils.GetClipboardData().Trim(), false);
-                paste.Location = new Point(32, 336);
-                paste.Size = new Size(124, 36);
+                paste.Location = new Point(32, 252);
+                paste.Size = new Size(118, 34);
                 paste.TabStop = true;
                 paste.AccessibleName = "Вставить конфигурацию из буфера обмена";
                 paste.Image = HappIconLoader.Load("clipboard-text", HappText);
                 paste.ImageAlign = ContentAlignment.MiddleLeft;
                 paste.TextImageRelation = TextImageRelation.ImageBeforeText;
-                paste.Padding = new Padding(8, 0, 8, 0);
+                paste.Padding = new Padding(6, 0, 6, 0);
 
                 var detected = new Label
                 {
-                    Location = new Point(174, 334),
-                    Size = new Size(574, 22),
+                    Location = new Point(166, 248),
+                    Size = new Size(582, 22),
                     ForeColor = HappText,
                     Font = new Font("Segoe UI Semibold", 9F),
                     TextAlign = ContentAlignment.MiddleLeft
                 };
                 var detail = new Label
                 {
-                    Location = new Point(174, 356),
-                    Size = new Size(574, 34),
+                    Location = new Point(166, 270),
+                    Size = new Size(582, 34),
                     ForeColor = HappMuted,
                     Font = new Font("Segoe UI", 8.5F),
                     TextAlign = ContentAlignment.TopLeft
                 };
 
-                TextBox name = CreateSoraTextField(dialog, "Название подписки — необязательно", 32, 402, 716);
+                TextBox name = CreateSoraTextField(dialog, "Название — необязательно", 32, 316, 716);
                 var formats = new Label
                 {
-                    Location = new Point(32, 474),
-                    Size = new Size(500, 42),
-                    Text = "Автоопределение: HTTPS, VMess, VLESS, Trojan, Shadowsocks, SOCKS, Base64, SIP008, Xray JSON.",
+                    Location = new Point(32, 394),
+                    Size = new Size(520, 38),
+                    Text = "HTTPS · VMess · VLESS · Trojan · Shadowsocks · SOCKS · Base64 · SIP008 · Xray JSON",
                     ForeColor = Color.FromArgb(164, 164, 170),
                     Font = new Font("Segoe UI", 8.5F)
                 };
@@ -137,7 +147,7 @@ namespace v2rayN.Forms
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
                 }, true);
-                import.Location = new Point(624, 500);
+                import.Location = new Point(624, 438);
                 import.Size = new Size(124, 38);
                 import.TabStop = true;
                 import.AccessibleName = "Добавить распознанную конфигурацию";
@@ -148,15 +158,13 @@ namespace v2rayN.Forms
                     detected.Text = analysis.Title;
                     detail.Text = analysis.Detail;
                     detail.ForeColor = analysis.Kind == SoraImportKind.Unsupported ? Color.FromArgb(238, 178, 178) : HappMuted;
-                    name.Enabled = analysis.Kind == SoraImportKind.Subscription;
-                    name.BackColor = name.Enabled ? Color.FromArgb(44, 44, 47) : Color.FromArgb(35, 35, 38);
                     import.Enabled = analysis.CanImport;
                     import.BackColor = import.Enabled ? HappAccent : Color.FromArgb(67, 67, 70);
                     import.ForeColor = import.Enabled ? HappTitle : Color.FromArgb(142, 142, 148);
                 };
                 input.TextChanged += (sender, args) => refreshState();
 
-                dialog.Controls.AddRange(new Control[] { title, subtitle, close, inputShell, paste, detected, detail, formats, import });
+                dialog.Controls.AddRange(new Control[] { title, subtitle, close, inputCaption, inputShell, paste, detected, detail, formats, import });
                 dialog.AcceptButton = import;
                 dialog.CancelButton = close;
                 string clipboard = Utils.GetClipboardData().Trim();
@@ -284,18 +292,40 @@ namespace v2rayN.Forms
                     return 0;
                 }
                 SubItem item = config.subItem.FirstOrDefault(candidate => string.Equals(candidate.url, input, StringComparison.OrdinalIgnoreCase));
-                if (item != null && !string.IsNullOrWhiteSpace(subscriptionName))
+                if (item != null)
                 {
-                    item.remarks = subscriptionName;
+                    item.remarks = !string.IsNullOrWhiteSpace(subscriptionName)
+                        ? subscriptionName
+                        : new Uri(input).Host;
                 }
                 ConfigHandler.SaveSubItem(ref config);
-                UpdateSubscriptionProcess(item?.id ?? string.Empty, false);
+                _lastSoraImportedSubscriptionId = item?.id;
+                StartSoraSubscriptionUpdate(_lastSoraImportedSubscriptionId);
                 return 1;
             }
 
+            var previousIds = new HashSet<string>(config.vmess.Select(server => server.indexId));
             int imported = ConfigHandler.AddBatchServers(ref config, input, string.Empty, _groupId);
             if (imported > 0)
             {
+                List<VmessItem> addedServers = config.vmess.Where(server => !previousIds.Contains(server.indexId)).ToList();
+                if (!string.IsNullOrWhiteSpace(subscriptionName))
+                {
+                    for (int index = 0; index < addedServers.Count; index++)
+                    {
+                        addedServers[index].remarks = addedServers.Count == 1
+                            ? subscriptionName
+                            : subscriptionName + " " + (index + 1);
+                    }
+                }
+                if (analysis.Kind == SoraImportKind.XrayJson)
+                {
+                    foreach (var server in addedServers.Where(server => string.Equals(server.remarks, "v2ray_custom", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        server.remarks = "Конфигурация Xray";
+                    }
+                }
+                ConfigHandler.SaveConfig(ref config);
                 RefreshServers();
                 Global.reloadV2ray = true;
                 _ = LoadV2ray();

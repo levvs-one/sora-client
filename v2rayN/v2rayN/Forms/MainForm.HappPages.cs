@@ -1,22 +1,32 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using v2rayN.Handler;
+using v2rayN.Resx;
 using v2rayN.Tool;
 
 namespace v2rayN.Forms
 {
     public partial class MainForm
     {
+        private readonly Dictionary<string, string> _soraSubscriptionStatuses = new Dictionary<string, string>();
+        private readonly HashSet<string> _soraSubscriptionUpdates = new HashSet<string>();
+        private Control _happSubscriptionsPage;
+        private Control _happLogsPage;
+        private string _lastSoraImportedSubscriptionId;
+
         private Control BuildHappSettingsPage()
         {
             string routingName = "Базовые";
             if (config?.routings != null && config.routingIndex >= 0 && config.routingIndex < config.routings.Count)
             {
-                routingName = string.IsNullOrWhiteSpace(config.routings[config.routingIndex].remarks) ? "Без названия" : config.routings[config.routingIndex].remarks;
+                routingName = GetHappRoutingDisplayName(config.routings[config.routingIndex].remarks, config.routingIndex);
             }
             var page = CreateHappScrollablePage("Настройки");
             AddHappSection(page, "Настройки интерфейса",
@@ -25,8 +35,8 @@ namespace v2rayN.Forms
             AddHappSection(page, "Настройки туннеля",
                 CreateHappSettingRow("Правила маршрутизации", routingName, () => ShowHappPage(BuildHappRoutingPage())),
                 CreateHappToggleRow("Включить мультиплексор", config != null && config.muxEnabled, value => { config.muxEnabled = value; SaveAndReloadHapp(); }),
-                CreateHappSettingRow("Предпочитаемый тип IP", config?.domainStrategy4Freedom ?? "AsIs"),
-                CreateHappSettingRow("Inbounds", config != null && config.inbound[0].allowLANConn ? "LAN включён" : "Локально", () => ShowHappPage(BuildHappInboundPage())));
+                CreateHappSettingRow("Предпочитаемый тип IP", GetHappSettingValueDisplay(config?.domainStrategy4Freedom ?? "AsIs")),
+                CreateHappSettingRow("Локальные входы", config != null && config.inbound[0].allowLANConn ? "LAN включён" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
             AddHappSection(page, "Дополнительные настройки",
                 CreateHappSettingRow("Подписки", config?.subItem == null ? "0" : config.subItem.Count.ToString(), () => ShowHappPage(BuildHappSubscriptionsPage())),
                 CreateHappSettingRow("Пинг", "", TestAllCommunityServers),
@@ -43,13 +53,10 @@ namespace v2rayN.Forms
         private Control BuildHappSubscriptionsPage()
         {
             var page = CreateHappScrollablePage("Подписки");
+            _happSubscriptionsPage = page;
             AddHappSection(page, "Действия",
-                CreateHappSettingRow("Добавить подписку", "", () =>
-                {
-                    ShowHappAddConfiguration();
-                    ShowHappPage(BuildHappSubscriptionsPage());
-                }),
-                CreateHappSettingRow("Обновить все", "", () => UpdateSubscriptionProcess(string.Empty, false)));
+                CreateHappSettingRow("Добавить подписку", "", ShowHappAddConfiguration),
+                CreateHappSettingRow("Обновить все", "", StartSoraAllSubscriptionUpdates));
 
             if (config?.subItem == null || config.subItem.Count == 0)
             {
@@ -65,14 +72,21 @@ namespace v2rayN.Forms
                 {
                     endpoint = parsed.IsDefaultPort ? parsed.Host : parsed.Host + ":" + parsed.Port;
                 }
+                int serverCount = config.vmess.Count(server => server.subid == subscription.id);
+                string status = _soraSubscriptionStatuses.TryGetValue(subscription.id, out string currentStatus)
+                    ? currentStatus
+                    : serverCount > 0 ? "Серверов: " + serverCount : "Серверы не загружены";
+                bool updating = _soraSubscriptionUpdates.Contains(subscription.id);
+                string updateTitle = status.StartsWith("Не удалось", StringComparison.Ordinal) ? "Повторить" : "Обновить";
                 AddHappSection(page, title,
                     CreateHappSettingRow("Источник", endpoint),
+                    CreateHappSettingRow("Состояние", status),
                     CreateHappToggleRow("Включена", subscription.enabled, value =>
                     {
                         subscription.enabled = value;
                         ConfigHandler.SaveSubItem(ref config);
                     }),
-                    CreateHappSettingRow("Обновить", "", () => UpdateSubscriptionProcess(subscription.id, false)),
+                    CreateHappSettingRow(updating ? "Обновление идёт" : updateTitle, updating ? "Подождите" : "", updating ? (Action)null : () => StartSoraSubscriptionUpdate(subscription.id)),
                     CreateHappSettingRow("Удалить", "", () =>
                     {
                         if (UI.ShowYesNo("Удалить подписку «" + title + "» и добавленные ею серверы?") != DialogResult.Yes)
@@ -82,6 +96,8 @@ namespace v2rayN.Forms
                         ConfigHandler.RemoveServerViaSubid(ref config, subscription.id);
                         config.subItem.Remove(subscription);
                         ConfigHandler.SaveSubItem(ref config);
+                        _soraSubscriptionStatuses.Remove(subscription.id);
+                        _soraSubscriptionUpdates.Remove(subscription.id);
                         RefreshServers();
                         ShowHappPage(BuildHappSubscriptionsPage());
                     }));
@@ -94,7 +110,7 @@ namespace v2rayN.Forms
             ConfigHandler.InitBuiltinRouting(ref config);
             var page = CreateHappScrollablePage("Маршрутизация");
             AddHappSection(page, "Общие настройки",
-                CreateHappSettingRow("Стратегия доменов", config.domainStrategy, () =>
+                CreateHappSettingRow("Стратегия доменов", GetHappSettingValueDisplay(config.domainStrategy), () =>
                     ShowHappChoiceMenu(new[] { "AsIs", "IPIfNonMatch", "IPOnDemand" }, config.domainStrategy, value =>
                     {
                         config.domainStrategy = value;
@@ -102,7 +118,7 @@ namespace v2rayN.Forms
                         SaveAndReloadHapp();
                         ShowHappPage(BuildHappRoutingPage());
                     })),
-                CreateHappSettingRow("Сопоставление доменов", string.IsNullOrWhiteSpace(config.domainMatcher) ? "linear" : config.domainMatcher, () =>
+                CreateHappSettingRow("Сопоставление доменов", GetHappSettingValueDisplay(string.IsNullOrWhiteSpace(config.domainMatcher) ? "linear" : config.domainMatcher), () =>
                     ShowHappChoiceMenu(new[] { "linear", "mph" }, config.domainMatcher, value =>
                     {
                         config.domainMatcher = value;
@@ -122,11 +138,7 @@ namespace v2rayN.Forms
             {
                 int routeIndex = index;
                 var route = config.routings[index];
-                string name = string.IsNullOrWhiteSpace(route.remarks) ? "Набор правил " + (index + 1) : route.remarks;
-                if (name.IndexOf("Whitelist", StringComparison.OrdinalIgnoreCase) >= 0) name = "Белый список";
-                else if (name.IndexOf("Blacklist", StringComparison.OrdinalIgnoreCase) >= 0) name = "Чёрный список";
-                else if (name.IndexOf("Global", StringComparison.OrdinalIgnoreCase) >= 0) name = "Глобальный маршрут";
-                else if (string.Equals(name, "locked", StringComparison.OrdinalIgnoreCase)) name = "Базовые правила";
+                string name = GetHappRoutingDisplayName(route.remarks, index);
                 string detail = route.rules == null ? "0 правил" : route.rules.Count + " правил";
                 if (index == config.routingIndex)
                 {
@@ -145,9 +157,51 @@ namespace v2rayN.Forms
             return page;
         }
 
+        private static string GetHappRoutingDisplayName(string name, int index)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "Набор правил " + (index + 1);
+            }
+            if (name.IndexOf("Whitelist", StringComparison.OrdinalIgnoreCase) >= 0) return "Белый список";
+            if (name.IndexOf("Blacklist", StringComparison.OrdinalIgnoreCase) >= 0) return "Чёрный список";
+            if (name.IndexOf("Global", StringComparison.OrdinalIgnoreCase) >= 0) return "Глобальный маршрут";
+            if (string.Equals(name, "locked", StringComparison.OrdinalIgnoreCase)) return "Базовые правила";
+            return name;
+        }
+
+        private void NormalizeSoraVisibleConfiguration()
+        {
+            bool routingChanged = false;
+            if (config?.routings != null)
+            {
+                for (int index = 0; index < config.routings.Count; index++)
+                {
+                    string displayName = GetHappRoutingDisplayName(config.routings[index].remarks, index);
+                    if (!string.Equals(config.routings[index].remarks, displayName, StringComparison.Ordinal))
+                    {
+                        config.routings[index].remarks = displayName;
+                        routingChanged = true;
+                    }
+                }
+            }
+
+            bool serversChanged = false;
+            if (config?.vmess != null)
+            {
+                foreach (var server in config.vmess.Where(server => string.Equals(server.remarks, "v2ray_custom", StringComparison.OrdinalIgnoreCase)))
+                {
+                    server.remarks = "Конфигурация Xray";
+                    serversChanged = true;
+                }
+            }
+            if (routingChanged) ConfigHandler.SaveRouting(ref config);
+            if (routingChanged || serversChanged) ConfigHandler.SaveConfig(ref config, false);
+        }
+
         private Control BuildHappInboundPage()
         {
-            var page = CreateHappScrollablePage("Inbounds");
+            var page = CreateHappScrollablePage("Локальные входы");
             if (config?.inbound == null || config.inbound.Count == 0)
             {
                 AddHappSection(page, "Состояние", CreateHappSettingRow("Локальный вход не настроен", ""));
@@ -166,7 +220,7 @@ namespace v2rayN.Forms
                 CreateHappToggleRow("Статистика", config.enableStatistics, value => { config.enableStatistics = value; SaveAndReloadHapp(); }),
                 CreateHappToggleRow("Логи ядра", config.logEnabled, value => { config.logEnabled = value; SaveAndReloadHapp(); }),
                 CreateHappToggleRow("Разрешать небезопасные серверы", config.defAllowInsecure, value => { config.defAllowInsecure = value; SaveAndReloadHapp(); }),
-                CreateHappSettingRow("Предпочитаемый IP", config.domainStrategy4Freedom, () =>
+                CreateHappSettingRow("Предпочитаемый IP", GetHappSettingValueDisplay(config.domainStrategy4Freedom), () =>
                     ShowHappChoiceMenu(Global.domainStrategy4Freedoms.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray(), config.domainStrategy4Freedom, value =>
                     {
                         config.domainStrategy4Freedom = value;
@@ -181,11 +235,24 @@ namespace v2rayN.Forms
             var menu = BuildHappMenu();
             foreach (string value in values)
             {
-                var item = (ToolStripMenuItem)menu.Items.Add(value);
+                var item = (ToolStripMenuItem)menu.Items.Add(GetHappSettingValueDisplay(value));
                 item.Checked = string.Equals(value, current, StringComparison.OrdinalIgnoreCase);
                 item.Click += (sender, args) => selected(value);
             }
             menu.Show(Cursor.Position);
+        }
+
+        private static string GetHappSettingValueDisplay(string value)
+        {
+            if (string.Equals(value, "AsIs", StringComparison.OrdinalIgnoreCase)) return "Как есть";
+            if (string.Equals(value, "IPIfNonMatch", StringComparison.OrdinalIgnoreCase)) return "IP при отсутствии совпадения";
+            if (string.Equals(value, "IPOnDemand", StringComparison.OrdinalIgnoreCase)) return "IP по запросу";
+            if (string.Equals(value, "UseIP", StringComparison.OrdinalIgnoreCase)) return "Использовать IP";
+            if (string.Equals(value, "UseIPv4", StringComparison.OrdinalIgnoreCase)) return "Только IPv4";
+            if (string.Equals(value, "UseIPv6", StringComparison.OrdinalIgnoreCase)) return "Только IPv6";
+            if (string.Equals(value, "linear", StringComparison.OrdinalIgnoreCase)) return "Обычное";
+            if (string.Equals(value, "mph", StringComparison.OrdinalIgnoreCase)) return "Быстрое";
+            return string.IsNullOrWhiteSpace(value) ? "Не задано" : value;
         }
 
         private HappScrollPage CreateHappScrollablePage(string title)
@@ -208,10 +275,32 @@ namespace v2rayN.Forms
 
         private Control CreateHappSettingRow(string title, string value, Action action = null)
         {
-            var row = new Panel { Height = 44, BackColor = HappSurface, Margin = Padding.Empty, Cursor = action == null ? Cursors.Default : Cursors.Hand };
+            var row = new Panel
+            {
+                Height = 44,
+                BackColor = HappSurface,
+                Margin = Padding.Empty,
+                Cursor = action == null ? Cursors.Default : Cursors.Hand,
+                TabStop = action != null,
+                AccessibleRole = action == null ? AccessibleRole.StaticText : AccessibleRole.Link,
+                AccessibleName = string.IsNullOrEmpty(value) ? title : title + ": " + value
+            };
             var label = new Label { Dock = DockStyle.Left, Width = 420, Padding = new Padding(16, 0, 0, 0), Text = title, ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
             var detail = new Label { Dock = DockStyle.Right, Width = 260, Padding = new Padding(0, 0, 16, 0), Text = string.IsNullOrEmpty(value) ? "›" : value + (action == null ? "" : "  ›"), ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
-            if (action != null) { row.Click += (sender, args) => action(); label.Click += (sender, args) => action(); detail.Click += (sender, args) => action(); }
+            if (action != null)
+            {
+                row.Click += (sender, args) => action();
+                label.Click += (sender, args) => action();
+                detail.Click += (sender, args) => action();
+                row.KeyDown += (sender, args) =>
+                {
+                    if (args.KeyCode == Keys.Enter || args.KeyCode == Keys.Space)
+                    {
+                        action();
+                        args.Handled = true;
+                    }
+                };
+            }
             var divider = new Panel { Location = new Point(0, 43), Height = 1, Width = row.Width, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom, BackColor = HappLine };
             row.Controls.Add(detail); row.Controls.Add(label); row.Controls.Add(divider); divider.BringToFront(); return row;
         }
@@ -251,9 +340,10 @@ namespace v2rayN.Forms
         private Control BuildHappLogsPage()
         {
             var page = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, ColumnCount = 1, RowCount = 4, Padding = new Padding(24, 16, 24, 18) };
+            _happLogsPage = page;
             page.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F)); page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Логи", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+R — создать диагностический отчёт", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
+            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить текущую вкладку · Ctrl+R — диагностический ZIP", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
             var tabs = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
             var buttons = new[]
             {
@@ -277,8 +367,11 @@ namespace v2rayN.Forms
             var actions = CreateHappSmallButton("dots-three", () =>
             {
                 var menu = BuildHappMenu();
-                menu.Items.Add("Создать отчёт", null, (sender, args) => ExportCommunityDiagnostics());
-                menu.Items.Add("Очистить логи", null, (sender, args) => mainMsgControl.ClearMsg());
+                menu.Items.Add("Сохранить текущую вкладку (.txt)", null, (sender, args) => ExportVisibleSoraLog());
+                menu.Items.Add("Скопировать текущую вкладку", null, (sender, args) => Utils.SetClipboardData(mainMsgControl.GetVisibleText()));
+                menu.Items.Add(new ToolStripSeparator());
+                menu.Items.Add("Создать диагностический ZIP", null, (sender, args) => ExportCommunityDiagnostics());
+                menu.Items.Add("Очистить все журналы", null, (sender, args) => mainMsgControl.ClearMsg());
                 menu.Show(Cursor.Position);
             });
             actions.Dock = DockStyle.None; actions.Size = new Size(38, 32); actions.Margin = Padding.Empty;
@@ -292,14 +385,46 @@ namespace v2rayN.Forms
                 KeyPreview = true;
                 KeyDown += (sender, args) =>
                 {
-                    if (args.Control && args.KeyCode == Keys.R)
+                    if (_happLogsPage?.Visible == true && args.Control && args.KeyCode == Keys.R)
                     {
                         ExportCommunityDiagnostics();
+                        args.Handled = true;
+                    }
+                    else if (_happLogsPage?.Visible == true && args.Control && args.KeyCode == Keys.S)
+                    {
+                        ExportVisibleSoraLog();
                         args.Handled = true;
                     }
                 };
             }
             return page;
+        }
+
+        private void ExportVisibleSoraLog()
+        {
+            string content = mainMsgControl.GetVisibleText();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                UI.ShowWarning("В текущей вкладке пока нет записей.");
+                return;
+            }
+
+            string destinationDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            if (!Directory.Exists(destinationDirectory))
+            {
+                destinationDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            }
+            string path = Path.Combine(destinationDirectory, "Sora-Log-" + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".txt");
+            try
+            {
+                File.WriteAllText(path, content, new UTF8Encoding(false));
+                UI.Show("Журнал сохранён в UTF-8 без системного окна:\r\n" + path);
+                Process.Start("explorer.exe", "/select,\"" + path + "\"");
+            }
+            catch (Exception exception)
+            {
+                UI.ShowError("Не удалось сохранить журнал:\r\n" + exception.Message);
+            }
         }
 
         private Button CreateHappLogTab(string text, string pattern, bool selected)
@@ -310,7 +435,115 @@ namespace v2rayN.Forms
 
         private void ShowHappAddConfiguration()
         {
+            _lastSoraImportedSubscriptionId = null;
             ShowSoraImportDialog();
+            if (!string.IsNullOrWhiteSpace(_lastSoraImportedSubscriptionId))
+            {
+                ShowHappPage(BuildHappSubscriptionsPage());
+            }
+        }
+
+        private void StartSoraSubscriptionUpdate(string subscriptionId)
+        {
+            if (string.IsNullOrWhiteSpace(subscriptionId) || _soraSubscriptionUpdates.Contains(subscriptionId))
+            {
+                return;
+            }
+
+            _soraSubscriptionUpdates.Add(subscriptionId);
+            _soraSubscriptionStatuses[subscriptionId] = "Получение серверов…";
+            RefreshSoraSubscriptionsPage();
+            bool contentReceived = false;
+            bool imported = false;
+            Action<bool, string> update = (completed, message) =>
+            {
+                AppendText(false, message);
+                if (!completed)
+                {
+                    if (message.IndexOf(ResUI.MsgGetSubscriptionSuccessfully, StringComparison.Ordinal) >= 0)
+                    {
+                        contentReceived = true;
+                    }
+                    if (message.IndexOf(ResUI.MsgUpdateSubscriptionEnd, StringComparison.Ordinal) >= 0)
+                    {
+                        imported = true;
+                    }
+                    return;
+                }
+
+                if (IsDisposed || Disposing || !IsHandleCreated)
+                {
+                    return;
+                }
+                BeginInvoke(new Action(() =>
+                {
+                    int serverCount = config.vmess.Count(server => server.subid == subscriptionId);
+                    _soraSubscriptionStatuses[subscriptionId] = contentReceived && imported && serverCount > 0
+                        ? "Серверов: " + serverCount + " · обновлено"
+                        : "Не удалось получить серверы";
+                    _soraSubscriptionUpdates.Remove(subscriptionId);
+                    RefreshServers();
+                    RefreshSoraSubscriptionsPage();
+                }));
+            };
+            (new UpdateHandle()).UpdateSubscriptionProcess(config, subscriptionId, false, update);
+        }
+
+        private void StartSoraAllSubscriptionUpdates()
+        {
+            string[] subscriptionIds = config?.subItem?
+                .Where(subscription => subscription.enabled && !_soraSubscriptionUpdates.Contains(subscription.id))
+                .Select(subscription => subscription.id)
+                .ToArray() ?? Array.Empty<string>();
+            if (subscriptionIds.Length == 0)
+            {
+                UI.ShowWarning("Нет включённых подписок для обновления.");
+                return;
+            }
+
+            foreach (string subscriptionId in subscriptionIds)
+            {
+                _soraSubscriptionUpdates.Add(subscriptionId);
+                _soraSubscriptionStatuses[subscriptionId] = "Получение серверов…";
+            }
+            RefreshSoraSubscriptionsPage();
+            bool anyContentReceived = false;
+            Action<bool, string> update = (completed, message) =>
+            {
+                AppendText(false, message);
+                if (!completed)
+                {
+                    anyContentReceived |= message.IndexOf(ResUI.MsgGetSubscriptionSuccessfully, StringComparison.Ordinal) >= 0;
+                    return;
+                }
+
+                if (IsDisposed || Disposing || !IsHandleCreated)
+                {
+                    return;
+                }
+                BeginInvoke(new Action(() =>
+                {
+                    foreach (string subscriptionId in subscriptionIds)
+                    {
+                        int serverCount = config.vmess.Count(server => server.subid == subscriptionId);
+                        _soraSubscriptionStatuses[subscriptionId] = anyContentReceived && serverCount > 0
+                            ? "Серверов: " + serverCount
+                            : "Не удалось получить серверы";
+                        _soraSubscriptionUpdates.Remove(subscriptionId);
+                    }
+                    RefreshServers();
+                    RefreshSoraSubscriptionsPage();
+                }));
+            };
+            (new UpdateHandle()).UpdateSubscriptionProcess(config, string.Empty, false, update);
+        }
+
+        private void RefreshSoraSubscriptionsPage()
+        {
+            if (_happSubscriptionsPage != null && _happSubscriptionsPage.Visible)
+            {
+                ShowHappPage(BuildHappSubscriptionsPage());
+            }
         }
 
         private void SaveAndReloadHapp()

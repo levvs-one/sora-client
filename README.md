@@ -40,21 +40,21 @@
 ## Установка
 
 1. Откройте [последний релиз](https://github.com/levvs-one/sora-client/releases/latest).
-2. Скачайте `Sora-0.2.0-Win7-x86-Setup.exe`.
-3. Сверьте SHA-256 с файлом `Sora-0.2.0-SHA256SUMS.txt`.
+2. Скачайте `Sora-0.2.1-Win7-x86-Setup.exe`.
+3. Сверьте SHA-256 с файлом `Sora-0.2.1-SHA256SUMS.txt`.
 4. Запустите установщик.
 
 Установщик добавляет .NET Framework 4.8 и обновление SHA-2 KB3033929 только при необходимости. Для TUN приложение запросит права администратора.
 
 Установщик пока не подписан сертификатом. SmartScreen может показать предупреждение «неизвестный издатель» — это не заменяет проверку контрольной суммы.
 
-Подробности выпусков: [Sora 0.2.0](docs/releases/0.2.0.md) и [Sora 0.1.0](docs/releases/0.1.0.md).
+Подробности выпусков: [Sora 0.2.1](docs/releases/0.2.1.md), [Sora 0.2.0](docs/releases/0.2.0.md) и [Sora 0.1.0](docs/releases/0.1.0.md).
 
 ## Совместимость
 
 | Компонент | Версия | Архитектура |
 |---|---:|---|
-| Sora | 0.2.0 | Windows x86 |
+| Sora | 0.2.1 | Windows x86 |
 | .NET Framework | 4.8 | x86/x64 runtime |
 | Xray-core | 25.9.11 | windows/386 |
 | sing-box | 1.12.12 legacy | windows/386 |

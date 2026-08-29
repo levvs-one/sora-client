@@ -30,6 +30,7 @@ namespace v2rayN.Forms
         private long _happUploadRate;
         private long _happDownloadRate;
         private bool _happUseTun;
+        private Button _happModeButton;
         private bool _happReportShortcutWired;
 
         [DllImport("user32.dll")]
@@ -57,6 +58,9 @@ namespace v2rayN.Forms
             notifyMain.Text = "Sora";
             notifyMain.ContextMenuStrip = BuildSoraTrayMenu();
             ApplyRoundedCorners(this, 9);
+            NormalizeSoraVisibleConfiguration();
+            KeyPreview = true;
+            KeyDown += HandleHappShortcut;
 
             tsMain.Visible = false;
             panel1.Visible = false;
@@ -64,7 +68,7 @@ namespace v2rayN.Forms
             scBig.Visible = false;
 
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, Margin = Padding.Empty, Padding = Padding.Empty, ColumnCount = 1, RowCount = 2, BackColor = HappCanvas };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             root.Controls.Add(BuildHappTitleBar(), 0, 0);
 
@@ -84,6 +88,7 @@ namespace v2rayN.Forms
 
             Shown += (sender, args) =>
             {
+                NormalizeSoraVisibleConfiguration();
                 if (!_startHidden)
                 {
                     Size = new Size(1004, 672);
@@ -108,9 +113,9 @@ namespace v2rayN.Forms
         private Control BuildHappTitleBar()
         {
             var bar = new Panel { Dock = DockStyle.Fill, BackColor = HappTitle, Margin = Padding.Empty };
-            var brand = new Panel { Dock = DockStyle.Left, Width = 190, BackColor = HappTitle };
-            var logo = new PictureBox { Location = new Point(9, 7), Size = new Size(18, 18), Image = HappIconLoader.LoadSoraLogo(), SizeMode = PictureBoxSizeMode.Zoom, BackColor = HappTitle };
-            var title = new Label { Location = new Point(31, 0), Size = new Size(155, 32), Text = "Sora 0.2.0", ForeColor = Color.White, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 8.5F) };
+            var brand = new Panel { Dock = DockStyle.Left, Width = 164, BackColor = HappTitle };
+            var logo = new PictureBox { Location = new Point(8, 6), Size = new Size(16, 16), Image = HappIconLoader.LoadSoraLogo(), SizeMode = PictureBoxSizeMode.Zoom, BackColor = HappTitle };
+            var title = new Label { Location = new Point(28, 0), Size = new Size(132, 28), Text = "Sora " + SoraVersion, ForeColor = Color.White, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 8.25F) };
             title.MouseDown += DragHappWindow;
             logo.MouseDown += DragHappWindow;
             brand.MouseDown += DragHappWindow;
@@ -125,7 +130,10 @@ namespace v2rayN.Forms
         private Button CreateWindowButton(string icon, Action action)
         {
             string accessibleName = icon == "minus" ? "Свернуть" : icon == "square" ? "Развернуть или восстановить" : "Закрыть";
-            var button = new Button { Dock = DockStyle.Right, Width = 42, FlatStyle = FlatStyle.Flat, BackColor = HappTitle, Image = HappIconLoader.Load(icon, Color.White), Cursor = Cursors.Hand, TabStop = false, AccessibleName = accessibleName };
+            Image source = HappIconLoader.Load(icon, Color.White);
+            Image compactIcon = new Bitmap(source, new Size(14, 14));
+            source.Dispose();
+            var button = new Button { Dock = DockStyle.Right, Width = 32, FlatStyle = FlatStyle.Flat, BackColor = HappTitle, Image = compactIcon, Cursor = Cursors.Hand, TabStop = false, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 48);
             button.Click += (sender, args) => action();
@@ -150,7 +158,15 @@ namespace v2rayN.Forms
 
         private Button CreateHappNavButton(string icon, Action action, bool selected = false, bool selectable = true)
         {
-            var button = new Button { Size = new Size(52, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = false };
+            string accessibleName = icon == "arrow-right" ? "Скрыть Sora"
+                : icon == "plus-square" ? "Добавить конфигурацию"
+                : icon == "globe" ? "Серверы"
+                : icon == "gear" ? "Настройки"
+                : icon == "chart-line-up" ? "Статистика"
+                : icon == "terminal-window" ? "Логи"
+                : icon == "info" ? "О программе"
+                : "Раздел";
+            var button = new Button { Size = new Size(52, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = icon != "arrow-right", AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 48);
             button.Paint += (sender, args) =>
@@ -190,11 +206,11 @@ namespace v2rayN.Forms
 
         private Control BuildHappServerPane()
         {
-            var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 3, Padding = new Padding(28, 20, 18, 18) };
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 62F));
+            var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 3, Padding = new Padding(28, 16, 18, 18) };
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 17F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
+            pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
             var searchRow = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, 0, 0, 14) };
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -203,7 +219,7 @@ namespace v2rayN.Forms
             searchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(12, 9, 42, 5) };
             ApplyRoundedSurface(searchBox, 5, Color.FromArgb(100, 100, 105));
-            _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = "Введите текст для поиска", TabStop = false };
+            _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = "Введите текст для поиска", TabStop = true, AccessibleName = "Поиск серверов" };
             _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
             searchBox.Controls.Add(_communitySearch);
@@ -278,13 +294,17 @@ namespace v2rayN.Forms
             pane.Paint += DrawHappConnectionBackground;
             Image modeIcon = HappIconLoader.Load("caret-right", HappText);
             modeIcon.RotateFlip(RotateFlipType.Rotate90FlipNone);
-            var mode = CreateHappButton("Прокси", ShowHappModeMenu, false);
-            mode.Image = modeIcon;
-            mode.ImageAlign = ContentAlignment.MiddleRight;
-            mode.TextAlign = ContentAlignment.MiddleLeft;
-            mode.Padding = new Padding(12, 0, 10, 0);
-            mode.Name = "happMode"; mode.Anchor = AnchorStyles.Top | AnchorStyles.Right; mode.Size = new Size(140, 34); mode.Location = new Point(390, 26);
-            pane.Resize += (sender, args) => mode.Left = pane.ClientSize.Width - mode.Width - 24;
+            _happModeButton = CreateHappButton("Прокси", ShowHappModeMenu, false);
+            _happModeButton.Image = modeIcon;
+            _happModeButton.ImageAlign = ContentAlignment.MiddleRight;
+            _happModeButton.TextAlign = ContentAlignment.MiddleLeft;
+            _happModeButton.Padding = new Padding(10, 0, 8, 0);
+            _happModeButton.Name = "happMode";
+            _happModeButton.AccessibleName = "Режим подключения: Прокси";
+            _happModeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            _happModeButton.Size = new Size(120, 32);
+            _happModeButton.Location = new Point(410, 18);
+            pane.Resize += (sender, args) => _happModeButton.Left = pane.ClientSize.Width - _happModeButton.Width - 20;
             _happConnection = new HappConnectionControl { Anchor = AnchorStyles.None, Location = new Point(150, 72) };
             _happConnection.PowerClick += async (sender, args) =>
             {
@@ -311,7 +331,7 @@ namespace v2rayN.Forms
             var ping = CreateHappButton("Тест пинга", TestAllCommunityServers, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
             pane.Resize += (sender, args) => { _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
-            pane.Controls.Add(mode); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
             return pane;
         }
 
@@ -329,13 +349,14 @@ namespace v2rayN.Forms
 
         private Button CreateHappSmallButton(string icon, Action action)
         {
-            var button = new Button { Dock = DockStyle.Fill, Margin = new Padding(2, 3, 2, 5), FlatStyle = FlatStyle.Flat, BackColor = HappPane, Image = HappIconLoader.Load(icon, HappMuted), Cursor = Cursors.Hand };
+            string accessibleName = icon == "gauge" ? "Проверить пинг всех серверов" : icon == "dots-three" ? "Дополнительные действия" : "Действие";
+            var button = new Button { Dock = DockStyle.Fill, Margin = new Padding(2, 3, 2, 5), FlatStyle = FlatStyle.Flat, BackColor = HappPane, Image = HappIconLoader.Load(icon, HappMuted), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = HappSurface; button.Click += (sender, args) => action(); return button;
         }
 
         private Button CreateHappButton(string text, Action action, bool accent)
         {
-            var button = new Button { Text = text, FlatStyle = FlatStyle.Flat, BackColor = accent ? HappAccent : HappSurface, ForeColor = accent ? HappTitle : HappText, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseVisualStyleBackColor = false, TabStop = false };
+            var button = new Button { Text = text, FlatStyle = FlatStyle.Flat, BackColor = accent ? HappAccent : HappSurface, ForeColor = accent ? HappTitle : HappText, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseVisualStyleBackColor = false, TabStop = true, AccessibleName = text, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = accent ? Color.FromArgb(218, 218, 221) : Color.FromArgb(70, 70, 74); button.Click += (sender, args) => action(); ApplyRoundedCorners(button, 5); return button;
         }
 
@@ -401,13 +422,26 @@ namespace v2rayN.Forms
         private void ShowHappModeMenu()
         {
             var menu = BuildHappMenu();
-            menu.Items.Add("Прокси", null, (sender, args) => _happUseTun = false);
+            var proxy = (ToolStripMenuItem)menu.Items.Add("Прокси", null, (sender, args) => SetHappConnectionMode(false));
+            proxy.Checked = !_happUseTun;
             menu.Items.Add("TUN", null).Enabled = false;
             menu.Items.Add("Sing-box", null).Enabled = false;
             menu.Items.Add("Happ TUN", null).Enabled = false;
             menu.Items.Add("Xray TUN", null).Enabled = false;
-            menu.Items.Add("tun2proxy", null, (sender, args) => _happUseTun = true);
+            var tun = (ToolStripMenuItem)menu.Items.Add("tun2proxy", null, (sender, args) => SetHappConnectionMode(true));
+            tun.Checked = _happUseTun;
             menu.Show(Cursor.Position);
+        }
+
+        private void SetHappConnectionMode(bool useTun)
+        {
+            _happUseTun = useTun;
+            if (_happModeButton == null)
+            {
+                return;
+            }
+            _happModeButton.Text = useTun ? "TUN" : "Прокси";
+            _happModeButton.AccessibleName = "Режим подключения: " + _happModeButton.Text;
         }
 
         private ContextMenuStrip BuildHappMenu()
@@ -420,12 +454,41 @@ namespace v2rayN.Forms
             if (page.Parent != _happPageHost) { page.Dock = DockStyle.Fill; _happPageHost.Controls.Add(page); }
             page.BringToFront(); page.Visible = true;
             foreach (Control sibling in _happPageHost.Controls) if (sibling != page) sibling.Visible = false;
+            Invalidate(true);
+            Update();
         }
 
         private void DragHappWindow(object sender, MouseEventArgs args)
         {
             if (args.Button != MouseButtons.Left) return;
             ReleaseCapture(); SendMessage(Handle, 0xA1, new IntPtr(2), IntPtr.Zero);
+        }
+
+        private void HandleHappShortcut(object sender, KeyEventArgs args)
+        {
+            if (_happServerPage?.Visible != true)
+            {
+                return;
+            }
+            if (args.Control && args.KeyCode == Keys.V)
+            {
+                ShowHappAddConfiguration();
+            }
+            else if (args.Control && args.KeyCode == Keys.F)
+            {
+                _communitySearch?.Focus();
+                _communitySearch?.SelectAll();
+            }
+            else if (!args.Control && args.KeyCode == Keys.Delete)
+            {
+                DeleteSelectedSoraServers();
+            }
+            else
+            {
+                return;
+            }
+            args.Handled = true;
+            args.SuppressKeyPress = true;
         }
 
         private void ToggleHappMaximize() => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;

@@ -39,11 +39,6 @@ Get-ChildItem -LiteralPath $resolvedBin -File |
     Where-Object { $_.Name -notin @('grpc_csharp_ext.x64.dll', 'guiNConfig.json') -and $_.Extension -ne '.pdb' } |
     Copy-Item -Destination $resolvedStage
 
-$languageDirectory = Join-Path $resolvedBin 'zh-Hans'
-if (Test-Path -LiteralPath $languageDirectory) {
-    Copy-Item -LiteralPath $languageDirectory -Destination $resolvedStage -Recurse
-}
-
 $assetsDirectory = Join-Path $resolvedBin 'Assets'
 if (-not (Test-Path -LiteralPath $assetsDirectory)) {
     throw 'The build output does not contain the Assets directory'

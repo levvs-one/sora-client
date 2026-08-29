@@ -25,6 +25,7 @@ namespace v2rayN.Forms
         private readonly bool _startHidden;
         private readonly bool _startTun;
         private readonly TunModeController _tunModeController;
+        private static string SoraVersion => typeof(MainForm).Assembly.GetName().Version.ToString(3);
 
         #region Window 事件
 
@@ -41,7 +42,7 @@ namespace v2rayN.Forms
             {
                 HideForm();
             }
-            Text = "Sora — 0.2.0";
+            Text = "Sora — " + SoraVersion;
             Global.processJob = new Job();
 
             Application.ApplicationExit += (sender, args) =>
@@ -54,7 +55,7 @@ namespace v2rayN.Forms
         {
             if (ConfigHandler.LoadConfig(ref config) != 0)
             {
-                UI.ShowWarning($"Loading GUI configuration file is abnormal,please restart the application{Environment.NewLine}加载GUI配置文件异常,请重启应用");
+                UI.ShowWarning("Не удалось загрузить настройки Sora. Перезапустите приложение; если ошибка повторится, восстановите последнюю резервную копию.");
                 Environment.Exit(0);
                 return;
             }
@@ -617,12 +618,7 @@ namespace v2rayN.Forms
 
         private void lvServers_DoubleClick(object sender, EventArgs e)
         {
-            int index = GetLvSelectedIndex();
-            if (index < 0)
-            {
-                return;
-            }
-            ShowServerForm(lstVmess[index].configType, index);
+            ShowSoraServerEditor();
         }
         private void ShowServerForm(EConfigType configType, int index)
         {
@@ -669,7 +665,7 @@ namespace v2rayN.Forms
                         menuExport2ShareUrl_Click(null, null);
                         break;
                     case Keys.V:
-                        menuAddServers_Click(null, null);
+                        ShowHappAddConfiguration();
                         break;
                     case Keys.P:
                         menuPingServer_Click(null, null);
@@ -687,7 +683,8 @@ namespace v2rayN.Forms
                         menuSpeedServer_Click(null, null);
                         break;
                     case Keys.F:
-                        menuServerFilter_Click(null, null);
+                        _communitySearch?.Focus();
+                        _communitySearch?.SelectAll();
                         break;
                     case Keys.E:
                         menuSortServerResult_Click(null, null);
@@ -702,7 +699,7 @@ namespace v2rayN.Forms
                         menuSetDefaultServer_Click(null, null);
                         break;
                     case Keys.Delete:
-                        menuRemoveServer_Click(null, null);
+                        DeleteSelectedSoraServers();
                         break;
                     case Keys.T:
                         menuMoveTop_Click(null, null);

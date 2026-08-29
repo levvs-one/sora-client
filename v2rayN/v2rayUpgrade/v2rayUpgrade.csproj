@@ -9,9 +9,9 @@
     <AssemblyTitle>Sora Updater</AssemblyTitle>
     <Company>Sora Contributors</Company>
     <Copyright>Copyright © 2019-2020 v2rayN contributors; 2026 Sora contributors (GPLv3)</Copyright>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win7-x86</RuntimeIdentifier>
     <PlatformTarget>x86</PlatformTarget>

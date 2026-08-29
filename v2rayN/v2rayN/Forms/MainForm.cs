@@ -41,7 +41,7 @@ namespace v2rayN.Forms
             {
                 HideForm();
             }
-            Text = "Sora — 0.1.0";
+            Text = "Sora — 0.2.0";
             Global.processJob = new Job();
 
             Application.ApplicationExit += (sender, args) =>

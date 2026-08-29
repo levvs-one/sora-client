@@ -33,7 +33,7 @@ namespace v2rayN.Forms
                 CreateHappToggleRow("Разрешить подключения из LAN", config != null && config.inbound[0].allowLANConn, value => { config.inbound[0].allowLANConn = value; SaveAndReloadHapp(); }));
             AddHappSection(page, "Другие",
                 CreateHappSettingRow("Логи", "", () => ShowHappPage(BuildHappLogsPage())),
-                CreateHappSettingRow("Резервные копии", "", ShowCommunityBackupMenu));
+                CreateHappSettingRow("Резервные копии", "", ShowSoraBackupMenu));
             AddHappSection(page, "О программе",
                 CreateHappSettingRow("Часто задаваемые вопросы", "", ShowCommunityAbout),
                 CreateHappSettingRow("О программе", "", ShowCommunityAbout));
@@ -310,94 +310,8 @@ namespace v2rayN.Forms
 
         private void ShowHappAddConfiguration()
         {
-            using (var dialog = new Form { FormBorderStyle = FormBorderStyle.None, StartPosition = FormStartPosition.CenterParent, Size = new Size(800, 658), BackColor = Color.FromArgb(37, 37, 37), ForeColor = HappText, ShowInTaskbar = false })
-            {
-                ApplyRoundedCorners(dialog, 10);
-                var title = new Label { Location = new Point(36, 30), Size = new Size(650, 34), Text = "Добавить конфигурацию", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText };
-                var close = new Button { Location = new Point(730, 24), Size = new Size(42, 38), Text = "×", FlatStyle = FlatStyle.Flat, BackColor = dialog.BackColor, ForeColor = HappMuted, Font = new Font("Segoe UI", 17F), Cursor = Cursors.Hand, TabStop = false };
-                close.FlatAppearance.BorderSize = 0; close.FlatAppearance.MouseOverBackColor = Color.FromArgb(50, 50, 52); close.Click += (sender, args) => dialog.Close();
-                dialog.Controls.Add(new Label { Location = new Point(36, 84), Size = new Size(720, 20), Text = "Тип", ForeColor = HappMuted });
-                var type = CreateHappDialogSelect(36, 108);
-                var name = CreateHappDialogTextBox("Имя подписки", 36, 150, dialog);
-                var url = CreateHappDialogTextBox("URL подписки", 36, 220, dialog);
-                var hidden = CreateHappModalToggle("Скрыть настройки сервера", "Вы не сможете редактировать настройки сервера в этой подписке", 300, dialog, false);
-                AddHappModalDivider(dialog, 36, 350);
-                var encrypted = CreateHappModalToggle("Зашифрованная подписка", "Ссылка, которую вы добавляете, зашифрована", 364, dialog, true);
-                AddHappModalDivider(dialog, 36, 412);
-                var insecure = CreateHappModalToggle("Не проверять TLS-сертификаты серверов", "Применяется только к серверам из этой подписки", 426, dialog, false);
-                AddHappModalDivider(dialog, 36, 474);
-                dialog.Controls.Add(new Label { Location = new Point(36, 488), Size = new Size(700, 44), Text = "Если вы включите скрытые настройки сервера или добавите зашифрованную подписку, вы больше не сможете\r\nредактировать эту подписку.", ForeColor = HappText, Font = new Font("Segoe UI", 9F) });
-                var add = CreateHappButton("Добавить", () =>
-                {
-                    string subscriptionUrl = url.Text.Trim();
-                    if (config.subItem.Any(entry => string.Equals(entry.url, subscriptionUrl, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        UI.ShowWarning("Эта подписка уже добавлена.");
-                        return;
-                    }
-                    if (ConfigHandler.AddSubItem(ref config, subscriptionUrl) == 0)
-                    {
-                        var item = config.subItem.FirstOrDefault(entry => entry.url == subscriptionUrl);
-                        if (item != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(name.Text)) item.remarks = name.Text.Trim();
-                            item.serverSettingsLocked = hidden.Checked;
-                            item.allowInsecure = insecure.Checked;
-                        }
-                        ConfigHandler.SaveSubItem(ref config); UpdateSubscriptionProcess(string.Empty, false); dialog.DialogResult = DialogResult.OK;
-                    }
-                }, true);
-                add.Location = new Point(655, 558); add.Size = new Size(109, 34); add.Enabled = false; add.BackColor = Color.FromArgb(67, 67, 70); add.ForeColor = Color.FromArgb(142, 142, 148);
-                url.TextChanged += (sender, args) =>
-                {
-                    add.Enabled = Uri.TryCreate(url.Text.Trim(), UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
-                    add.BackColor = add.Enabled ? HappAccent : Color.FromArgb(67, 67, 70);
-                    add.ForeColor = add.Enabled ? HappTitle : Color.FromArgb(142, 142, 148);
-                };
-                dialog.Controls.AddRange(new Control[] { title, close, type, add });
-                dialog.ShowDialog(this);
-            }
+            ShowSoraImportDialog();
         }
-
-        private Control CreateHappDialogSelect(int x, int y)
-        {
-            var box = new Panel { Location = new Point(x, y), Size = new Size(728, 32), BackColor = Color.FromArgb(68, 68, 68), Cursor = Cursors.Hand };
-            var value = new Label { Dock = DockStyle.Fill, Padding = new Padding(10, 0, 0, 0), Text = "Подписка", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Cursor = Cursors.Hand };
-            Image arrowImage = HappIconLoader.Load("caret-right", HappMuted);
-            arrowImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
-            var arrow = new PictureBox { Dock = DockStyle.Right, Width = 34, Image = arrowImage, SizeMode = PictureBoxSizeMode.CenterImage, BackColor = box.BackColor, Cursor = Cursors.Hand };
-            Action show = () =>
-            {
-                var menu = BuildHappMenu();
-                var item = menu.Items.Add("Подписка");
-                item.Enabled = false;
-                menu.Show(box, new Point(0, box.Height));
-            };
-            box.Click += (sender, args) => show(); value.Click += (sender, args) => show(); arrow.Click += (sender, args) => show();
-            box.Paint += (sender, args) => { using (var pen = new Pen(Color.FromArgb(112, 112, 116))) args.Graphics.DrawRectangle(pen, 0, 0, box.Width - 1, box.Height - 1); };
-            box.Controls.Add(value); box.Controls.Add(arrow); arrow.BringToFront();
-            return box;
-        }
-
-        private TextBox CreateHappDialogTextBox(string caption, int x, int y, Control parent)
-        {
-            parent.Controls.Add(new Label { Location = new Point(x, y), Size = new Size(720, 22), Text = caption, ForeColor = HappMuted });
-            var shell = new Panel { Location = new Point(x, y + 26), Size = new Size(728, 34), BackColor = Color.FromArgb(68, 68, 68), Padding = new Padding(10, 7, 10, 4) };
-            var box = new TextBox { Dock = DockStyle.Fill, BackColor = shell.BackColor, ForeColor = HappText, BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 10F) };
-            shell.Paint += (sender, args) => { using (var pen = new Pen(box.Focused ? HappAccent : Color.FromArgb(112, 112, 116))) args.Graphics.DrawRectangle(pen, 0, 0, shell.Width - 1, shell.Height - 1); };
-            box.Enter += (sender, args) => shell.Invalidate(); box.Leave += (sender, args) => shell.Invalidate();
-            shell.Controls.Add(box); parent.Controls.Add(shell); return box;
-        }
-
-        private HappToggle CreateHappModalToggle(string title, string description, int y, Control parent, bool disabled)
-        {
-            Color color = disabled ? Color.FromArgb(92, 92, 98) : HappText;
-            parent.Controls.Add(new Label { Location = new Point(36, y), Size = new Size(580, 22), Text = title, ForeColor = color, Font = new Font("Segoe UI Semibold", 9F) });
-            parent.Controls.Add(new Label { Location = new Point(36, y + 24), Size = new Size(620, 22), Text = description, ForeColor = color });
-            var toggle = new HappToggle { Location = new Point(684, y + 7), Enabled = !disabled }; parent.Controls.Add(toggle); return toggle;
-        }
-
-        private static void AddHappModalDivider(Control parent, int x, int y) => parent.Controls.Add(new Panel { Location = new Point(x, y), Size = new Size(728, 1), BackColor = Color.FromArgb(73, 73, 76) });
 
         private void SaveAndReloadHapp()
         {

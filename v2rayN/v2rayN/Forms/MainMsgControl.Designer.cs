@@ -37,8 +37,6 @@ namespace v2rayN.Forms
             this.menuMsgBoxCopy = new System.Windows.Forms.ToolStripMenuItem();
             this.menuMsgBoxCopyAll = new System.Windows.Forms.ToolStripMenuItem();
             this.menuMsgBoxClear = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuMsgBoxAddRoutingRule = new System.Windows.Forms.ToolStripMenuItem();
-            this.menuMsgBoxFilter = new System.Windows.Forms.ToolStripMenuItem();
             this.gbMsgTitle = new System.Windows.Forms.GroupBox();
             this.ssMain = new System.Windows.Forms.StatusStrip();
             this.toolSslInboundInfo = new System.Windows.Forms.ToolStripStatusLabel();
@@ -70,9 +68,7 @@ namespace v2rayN.Forms
             this.menuMsgBoxSelectAll,
             this.menuMsgBoxCopy,
             this.menuMsgBoxCopyAll,
-            this.menuMsgBoxClear,
-            this.menuMsgBoxAddRoutingRule,
-            this.menuMsgBoxFilter});
+            this.menuMsgBoxClear});
             this.cmsMsgBox.Name = "cmsMsgBox";
             // 
             // menuMsgBoxSelectAll
@@ -98,18 +94,6 @@ namespace v2rayN.Forms
             resources.ApplyResources(this.menuMsgBoxClear, "menuMsgBoxClear");
             this.menuMsgBoxClear.Name = "menuMsgBoxClear";
             this.menuMsgBoxClear.Click += new System.EventHandler(this.menuMsgBoxClear_Click);
-            // 
-            // menuMsgBoxAddRoutingRule
-            // 
-            resources.ApplyResources(this.menuMsgBoxAddRoutingRule, "menuMsgBoxAddRoutingRule");
-            this.menuMsgBoxAddRoutingRule.Name = "menuMsgBoxAddRoutingRule";
-            this.menuMsgBoxAddRoutingRule.Click += new System.EventHandler(this.menuMsgBoxAddRoutingRule_Click);
-            // 
-            // menuMsgBoxFilter
-            // 
-            resources.ApplyResources(this.menuMsgBoxFilter, "menuMsgBoxFilter");
-            this.menuMsgBoxFilter.Name = "menuMsgBoxFilter";
-            this.menuMsgBoxFilter.Click += new System.EventHandler(this.menuMsgBoxFilter_Click);
             // 
             // gbMsgTitle
             // 
@@ -190,8 +174,6 @@ namespace v2rayN.Forms
         private System.Windows.Forms.ToolStripMenuItem menuMsgBoxCopy;
         private System.Windows.Forms.ToolStripMenuItem menuMsgBoxCopyAll;
         private System.Windows.Forms.ToolStripMenuItem menuMsgBoxClear;
-        private System.Windows.Forms.ToolStripMenuItem menuMsgBoxAddRoutingRule;
-        private System.Windows.Forms.ToolStripMenuItem menuMsgBoxFilter;
         private System.Windows.Forms.GroupBox gbMsgTitle;
         private System.Windows.Forms.StatusStrip ssMain;
         private System.Windows.Forms.ToolStripStatusLabel toolSslInboundInfo;

@@ -24,52 +24,55 @@ namespace v2rayN.Tool
 
         public static void Export(IWin32Window owner)
         {
-            using (var dialog = new SaveFileDialog
+            string downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            if (!Directory.Exists(downloads))
             {
-                AddExtension = true,
-                DefaultExt = "zip",
-                FileName = "Sora-Diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".zip",
-                Filter = "ZIP-архив (*.zip)|*.zip",
-                OverwritePrompt = true,
-                Title = "Сохранить диагностику"
-            })
+                downloads = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            }
+            string prefix = Path.Combine(downloads, "Sora-Diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+            string destination = prefix + ".zip";
+            int suffix = 2;
+            while (File.Exists(destination))
             {
-                if (dialog.ShowDialog(owner) != DialogResult.OK)
+                destination = prefix + "-" + suffix++ + ".zip";
+            }
+            string temporaryDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "Sora-Diagnostics-" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                Directory.CreateDirectory(temporaryDirectory);
+                File.WriteAllText(
+                    Path.Combine(temporaryDirectory, "diagnostics.txt"),
+                    BuildReport(),
+                    new UTF8Encoding(false));
+
+                ZipFile.CreateFromDirectory(temporaryDirectory, destination, CompressionLevel.Optimal, false);
+
+                UI.Show("Диагностика сохранена без системного окна:\r\n" + destination + "\r\n\r\nСсылки подписок, идентификаторы серверов и конфигурация в архив не включаются.");
+
+                Process.Start("explorer.exe", "/select,\"" + destination + "\"");
+            }
+            catch (Exception exception)
+            {
+                UI.ShowError("Не удалось создать диагностику:\r\n" + exception.Message);
+            }
+            finally
+            {
+                if (Directory.Exists(temporaryDirectory))
                 {
-                    return;
-                }
-
-                string temporaryDirectory = Path.Combine(
-                    Path.GetTempPath(),
-                    "Sora-Diagnostics-" + Guid.NewGuid().ToString("N"));
-
-                try
-                {
-                    Directory.CreateDirectory(temporaryDirectory);
-                    File.WriteAllText(
-                        Path.Combine(temporaryDirectory, "diagnostics.txt"),
-                        BuildReport(),
-                        new UTF8Encoding(false));
-
-                    if (File.Exists(dialog.FileName))
-                    {
-                        File.Delete(dialog.FileName);
-                    }
-                    ZipFile.CreateFromDirectory(temporaryDirectory, dialog.FileName, CompressionLevel.Optimal, false);
-
-                    UI.Show("Диагностический архив создан. Ссылки подписок, идентификаторы серверов и конфигурация в него не включаются.");
-
-                    Process.Start("explorer.exe", "/select,\"" + dialog.FileName + "\"");
-                }
-                catch (Exception exception)
-                {
-                    UI.ShowError("Не удалось создать диагностику:\r\n" + exception.Message);
-                }
-                finally
-                {
-                    if (Directory.Exists(temporaryDirectory))
+                    try
                     {
                         Directory.Delete(temporaryDirectory, true);
+                    }
+                    catch (IOException exception)
+                    {
+                        Utils.SaveLog(exception.Message, exception);
+                    }
+                    catch (UnauthorizedAccessException exception)
+                    {
+                        Utils.SaveLog(exception.Message, exception);
                     }
                 }
             }

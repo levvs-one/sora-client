@@ -391,7 +391,8 @@ namespace v2rayN.Handler
         /// <param name="msg">输出到日志框</param>
         private void ShowMsg(bool updateToTrayTooltip, string msg)
         {
-            ProcessEvent?.Invoke(updateToTrayTooltip, msg);
+            string text = msg ?? string.Empty;
+            ProcessEvent?.Invoke(updateToTrayTooltip, text.StartsWith("[CORE]", StringComparison.Ordinal) ? text : "[CORE] " + text);
         }
 
         private void KillProcess(Process p)

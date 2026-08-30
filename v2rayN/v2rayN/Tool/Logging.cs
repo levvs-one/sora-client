@@ -5,6 +5,7 @@ using log4net.Layout;
 using log4net.Repository.Hierarchy;
 using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace v2rayN.Tool
@@ -27,6 +28,7 @@ namespace v2rayN.Tool
                 RollingStyle = RollingFileAppender.RollingMode.Date,
                 DatePattern = "yyyy-MM-dd'.txt'",
                 File = Utils.GetPath(@"guiLogs\"),
+                Encoding = new UTF8Encoding(false),
                 Layout = patternLayout,
                 StaticLogFileName = false
             };

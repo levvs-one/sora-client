@@ -128,6 +128,10 @@ if ($renderedMarkdown -notmatch 'HYPERLINK.*https://example\.com') {
 if ($renderedMarkdown -match 'javascript:' -or $renderedMarkdown -match '<script>') {
     throw 'Unsafe Markdown content reached the rich-text output'
 }
+$compactMarkdown = [string]$renderMarkdown.Invoke($null, @("First line`nSecond line", $true))
+if (-not $compactMarkdown.Contains('\pard\qc')) {
+    throw 'Compact subscription Markdown is not centered line by line'
+}
 
 $soraTextType = $assembly.GetType('v2rayN.Tool.SoraText', $true)
 $resourceField = $soraTextType.GetField('Standard', [System.Reflection.BindingFlags]'NonPublic, Static')

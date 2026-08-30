@@ -164,13 +164,13 @@ namespace v2rayN.Forms
         {
             if (block is HeadingBlock heading)
             {
-                output.Append(compact ? @"\pard\sa20\f0\fs18\cf1\b " : @"\pard\sa100\f0\fs24\cf1\b ");
+                output.Append(compact ? @"\pard\qc\sa20\f0\fs18\cf1\b " : @"\pard\sa100\f0\fs24\cf1\b ");
                 RenderInlines(output, heading.Inline);
                 output.Append(@"\b0\par ");
             }
             else if (block is ParagraphBlock paragraph)
             {
-                output.Append(compact ? @"\pard\sa24\sl220\slmult1\f0\fs18\cf1 " : @"\pard\sa80\sl240\slmult1\f0\fs18\cf1 ");
+                output.Append(compact ? @"\pard\qc\sa24\sl220\slmult1\f0\fs18\cf1 " : @"\pard\sa80\sl240\slmult1\f0\fs18\cf1 ");
                 RenderInlines(output, paragraph.Inline);
                 output.Append(@"\par ");
             }
@@ -182,8 +182,8 @@ namespace v2rayN.Forms
             {
                 foreach (Block child in quote)
                 {
-                    output.Append(@"\pard\li260\sa60\f0\fs18\cf2\i ");
-                    AppendText(output, "│ ");
+                    output.Append(compact ? @"\pard\qc\sa40\f0\fs18\cf2\i " : @"\pard\li260\sa60\f0\fs18\cf2\i ");
+                    AppendText(output, compact ? "— " : "│ ");
                     if (child is LeafBlock leaf) RenderInlines(output, leaf.Inline);
                     else RenderBlock(output, child, compact, depth + 1);
                     output.Append(@"\i0\par ");
@@ -191,7 +191,7 @@ namespace v2rayN.Forms
             }
             else if (block is CodeBlock code)
             {
-                output.Append(@"\pard\li120\ri120\sa80\f1\fs16\cf1\highlight3 ");
+                output.Append(compact ? @"\pard\qc\sa40\f1\fs16\cf1\highlight3 " : @"\pard\li120\ri120\sa80\f1\fs16\cf1\highlight3 ");
                 if (code.CodeBlockLines != null)
                 {
                     for (int index = 0; index < code.CodeBlockLines.Count; index++)
@@ -204,7 +204,7 @@ namespace v2rayN.Forms
             }
             else if (block is ThematicBreakBlock)
             {
-                output.Append(@"\pard\sa80\cf2 ");
+                output.Append(compact ? @"\pard\qc\sa40\cf2 " : @"\pard\sa80\cf2 ");
                 AppendText(output, "────────────────");
                 output.Append(@"\par ");
             }
@@ -214,7 +214,7 @@ namespace v2rayN.Forms
             }
             else if (block is LeafBlock leaf)
             {
-                output.Append(@"\pard\sa60\f0\fs18\cf1 ");
+                output.Append(compact ? @"\pard\qc\sa40\f0\fs18\cf1 " : @"\pard\sa60\f0\fs18\cf1 ");
                 RenderInlines(output, leaf.Inline);
                 output.Append(@"\par ");
             }
@@ -229,7 +229,8 @@ namespace v2rayN.Forms
             {
                 if (!(block is ListItemBlock item)) continue;
                 int indent = 300 + depth * 220;
-                output.Append("\\pard\\li").Append(indent).Append(@"\fi-180\sa40\f0\fs18\cf1 ");
+                if (compact) output.Append(@"\pard\qc\sa40\f0\fs18\cf1 ");
+                else output.Append("\\pard\\li").Append(indent).Append(@"\fi-180\sa40\f0\fs18\cf1 ");
                 AppendText(output, list.IsOrdered ? number++ + ". " : "• ");
                 bool first = true;
                 foreach (Block child in item)

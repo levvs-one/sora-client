@@ -506,15 +506,16 @@ namespace v2rayN.Forms
                 rowButton.UseVisualStyleBackColor = false;
                 rowButton.Text = string.Empty;
             }
-            var label = new Label { Dock = DockStyle.Left, Width = 420, Padding = new Padding(16, 0, 0, 0), Text = title, ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-            var detail = new Label { Dock = DockStyle.Right, Width = 260, Padding = new Padding(0, 0, action == null ? 16 : 36, 0), Text = value, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
+            var label = new Label { Location = Point.Empty, Height = 43, Padding = new Padding(16, 0, 0, 0), Text = title, ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+            var detail = new Label { Location = Point.Empty, Height = 43, Padding = new Padding(0, 0, action == null ? 16 : 8, 0), Text = value, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F), AutoEllipsis = true };
+            PictureBox indicator = null;
             if (action != null)
             {
-                detail.Image = HappIconLoader.Load("caret-right", HappMuted);
-                detail.ImageAlign = ContentAlignment.MiddleRight;
+                indicator = new PictureBox { Size = new Size(44, 43), BackColor = Color.Transparent, Image = HappIconLoader.Load("caret-right", HappMuted), SizeMode = PictureBoxSizeMode.CenterImage, Cursor = Cursors.Hand, AccessibleName = "Открыть " + title, AccessibleRole = AccessibleRole.Graphic };
                 row.Click += (sender, args) => action();
                 label.Click += (sender, args) => action();
                 detail.Click += (sender, args) => action();
+                indicator.Click += (sender, args) => action();
                 row.KeyDown += (sender, args) =>
                 {
                     if (args.KeyCode == Keys.Enter || args.KeyCode == Keys.Space)
@@ -525,7 +526,19 @@ namespace v2rayN.Forms
                     }
                 };
             }
+            Action positionContent = () =>
+            {
+                int indicatorWidth = indicator == null ? 0 : indicator.Width;
+                int titleWidth = Math.Min(420, Math.Max(160, (row.ClientSize.Width - indicatorWidth) / 2));
+                label.Width = titleWidth;
+                detail.Left = titleWidth;
+                detail.Width = Math.Max(0, row.ClientSize.Width - titleWidth - indicatorWidth);
+                if (indicator != null) indicator.Left = Math.Max(0, row.ClientSize.Width - indicator.Width);
+            };
+            row.Resize += (sender, args) => positionContent();
+            positionContent();
             var divider = new Panel { Location = new Point(0, 43), Height = 1, Width = row.Width, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom, BackColor = HappLine };
+            if (indicator != null) row.Controls.Add(indicator);
             row.Controls.Add(detail); row.Controls.Add(label); row.Controls.Add(divider); divider.BringToFront(); return row;
         }
 

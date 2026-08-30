@@ -455,7 +455,7 @@ namespace v2rayN.Forms
             }
             else if (args.ColumnIndex == (int)EServerColName.testResult)
             {
-                string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? "—" : args.SubItem.Text;
+                string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? string.Empty : args.SubItem.Text;
                 if (string.Equals(result, "Проверка…", StringComparison.Ordinal))
                 {
                     EnsureSoraPingAnimation();

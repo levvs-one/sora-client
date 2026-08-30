@@ -767,7 +767,7 @@ namespace v2rayN.Forms
             menu.Opening += (sender, args) =>
             {
                 bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
-                connection.Text = active ? "Отключить" : _happUseTun ? "Подключить через TUN" : "Подключить для приложений";
+                connection.Text = SoraText.Translate(active ? "Отключить" : _happUseTun ? "Подключить через TUN" : "Подключить для приложений");
             };
             return menu;
         }

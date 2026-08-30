@@ -404,7 +404,7 @@ namespace v2rayN.Forms
 
         private void WireHappSearch()
         {
-            const string placeholder = "Введите текст для поиска";
+            string placeholder = SoraText.Translate("Введите текст для поиска");
             _communitySearch.Enter += (sender, args) => { if (_communitySearch.Text == placeholder) { _communitySearch.Clear(); _communitySearch.ForeColor = HappText; } };
             _communitySearch.Leave += (sender, args) => { if (string.IsNullOrWhiteSpace(_communitySearch.Text)) { _communitySearch.Text = placeholder; _communitySearch.ForeColor = HappMuted; } };
             _communitySearchTimer = new Timer(components) { Interval = 250 };
@@ -497,7 +497,7 @@ namespace v2rayN.Forms
                 {
                     today = 0;
                 }
-                _soraTrafficSummary.Text = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s\r\nСегодня " + Utils.HumanFy(today);
+                _soraTrafficSummary.Text = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s\r\n" + SoraText.Translate("Сегодня") + " " + Utils.HumanFy(today);
             };
             _soraTrafficTimer.Start();
         }
@@ -820,8 +820,8 @@ namespace v2rayN.Forms
             {
                 return;
             }
-            _happModeButton.Text = useTun ? "TUN" : "Прокси";
-            _happModeButton.AccessibleName = "Режим подключения: " + _happModeButton.Text;
+            _happModeButton.Text = useTun ? "TUN" : SoraText.Translate("Прокси");
+            _happModeButton.AccessibleName = SoraText.Translate("Режим подключения: ") + _happModeButton.Text;
         }
 
         private ContextMenuStrip BuildHappMenu()

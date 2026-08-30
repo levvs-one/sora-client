@@ -82,9 +82,9 @@ namespace v2rayN.Forms
                 {
                     _connectedAt = DateTime.Now;
                 }
-                AccessibleName = value == SoraConnectionState.Connected ? "Отключиться" :
+                AccessibleName = SoraText.Translate(value == SoraConnectionState.Connected ? "Отключиться" :
                     value == SoraConnectionState.Connecting ? "Подключение выполняется" :
-                    value == SoraConnectionState.Disconnecting ? "Отключение выполняется" : "Подключиться";
+                    value == SoraConnectionState.Disconnecting ? "Отключение выполняется" : "Подключиться");
                 Invalidate();
                 AccessibilityNotifyClients(AccessibleEvents.NameChange, -1);
             }
@@ -109,7 +109,7 @@ namespace v2rayN.Forms
             Size = new Size(270, 270);
             TabStop = true;
             AccessibleRole = AccessibleRole.PushButton;
-            AccessibleName = "Подключиться";
+            AccessibleName = SoraText.Translate("Подключиться");
             _powerImage = HappIconLoader.Load("power", MainForm.HappAccent);
             _stateFont = new Font("Segoe UI Semibold", 8.5F);
             _timeFont = new Font("Segoe UI Semibold", 9F);

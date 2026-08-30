@@ -146,7 +146,8 @@ $normalizer = $assembly.GetType('v2rayN.Handler.V2rayHandler', $true).GetMethod(
 $temporaryConfig = Join-Path ([IO.Path]::GetTempPath()) ('sora-xray-' + [Guid]::NewGuid().ToString('N') + '.json')
 try {
     [IO.File]::WriteAllText($temporaryConfig, '{"inbounds":[{"protocol":"socks","port":10808}],"outbounds":[{"protocol":"freedom"}]}', [Text.UTF8Encoding]::new($false))
-    $normalizer.Invoke($null, @($testConfig, $temporaryConfig)) | Out-Null
+    $normalizeArguments = [object[]]@($testConfig, [string]$temporaryConfig)
+    $normalizer.Invoke($null, $normalizeArguments) | Out-Null
     $normalized = [IO.File]::ReadAllText($temporaryConfig) | ConvertFrom-Json
     $socks = @($normalized.inbounds | Where-Object protocol -eq 'socks') | Select-Object -First 1
     $http = @($normalized.inbounds | Where-Object protocol -eq 'http') | Select-Object -First 1

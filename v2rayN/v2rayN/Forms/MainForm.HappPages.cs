@@ -837,10 +837,10 @@ namespace v2rayN.Forms
             SubItem subscription = GetSoraPrimarySubscription();
             if (subscription == null)
             {
-                _soraSubscriptionTitle.Text = "Добавить подписку";
-                _soraSubscriptionDetail.Text = "Вставьте ссылку — формат определится автоматически";
+                _soraSubscriptionTitle.Text = SoraText.Translate("Добавить подписку");
+                _soraSubscriptionDetail.Text = SoraText.Translate("Вставьте ссылку — формат определится автоматически");
                 _soraSubscriptionSchedule.Text = string.Empty;
-                _soraSubscriptionAnnouncement.Text = "Описание появится после первого обновления подписки.";
+                _soraSubscriptionAnnouncement.Text = SoraText.Translate("Описание появится после первого обновления подписки.");
                 _soraSubscriptionRefresh.Enabled = false;
                 _soraSubscriptionPing.Enabled = false;
                 _soraSubscriptionQuotaTrack.Visible = false;

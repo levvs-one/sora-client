@@ -254,7 +254,7 @@ namespace v2rayN.Forms
             searchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(12, 9, 42, 5) };
             ApplyRoundedSurface(searchBox, 5, Color.FromArgb(100, 100, 105));
-            _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = "Введите текст для поиска", TabStop = true, AccessibleName = "Поиск серверов" };
+            _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = SoraText.Translate("Введите текст для поиска"), TabStop = true, AccessibleName = "Поиск серверов" };
             _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
             searchBox.Controls.Add(_communitySearch);

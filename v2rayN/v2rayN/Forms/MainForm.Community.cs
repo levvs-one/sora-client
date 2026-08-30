@@ -808,8 +808,8 @@ namespace v2rayN.Forms
                 return;
             }
             var active = config.GetVmessItem(config.indexId);
-            _communityActiveServer.Text = active == null ? "Сервер не выбран" :
-                string.IsNullOrWhiteSpace(active.remarks) ? "Сервер без названия" : active.remarks;
+            _communityActiveServer.Text = active == null ? SoraText.Translate("Сервер не выбран") :
+                string.IsNullOrWhiteSpace(active.remarks) ? SoraText.Translate("Сервер без названия") : active.remarks;
         }
 
         private void UpdateCommunityEmptyState()

@@ -420,8 +420,8 @@ namespace v2rayN.Forms
             _soraTrafficTimer.Tick += (sender, args) =>
             {
                 if (_soraTrafficRate == null || _soraTrafficTotal == null) return;
-                ulong down = (ulong)Math.Max(0L, Interlocked.Read(ref _happDownloadRate));
-                ulong up = (ulong)Math.Max(0L, Interlocked.Read(ref _happUploadRate));
+                ulong down = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happDownloadRate));
+                ulong up = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happUploadRate));
                 _soraTrafficRate.Text = "↓ " + Utils.HumanFy(down) + "/s    ↑ " + Utils.HumanFy(up) + "/s";
                 if (statistics == null || !statistics.Enable)
                 {

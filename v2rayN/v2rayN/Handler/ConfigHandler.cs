@@ -1381,7 +1381,8 @@ namespace v2rayN.Handler
                 }
             }
             int removed = config.subItem.RemoveAll(item => string.Equals(item.id, subscriptionId, StringComparison.Ordinal));
-            if (!config.vmess.Any(item => item.indexId == config.indexId))
+            string activeIndexId = config.indexId;
+            if (!config.vmess.Any(item => item.indexId == activeIndexId))
             {
                 config.indexId = config.vmess.FirstOrDefault()?.indexId ?? string.Empty;
                 Global.reloadV2ray = true;

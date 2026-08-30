@@ -117,13 +117,17 @@ $resourceField = $soraTextType.GetField('Standard', [System.Reflection.BindingFl
 $preReformField = $soraTextType.GetField('PreReform', [System.Reflection.BindingFlags]'NonPublic, Static')
 $resourceManager = $resourceField.GetValue($null)
 $preReformManager = $preReformField.GetValue($null)
-if ($resourceManager.GetString('Настройки', [Globalization.CultureInfo]::GetCultureInfo('en-US')) -ne 'Settings') {
+$settingsKey = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0J3QsNGB0YLRgNC+0LnQutC4'))
+$chineseSettings = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('6K6+572u'))
+$logKey = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0JbRg9GA0L3QsNC7'))
+$preReformLog = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0JbRg9GA0L3QsNC70Yo='))
+if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('en-US')) -ne 'Settings') {
     throw 'English Sora resources are missing'
 }
-if ($resourceManager.GetString('Настройки', [Globalization.CultureInfo]::GetCultureInfo('zh-Hans')) -ne '设置') {
+if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('zh-Hans')) -ne $chineseSettings) {
     throw 'Chinese Sora resources are missing'
 }
-if ($preReformManager.GetString('Журнал', [Globalization.CultureInfo]::GetCultureInfo('ru-RU')) -ne 'Журналъ') {
+if ($preReformManager.GetString($logKey, [Globalization.CultureInfo]::GetCultureInfo('ru-RU')) -ne $preReformLog) {
     throw 'Pre-reform Russian Sora resources are missing'
 }
 

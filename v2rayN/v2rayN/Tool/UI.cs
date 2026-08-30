@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using v2rayN.Forms;
+using v2rayN.Tool;
 
 namespace v2rayN
 {
@@ -10,22 +11,22 @@ namespace v2rayN
     {
         public static void Show(string message)
         {
-            SoraMessageBox.Show(message, MessageBoxButtons.OK, "Готово", "check");
+            SoraMessageBox.Show(message, MessageBoxButtons.OK, SoraText.Translate("Готово"), "check");
         }
 
         public static void ShowWarning(string message)
         {
-            SoraMessageBox.Show(message, MessageBoxButtons.OK, "Обратите внимание", "warning");
+            SoraMessageBox.Show(message, MessageBoxButtons.OK, SoraText.Translate("Обратите внимание"), "warning");
         }
 
         public static void ShowError(string message)
         {
-            SoraMessageBox.Show(message, MessageBoxButtons.OK, "Не удалось выполнить действие", "warning");
+            SoraMessageBox.Show(message, MessageBoxButtons.OK, SoraText.Translate("Не удалось выполнить действие"), "warning");
         }
 
         public static DialogResult ShowYesNo(string message)
         {
-            return SoraMessageBox.Show(message, MessageBoxButtons.YesNo, "Подтвердите действие", "warning");
+            return SoraMessageBox.Show(message, MessageBoxButtons.YesNo, SoraText.Translate("Подтвердите действие"), "warning");
         }
     }
 
@@ -33,7 +34,7 @@ namespace v2rayN
     {
         internal static DialogResult Show(string message, MessageBoxButtons buttons, string title, string icon)
         {
-            message = NormalizeSoraMessage(message);
+            message = SoraText.Translate(NormalizeSoraMessage(message));
             Form owner = Form.ActiveForm;
             if (owner == null && Application.OpenForms.Count > 0)
             {
@@ -130,9 +131,9 @@ namespace v2rayN
 
                 if (buttons == MessageBoxButtons.YesNo)
                 {
-                    var no = CreateButton("Нет", DialogResult.No, false);
+                    var no = CreateButton(SoraText.Translate("Нет"), DialogResult.No, false);
                     no.Location = new Point(width - 224, height - 54);
-                    var yes = CreateButton("Да", DialogResult.Yes, true);
+                    var yes = CreateButton(SoraText.Translate("Да"), DialogResult.Yes, true);
                     yes.Location = new Point(width - 116, height - 54);
                     dialog.Controls.AddRange(new Control[] { no, yes });
                     dialog.AcceptButton = yes;
@@ -140,7 +141,7 @@ namespace v2rayN
                 }
                 else
                 {
-                    var ok = CreateButton("ОК", DialogResult.OK, true);
+                    var ok = CreateButton(SoraText.Translate("ОК"), DialogResult.OK, true);
                     ok.Location = new Point(width - 116, height - 54);
                     dialog.Controls.Add(ok);
                     dialog.AcceptButton = ok;

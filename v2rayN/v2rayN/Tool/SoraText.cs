@@ -72,7 +72,13 @@ namespace v2rayN.Tool
 
         private static string Normalize(string language)
         {
-            return language == PreReformRussian || language == English || language == Chinese ? language : Russian;
+            if (string.Equals(language, "en", StringComparison.OrdinalIgnoreCase)) return English;
+            if (string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase)) return Russian;
+            if (string.Equals(language, "zh", StringComparison.OrdinalIgnoreCase) || string.Equals(language, "zh-CN", StringComparison.OrdinalIgnoreCase)) return Chinese;
+            if (string.Equals(language, PreReformRussian, StringComparison.OrdinalIgnoreCase)) return PreReformRussian;
+            if (string.Equals(language, English, StringComparison.OrdinalIgnoreCase)) return English;
+            if (string.Equals(language, Chinese, StringComparison.OrdinalIgnoreCase)) return Chinese;
+            return Russian;
         }
     }
 }

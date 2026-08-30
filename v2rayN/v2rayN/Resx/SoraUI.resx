@@ -41,4 +41,34 @@
   <data name="ОТКЛЮЧЕНИЕ" xml:space="preserve"><value>ОТКЛЮЧЕНИЕ</value></data>
   <data name="ОШИБКА" xml:space="preserve"><value>ОШИБКА</value></data>
   <data name="ОТКЛЮЧЕНО" xml:space="preserve"><value>ОТКЛЮЧЕНО</value></data>
+  <data name="Готово" xml:space="preserve"><value>Готово</value></data>
+  <data name="Обратите внимание" xml:space="preserve"><value>Обратите внимание</value></data>
+  <data name="Не удалось выполнить действие" xml:space="preserve"><value>Не удалось выполнить действие</value></data>
+  <data name="Подтвердите действие" xml:space="preserve"><value>Подтвердите действие</value></data>
+  <data name="Нет" xml:space="preserve"><value>Нет</value></data>
+  <data name="Да" xml:space="preserve"><value>Да</value></data>
+  <data name="ОК" xml:space="preserve"><value>ОК</value></data>
+  <data name="Свернуть" xml:space="preserve"><value>Свернуть</value></data>
+  <data name="Развернуть или восстановить" xml:space="preserve"><value>Развернуть или восстановить</value></data>
+  <data name="Закрыть" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="Добавить конфигурацию" xml:space="preserve"><value>Добавить конфигурацию</value></data>
+  <data name="Логи" xml:space="preserve"><value>Логи</value></data>
+  <data name="О программе" xml:space="preserve"><value>О программе</value></data>
+  <data name="Поиск серверов" xml:space="preserve"><value>Поиск серверов</value></data>
+  <data name="Проверить все серверы" xml:space="preserve"><value>Проверить все серверы</value></data>
+  <data name="Настройки сервера" xml:space="preserve"><value>Настройки сервера</value></data>
+  <data name="Копировать ссылку" xml:space="preserve"><value>Копировать ссылку</value></data>
+  <data name="Ctrl+S — сохранить    Ctrl+R — создать архив диагностики" xml:space="preserve"><value>Ctrl+S — сохранить    Ctrl+R — создать архив диагностики</value></data>
+  <data name="Сохранить текущую вкладку (.txt)" xml:space="preserve"><value>Сохранить текущую вкладку (.txt)</value></data>
+  <data name="Скопировать текущую вкладку" xml:space="preserve"><value>Скопировать текущую вкладку</value></data>
+  <data name="Создать архив диагностики" xml:space="preserve"><value>Создать архив диагностики</value></data>
+  <data name="Очистить журнал" xml:space="preserve"><value>Очистить журнал</value></data>
+  <data name="Сеанс" xml:space="preserve"><value>Сеанс</value></data>
+  <data name="Sora запущена" xml:space="preserve"><value>Sora запущена</value></data>
+  <data name="Подключение установлено" xml:space="preserve"><value>Подключение установлено</value></data>
+  <data name="Текущая скорость" xml:space="preserve"><value>Текущая скорость</value></data>
+  <data name="Загрузка" xml:space="preserve"><value>Загрузка</value></data>
+  <data name="Выгрузка" xml:space="preserve"><value>Выгрузка</value></data>
+  <data name="Передано через сервер" xml:space="preserve"><value>Передано через сервер</value></data>
+  <data name="Нет данных" xml:space="preserve"><value>Нет данных</value></data>
 </root>

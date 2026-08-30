@@ -57,7 +57,7 @@ $interval = [int]$subItemType.GetProperty('updateIntervalMinutes').GetValue($sub
 if ($interval -ne 720) {
     throw "Expected the default subscription interval to be 720 minutes, got $interval"
 }
-foreach ($property in 'lastUpdateAttemptUtcTicks', 'lastUpdateSuccessUtcTicks', 'lastUpdateError', 'lastServerCount', 'nameCustomized', 'subscriptionUploadBytes', 'subscriptionDownloadBytes', 'subscriptionTotalBytes', 'subscriptionExpireUnixSeconds') {
+foreach ($property in 'lastUpdateAttemptUtcTicks', 'lastUpdateSuccessUtcTicks', 'lastUpdateError', 'lastServerCount', 'nameCustomized', 'subscriptionUploadBytes', 'subscriptionDownloadBytes', 'subscriptionTotalBytes', 'subscriptionExpireUnixSeconds', 'subscriptionAnnouncement') {
     if ($null -eq $subItemType.GetProperty($property)) {
         throw "Subscription lifecycle property is missing: $property"
     }
@@ -76,6 +76,13 @@ if ($null -eq $decodeTitle) {
 $decodedTitle = [string]$decodeTitle.Invoke($null, @('base64:RHIuIFdhdHNvbiBWUE4='))
 if ($decodedTitle -ne 'Dr. Watson VPN') {
     throw "Profile-Title decoding failed: $decodedTitle"
+}
+$decodeAnnouncement = $updateType.GetMethod('DecodeSoraAnnouncement', [System.Reflection.BindingFlags]'NonPublic, Static')
+$announcementSource = "Описание подписки`nКанал — @sora_client"
+$announcementHeader = 'base64:' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($announcementSource))
+$decodedAnnouncement = [string]$decodeAnnouncement.Invoke($null, @($announcementHeader))
+if ($decodedAnnouncement -ne $announcementSource) {
+    throw "Announce decoding failed: $decodedAnnouncement"
 }
 $subItemType.GetProperty('url').SetValue($subItem, 'https://s.wrmo.ru/s/example')
 $subItemType.GetProperty('remarks').SetValue($subItem, 'wrmo.ru')

@@ -274,7 +274,7 @@ namespace v2rayN.Forms
             {
                 Dock = DockStyle.Bottom,
                 Height = 38,
-                Text = "Win7 x86 · GPL-3.0",
+                Text = "Win7 x86, GPL-3.0",
                 ForeColor = Color.FromArgb(153, 167, 181),
                 Font = new Font("Segoe UI", 8.5F),
                 TextAlign = ContentAlignment.MiddleCenter
@@ -640,8 +640,8 @@ namespace v2rayN.Forms
                 return;
             }
 
-            _communityConnectionStatus.Text = tunConnected ? "Подключено · TUN для всей системы" : connected ? "Подключено · системный прокси" :
-                type == ESysProxyType.Unchanged ? "Ядро запущено · прокси не изменён" : "Отключено";
+            _communityConnectionStatus.Text = tunConnected ? "Подключено, TUN для всей системы" : connected ? "Подключено, системный прокси" :
+                type == ESysProxyType.Unchanged ? "Ядро запущено, прокси не изменён" : "Отключено";
             _communityConnectionStatus.ForeColor = connected || tunConnected ? CommunitySuccess : CommunityMuted;
             _communityConnect.Enabled = !connected && !tunConnected;
             _communityTun.Enabled = !tunConnected;
@@ -912,7 +912,7 @@ namespace v2rayN.Forms
                 {
                     Location = new Point(85, 47),
                     Size = new Size(340, 22),
-                    Text = "Версия " + SoraVersion + " · Windows 7 x86",
+                    Text = "Версия " + SoraVersion + ", Windows 7 x86",
                     Font = new Font("Segoe UI", 9F),
                     ForeColor = HappMuted
                 };

@@ -79,7 +79,7 @@ namespace v2rayN.Forms
                 {
                     Location = new Point(44, 374),
                     Size = new Size(672, 62),
-                    Text = serverCount + " серверов\r\nПоследнее обновление: " + last + " · следующее: " + next + (string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? string.Empty : "\r\n" + subscription.lastUpdateError),
+                    Text = serverCount + " серверов\r\nПоследнее обновление: " + last + "\r\nСледующее обновление: " + next + (string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? string.Empty : "\r\n" + subscription.lastUpdateError),
                     ForeColor = HappMuted,
                     Font = new Font("Segoe UI", 8.5F),
                     AutoEllipsis = true
@@ -316,7 +316,7 @@ namespace v2rayN.Forms
                 string detail = route.rules == null ? "0 правил" : route.rules.Count + " правил";
                 if (index == config.routingIndex)
                 {
-                    detail += " · выбран";
+                    detail += " (выбран)";
                 }
                 routeRows.Add(CreateHappSettingRow(name, detail, () =>
                 {
@@ -537,7 +537,7 @@ namespace v2rayN.Forms
             _happLogsPage = page;
             page.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F)); page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Журнал", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить · Ctrl+R — создать архив диагностики", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
+            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить    Ctrl+R — создать архив диагностики", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
             var tabs = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
             var buttons = new[]
             {
@@ -677,7 +677,7 @@ namespace v2rayN.Forms
                 foreach (UpdateHandle.SubscriptionUpdateResult result in results)
                 {
                     _soraSubscriptionStatuses[result.SubscriptionId] = result.Success
-                        ? result.ServerCount + " серверов · обновлено"
+                        ? result.ServerCount + " серверов, обновлено"
                         : result.Error;
                 }
             }
@@ -781,10 +781,12 @@ namespace v2rayN.Forms
         {
             var menu = BuildHappMenu();
             SubItem primary = GetSoraPrimarySubscription();
-            menu.Items.Add("Добавить подписку", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
-            if (primary != null)
+            if (primary == null)
             {
-                menu.Items.Add(new ToolStripSeparator());
+                menu.Items.Add("Добавить подписку", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
+            }
+            else
+            {
                 menu.Items.Add("Настройки", HappIconLoader.Load("gear", HappText), (sender, args) => ShowSoraSubscriptionEditor(primary));
                 menu.Items.Add("Обновить", HappIconLoader.Load("arrows-clockwise", HappText), (sender, args) => StartSoraSubscriptionUpdate(primary.id));
                 if (config.subItem.Count > 1)
@@ -810,6 +812,8 @@ namespace v2rayN.Forms
             {
                 _soraSubscriptionTitle.Text = "Добавить подписку";
                 _soraSubscriptionDetail.Text = "Вставьте ссылку — формат определится автоматически";
+                _soraSubscriptionSchedule.Text = string.Empty;
+                _soraSubscriptionAnnouncement.Text = "Описание появится после первого обновления подписки.";
                 _soraSubscriptionRefresh.Enabled = false;
                 _soraSubscriptionPing.Enabled = false;
                 _soraSubscriptionQuotaTrack.Visible = false;
@@ -820,13 +824,14 @@ namespace v2rayN.Forms
             int subscriptionCount = config.subItem.Count;
             int serverCount = config.vmess.Count(server => server.subid == subscription.id);
             bool updating = _soraSubscriptionUpdates.Contains(subscription.id);
-            string state = updating ? "обновляется…"
-                : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? "ошибка обновления"
-                : subscription.lastUpdateSuccessUtcTicks > 0 ? FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
-                : "ещё не обновлялась";
+            string state = updating ? "Обновление выполняется"
+                : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? "Ошибка обновления"
+                : subscription.lastUpdateSuccessUtcTicks > 0 ? "Обновлено " + FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
+                : "Ещё не обновлялась";
             string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
             _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + " · " + state + " · " + schedule;
+            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + "    " + state;
+            _soraSubscriptionSchedule.Text = subscription.enabled ? "Автообновление " + schedule : "Автообновление выключено";
             ulong used = (ulong)Math.Max(0L, subscription.subscriptionUploadBytes) + (ulong)Math.Max(0L, subscription.subscriptionDownloadBytes);
             ulong total = (ulong)Math.Max(0L, subscription.subscriptionTotalBytes);
             bool hasQuota = total > 0;
@@ -836,8 +841,11 @@ namespace v2rayN.Forms
                 : 0;
             string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
             _soraSubscriptionQuota.Text = hasQuota
-                ? Utils.HumanFy(used) + " / " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "  ·  до " + expiry)
+                ? "Использовано " + Utils.HumanFy(used) + " из " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "    Действует до " + expiry)
                 : "Источник: " + GetSoraSubscriptionHost(subscription.url);
+            _soraSubscriptionAnnouncement.Text = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
+                ? "Описание подписки не предоставлено."
+                : subscription.subscriptionAnnouncement;
             _soraSubscriptionRefresh.Enabled = !updating;
             _soraSubscriptionPing.Enabled = serverCount > 0 && !updating;
         }

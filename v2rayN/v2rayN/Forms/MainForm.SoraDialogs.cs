@@ -440,7 +440,7 @@ namespace v2rayN.Forms
                 {
                     Location = new Point(32, 58),
                     Size = new Size(680, 24),
-                    Text = GetSoraProtocolName(item) + (subscription == null ? string.Empty : "  ·  " + subscription.remarks),
+                    Text = GetSoraProtocolName(item) + (subscription == null ? string.Empty : " — " + subscription.remarks),
                     Font = new Font("Segoe UI", 9F),
                     ForeColor = locked ? Color.FromArgb(238, 178, 178) : HappMuted
                 };
@@ -465,7 +465,7 @@ namespace v2rayN.Forms
                     var pathValue = new Label { Location = new Point(220, 1), Size = new Size(520, 52), Text = item.address, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Font = new Font("Segoe UI", 8.5F) };
                     var divider = new Panel { Location = new Point(0, 53), Size = new Size(756, 1), BackColor = Color.FromArgb(76, 76, 80) };
                     var coreName = new Label { Location = new Point(16, 55), Size = new Size(190, 51), Text = "Компонент подключения", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-                    var coreValue = new Label { Location = new Point(520, 55), Size = new Size(220, 51), Text = item.coreType == ECoreType.Xray ? "Xray · встроен" : item.coreType?.ToString() ?? "Не определено", ForeColor = item.coreType == ECoreType.Xray ? HappText : HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI Semibold", 9F) };
+                    var coreValue = new Label { Location = new Point(520, 55), Size = new Size(220, 51), Text = item.coreType == ECoreType.Xray ? "Xray, встроен" : item.coreType?.ToString() ?? "Не определено", ForeColor = item.coreType == ECoreType.Xray ? HappText : HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI Semibold", 9F) };
                     details.Controls.AddRange(new Control[] { pathName, pathValue, divider, coreName, coreValue });
                     var warning = new Label
                     {
@@ -515,7 +515,7 @@ namespace v2rayN.Forms
                     }
                     if (locked)
                     {
-                        protocol.Text = "Настройки скрыты владельцем подписки  ·  " + subscription.remarks;
+                        protocol.Text = "Настройки скрыты владельцем подписки: " + subscription.remarks;
                     }
                     save = CreateHappButton("Сохранить", () =>
                     {

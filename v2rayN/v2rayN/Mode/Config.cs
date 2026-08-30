@@ -742,6 +742,8 @@ namespace v2rayN.Mode
         public long subscriptionTotalBytes { get; set; }
 
         public long subscriptionExpireUnixSeconds { get; set; }
+
+        public string subscriptionAnnouncement { get; set; } = string.Empty;
     }
 
     [Serializable]

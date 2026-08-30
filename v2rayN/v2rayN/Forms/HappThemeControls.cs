@@ -109,7 +109,7 @@ namespace v2rayN.Forms
             AccessibleRole = AccessibleRole.PushButton;
             AccessibleName = "Подключиться";
             _powerImage = HappIconLoader.Load("power", MainForm.HappAccent);
-            _stateFont = new Font("Segoe UI", 8F);
+            _stateFont = new Font("Segoe UI Semibold", 8.5F);
             _timeFont = new Font("Segoe UI Semibold", 9F);
             _animation = new Timer { Interval = 33 };
             _animation.Tick += (sender, args) =>
@@ -172,7 +172,7 @@ namespace v2rayN.Forms
                 _state == SoraConnectionState.Connecting ? "ПОДКЛЮЧЕНИЕ" :
                 _state == SoraConnectionState.Disconnecting ? "ОТКЛЮЧЕНИЕ" :
                 _state == SoraConnectionState.Error ? "ОШИБКА" : "ОТКЛЮЧЕНО";
-            TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(172, 176, 190), TextFormatFlags.HorizontalCenter);
+            TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(210, 212, 220), TextFormatFlags.HorizontalCenter);
             if (connected)
             {
                 string elapsed = (DateTime.Now - _connectedAt).ToString(@"hh\:mm\:ss");

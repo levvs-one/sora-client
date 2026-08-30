@@ -23,7 +23,7 @@ namespace v2rayN.Forms
         private static readonly Color HappSurface = Color.FromArgb(51, 51, 54);
         private static readonly Color HappCanvas = Color.FromArgb(20, 20, 22);
         private static readonly Color HappText = Color.FromArgb(247, 247, 248);
-        private static readonly Color HappMuted = Color.FromArgb(196, 196, 201);
+        private static readonly Color HappMuted = Color.FromArgb(214, 214, 218);
         private static readonly Color HappLine = Color.FromArgb(128, 128, 132);
 
         private Panel _happPageHost;
@@ -40,6 +40,8 @@ namespace v2rayN.Forms
         private Panel _soraSubscriptionQuotaTrack;
         private Panel _soraSubscriptionQuotaFill;
         private Label _soraSubscriptionQuota;
+        private Label _soraSubscriptionSchedule;
+        private Label _soraSubscriptionAnnouncement;
         private Timer _soraSubscriptionSummaryTimer;
         private Label _soraTrafficSummary;
         private Timer _soraTrafficTimer;
@@ -240,7 +242,7 @@ namespace v2rayN.Forms
             var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 4, Padding = new Padding(28, 16, 18, 18) };
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 98F));
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 154F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
@@ -310,11 +312,13 @@ namespace v2rayN.Forms
             var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = HappSurface, AccessibleName = "Подписка" };
             ApplyRoundedCorners(card, 5);
             _soraSubscriptionTitle = new Label { Location = new Point(14, 7), Size = new Size(280, 21), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
-            _soraSubscriptionDetail = new Label { Location = new Point(14, 29), Size = new Size(280, 20), ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
-            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(14, 55), Size = new Size(390, 5), BackColor = Color.FromArgb(82, 82, 87) };
+            _soraSubscriptionDetail = new Label { Location = new Point(14, 30), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 8.5F), AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
+            _soraSubscriptionSchedule = new Label { Location = new Point(14, 48), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 8.5F), AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
+            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(14, 72), Size = new Size(390, 5), BackColor = Color.FromArgb(96, 96, 101) };
             _soraSubscriptionQuotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 5), BackColor = HappMuted };
             _soraSubscriptionQuotaTrack.Controls.Add(_soraSubscriptionQuotaFill);
-            _soraSubscriptionQuota = new Label { Location = new Point(14, 64), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 7.5F), BackColor = HappSurface, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+            _soraSubscriptionQuota = new Label { Location = new Point(14, 80), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 8.25F), BackColor = HappSurface, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+            _soraSubscriptionAnnouncement = new Label { Location = new Point(14, 101), Size = new Size(390, 42), ForeColor = Color.FromArgb(232, 232, 235), Font = new Font("Segoe UI", 8.25F), BackColor = HappSurface, TextAlign = ContentAlignment.TopLeft, AutoEllipsis = true, Cursor = Cursors.Hand };
             _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
             _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
             Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
@@ -334,17 +338,23 @@ namespace v2rayN.Forms
             Action open = OpenSoraPrimarySubscription;
             _soraSubscriptionTitle.Click += (sender, args) => open();
             _soraSubscriptionDetail.Click += (sender, args) => open();
+            _soraSubscriptionSchedule.Click += (sender, args) => open();
+            _soraSubscriptionAnnouncement.Click += (sender, args) => open();
             card.Resize += (sender, args) =>
             {
                 _soraSubscriptionTitle.Width = Math.Max(120, card.ClientSize.Width - 118);
-                _soraSubscriptionDetail.Width = _soraSubscriptionTitle.Width;
                 for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 104 + index * 34;
                 _soraSubscriptionQuotaTrack.Width = Math.Max(80, card.ClientSize.Width - 28);
+                _soraSubscriptionDetail.Width = _soraSubscriptionQuotaTrack.Width;
                 _soraSubscriptionQuota.Width = _soraSubscriptionQuotaTrack.Width;
+                _soraSubscriptionSchedule.Width = _soraSubscriptionQuotaTrack.Width;
+                _soraSubscriptionAnnouncement.Width = _soraSubscriptionQuotaTrack.Width;
                 RefreshSoraSubscriptionCard();
             };
+            card.Controls.Add(_soraSubscriptionAnnouncement);
             card.Controls.Add(_soraSubscriptionQuota);
             card.Controls.Add(_soraSubscriptionQuotaTrack);
+            card.Controls.Add(_soraSubscriptionSchedule);
             card.Controls.Add(_soraSubscriptionDetail);
             card.Controls.Add(_soraSubscriptionTitle);
             StartSoraSubscriptionSummary();
@@ -547,8 +557,8 @@ namespace v2rayN.Forms
                 string name = GetSoraDisplayName(item.remarks);
                 string[] protocols = GetSoraProtocolDisplay(item);
                 using (var titleFont = new Font("Segoe UI Semibold", 10F))
-                using (var protocolFont = new Font("Segoe UI Semibold", 7.5F))
-                using (var detailFont = new Font("Segoe UI", 7.5F))
+                using (var protocolFont = new Font("Segoe UI Semibold", 8.25F))
+                using (var detailFont = new Font("Segoe UI", 8.25F))
                 {
                     TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 7, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
                     DrawSoraProtocolLine(args.Graphics, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 32, Math.Max(0, args.Bounds.Width - 18), 16), protocols, protocolFont, detailFont);
@@ -566,7 +576,7 @@ namespace v2rayN.Forms
                 {
                     bool measured = result.Any(char.IsDigit);
                     Color resultColor = measured || selected ? HappText : HappMuted;
-                    using (var resultFont = new Font("Segoe UI Semibold", 8F))
+                    using (var resultFont = new Font("Segoe UI Semibold", 8.5F))
                     {
                         TextRenderer.DrawText(args.Graphics, result, resultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
                     }
@@ -764,7 +774,7 @@ namespace v2rayN.Forms
                 x += Math.Min(size.Width, available);
                 if (index < values.Length - 1 && x + 14 < bounds.Right)
                 {
-                    TextRenderer.DrawText(graphics, "/", secondaryFont, new Rectangle(x + 4, bounds.Top, 10, bounds.Height), Color.FromArgb(105, 105, 111), TextFormatFlags.NoPadding | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    TextRenderer.DrawText(graphics, "/", secondaryFont, new Rectangle(x + 4, bounds.Top, 10, bounds.Height), Color.FromArgb(174, 174, 180), TextFormatFlags.NoPadding | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                     x += 17;
                 }
             }

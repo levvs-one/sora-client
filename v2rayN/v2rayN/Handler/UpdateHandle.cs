@@ -49,6 +49,26 @@ namespace v2rayN.Handler
             return title.Length > 80 ? title.Substring(0, 80) : title;
         }
 
+        internal static string DecodeSoraAnnouncement(string header)
+        {
+            string text = header?.Trim();
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            try
+            {
+                text = text.StartsWith("base64:", StringComparison.OrdinalIgnoreCase)
+                    ? Encoding.UTF8.GetString(Convert.FromBase64String(text.Substring(7)))
+                    : Uri.UnescapeDataString(text);
+            }
+            catch (FormatException)
+            {
+                return string.Empty;
+            }
+            text = text.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+            text = Regex.Replace(text, @"[ \t]+", " ");
+            text = Regex.Replace(text, @"\n{3,}", "\n\n");
+            return text.Length > 600 ? text.Substring(0, 600) : text;
+        }
+
         internal static bool ShouldApplySoraProfileTitle(SubItem item)
         {
             if (!item.nameCustomized) return true;
@@ -252,6 +272,7 @@ namespace v2rayN.Handler
                                 item.updateIntervalMinutes = updateHours * 60;
                             }
                             ParseSoraSubscriptionUserinfo(item, downloadHandle.LastSubscriptionUserinfo);
+                            item.subscriptionAnnouncement = DecodeSoraAnnouncement(downloadHandle.LastSubscriptionAnnouncement);
 
                             if (Utils.IsNullOrEmpty(content))
                             {
@@ -300,7 +321,7 @@ namespace v2rayN.Handler
                     ConfigHandler.SaveSubItem(ref config);
                     results.Add(itemResult);
                     _updateFunc(false, itemResult.Success
-                        ? $"{prefix}{itemResult.ServerCount} серверов · обновлено"
+                        ? $"{prefix}{itemResult.ServerCount} серверов, обновлено"
                         : $"{prefix}{itemResult.Error}");
                     _updateFunc(false, "-------------------------------------------------------");
                 }

@@ -45,6 +45,8 @@ namespace v2rayN.Handler
 
         public string LastSubscriptionUserinfo { get; private set; }
 
+        public string LastSubscriptionAnnouncement { get; private set; }
+
 
         public class ResultEventArgs : EventArgs
         {
@@ -200,6 +202,7 @@ namespace v2rayN.Handler
                             LastProfileTitle = GetResponseHeader(response, "Profile-Title");
                             LastProfileUpdateInterval = GetResponseHeader(response, "Profile-Update-Interval");
                             LastSubscriptionUserinfo = GetResponseHeader(response, "Subscription-Userinfo");
+                            LastSubscriptionAnnouncement = GetResponseHeader(response, "Announce");
                             return await response.Content.ReadAsStringAsync();
                         }
                     }

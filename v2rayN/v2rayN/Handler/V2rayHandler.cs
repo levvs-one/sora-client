@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using Newtonsoft.Json.Linq;
 using v2rayN.Mode;
 using v2rayN.Resx;
 
@@ -113,22 +114,44 @@ namespace v2rayN.Handler
                 {
                     return -1;
                 }
-                V2rayConfig custom = Utils.FromJson<V2rayConfig>(File.ReadAllText(path));
-                if (custom?.outbounds == null || custom.outbounds.Count == 0)
+                JObject custom = JObject.Parse(File.ReadAllText(path));
+                JArray outbounds = custom["outbounds"] as JArray;
+                if (outbounds == null || outbounds.Count == 0)
                 {
                     return -1;
                 }
-                custom.inbounds = new List<Inbounds>
+
+                JObject httpInbound = null;
+                JArray inbounds = custom["inbounds"] as JArray;
+                if (inbounds != null)
                 {
-                    new Inbounds
+                    foreach (JToken token in inbounds)
                     {
-                        listen = Global.Loopback,
-                        port = localPort,
-                        protocol = Global.InboundHttp,
-                        tag = Global.InboundHttp + localPort
+                        JObject inbound = token as JObject;
+                        if (inbound == null)
+                        {
+                            continue;
+                        }
+                        if (string.Equals((string)inbound["protocol"], Global.InboundHttp, StringComparison.OrdinalIgnoreCase))
+                        {
+                            httpInbound = (JObject)inbound.DeepClone();
+                            break;
+                        }
                     }
-                };
-                return V2rayStartNew(Utils.ToJson(custom));
+                }
+                if (httpInbound == null)
+                {
+                    httpInbound = new JObject
+                    {
+                        ["protocol"] = Global.InboundHttp,
+                        ["tag"] = Global.InboundHttp
+                    };
+                }
+                httpInbound["listen"] = Global.Loopback;
+                httpInbound["port"] = localPort;
+                httpInbound["settings"] = new JObject();
+                custom["inbounds"] = new JArray(httpInbound);
+                return V2rayStartNew(custom.ToString(Newtonsoft.Json.Formatting.None));
             }
             catch (Exception exception)
             {

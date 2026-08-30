@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using v2rayN.Handler;
+using v2rayN.Mode;
 using v2rayN.Resx;
 using v2rayN.Tool;
 
@@ -19,7 +20,7 @@ namespace v2rayN.Forms
         private readonly HashSet<string> _soraSubscriptionUpdates = new HashSet<string>();
         private Control _happSubscriptionsPage;
         private Control _happLogsPage;
-        private Timer _soraSubscriptionScheduleTimer;
+        private System.Windows.Forms.Timer _soraSubscriptionScheduleTimer;
         private bool _soraSubscriptionScheduleRunning;
 
         private Control BuildHappSettingsPage()
@@ -774,7 +775,7 @@ namespace v2rayN.Forms
         private void StartSoraSubscriptionScheduler()
         {
             if (_soraSubscriptionScheduleTimer != null) return;
-            _soraSubscriptionScheduleTimer = new Timer(components) { Interval = 30000 };
+            _soraSubscriptionScheduleTimer = new System.Windows.Forms.Timer(components) { Interval = 30000 };
             _soraSubscriptionScheduleTimer.Tick += async (sender, args) =>
             {
                 if (_soraSubscriptionScheduleRunning || config?.subItem == null) return;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using v2rayN.Mode;
@@ -61,6 +62,10 @@ namespace v2rayN.Handler
                 }
                 else
                 {
+                    if (item.configType == EConfigType.Custom && coreInfo.coreType == ECoreType.Xray)
+                    {
+                        NormalizeCustomXrayInbounds(config, fileName);
+                    }
                     ShowMsg(false, msg);
                     ShowMsg(true, $"[{config.GetGroupRemarks(item.groupId)}] {item.GetSummary()}");
                     V2rayRestart();
@@ -158,6 +163,44 @@ namespace v2rayN.Handler
                 Utils.SaveLog(exception.Message, exception);
                 return -1;
             }
+        }
+
+        private static void NormalizeCustomXrayInbounds(Config config, string fileName)
+        {
+            JObject document = JObject.Parse(File.ReadAllText(fileName));
+            JArray inbounds = document["inbounds"] as JArray ?? new JArray();
+            string listen = config.inbound[0].allowLANConn ? "0.0.0.0" : Global.Loopback;
+            SetCustomXrayInbound(inbounds, Global.InboundSocks, config.GetLocalPort(Global.InboundSocks), listen, true);
+            SetCustomXrayInbound(inbounds, Global.InboundHttp, config.GetLocalPort(Global.InboundHttp), listen, false);
+            document["inbounds"] = inbounds;
+            File.WriteAllText(fileName, document.ToString(Newtonsoft.Json.Formatting.None), new UTF8Encoding(false));
+        }
+
+        private static void SetCustomXrayInbound(JArray inbounds, string protocol, int port, string listen, bool socks)
+        {
+            JObject inbound = null;
+            foreach (JObject candidate in inbounds.OfType<JObject>())
+            {
+                if (string.Equals((string)candidate["protocol"], protocol, StringComparison.OrdinalIgnoreCase))
+                {
+                    inbound = candidate;
+                    break;
+                }
+            }
+            if (inbound == null)
+            {
+                inbound = new JObject
+                {
+                    ["tag"] = protocol,
+                    ["protocol"] = protocol,
+                    ["settings"] = socks
+                        ? new JObject { ["auth"] = "noauth", ["udp"] = true }
+                        : new JObject { ["allowTransparent"] = false }
+                };
+                inbounds.Add(inbound);
+            }
+            inbound["listen"] = listen;
+            inbound["port"] = port;
         }
 
         /// <summary>

@@ -52,7 +52,7 @@ namespace v2rayN.Forms
         }
     }
 
-    internal sealed class HappConnectionControl : Button
+    internal sealed class HappConnectionControl : Control
     {
         private readonly Timer _animation;
         private readonly Image _powerImage;
@@ -101,12 +101,10 @@ namespace v2rayN.Forms
         internal HappConnectionControl()
         {
             SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
+            SetStyle(ControlStyles.StandardClick | ControlStyles.StandardDoubleClick, false);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
             BackColor = Color.Transparent;
-            FlatStyle = FlatStyle.Flat;
-            FlatAppearance.BorderSize = 0;
-            UseVisualStyleBackColor = false;
             Size = new Size(270, 270);
             TabStop = true;
             AccessibleRole = AccessibleRole.PushButton;
@@ -133,8 +131,35 @@ namespace v2rayN.Forms
             PowerClick?.Invoke(this, EventArgs.Empty);
         }
 
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
+            {
+                OnClick(EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            const int leftButtonUp = 0x0202;
+            if (message.Msg == leftButtonUp)
+            {
+                int packed = message.LParam.ToInt32();
+                var point = new Point((short)(packed & 0xFFFF), (short)((packed >> 16) & 0xFFFF));
+                if (ClientRectangle.Contains(point))
+                {
+                    OnClick(EventArgs.Empty);
+                }
+            }
+            base.WndProc(ref message);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
+            base.OnPaint(e);
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             Color accent = MainForm.HappAccent;
             float pulse = (float)((Math.Sin(_phase) + 1D) * 0.5D);

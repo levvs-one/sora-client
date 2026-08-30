@@ -17,7 +17,6 @@ namespace v2rayN.Forms
         private const int MaximumMarkdownLength = 32768;
         private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
             .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
-            .DisableHtml()
             .Build();
 
         private string _markdownText = string.Empty;

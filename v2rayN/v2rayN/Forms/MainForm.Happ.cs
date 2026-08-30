@@ -264,10 +264,13 @@ namespace v2rayN.Forms
             lvServers.SmallImageList = _communityRowHeight;
             _happServerScroll = new HappListScrollRail(lvServers, HappPane, Color.FromArgb(124, 124, 130))
             {
-                Dock = DockStyle.Right,
-                Width = 14
+                Anchor = AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom,
+                Width = 18
             };
             listHost.Controls.Add(_happServerScroll);
+            Action positionServerScroll = () => _happServerScroll.SetBounds(Math.Max(0, listHost.ClientSize.Width - 18), 0, 18, listHost.ClientSize.Height);
+            listHost.Resize += (sender, args) => positionServerScroll();
+            positionServerScroll();
             _happServerScroll.BringToFront();
             _communityEmptyState = BuildHappEmptyState();
             listHost.Controls.Add(_communityEmptyState);

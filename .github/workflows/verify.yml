@@ -23,6 +23,15 @@ jobs:
         shell: powershell
         run: |
           & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File tests\Sora.SubscriptionRegression.ps1 -SoraExe v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\Sora.exe
+      - name: Windows 7 QA script compatibility
+        shell: powershell
+        run: |
+          $powershell = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+          foreach ($script in @('tests\Sora.LocalVpnPlumbing.ps1', 'tests\Sora.RealLatencyQa.ps1')) {
+            $env:SORA_QA_SCRIPT = (Resolve-Path $script).Path
+            & $powershell -NoProfile -Command '$parseErrors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:SORA_QA_SCRIPT, [ref]$null, [ref]$parseErrors) | Out-Null; if ($parseErrors.Count) { $parseErrors | Out-String | Write-Error; exit 1 }'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: sora-win7-x86

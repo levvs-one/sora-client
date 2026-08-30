@@ -8,14 +8,16 @@ param(
 $ErrorActionPreference = 'Stop'
 $stage = (Resolve-Path -LiteralPath $StagePath).Path
 $core = (Resolve-Path -LiteralPath $CorePath).Path
-$config = Get-Content -LiteralPath (Join-Path $stage 'guiNConfig.json') -Raw | ConvertFrom-Json
+$config = [IO.File]::ReadAllText((Join-Path $stage 'guiNConfig.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json
 $results = [System.Collections.Generic.List[object]]::new()
 
 foreach ($item in @($config.vmess)) {
     $path = Join-Path (Join-Path $stage 'guiConfigs') ([string]$item.address)
     $process = $null
+    $failure = $null
+    $diagnosticPath = Join-Path ([IO.Path]::GetTempPath()) ("sora-xray-{0}.log" -f [Guid]::NewGuid().ToString('N'))
     try {
-        $profile = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+        $profile = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
         if (-not $profile.inbounds) { throw 'Profile has no local inbound' }
 
         $socksPort = $null
@@ -29,10 +31,10 @@ foreach ($item in @($config.vmess)) {
         if ($null -eq $socksPort) { throw 'Profile has no SOCKS inbound' }
 
         if ($profile.PSObject.Properties.Name -contains 'log') {
-            $profile.log = [pscustomobject]@{ loglevel = 'none' }
+            $profile.log = [pscustomobject]@{ loglevel = 'debug'; error = $diagnosticPath }
         }
         else {
-            $profile | Add-Member -NotePropertyName log -NotePropertyValue ([pscustomobject]@{ loglevel = 'none' })
+            $profile | Add-Member -NotePropertyName log -NotePropertyValue ([pscustomobject]@{ loglevel = 'debug'; error = $diagnosticPath })
         }
 
         $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -63,7 +65,20 @@ foreach ($item in @($config.vmess)) {
             }
             catch { }
         } while (-not $ready -and -not $process.HasExited -and [DateTime]::UtcNow -lt $deadline)
-        if (-not $ready) { throw 'Core did not open its local port' }
+        if (-not $ready) {
+            if ($process.HasExited) {
+                $coreError = ($process.StandardError.ReadToEnd() + [Environment]::NewLine + $process.StandardOutput.ReadToEnd()).Trim()
+                $diagnosticLines = @($coreError -split "`r?`n" | Where-Object { $_ -match '(?i)reality|invalid|failed|error|unknown' })
+                if ($diagnosticLines.Count -gt 0) {
+                    $coreError = ($diagnosticLines | Select-Object -Last 3) -join ' | '
+                }
+                elseif ($coreError.Length -gt 600) {
+                    $coreError = $coreError.Substring($coreError.Length - 600)
+                }
+                throw "Core exited with code $($process.ExitCode): $coreError"
+            }
+            throw 'Core did not open its local port'
+        }
 
         $metric = & curl.exe `
             --silent `
@@ -81,6 +96,21 @@ foreach ($item in @($config.vmess)) {
         $total = if ($parts.Count -ge 3) {
             [math]::Round([double]::Parse($parts[2], [Globalization.CultureInfo]::InvariantCulture) * 1000)
         } else { $null }
+        if ($curlExitCode -ne 0 -or $httpStatus -ne '204') {
+            Start-Sleep -Milliseconds 400
+            if (-not $process.HasExited) {
+                $process.Kill()
+                $process.WaitForExit()
+            }
+            $diagnosticSources = @($process.StandardError.ReadToEnd(), $process.StandardOutput.ReadToEnd())
+            if (Test-Path -LiteralPath $diagnosticPath) {
+                $diagnosticSources += [IO.File]::ReadAllText($diagnosticPath, [Text.Encoding]::UTF8)
+            }
+            $lines = @($diagnosticSources -split "`r?`n" | Where-Object { $_ -match '(?i)reality|invalid|failed|error|unknown' })
+            $diagnostic = ($lines | Select-Object -Last 3) -join ' | '
+            $failure = "curl exit $curlExitCode, HTTP $httpStatus"
+            if ($diagnostic) { $failure += ": $diagnostic" }
+        }
 
         $results.Add([pscustomobject]@{
             Server = [string]$item.remarks
@@ -88,15 +118,18 @@ foreach ($item in @($config.vmess)) {
             FirstByteMs = $firstByte
             TotalMs = $total
             Success = $curlExitCode -eq 0 -and $httpStatus -eq '204'
+            Failure = $failure
         })
     }
     catch {
+        $failure = $_.Exception.Message
         $results.Add([pscustomobject]@{
             Server = [string]$item.remarks
             Http = '000'
             FirstByteMs = $null
             TotalMs = $null
             Success = $false
+            Failure = $failure
         })
     }
     finally {
@@ -107,6 +140,7 @@ foreach ($item in @($config.vmess)) {
             }
             $process.Dispose()
         }
+        Remove-Item -LiteralPath $diagnosticPath -Force -ErrorAction SilentlyContinue
     }
 }
 

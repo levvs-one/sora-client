@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -37,6 +38,8 @@ namespace v2rayN.Handler
         public event EventHandler<ResultEventArgs> UpdateCompleted;
 
         public event ErrorEventHandler Error;
+
+        public string LastProfileTitle { get; private set; }
 
 
         public class ResultEventArgs : EventArgs
@@ -184,7 +187,23 @@ namespace v2rayN.Handler
                         }
 
                         timeout.CancelAfter(TimeSpan.FromSeconds(30));
-                        return await HttpClientHelper.GetInstance().GetAsync(client, url, timeout.Token);
+                        using (HttpResponseMessage response = await client.GetAsync(url, timeout.Token))
+                        {
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                throw new Exception(string.Format("The request returned with HTTP status code {0}", response.StatusCode));
+                            }
+                            LastProfileTitle = null;
+                            if (response.Headers.TryGetValues("Profile-Title", out IEnumerable<string> profileTitles))
+                            {
+                                foreach (string profileTitle in profileTitles)
+                                {
+                                    LastProfileTitle = profileTitle;
+                                    break;
+                                }
+                            }
+                            return await response.Content.ReadAsStringAsync();
+                        }
                     }
                 }, CancellationToken.None);
             }

@@ -308,8 +308,8 @@ namespace v2rayN.Forms
         {
             var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = HappSurface, AccessibleName = "Подписка" };
             ApplyRoundedCorners(card, 5);
-            _soraSubscriptionTitle = new Label { Location = new Point(14, 7), Size = new Size(270, 21), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 9.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = HappSurface };
-            _soraSubscriptionDetail = new Label { Location = new Point(14, 29), Size = new Size(270, 32), ForeColor = HappMuted, Font = new Font("Segoe UI", 7.5F), AutoEllipsis = true, BackColor = HappSurface };
+            _soraSubscriptionTitle = new Label { Location = new Point(14, 7), Size = new Size(280, 21), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
+            _soraSubscriptionDetail = new Label { Location = new Point(14, 29), Size = new Size(280, 32), ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
             _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
             _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
             Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
@@ -317,8 +317,13 @@ namespace v2rayN.Forms
             for (int index = 0; index < buttons.Length; index++)
             {
                 buttons[index].Dock = DockStyle.None;
-                buttons[index].Size = new Size(36, 36);
-                buttons[index].Location = new Point(card.Width - 116 + index * 38, 15);
+                buttons[index].Size = new Size(32, 32);
+                buttons[index].Location = new Point(card.Width - 104 + index * 34, 17);
+                buttons[index].BackColor = HappSurface;
+                buttons[index].UseVisualStyleBackColor = false;
+                buttons[index].FlatAppearance.MouseOverBackColor = Color.FromArgb(70, 70, 74);
+                buttons[index].FlatAppearance.MouseDownBackColor = Color.FromArgb(84, 84, 89);
+                ApplyRoundedCorners(buttons[index], 4);
                 card.Controls.Add(buttons[index]);
             }
             Action open = OpenSoraPrimarySubscription;
@@ -326,9 +331,9 @@ namespace v2rayN.Forms
             _soraSubscriptionDetail.Click += (sender, args) => open();
             card.Resize += (sender, args) =>
             {
-                _soraSubscriptionTitle.Width = Math.Max(120, card.ClientSize.Width - 132);
+                _soraSubscriptionTitle.Width = Math.Max(120, card.ClientSize.Width - 118);
                 _soraSubscriptionDetail.Width = _soraSubscriptionTitle.Width;
-                for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 116 + index * 38;
+                for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 104 + index * 34;
             };
             card.Controls.Add(_soraSubscriptionDetail);
             card.Controls.Add(_soraSubscriptionTitle);

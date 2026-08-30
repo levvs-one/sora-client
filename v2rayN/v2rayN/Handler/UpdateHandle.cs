@@ -31,6 +31,24 @@ namespace v2rayN.Handler
             public string Error { get; set; }
         }
 
+        internal static string DecodeSoraProfileTitle(string header)
+        {
+            string title = header?.Trim();
+            if (string.IsNullOrWhiteSpace(title)) return null;
+            try
+            {
+                title = title.StartsWith("base64:", StringComparison.OrdinalIgnoreCase)
+                    ? Encoding.UTF8.GetString(Convert.FromBase64String(title.Substring(7)))
+                    : Uri.UnescapeDataString(title);
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+            title = title.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return title.Length > 80 ? title.Substring(0, 80) : title;
+        }
+
         public event EventHandler<ResultEventArgs> AbsoluteCompleted;
 
         public class ResultEventArgs : EventArgs
@@ -194,6 +212,13 @@ namespace v2rayN.Handler
                             if (blProxy && Utils.IsNullOrEmpty(content))
                             {
                                 content = await downloadHandle.DownloadStringAsync(url, false, userAgent);
+                            }
+
+                            string profileTitle = DecodeSoraProfileTitle(downloadHandle.LastProfileTitle);
+                            if (!item.nameCustomized && !Utils.IsNullOrEmpty(profileTitle))
+                            {
+                                item.remarks = profileTitle;
+                                prefix = $"{item.remarks}->";
                             }
 
                             if (Utils.IsNullOrEmpty(content))

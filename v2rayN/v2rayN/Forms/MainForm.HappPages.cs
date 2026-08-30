@@ -208,6 +208,17 @@ namespace v2rayN.Forms
             return "каждые " + FormatSoraInterval(minutes);
         }
 
+        private static string FormatSoraServerCount(int count)
+        {
+            int remainder100 = count % 100;
+            int remainder10 = count % 10;
+            string suffix = remainder100 >= 11 && remainder100 <= 14 ? "серверов"
+                : remainder10 == 1 ? "сервер"
+                : remainder10 >= 2 && remainder10 <= 4 ? "сервера"
+                : "серверов";
+            return count + " " + suffix;
+        }
+
         private static string GetSoraSubscriptionTitle(SubItem subscription)
         {
             if (subscription == null) return "Подписка";
@@ -800,7 +811,7 @@ namespace v2rayN.Forms
                 : "ещё не обновлялась";
             string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
             _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = GetSoraSubscriptionHost(subscription.url) + " · " + serverCount + " серверов\r\n" + state + " · " + schedule;
+            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + " · " + state + "\r\nАвтообновление: " + schedule;
             _soraSubscriptionRefresh.Enabled = !updating;
             _soraSubscriptionPing.Enabled = serverCount > 0 && !updating;
         }

@@ -68,6 +68,16 @@ if ($null -eq $removeMethod) {
     throw 'Atomic subscription removal method was not found'
 }
 
+$updateType = $assembly.GetType('v2rayN.Handler.UpdateHandle', $true)
+$decodeTitle = $updateType.GetMethod('DecodeSoraProfileTitle', [System.Reflection.BindingFlags]'NonPublic, Static')
+if ($null -eq $decodeTitle) {
+    throw 'Profile-Title decoder was not found'
+}
+$decodedTitle = [string]$decodeTitle.Invoke($null, @('base64:RHIuIFdhdHNvbiBWUE4='))
+if ($decodedTitle -ne 'Dr. Watson VPN') {
+    throw "Profile-Title decoding failed: $decodedTitle"
+}
+
 $mainFormType = $assembly.GetType('v2rayN.Forms.MainForm', $true)
 $instanceBinding = [System.Reflection.BindingFlags]'NonPublic, Instance'
 if ($null -ne $mainFormType.GetMethod('BuildHappSubscriptionsPage', $instanceBinding)) {

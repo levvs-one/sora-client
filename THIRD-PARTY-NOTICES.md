@@ -13,5 +13,6 @@
 | .NET Framework Runtime | 4.8 offline | Microsoft | https://dotnet.microsoft.com/download/dotnet-framework/net48 | `0A3A390C47E639D0F7FC65B21195FEE6B7F65B066F80F70C60FAB191D14B7E40` |
 | Windows 7 SHA-2 update | KB3033929 x86 | Microsoft | https://www.microsoft.com/download/details.aspx?id=46078 | `246C300A6AE6DCA99453F6839745AC0015953528A7065BED1B015F91B80CF64D` |
 | Phosphor Icons | Core, Bold | MIT | https://github.com/phosphor-icons/core | PNG-ресурсы в `Assets/Phosphor` |
+| Country Flags | svg-country-flags 1.2.10 | Public Domain | https://github.com/hampusborgos/country-flags | PNG-ресурсы в `Assets/Flags`; архив `2576650B4568C8EE1A2A6DDAA45C0246BE16735F229BB40B1A0A6F40424E5213` |
 
-Тексты лицензий Xray, sing-box, tun2proxy, Wintun, Phosphor Icons и распространяемых NuGet-зависимостей устанавливаются в каталог `licenses`. Точное соответствие NuGet-пакетов лицензиям находится в `licenses/nuget/ATTRIBUTIONS.md`.
+Тексты лицензий Xray, sing-box, tun2proxy, Wintun, Phosphor Icons и распространяемых NuGet-зависимостей устанавливаются в каталог `licenses`. Уведомление об источнике флагов распространяется вместе с ресурсами в `Assets/Flags/NOTICE.txt`. Точное соответствие NuGet-пакетов лицензиям находится в `licenses/nuget/ATTRIBUTIONS.md`.

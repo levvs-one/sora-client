@@ -40,6 +40,8 @@ namespace v2rayN.Forms
         private HappListScrollRail _happServerScroll;
         private bool _happHidingServerScrollbars;
         private readonly Dictionary<string, SoraProtocolDisplay> _soraProtocolDisplayCache = new Dictionary<string, SoraProtocolDisplay>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Image> _soraCountryFlagCache = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
+        private Image _soraDefaultCountryIcon;
 
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
@@ -69,6 +71,7 @@ namespace v2rayN.Forms
             NormalizeSoraVisibleConfiguration();
             KeyPreview = true;
             KeyDown += HandleHappShortcut;
+            FormClosed += DisposeSoraCountryImages;
 
             tsMain.Visible = false;
             panel1.Visible = false;
@@ -427,25 +430,7 @@ namespace v2rayN.Forms
                 {
                     using (var marker = new SolidBrush(HappAccent)) args.Graphics.FillRectangle(marker, args.Bounds.Left, args.Bounds.Top + 10, 3, args.Bounds.Height - 20);
                 }
-                string country = GetSoraCountryCode(item?.remarks);
-                if (!string.IsNullOrWhiteSpace(country))
-                {
-                    Rectangle badgeBounds = new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 20, 22, 17);
-                    using (GraphicsPath badge = CreateRoundedPath(badgeBounds, 4))
-                    using (var badgeFill = new SolidBrush(selected ? Color.FromArgb(74, 74, 79) : Color.FromArgb(47, 47, 51)))
-                    using (var badgeBorder = new Pen(Color.FromArgb(83, 83, 89)))
-                    using (var badgeFont = new Font("Segoe UI Semibold", 7F))
-                    {
-                        args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        args.Graphics.FillPath(badgeFill, badge);
-                        args.Graphics.DrawPath(badgeBorder, badge);
-                        TextRenderer.DrawText(args.Graphics, country, badgeFont, badgeBounds, HappText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                    }
-                }
-                else if (item != null && config.IsActiveNode(item))
-                {
-                    using (Image check = HappIconLoader.Load("check", HappText)) args.Graphics.DrawImage(check, new Rectangle(args.Bounds.Left + 8, args.Bounds.Top + 18, 18, 18));
-                }
+                DrawSoraCountryMark(args.Graphics, new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 20, 22, 17), item?.remarks);
             }
             else if (args.ColumnIndex == (int)EServerColName.remarks && item != null)
             {
@@ -476,6 +461,87 @@ namespace v2rayN.Forms
         {
             string name = string.IsNullOrWhiteSpace(remarks) ? "Сервер без названия" : remarks.Trim();
             return Regex.Replace(name, @"^[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]\s*", string.Empty);
+        }
+
+        private void DrawSoraCountryMark(Graphics graphics, Rectangle bounds, string remarks)
+        {
+            string countryCode = GetSoraVisualCountryCode(remarks);
+            Image flag = LoadSoraCountryFlag(countryCode);
+            if (flag == null)
+            {
+                if (_soraDefaultCountryIcon == null)
+                {
+                    _soraDefaultCountryIcon = HappIconLoader.Load("globe", HappMuted);
+                }
+                graphics.DrawImage(_soraDefaultCountryIcon, new Rectangle(bounds.Left + 2, bounds.Top, 17, 17));
+                return;
+            }
+
+            InterpolationMode previousInterpolation = graphics.InterpolationMode;
+            PixelOffsetMode previousPixelOffset = graphics.PixelOffsetMode;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            graphics.DrawImage(flag, new Rectangle(bounds.Left, bounds.Top + 1, bounds.Width, bounds.Height - 2));
+            graphics.InterpolationMode = previousInterpolation;
+            graphics.PixelOffsetMode = previousPixelOffset;
+            using (var border = new Pen(Color.FromArgb(92, 92, 97)))
+            {
+                graphics.DrawRectangle(border, bounds.Left, bounds.Top + 1, bounds.Width - 1, bounds.Height - 3);
+            }
+        }
+
+        private Image LoadSoraCountryFlag(string countryCode)
+        {
+            if (string.IsNullOrWhiteSpace(countryCode))
+            {
+                return null;
+            }
+            if (_soraCountryFlagCache.TryGetValue(countryCode, out Image cached))
+            {
+                return cached;
+            }
+
+            Image flag = null;
+            string path = Path.Combine(Application.StartupPath, "Assets", "Flags", "png100px", countryCode.ToLowerInvariant() + ".png");
+            if (File.Exists(path))
+            {
+                try
+                {
+                    using (Image source = Image.FromFile(path))
+                    {
+                        flag = new Bitmap(source);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Utils.SaveLog("Не удалось загрузить изображение флага " + countryCode + ".", exception);
+                }
+            }
+            _soraCountryFlagCache[countryCode] = flag;
+            return flag;
+        }
+
+        private static string GetSoraVisualCountryCode(string remarks)
+        {
+            Match flag = Regex.Match(remarks ?? string.Empty, @"^\s*\uD83C(?<first>[\uDDE6-\uDDFF])\uD83C(?<second>[\uDDE6-\uDDFF])");
+            if (flag.Success)
+            {
+                char first = (char)('A' + flag.Groups["first"].Value[0] - '\uDDE6');
+                char second = (char)('A' + flag.Groups["second"].Value[0] - '\uDDE6');
+                return new string(new[] { first, second });
+            }
+            return GetSoraCountryCode(remarks);
+        }
+
+        private void DisposeSoraCountryImages(object sender, FormClosedEventArgs args)
+        {
+            foreach (Image flag in _soraCountryFlagCache.Values.Where(value => value != null))
+            {
+                flag.Dispose();
+            }
+            _soraCountryFlagCache.Clear();
+            _soraDefaultCountryIcon?.Dispose();
+            _soraDefaultCountryIcon = null;
         }
 
         private string[] GetSoraProtocolDisplay(VmessItem item)

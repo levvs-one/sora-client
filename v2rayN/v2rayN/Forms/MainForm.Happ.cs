@@ -33,6 +33,9 @@ namespace v2rayN.Forms
         private readonly DateTime _happStartedAt = DateTime.Now;
         private long _happUploadRate;
         private long _happDownloadRate;
+        private Label _soraTrafficRate;
+        private Label _soraTrafficTotal;
+        private Timer _soraTrafficTimer;
         private bool _happUseTun;
         private Button _happModeButton;
         private bool _happReportShortcutWired;
@@ -120,6 +123,7 @@ namespace v2rayN.Forms
                     UpdateCommunityConnectionState(config == null ? ESysProxyType.ForcedClear : config.sysProxyType);
                 }
                 UpdateCommunityEmptyState();
+                StartSoraSubscriptionScheduler();
             };
         }
 
@@ -395,11 +399,52 @@ namespace v2rayN.Forms
             };
             pane.Resize += (sender, args) => { _happConnection.Left = (pane.ClientSize.Width - _happConnection.Width) / 2; _happConnection.Top = 72; };
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
+            var traffic = new Panel { Anchor = AnchorStyles.Top, Location = new Point(136, 318), Size = new Size(300, 58), BackColor = Color.FromArgb(29, 29, 31), AccessibleName = "Счётчик трафика" };
+            ApplyRoundedCorners(traffic, 6);
+            _soraTrafficRate = new Label { Dock = DockStyle.Top, Height = 31, Text = "↓ 0 B/s    ↑ 0 B/s", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 9.5F), TextAlign = ContentAlignment.BottomCenter };
+            _soraTrafficTotal = new Label { Dock = DockStyle.Fill, Text = "Сегодня 0 B", ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), TextAlign = ContentAlignment.TopCenter };
+            traffic.Controls.Add(_soraTrafficTotal);
+            traffic.Controls.Add(_soraTrafficRate);
+            StartSoraTrafficCounter();
             var ping = CreateHappButton("Проверить задержку", TestAllCommunityServers, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
-            pane.Resize += (sender, args) => { _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
-            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            pane.Resize += (sender, args) => { traffic.Left = (pane.ClientSize.Width - traffic.Width) / 2; _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
+            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(traffic); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
             return pane;
+        }
+
+        private void StartSoraTrafficCounter()
+        {
+            if (_soraTrafficTimer != null) return;
+            _soraTrafficTimer = new Timer(components) { Interval = 500 };
+            _soraTrafficTimer.Tick += (sender, args) =>
+            {
+                if (_soraTrafficRate == null || _soraTrafficTotal == null) return;
+                ulong down = (ulong)Math.Max(0L, Interlocked.Read(ref _happDownloadRate));
+                ulong up = (ulong)Math.Max(0L, Interlocked.Read(ref _happUploadRate));
+                _soraTrafficRate.Text = "↓ " + Utils.HumanFy(down) + "/s    ↑ " + Utils.HumanFy(up) + "/s";
+                if (statistics == null || !statistics.Enable)
+                {
+                    _soraTrafficTotal.Text = "Счётчик выключен в настройках";
+                    return;
+                }
+                try
+                {
+                    ulong todayDown = 0;
+                    ulong todayUp = 0;
+                    foreach (ServerStatItem item in statistics.Statistic.ToArray())
+                    {
+                        todayDown += item.todayDown;
+                        todayUp += item.todayUp;
+                    }
+                    _soraTrafficTotal.Text = "Сегодня ↓ " + Utils.HumanFy(todayDown) + " · ↑ " + Utils.HumanFy(todayUp);
+                }
+                catch (InvalidOperationException)
+                {
+                    _soraTrafficTotal.Text = "Считаем трафик…";
+                }
+            };
+            _soraTrafficTimer.Start();
         }
 
         private void DrawHappConnectionBackground(object sender, PaintEventArgs args)
@@ -424,7 +469,11 @@ namespace v2rayN.Forms
         private Button CreateHappButton(string text, Action action, bool accent)
         {
             var button = new Button { Text = text, FlatStyle = FlatStyle.Flat, BackColor = accent ? HappAccent : HappSurface, ForeColor = accent ? HappTitle : HappText, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseVisualStyleBackColor = false, TabStop = true, AccessibleName = text, AccessibleRole = AccessibleRole.PushButton };
-            button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = accent ? Color.FromArgb(218, 218, 221) : Color.FromArgb(70, 70, 74); button.Click += (sender, args) => action(); ApplyRoundedCorners(button, 5); return button;
+            button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = accent ? Color.FromArgb(218, 218, 221) : Color.FromArgb(70, 70, 74);
+            if (action != null) button.Click += (sender, args) => action();
+            ApplyRoundedCorners(button, 5);
+            return button;
         }
 
         private void DrawHappServerSubItem(object sender, DrawListViewSubItemEventArgs args)

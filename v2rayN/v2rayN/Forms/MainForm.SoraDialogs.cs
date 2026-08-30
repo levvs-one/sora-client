@@ -40,8 +40,10 @@ namespace v2rayN.Forms
 
         private void ShowSoraImportDialog()
         {
-            using (var dialog = CreateSoraDialog(new Size(780, 500)))
+            using (var dialog = CreateSoraDialog(new Size(780, 560)))
             {
+                dialog.Name = "sora.subscription.add.dialog";
+                dialog.AccessibleName = "Добавить подписку";
                 var title = new Label
                 {
                     Location = new Point(32, 20),
@@ -127,6 +129,10 @@ namespace v2rayN.Forms
                 };
 
                 TextBox name = CreateSoraTextField(dialog, "Название — необязательно", 32, 316, 716);
+                name.Name = "sora.subscription.name";
+                name.AccessibleName = "Название подписки";
+                Button interval = CreateSoraIntervalSelector(dialog, 32, 390, 716, 720);
+                interval.Name = "sora.subscription.interval";
                 SoraImportAnalysis analysis = AnalyzeSoraImport(string.Empty);
                 Button import = null;
                 import = CreateHappButton("Добавить", () =>
@@ -137,7 +143,7 @@ namespace v2rayN.Forms
                         UI.ShowWarning(analysis.Detail);
                         return;
                     }
-                    SoraImportOutcome outcome = ImportIntoSora(input.Text, name.Text.Trim(), analysis, out int imported);
+                    SoraImportOutcome outcome = ImportIntoSora(input.Text, name.Text.Trim(), (int)interval.Tag, analysis, out int imported);
                     if (outcome == SoraImportOutcome.Duplicate)
                     {
                         UI.ShowWarning("Эта подписка уже добавлена.");
@@ -151,7 +157,7 @@ namespace v2rayN.Forms
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
                 }, true);
-                import.Location = new Point(624, 430);
+                import.Location = new Point(624, 492);
                 import.Size = new Size(124, 38);
                 import.TabStop = true;
                 import.AccessibleName = "Добавить распознанную конфигурацию";
@@ -167,6 +173,28 @@ namespace v2rayN.Forms
                     import.ForeColor = import.Enabled ? HappTitle : Color.FromArgb(142, 142, 148);
                 };
                 input.TextChanged += (sender, args) => refreshState();
+                bool automaticNameChange = false;
+                string lastAutomaticName = string.Empty;
+                input.TextChanged += (sender, args) =>
+                {
+                    SoraImportAnalysis current = AnalyzeSoraImport(input.Text);
+                    if (current.Kind != SoraImportKind.Subscription) return;
+                    string suggested = GetSoraSubscriptionHost(input.Text.Trim());
+                    if (name.Text.Length == 0 || name.Text == lastAutomaticName)
+                    {
+                        automaticNameChange = true;
+                        name.Text = suggested;
+                        automaticNameChange = false;
+                        lastAutomaticName = suggested;
+                    }
+                };
+                name.TextChanged += (sender, args) =>
+                {
+                    if (!automaticNameChange && name.Text != lastAutomaticName)
+                    {
+                        lastAutomaticName = string.Empty;
+                    }
+                };
 
                 dialog.Controls.AddRange(new Control[] { title, subtitle, close, inputCaption, inputShell, paste, detected, detail, import });
                 dialog.AcceptButton = import;
@@ -293,7 +321,7 @@ namespace v2rayN.Forms
             }
         }
 
-        private SoraImportOutcome ImportIntoSora(string value, string subscriptionName, SoraImportAnalysis analysis, out int imported)
+        private SoraImportOutcome ImportIntoSora(string value, string subscriptionName, int updateIntervalMinutes, SoraImportAnalysis analysis, out int imported)
         {
             imported = 0;
             string input = (value ?? string.Empty).Trim();
@@ -310,9 +338,14 @@ namespace v2rayN.Forms
                 SubItem item = config.subItem.FirstOrDefault(candidate => string.Equals(candidate.url, input, StringComparison.OrdinalIgnoreCase));
                 if (item != null)
                 {
+                    string automaticName = GetSoraSubscriptionHost(input);
                     item.remarks = !string.IsNullOrWhiteSpace(subscriptionName)
                         ? subscriptionName
-                        : new Uri(input).Host;
+                        : automaticName;
+                    item.nameCustomized = !string.IsNullOrWhiteSpace(subscriptionName)
+                        && !string.Equals(subscriptionName, automaticName, StringComparison.OrdinalIgnoreCase);
+                    item.updateIntervalMinutes = NormalizeSoraInterval(updateIntervalMinutes);
+                    item.enabled = true;
                 }
                 ConfigHandler.SaveSubItem(ref config);
                 StartSoraSubscriptionUpdate(item?.id);

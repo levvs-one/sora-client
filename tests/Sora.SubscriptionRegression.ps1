@@ -1,4 +1,5 @@
 param(
+    [Alias('SoraExe')]
     [string]$AssemblyPath = (Join-Path $PSScriptRoot '..\v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\Sora.exe'),
     [string]$SubscriptionPath = ''
 )
@@ -50,6 +51,23 @@ if ($invalidCount -ne 0) {
     throw "Malformed input must not be recognized, got $invalidCount"
 }
 
+$subItemType = $assembly.GetType('v2rayN.Mode.SubItem', $true)
+$subItem = [Activator]::CreateInstance($subItemType)
+$interval = [int]$subItemType.GetProperty('updateIntervalMinutes').GetValue($subItem)
+if ($interval -ne 720) {
+    throw "Expected the default subscription interval to be 720 minutes, got $interval"
+}
+foreach ($property in 'lastUpdateAttemptUtcTicks', 'lastUpdateSuccessUtcTicks', 'lastUpdateError', 'lastServerCount', 'nameCustomized') {
+    if ($null -eq $subItemType.GetProperty($property)) {
+        throw "Subscription lifecycle property is missing: $property"
+    }
+}
+
+$removeMethod = $methods | Where-Object { $_.Name -eq 'RemoveSubscription' } | Select-Object -First 1
+if ($null -eq $removeMethod) {
+    throw 'Atomic subscription removal method was not found'
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     $realContent = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $SubscriptionPath))
     $realCount = [int]$countMethod.Invoke($null, @($realContent))
@@ -59,4 +77,4 @@ if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     Write-Output "Supplied subscription: PASS ($realCount Xray-compatible profiles)"
 }
 
-Write-Output 'Sora subscription regression: PASS (array=1, unsupported=ignored, endpoint=example.com:443, malformed=0)'
+Write-Output 'Sora subscription regression: PASS (parser, lifecycle model, atomic removal)'

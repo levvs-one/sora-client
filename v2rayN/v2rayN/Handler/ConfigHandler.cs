@@ -1245,7 +1245,10 @@ namespace v2rayN.Handler
             {
                 DeleteReplacedSoraCustomFiles(lstOriSub, candidate.vmess);
                 config.vmess = candidate.vmess;
-                config.subItem = candidate.subItem;
+                if (Utils.IsNullOrEmpty(subid))
+                {
+                    config.subItem = candidate.subItem;
+                }
                 config.indexId = candidate.indexId;
                 string activeIndexId = config.indexId;
                 if (!config.vmess.Any(item => item.indexId == activeIndexId))
@@ -1361,6 +1364,30 @@ namespace v2rayN.Handler
 
             ToJsonFile(config);
             return 0;
+        }
+
+        public static int RemoveSubscription(ref Config config, string subscriptionId)
+        {
+            if (Utils.IsNullOrEmpty(subscriptionId) || config.subItem == null)
+            {
+                return -1;
+            }
+
+            for (int index = config.vmess.Count - 1; index >= 0; index--)
+            {
+                if (string.Equals(config.vmess[index].subid, subscriptionId, StringComparison.Ordinal))
+                {
+                    RemoveVmessItem(config, index);
+                }
+            }
+            int removed = config.subItem.RemoveAll(item => string.Equals(item.id, subscriptionId, StringComparison.Ordinal));
+            if (!config.vmess.Any(item => item.indexId == config.indexId))
+            {
+                config.indexId = config.vmess.FirstOrDefault()?.indexId ?? string.Empty;
+                Global.reloadV2ray = true;
+            }
+            ToJsonFile(config);
+            return removed > 0 ? 0 : -1;
         }
 
 

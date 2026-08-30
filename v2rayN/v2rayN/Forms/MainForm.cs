@@ -61,6 +61,12 @@ namespace v2rayN.Forms
             }
 
             ConfigHandler.InitBuiltinRouting(ref config);
+            if (!config.soraTrafficStatisticsConfigured)
+            {
+                config.enableStatistics = true;
+                config.soraTrafficStatisticsConfigured = true;
+                ConfigHandler.SaveConfig(ref config, false);
+            }
             MainFormHandler.Instance.BackupGuiNConfig(config, true);
             v2rayHandler = new V2rayHandler();
             v2rayHandler.ProcessEvent += v2rayHandler_ProcessEvent;
@@ -68,6 +74,7 @@ namespace v2rayN.Forms
             if (config.enableStatistics)
             {
                 statistics = new StatisticsHandler(config, UpdateStatisticsHandler);
+                statistics.UpdateUI = Visible;
             }
         }
 

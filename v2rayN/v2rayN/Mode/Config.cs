@@ -60,6 +60,8 @@ namespace v2rayN.Mode
             get; set;
         }
 
+        public bool soraTrafficStatisticsConfigured { get; set; }
+
         /// <summary>
         /// 去重时优先保留较旧（顶部）节点
         /// </summary>
@@ -720,6 +722,18 @@ namespace v2rayN.Mode
         public bool serverSettingsLocked { get; set; }
 
         public bool allowInsecure { get; set; }
+
+        public int updateIntervalMinutes { get; set; } = 720;
+
+        public long lastUpdateAttemptUtcTicks { get; set; }
+
+        public long lastUpdateSuccessUtcTicks { get; set; }
+
+        public string lastUpdateError { get; set; } = string.Empty;
+
+        public int lastServerCount { get; set; }
+
+        public bool nameCustomized { get; set; }
     }
 
     [Serializable]

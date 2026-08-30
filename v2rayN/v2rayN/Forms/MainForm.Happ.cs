@@ -39,6 +39,8 @@ namespace v2rayN.Forms
         private int _happHoveredServerIndex = -1;
         private HappListScrollRail _happServerScroll;
         private bool _happHidingServerScrollbars;
+        private Timer _soraPingAnimationTimer;
+        private int _soraPingAnimationFrame;
         private readonly Dictionary<string, SoraProtocolDisplay> _soraProtocolDisplayCache = new Dictionary<string, SoraProtocolDisplay>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Image> _soraCountryFlagCache = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
         private Image _soraDefaultCountryIcon;
@@ -454,14 +456,66 @@ namespace v2rayN.Forms
             else if (args.ColumnIndex == (int)EServerColName.testResult)
             {
                 string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? "—" : args.SubItem.Text;
-                bool measured = result.Any(char.IsDigit);
-                Color resultColor = measured || selected ? HappText : HappMuted;
-                using (var resultFont = new Font("Segoe UI Semibold", 8F))
+                if (string.Equals(result, "Проверка…", StringComparison.Ordinal))
                 {
-                    TextRenderer.DrawText(args.Graphics, result, resultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    EnsureSoraPingAnimation();
+                    DrawSoraPingAnimation(args.Graphics, args.Bounds);
+                }
+                else
+                {
+                    bool measured = result.Any(char.IsDigit);
+                    Color resultColor = measured || selected ? HappText : HappMuted;
+                    using (var resultFont = new Font("Segoe UI Semibold", 8F))
+                    {
+                        TextRenderer.DrawText(args.Graphics, result, resultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    }
                 }
             }
             using (var line = new Pen(Color.FromArgb(48, 48, 52))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+        }
+
+        private void EnsureSoraPingAnimation()
+        {
+            if (_soraPingAnimationTimer == null)
+            {
+                _soraPingAnimationTimer = new Timer(components) { Interval = 120 };
+                _soraPingAnimationTimer.Tick += (sender, args) =>
+                {
+                    if (lstVmess == null || !lstVmess.Any(item => string.Equals(item.testResult, "Проверка…", StringComparison.Ordinal)))
+                    {
+                        _soraPingAnimationTimer.Stop();
+                        _soraPingAnimationFrame = 0;
+                        return;
+                    }
+                    _soraPingAnimationFrame = (_soraPingAnimationFrame + 1) % 6;
+                    lvServers.Invalidate();
+                };
+            }
+            if (!_soraPingAnimationTimer.Enabled)
+            {
+                _soraPingAnimationTimer.Start();
+            }
+        }
+
+        private void DrawSoraPingAnimation(Graphics graphics, Rectangle bounds)
+        {
+            const int diameter = 4;
+            const int spacing = 7;
+            int left = bounds.Left + (bounds.Width - diameter * 3 - spacing * 2) / 2;
+            int baseline = bounds.Top + bounds.Height / 2;
+            int activeDot = _soraPingAnimationFrame / 2;
+            int lift = _soraPingAnimationFrame % 2 == 0 ? 3 : 2;
+            SmoothingMode previous = graphics.SmoothingMode;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            for (int index = 0; index < 3; index++)
+            {
+                int y = baseline - diameter / 2 - (index == activeDot ? lift : 0);
+                using (var brush = new SolidBrush(index == activeDot ? HappText : HappMuted))
+                {
+                    graphics.FillEllipse(brush, left + index * (diameter + spacing), y, diameter, diameter);
+                }
+            }
+            graphics.SmoothingMode = previous;
         }
 
         private static string GetSoraDisplayName(string remarks)

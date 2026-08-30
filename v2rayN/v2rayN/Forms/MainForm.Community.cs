@@ -884,7 +884,73 @@ namespace v2rayN.Forms
 
         private void ShowCommunityAbout()
         {
-            UI.Show("Sora " + SoraVersion + "\r\nКлиент подключений для Windows 7\r\n\r\nОткрытый исходный код · GPL-3.0\r\nНезависимый проект");
+            using (var dialog = CreateSoraDialog(new Size(500, 274)))
+            {
+                var close = CreateSoraIconButton("x", () => dialog.Close());
+                close.Location = new Point(444, 14);
+                close.AccessibleName = "Закрыть сведения о Sora";
+                close.DialogResult = DialogResult.Cancel;
+
+                var logo = new PictureBox
+                {
+                    Location = new Point(32, 24),
+                    Size = new Size(36, 36),
+                    Image = HappIconLoader.LoadSoraLogo(),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    BackColor = dialog.BackColor
+                };
+                var title = new Label
+                {
+                    Location = new Point(84, 18),
+                    Size = new Size(340, 28),
+                    Text = "О Sora",
+                    Font = new Font("Segoe UI Semibold", 15F),
+                    ForeColor = HappText,
+                    TextAlign = ContentAlignment.MiddleLeft
+                };
+                var version = new Label
+                {
+                    Location = new Point(85, 47),
+                    Size = new Size(340, 22),
+                    Text = "Версия " + SoraVersion + " · Windows 7 x86",
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = HappMuted
+                };
+                var description = new Label
+                {
+                    Location = new Point(32, 86),
+                    Size = new Size(436, 24),
+                    Text = "Клиент подключений для устаревших систем",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = HappText
+                };
+                var details = new Panel
+                {
+                    Location = new Point(32, 122),
+                    Size = new Size(436, 88),
+                    BackColor = HappSurface
+                };
+                ApplyRoundedSurface(details, 6, Color.FromArgb(76, 76, 80));
+                var licenseName = new Label { Location = new Point(16, 0), Size = new Size(160, 44), Text = "Лицензия", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var licenseValue = new Label { Location = new Point(196, 0), Size = new Size(224, 44), Text = "GPL-3.0", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
+                var divider = new Panel { Location = new Point(0, 43), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
+                var sourceName = new Label { Location = new Point(16, 44), Size = new Size(160, 44), Text = "Исходный код", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var sourceValue = new Label { Location = new Point(176, 44), Size = new Size(244, 44), Text = "github.com/levvs-one/sora-client", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 8.5F) };
+                details.Controls.AddRange(new Control[] { licenseName, licenseValue, divider, sourceName, sourceValue });
+
+                var footer = new Label
+                {
+                    Location = new Point(32, 228),
+                    Size = new Size(436, 20),
+                    Text = "Независимый проект сообщества",
+                    Font = new Font("Segoe UI", 8.5F),
+                    ForeColor = HappMuted
+                };
+
+                dialog.Controls.AddRange(new Control[] { logo, title, version, description, details, footer, close });
+                dialog.CancelButton = close;
+                dialog.ShowDialog(this);
+            }
         }
     }
 }

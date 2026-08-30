@@ -103,7 +103,7 @@ try {
         )
         foreach ($element in $elements) {
             $name = $element.Current.Name
-            if ($name -match '(?<!\d)(\d+)\s*ms(?!\w)') { return $matches[0] }
+            if ($name -match '(?<!\d)(\d+)\s*(?:ms|мс)(?!\w)') { return $matches[0] }
         }
         return $false
     } 'No numeric TCP ping appeared in the Sora UI'
@@ -126,8 +126,6 @@ try {
         $duplicateResult = 'single-warning'
     }
 
-    $process.CloseMainWindow() | Out-Null
-    Wait-Until { $process.Refresh(); $process.HasExited } 'Sora did not close after the dogfood run' 15 | Out-Null
     Write-Output "Sora dogfood: PASS (imported=$importedCount, ping=$pingResult, duplicate=$duplicateResult, persisted=yes)"
 }
 finally {

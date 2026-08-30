@@ -153,17 +153,24 @@ namespace v2rayN.Forms
 
         private Control BuildHappNavigation()
         {
-            var nav = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8, 10, 8, 8) };
+            var nav = new Panel { Dock = DockStyle.Fill, BackColor = HappNav };
+            var primary = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 298, BackColor = HappNav, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8, 10, 8, 0) };
             _happSelectableNavButtons = new List<Button>();
-            nav.Controls.Add(CreateHappNavButton("arrow-right", () => HideForm(), false, false));
-            nav.Controls.Add(CreateHappNavButton("plus-square", ShowHappAddConfiguration, false, false));
-            nav.Controls.Add(CreateHappNavButton("globe", () => ShowHappPage(_happServerPage), true));
-            nav.Controls.Add(CreateHappNavButton("gear", () => ShowHappPage(BuildHappSettingsPage())));
-            nav.Controls.Add(CreateHappNavButton("chart-line-up", () => ShowHappPage(BuildHappStatisticsPage())));
-            nav.Controls.Add(CreateHappNavButton("terminal-window", () => ShowHappPage(BuildHappLogsPage())));
-            var spacer = new Panel { Width = 52, Height = 250, Margin = Padding.Empty };
-            nav.Controls.Add(spacer);
-            nav.Controls.Add(CreateHappNavButton("info", ShowCommunityAbout, false, false));
+            primary.Controls.Add(CreateHappNavButton("arrow-right", () => HideForm(), false, false));
+            primary.Controls.Add(CreateHappNavButton("plus-square", ShowHappAddConfiguration, false, false));
+            primary.Controls.Add(CreateHappNavButton("globe", () => ShowHappPage(_happServerPage), true));
+            primary.Controls.Add(CreateHappNavButton("gear", () => ShowHappPage(BuildHappSettingsPage())));
+            primary.Controls.Add(CreateHappNavButton("chart-line-up", () => ShowHappPage(BuildHappStatisticsPage())));
+            primary.Controls.Add(CreateHappNavButton("terminal-window", () => ShowHappPage(BuildHappLogsPage())));
+
+            var infoHost = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = HappNav, Padding = new Padding(8, 8, 4, 8) };
+            var info = CreateHappNavButton("info", ShowCommunityAbout, false, false);
+            info.Dock = DockStyle.Left;
+            info.Margin = Padding.Empty;
+            infoHost.Controls.Add(info);
+
+            nav.Controls.Add(primary);
+            nav.Controls.Add(infoHost);
             return nav;
         }
 

@@ -123,24 +123,24 @@ namespace v2rayN.Handler
             try
             {
                 string msg = string.Empty;
-
-                pid = _v2rayHandler.LoadV2rayConfigString(_config, _selecteds);
-                if (pid < 0)
+                List<ServerTestItem> regular = _selecteds.Where(item => item.configType != EConfigType.Custom).ToList();
+                if (regular.Count > 0)
                 {
-                    _updateFunc(_selecteds[0].indexId, ResUI.OperationFailed);
-                    return;
+                    pid = _v2rayHandler.LoadV2rayConfigString(_config, regular);
+                    if (pid < 0)
+                    {
+                        foreach (ServerTestItem item in regular)
+                        {
+                            _updateFunc(item.indexId, "Нет ответа");
+                        }
+                    }
                 }
 
                 DownloadHandle downloadHandle = new DownloadHandle();
-                //Thread.Sleep(5000);
                 List<Task> tasks = new List<Task>();
-                foreach (var it in _selecteds)
+                foreach (var it in regular)
                 {
-                    if (!it.allowTest)
-                    {
-                        continue;
-                    }
-                    if (it.configType == EConfigType.Custom)
+                    if (!it.allowTest || pid < 0)
                     {
                         continue;
                     }
@@ -151,7 +151,7 @@ namespace v2rayN.Handler
                             WebProxy webProxy = new WebProxy(Global.Loopback, it.port);
                             int responseTime = -1;
                             string status = downloadHandle.GetRealPingTime(_config.constItem.speedPingTestUrl, webProxy, out responseTime);
-                            string output = Utils.IsNullOrEmpty(status) ? FormatOut(responseTime, "ms") : status;
+                            string output = Utils.IsNullOrEmpty(status) ? FormatOut(responseTime, "мс") : "Нет ответа";
 
                             _config.GetVmessItem(it.indexId)?.SetTestResult(output);
                             _updateFunc(it.indexId, output);
@@ -164,6 +164,11 @@ namespace v2rayN.Handler
                     //Thread.Sleep(100);
                 }
                 Task.WaitAll(tasks.ToArray());
+
+                foreach (ServerTestItem item in _selecteds.Where(selected => selected.configType == EConfigType.Custom))
+                {
+                    RunCustomRealPing(item, downloadHandle);
+                }
             }
             catch (Exception ex)
             {
@@ -173,6 +178,87 @@ namespace v2rayN.Handler
             {
                 if (pid > 0) _v2rayHandler.V2rayStopPid(pid);
             }
+        }
+
+        private void RunCustomRealPing(ServerTestItem testItem, DownloadHandle downloadHandle)
+        {
+            int pid = -1;
+            try
+            {
+                _updateFunc(testItem.indexId, "Проверка…");
+                int localPort = FindAvailableLocalPort();
+                VmessItem profile = _config.GetVmessItem(testItem.indexId);
+                if (profile == null || localPort < 1)
+                {
+                    _updateFunc(testItem.indexId, "Нет ответа");
+                    return;
+                }
+
+                pid = _v2rayHandler.LoadCustomSpeedtestConfig(profile, localPort);
+                if (pid < 0 || !WaitForLocalPort(localPort, TimeSpan.FromSeconds(10)))
+                {
+                    _updateFunc(testItem.indexId, "Нет ответа");
+                    return;
+                }
+
+                var proxy = new WebProxy(Global.Loopback, localPort);
+                string status = downloadHandle.GetRealPingTime(_config.constItem.speedPingTestUrl, proxy, out int responseTime);
+                string output = Utils.IsNullOrEmpty(status) ? FormatOut(responseTime, "мс") : "Нет ответа";
+                profile.SetTestResult(output);
+                _updateFunc(testItem.indexId, output);
+            }
+            catch (Exception exception)
+            {
+                Utils.SaveLog(exception.Message, exception);
+                _updateFunc(testItem.indexId, "Нет ответа");
+            }
+            finally
+            {
+                if (pid > 0)
+                {
+                    _v2rayHandler.V2rayStopPid(pid);
+                }
+            }
+        }
+
+        private static int FindAvailableLocalPort()
+        {
+            try
+            {
+                var listener = new TcpListener(IPAddress.Loopback, 0);
+                listener.Start();
+                int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+                listener.Stop();
+                return port;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        private static bool WaitForLocalPort(int port, TimeSpan timeout)
+        {
+            DateTime deadline = DateTime.UtcNow.Add(timeout);
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    using (var client = new TcpClient())
+                    {
+                        Task connection = client.ConnectAsync(IPAddress.Loopback, port);
+                        if (connection.Wait(300) && client.Connected)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch
+                {
+                }
+                Thread.Sleep(150);
+            }
+            return false;
         }
 
         private async Task RunSpeedTestAsync()

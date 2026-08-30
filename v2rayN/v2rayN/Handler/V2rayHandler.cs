@@ -28,6 +28,8 @@ namespace v2rayN.Handler
         private int processId = 0;
         private Process _process;
 
+        public bool IsRunning => _process != null && !_process.HasExited;
+
         public V2rayHandler()
         {
         }
@@ -100,6 +102,39 @@ namespace v2rayN.Handler
                 // start with -config
             }
             return pid;
+        }
+
+        public int LoadCustomSpeedtestConfig(VmessItem item, int localPort)
+        {
+            try
+            {
+                string path = File.Exists(item.address) ? item.address : Utils.GetConfigPath(item.address);
+                if (!File.Exists(path))
+                {
+                    return -1;
+                }
+                V2rayConfig custom = Utils.FromJson<V2rayConfig>(File.ReadAllText(path));
+                if (custom?.outbounds == null || custom.outbounds.Count == 0)
+                {
+                    return -1;
+                }
+                custom.inbounds = new List<Inbounds>
+                {
+                    new Inbounds
+                    {
+                        listen = Global.Loopback,
+                        port = localPort,
+                        protocol = Global.InboundHttp,
+                        tag = Global.InboundHttp + localPort
+                    }
+                };
+                return V2rayStartNew(Utils.ToJson(custom));
+            }
+            catch (Exception exception)
+            {
+                Utils.SaveLog(exception.Message, exception);
+                return -1;
+            }
         }
 
         /// <summary>

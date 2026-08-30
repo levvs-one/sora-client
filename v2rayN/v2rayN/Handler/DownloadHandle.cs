@@ -249,7 +249,7 @@ namespace v2rayN.Handler
                     msg = myHttpWebResponse.StatusDescription;
                 }
                 timer.Stop();
-                responseTime = timer.Elapsed.Milliseconds;
+                responseTime = Math.Max(1, (int)Math.Round(timer.Elapsed.TotalMilliseconds));
 
                 myHttpWebResponse.Close();
             }

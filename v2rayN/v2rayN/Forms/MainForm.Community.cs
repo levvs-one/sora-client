@@ -628,7 +628,8 @@ namespace v2rayN.Forms
         private void UpdateCommunityConnectionState(ESysProxyType type)
         {
             bool tunConnected = _tunModeController != null && _tunModeController.IsRunning;
-            bool connected = type == ESysProxyType.ForcedChange && config != null && config.GetVmessItem(config.indexId) != null;
+            bool connected = type == ESysProxyType.ForcedChange && config != null &&
+                config.GetVmessItem(config.indexId) != null && v2rayHandler != null && v2rayHandler.IsRunning;
             if (_happConnection != null)
             {
                 _happConnection.State = connected || tunConnected ? SoraConnectionState.Connected : SoraConnectionState.Disconnected;
@@ -833,7 +834,7 @@ namespace v2rayN.Forms
                 return;
             }
             menuSelectAll_Click(this, EventArgs.Empty);
-            Speedtest(ESpeedActionType.Tcping);
+            Speedtest(ESpeedActionType.Realping);
         }
 
         private void SelectBestMeasuredServer()

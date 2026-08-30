@@ -336,6 +336,8 @@ namespace v2rayN.Handler
                         StandardErrorEncoding = coreInfo.redirectInfo ? Encoding.UTF8 : null,
                     }
                 };
+                var startupErrors = new StringBuilder();
+                var startupErrorSync = new object();
                 if (coreInfo.redirectInfo)
                 {
                     p.OutputDataReceived += (sender, e) =>
@@ -346,17 +348,28 @@ namespace v2rayN.Handler
                             ShowMsg(false, msg);
                         }
                     };
+                    p.ErrorDataReceived += (sender, e) =>
+                    {
+                        if (!String.IsNullOrEmpty(e.Data))
+                        {
+                            lock (startupErrorSync) startupErrors.AppendLine(e.Data);
+                            ShowMsg(false, e.Data + Environment.NewLine);
+                        }
+                    };
                 }
                 p.Start();
                 if (coreInfo.redirectInfo)
                 {
                     p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
                 }
                 _process = p;
 
                 if (p.WaitForExit(1000))
                 {
-                    string error = coreInfo.redirectInfo ? p.StandardError.ReadToEnd() : string.Empty;
+                    p.WaitForExit();
+                    string error;
+                    lock (startupErrorSync) error = startupErrors.ToString();
                     throw new Exception(string.IsNullOrWhiteSpace(error)
                         ? $"Ядро завершилось сразу после запуска (код {p.ExitCode}). Проверьте вкладку «Ядро»."
                         : error.Trim());
@@ -399,6 +412,8 @@ namespace v2rayN.Handler
                         StandardErrorEncoding = Encoding.UTF8
                     }
                 };
+                var startupErrors = new StringBuilder();
+                var startupErrorSync = new object();
                 p.OutputDataReceived += (sender, e) =>
                 {
                     if (!String.IsNullOrEmpty(e.Data))
@@ -407,15 +422,26 @@ namespace v2rayN.Handler
                         ShowMsg(false, msg);
                     }
                 };
+                p.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!String.IsNullOrEmpty(e.Data))
+                    {
+                        lock (startupErrorSync) startupErrors.AppendLine(e.Data);
+                        ShowMsg(false, e.Data + Environment.NewLine);
+                    }
+                };
                 p.Start();
                 p.BeginOutputReadLine();
+                p.BeginErrorReadLine();
 
                 p.StandardInput.Write(configStr);
                 p.StandardInput.Close();
 
                 if (p.WaitForExit(1000))
                 {
-                    string error = p.StandardError.ReadToEnd();
+                    p.WaitForExit();
+                    string error;
+                    lock (startupErrorSync) error = startupErrors.ToString();
                     throw new Exception(string.IsNullOrWhiteSpace(error)
                         ? $"Ядро проверки завершилось сразу после запуска (код {p.ExitCode})."
                         : error.Trim());
@@ -441,7 +467,12 @@ namespace v2rayN.Handler
         private void ShowMsg(bool updateToTrayTooltip, string msg)
         {
             string text = msg ?? string.Empty;
-            ProcessEvent?.Invoke(updateToTrayTooltip, text.StartsWith("[CORE]", StringComparison.Ordinal) ? text : "[CORE] " + text);
+            string tagged = text.StartsWith("[CORE]", StringComparison.Ordinal) ? text : "[CORE] " + text;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                Utils.SaveLog(tagged.TrimEnd());
+            }
+            ProcessEvent?.Invoke(updateToTrayTooltip, tagged);
         }
 
         private void KillProcess(Process p)

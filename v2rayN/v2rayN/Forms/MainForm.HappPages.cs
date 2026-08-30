@@ -896,8 +896,8 @@ namespace v2rayN.Forms
                 : "Ещё не обновлялась";
             string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
             _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + "  ·  " + state;
-            _soraSubscriptionSchedule.Text = subscription.enabled ? "Автообновление  ·  " + schedule : "Автообновление выключено";
+            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + " — " + state;
+            _soraSubscriptionSchedule.Text = subscription.enabled ? "Автообновление: " + schedule : "Автообновление выключено";
             ulong used = (ulong)Math.Max(0L, subscription.subscriptionUploadBytes) + (ulong)Math.Max(0L, subscription.subscriptionDownloadBytes);
             ulong total = (ulong)Math.Max(0L, subscription.subscriptionTotalBytes);
             bool hasQuota = total > 0;
@@ -907,7 +907,7 @@ namespace v2rayN.Forms
                 : 0;
             string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
             _soraSubscriptionQuota.Text = hasQuota
-                ? Utils.HumanFy(used) + " / " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "   ·   до " + expiry)
+                ? Utils.HumanFy(used) + " из " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "   до " + expiry)
                 : "Источник: " + GetSoraSubscriptionHost(subscription.url);
             _soraSubscriptionAnnouncement.MarkdownText = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
                 ? "_" + SoraText.Translate("Описание не добавлено.") + "_"

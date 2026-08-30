@@ -17,6 +17,7 @@ namespace v2rayN.Handler
 {
     class UpdateHandle
     {
+        private const int MaximumSubscriptionAnnouncementLength = 8192;
         private static readonly SemaphoreSlim SubscriptionUpdateLock = new SemaphoreSlim(1, 1);
         Action<bool, string> _updateFunc;
         private Config _config;
@@ -63,10 +64,11 @@ namespace v2rayN.Handler
             {
                 return string.Empty;
             }
-            text = text.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
-            text = Regex.Replace(text, @"[ \t]+", " ");
-            text = Regex.Replace(text, @"\n{3,}", "\n\n");
-            return text.Length > 600 ? text.Substring(0, 600) : text;
+            text = text.Replace("\r\n", "\n").Replace('\r', '\n').Trim('\n');
+            if (text.Length <= MaximumSubscriptionAnnouncementLength) return text;
+            int length = MaximumSubscriptionAnnouncementLength;
+            if (char.IsHighSurrogate(text[length - 1])) length--;
+            return text.Substring(0, length) + "\n\n…";
         }
 
         internal static bool ShouldApplySoraProfileTitle(SubItem item)

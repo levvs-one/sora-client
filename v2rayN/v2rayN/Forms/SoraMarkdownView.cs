@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using Markdig;
@@ -14,6 +15,7 @@ namespace v2rayN.Forms
 {
     internal sealed class SoraMarkdownView : RichTextBox
     {
+        private const int EmSetRect = 0x00B3;
         private const int MaximumMarkdownLength = 32768;
         private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
             .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
@@ -21,6 +23,20 @@ namespace v2rayN.Forms
 
         private string _markdownText = string.Empty;
         private bool _compact;
+        private bool _settingContentRectangle;
+        private int _renderedContentHeight;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeRectangle
+        {
+            internal int Left;
+            internal int Top;
+            internal int Right;
+            internal int Bottom;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr parameter, ref NativeRectangle rectangle);
 
         internal SoraMarkdownView()
         {
@@ -34,6 +50,7 @@ namespace v2rayN.Forms
             ShortcutsEnabled = true;
             TabStop = true;
             LinkClicked += OpenSafeLink;
+            ContentsResized += HandleContentsResized;
         }
 
         internal bool Compact
@@ -44,6 +61,7 @@ namespace v2rayN.Forms
                 if (_compact == value) return;
                 _compact = value;
                 RenderMarkdown();
+                ApplyVerticalContentAlignment();
             }
         }
 
@@ -87,11 +105,58 @@ namespace v2rayN.Forms
             {
                 Rtf = RenderToRtf(_markdownText, _compact);
                 Select(0, 0);
+                ApplyVerticalContentAlignment();
             }
             catch (Exception exception)
             {
                 Text = _markdownText;
                 Utils.SaveLog("Не удалось отобразить Markdown-описание подписки.", exception);
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs args)
+        {
+            base.OnHandleCreated(args);
+            ApplyVerticalContentAlignment();
+        }
+
+        protected override void OnResize(EventArgs args)
+        {
+            base.OnResize(args);
+            ApplyVerticalContentAlignment();
+        }
+
+        private void HandleContentsResized(object sender, ContentsResizedEventArgs args)
+        {
+            _renderedContentHeight = Math.Max(Font.Height, args.NewRectangle.Height);
+            ApplyVerticalContentAlignment();
+        }
+
+        private void ApplyVerticalContentAlignment()
+        {
+            if (!IsHandleCreated || _settingContentRectangle || ClientSize.Width <= 0 || ClientSize.Height <= 0)
+            {
+                return;
+            }
+
+            int top = _compact && _renderedContentHeight > 0
+                ? Math.Max(0, (ClientSize.Height - Math.Min(ClientSize.Height, _renderedContentHeight)) / 2)
+                : 0;
+            var rectangle = new NativeRectangle
+            {
+                Left = 0,
+                Top = top,
+                Right = ClientSize.Width,
+                Bottom = ClientSize.Height
+            };
+            try
+            {
+                _settingContentRectangle = true;
+                SendMessage(Handle, EmSetRect, IntPtr.Zero, ref rectangle);
+            }
+            finally
+            {
+                _settingContentRectangle = false;
             }
         }
 

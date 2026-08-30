@@ -78,7 +78,7 @@ if ($decodedTitle -ne 'Dr. Watson VPN') {
     throw "Profile-Title decoding failed: $decodedTitle"
 }
 $decodeAnnouncement = $updateType.GetMethod('DecodeSoraAnnouncement', [System.Reflection.BindingFlags]'NonPublic, Static')
-$announcementSource = "Subscription description`nChannel: @sora_client"
+$announcementSource = "**Subscription description**`n`n    code  spacing`nChannel: @sora_client"
 $announcementHeader = 'base64:' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($announcementSource))
 $decodedAnnouncement = [string]$decodeAnnouncement.Invoke($null, @($announcementHeader))
 if ($decodedAnnouncement -ne $announcementSource) {

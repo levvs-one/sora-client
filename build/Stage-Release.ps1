@@ -99,6 +99,7 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'v2rayN\v2rayN\Assets\Phosphor\LI
 
 $requiredFiles = @(
     'Sora.exe',
+    'Markdig.dll',
     'xray.exe',
     'sing-box.exe',
     'tun2proxy\tun2proxy-bin.exe',
@@ -111,6 +112,7 @@ $requiredFiles = @(
     'NOTICE.md',
     'licenses\nuget\ATTRIBUTIONS.md',
     'licenses\nuget\Apache-2.0.txt',
+    'licenses\nuget\BSD-2-Clause.txt',
     'licenses\nuget\BSD-3-Clause.txt',
     'licenses\nuget\MIT.txt',
     'licenses\nuget\NOTICE.txt',

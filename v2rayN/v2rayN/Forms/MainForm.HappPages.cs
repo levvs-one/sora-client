@@ -776,6 +776,43 @@ namespace v2rayN.Forms
             else ShowSoraSubscriptionEditor(subscription);
         }
 
+        private void ShowSoraPrimarySubscriptionAnnouncement()
+        {
+            SubItem subscription = GetSoraPrimarySubscription();
+            if (subscription == null) return;
+            using (var dialog = CreateSoraDialog(new Size(760, 548)))
+            {
+                dialog.Name = "sora.subscription.announcement.dialog";
+                dialog.AccessibleName = "Описание подписки";
+                var title = new Label { Location = new Point(32, 20), Size = new Size(620, 30), Text = "Описание подписки", Font = new Font("Segoe UI Semibold", 14F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft };
+                var subtitle = new Label { Location = new Point(32, 52), Size = new Size(620, 20), Text = GetSoraSubscriptionTitle(subscription), Font = new Font("Segoe UI", 8.5F), ForeColor = HappMuted, AutoEllipsis = true };
+                var close = CreateSoraIconButton("x", () => dialog.Close());
+                close.Location = new Point(704, 14);
+                close.AccessibleName = "Закрыть";
+                close.DialogResult = DialogResult.Cancel;
+                var markdown = new SoraMarkdownView
+                {
+                    Location = new Point(32, 88),
+                    Size = new Size(696, 388),
+                    BackColor = Color.FromArgb(31, 31, 33),
+                    ScrollBars = RichTextBoxScrollBars.Vertical,
+                    AccessibleName = "Текст описания подписки",
+                    MarkdownText = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
+                        ? "_" + SoraText.Translate("Описание не добавлено.") + "_"
+                        : subscription.subscriptionAnnouncement
+                };
+                var done = CreateHappButton("Закрыть", () => dialog.Close(), true);
+                done.Size = new Size(128, 36);
+                done.Location = new Point(600, 496);
+                done.DialogResult = DialogResult.OK;
+                dialog.Controls.AddRange(new Control[] { title, subtitle, close, markdown, done });
+                dialog.AcceptButton = done;
+                dialog.CancelButton = close;
+                SoraText.Apply(dialog);
+                dialog.ShowDialog(this);
+            }
+        }
+
         private void UpdateSoraPrimarySubscription()
         {
             SubItem subscription = GetSoraPrimarySubscription();
@@ -814,6 +851,8 @@ namespace v2rayN.Forms
             }
             else
             {
+                menu.Items.Add("Описание подписки", HappIconLoader.Load("info", HappText), (sender, args) => ShowSoraPrimarySubscriptionAnnouncement());
+                menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Настройки", HappIconLoader.Load("gear", HappText), (sender, args) => ShowSoraSubscriptionEditor(primary));
                 menu.Items.Add("Обновить", HappIconLoader.Load("arrows-clockwise", HappText), (sender, args) => StartSoraSubscriptionUpdate(primary.id));
                 if (config.subItem.Count > 1)
@@ -840,7 +879,7 @@ namespace v2rayN.Forms
                 _soraSubscriptionTitle.Text = SoraText.Translate("Добавить подписку");
                 _soraSubscriptionDetail.Text = SoraText.Translate("Вставьте ссылку — формат определится автоматически");
                 _soraSubscriptionSchedule.Text = string.Empty;
-                _soraSubscriptionAnnouncement.Text = SoraText.Translate("Описание появится после первого обновления подписки.");
+                _soraSubscriptionAnnouncement.MarkdownText = SoraText.Translate("Описание появится после первого обновления подписки.");
                 _soraSubscriptionRefresh.Enabled = false;
                 _soraSubscriptionPing.Enabled = false;
                 _soraSubscriptionQuotaTrack.Visible = false;
@@ -857,8 +896,8 @@ namespace v2rayN.Forms
                 : "Ещё не обновлялась";
             string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
             _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + "    " + state;
-            _soraSubscriptionSchedule.Text = subscription.enabled ? "Автообновление " + schedule : "Автообновление выключено";
+            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + "  ·  " + state;
+            _soraSubscriptionSchedule.Text = subscription.enabled ? "Автообновление  ·  " + schedule : "Автообновление выключено";
             ulong used = (ulong)Math.Max(0L, subscription.subscriptionUploadBytes) + (ulong)Math.Max(0L, subscription.subscriptionDownloadBytes);
             ulong total = (ulong)Math.Max(0L, subscription.subscriptionTotalBytes);
             bool hasQuota = total > 0;
@@ -868,10 +907,10 @@ namespace v2rayN.Forms
                 : 0;
             string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
             _soraSubscriptionQuota.Text = hasQuota
-                ? "Использовано " + Utils.HumanFy(used) + " из " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "    Действует до " + expiry)
+                ? Utils.HumanFy(used) + " / " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "   ·   до " + expiry)
                 : "Источник: " + GetSoraSubscriptionHost(subscription.url);
-            _soraSubscriptionAnnouncement.Text = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
-                ? "Описание подписки не предоставлено."
+            _soraSubscriptionAnnouncement.MarkdownText = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
+                ? "_" + SoraText.Translate("Описание не добавлено.") + "_"
                 : subscription.subscriptionAnnouncement;
             _soraSubscriptionRefresh.Enabled = !updating;
             _soraSubscriptionPing.Enabled = serverCount > 0 && !updating;

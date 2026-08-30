@@ -112,6 +112,23 @@ if ($null -ne $mainFormType.GetField('_soraTrafficTotal', $instanceBinding)) {
     throw 'The layered traffic card must not return to the connection pane'
 }
 
+$markdownType = $assembly.GetType('v2rayN.Forms.SoraMarkdownView', $true)
+$renderMarkdown = $markdownType.GetMethod('RenderToRtf', [System.Reflection.BindingFlags]'NonPublic, Static')
+if ($null -eq $renderMarkdown) {
+    throw 'The native Markdown renderer is missing'
+}
+$markdownSample = '**Bold** and ~~removed~~ [safe](https://example.com) [unsafe](javascript:alert(1)) <script>bad()</script>'
+$renderedMarkdown = [string]$renderMarkdown.Invoke($null, @($markdownSample, $false))
+if (-not $renderedMarkdown.Contains('\b ') -or -not $renderedMarkdown.Contains('\strike ')) {
+    throw 'Markdown emphasis was not rendered'
+}
+if ($renderedMarkdown -notmatch 'HYPERLINK.*https://example\.com') {
+    throw 'HTTPS Markdown links were not rendered'
+}
+if ($renderedMarkdown -match 'javascript:' -or $renderedMarkdown -match '<script>') {
+    throw 'Unsafe Markdown content reached the rich-text output'
+}
+
 $soraTextType = $assembly.GetType('v2rayN.Tool.SoraText', $true)
 $resourceField = $soraTextType.GetField('Standard', [System.Reflection.BindingFlags]'NonPublic, Static')
 $preReformField = $soraTextType.GetField('PreReform', [System.Reflection.BindingFlags]'NonPublic, Static')
@@ -168,4 +185,4 @@ if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     Write-Output "Supplied subscription: PASS ($realCount Xray-compatible profiles)"
 }
 
-Write-Output 'Sora regression: PASS (subscription, local Xray ports, localization resources, inline management)'
+Write-Output 'Sora regression: PASS (subscription, local Xray ports, localization, Markdown, inline management)'

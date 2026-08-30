@@ -7,6 +7,7 @@
 | Google.Protobuf | 3.21.5 | BSD-3-Clause | Google LLC / Protocol Buffers |
 | Grpc.Core, Grpc.Core.Api | 2.46.3 | Apache-2.0 | The gRPC Authors |
 | log4net | 3.4.0 | Apache-2.0 | Apache Software Foundation |
+| Markdig | 1.3.2 | BSD-2-Clause | Copyright © Alexandre Mutel |
 | Newtonsoft.Json | 13.0.1 | MIT | Copyright © 2007 James Newton-King |
 | NHotkey, NHotkey.WindowsForms | 2.1.0 | Apache-2.0 | Thomas Levesque and contributors |
 | Polly.Core | 8.7.0 | BSD-3-Clause | App vNext / Polly contributors |
@@ -28,4 +29,4 @@
 
 `Grpc.Tools` и пакеты reference assemblies используются только при сборке и не входят в бинарный дистрибутив.
 
-Исходные проекты: https://github.com/protocolbuffers/protobuf, https://github.com/grpc/grpc, https://logging.apache.org/log4net/, https://github.com/JamesNK/Newtonsoft.Json, https://github.com/thomaslevesque/NHotkey, https://github.com/App-vNext/Polly, https://github.com/micjahn/ZXing.Net и https://github.com/dotnet/runtime.
+Исходные проекты: https://github.com/protocolbuffers/protobuf, https://github.com/grpc/grpc, https://logging.apache.org/log4net/, https://github.com/xoofx/markdig, https://github.com/JamesNK/Newtonsoft.Json, https://github.com/thomaslevesque/NHotkey, https://github.com/App-vNext/Polly, https://github.com/micjahn/ZXing.Net и https://github.com/dotnet/runtime.

@@ -11,9 +11,9 @@
 
 <p align="center">
   <a href="https://github.com/levvs-one/sora-client/releases/download/v0.2.2/Sora-0.2.2-Win7-x86-Setup.exe"><strong>Скачать Sora 0.2.2</strong></a>
-  ·
+  <br>
   <a href="https://github.com/levvs-one/sora-client/releases/download/v0.2.2/Sora-0.2.2-SHA256SUMS.txt">SHA-256</a>
-  ·
+  &nbsp;&nbsp;
   <a href="https://github.com/levvs-one/sora-client/releases/tag/v0.2.2">Что изменилось</a>
 </p>
 
@@ -92,7 +92,11 @@ dotnet build .\v2rayN\v2rayN\v2rayN.csproj --configuration Release --runtime win
 
 ## Проект
 
-[Все релизы](https://github.com/levvs-one/sora-client/releases) · [История изменений](CHANGELOG.md) · [Предложить улучшение](https://github.com/levvs-one/sora-client/issues/new?template=02_feature_request.yml) · [Сообщить об ошибке](https://github.com/levvs-one/sora-client/issues/new?template=01_bug_report.yml) · [Участие в разработке](CONTRIBUTING.md)
+- [Все релизы](https://github.com/levvs-one/sora-client/releases)
+- [История изменений](CHANGELOG.md)
+- [Предложить улучшение](https://github.com/levvs-one/sora-client/issues/new?template=02_feature_request.yml)
+- [Сообщить об ошибке](https://github.com/levvs-one/sora-client/issues/new?template=01_bug_report.yml)
+- [Участие в разработке](CONTRIBUTING.md)
 
 ## Происхождение и лицензия
 

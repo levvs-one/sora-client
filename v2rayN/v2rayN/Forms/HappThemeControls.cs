@@ -468,7 +468,6 @@ namespace v2rayN.Forms
 
     internal sealed class HappListScrollRail : Control
     {
-        private const int SbVert = 1;
         private const int LvmGetCountPerPage = 0x1028;
         private readonly ListView _target;
         private readonly Color _thumbColor;
@@ -477,9 +476,6 @@ namespace v2rayN.Forms
         private bool _hovered;
         private int _dragOffset;
         private float _presence;
-
-        [DllImport("user32.dll")]
-        private static extern bool ShowScrollBar(IntPtr handle, int bar, bool show);
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
@@ -508,10 +504,6 @@ namespace v2rayN.Forms
             if (IsDisposed || _target.IsDisposed)
             {
                 return;
-            }
-            if (_target.IsHandleCreated)
-            {
-                ShowScrollBar(_target.Handle, SbVert, false);
             }
             bool canScroll = GetMaximumTopIndex() > 0;
             if (Visible != canScroll)

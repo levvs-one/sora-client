@@ -38,6 +38,7 @@ namespace v2rayN.Forms
         private bool _happReportShortcutWired;
         private int _happHoveredServerIndex = -1;
         private HappListScrollRail _happServerScroll;
+        private bool _happHidingServerScrollbars;
         private readonly Dictionary<string, SoraProtocolDisplay> _soraProtocolDisplayCache = new Dictionary<string, SoraProtocolDisplay>(StringComparer.OrdinalIgnoreCase);
 
         [DllImport("user32.dll")]
@@ -277,11 +278,19 @@ namespace v2rayN.Forms
 
         private void HideSoraServerScrollbars()
         {
-            if (!lvServers.IsHandleCreated)
+            if (!lvServers.IsHandleCreated || _happHidingServerScrollbars)
             {
                 return;
             }
-            ShowScrollBar(lvServers.Handle, 3, false);
+            _happHidingServerScrollbars = true;
+            try
+            {
+                ShowScrollBar(lvServers.Handle, 3, false);
+            }
+            finally
+            {
+                _happHidingServerScrollbars = false;
+            }
             _happServerScroll?.RefreshState();
         }
 

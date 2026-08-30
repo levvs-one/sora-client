@@ -19,7 +19,6 @@ namespace v2rayN.Forms
         private readonly HashSet<string> _soraSubscriptionUpdates = new HashSet<string>();
         private Control _happSubscriptionsPage;
         private Control _happLogsPage;
-        private string _lastSoraImportedSubscriptionId;
 
         private Control BuildHappSettingsPage()
         {
@@ -445,12 +444,7 @@ namespace v2rayN.Forms
 
         private void ShowHappAddConfiguration()
         {
-            _lastSoraImportedSubscriptionId = null;
             ShowSoraImportDialog();
-            if (!string.IsNullOrWhiteSpace(_lastSoraImportedSubscriptionId))
-            {
-                ShowHappPage(BuildHappSubscriptionsPage());
-            }
         }
 
         private void StartSoraSubscriptionUpdate(string subscriptionId)

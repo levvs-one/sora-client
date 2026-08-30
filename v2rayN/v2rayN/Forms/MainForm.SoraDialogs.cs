@@ -22,6 +22,13 @@ namespace v2rayN.Forms
             Unsupported
         }
 
+        private enum SoraImportOutcome
+        {
+            Imported,
+            Duplicate,
+            Failed
+        }
+
         private sealed class SoraImportAnalysis
         {
             internal SoraImportKind Kind { get; set; }
@@ -130,8 +137,13 @@ namespace v2rayN.Forms
                         UI.ShowWarning(analysis.Detail);
                         return;
                     }
-                    int imported = ImportIntoSora(input.Text, name.Text.Trim(), analysis);
-                    if (imported < 1)
+                    SoraImportOutcome outcome = ImportIntoSora(input.Text, name.Text.Trim(), analysis, out int imported);
+                    if (outcome == SoraImportOutcome.Duplicate)
+                    {
+                        UI.ShowWarning("Эта подписка уже добавлена.");
+                        return;
+                    }
+                    if (outcome == SoraImportOutcome.Failed || imported < 1)
                     {
                         UI.ShowWarning("Sora не нашла ни одной рабочей конфигурации. Проверьте ссылку или содержимое подписки.");
                         return;
@@ -281,19 +293,19 @@ namespace v2rayN.Forms
             }
         }
 
-        private int ImportIntoSora(string value, string subscriptionName, SoraImportAnalysis analysis)
+        private SoraImportOutcome ImportIntoSora(string value, string subscriptionName, SoraImportAnalysis analysis, out int imported)
         {
+            imported = 0;
             string input = (value ?? string.Empty).Trim();
             if (analysis.Kind == SoraImportKind.Subscription)
             {
                 if (config.subItem.Any(item => string.Equals(item.url, input, StringComparison.OrdinalIgnoreCase)))
                 {
-                    UI.ShowWarning("Эта подписка уже добавлена.");
-                    return 0;
+                    return SoraImportOutcome.Duplicate;
                 }
                 if (ConfigHandler.AddSubItem(ref config, input) != 0)
                 {
-                    return 0;
+                    return SoraImportOutcome.Failed;
                 }
                 SubItem item = config.subItem.FirstOrDefault(candidate => string.Equals(candidate.url, input, StringComparison.OrdinalIgnoreCase));
                 if (item != null)
@@ -303,19 +315,18 @@ namespace v2rayN.Forms
                         : new Uri(input).Host;
                 }
                 ConfigHandler.SaveSubItem(ref config);
-                _lastSoraImportedSubscriptionId = item?.id;
-                StartSoraSubscriptionUpdate(_lastSoraImportedSubscriptionId);
-                return 1;
+                StartSoraSubscriptionUpdate(item?.id);
+                imported = 1;
+                return SoraImportOutcome.Imported;
             }
 
             var previousIds = new HashSet<string>(config.vmess.Select(server => server.indexId));
-            int imported = 0;
             if (analysis.Kind == SoraImportKind.ShareLinks || analysis.Kind == SoraImportKind.EncodedShareLinks)
             {
                 string source = input;
                 if (analysis.Kind == SoraImportKind.EncodedShareLinks && !TryDecodeSoraBase64(input, out source))
                 {
-                    return 0;
+                    return SoraImportOutcome.Failed;
                 }
                 string[] candidates = source.Split(new[] { '\r', '\n', '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (string candidate in candidates.Where(IsSoraShareLink))
@@ -358,7 +369,7 @@ namespace v2rayN.Forms
                 Global.reloadV2ray = true;
                 _ = LoadV2ray();
             }
-            return imported;
+            return imported > 0 ? SoraImportOutcome.Imported : SoraImportOutcome.Failed;
         }
 
         private static bool IsSoraShareLink(string value)

@@ -441,7 +441,7 @@ namespace v2rayN.Forms
             _happConnection = new HappConnectionControl { Anchor = AnchorStyles.None, Location = new Point(150, 72) };
             _happConnection.PowerClick += async (sender, args) =>
             {
-                bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
+                bool active = (v2rayHandler != null && v2rayHandler.IsRunning) || (_tunModeController != null && _tunModeController.IsRunning);
                 if (active)
                 {
                     _happConnection.State = SoraConnectionState.Disconnecting;

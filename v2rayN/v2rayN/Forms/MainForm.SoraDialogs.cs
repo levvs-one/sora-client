@@ -738,7 +738,7 @@ namespace v2rayN.Forms
             var connection = menu.Items.Add("Подключить");
             connection.Click += async (sender, args) =>
             {
-                bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
+                bool active = (v2rayHandler != null && v2rayHandler.IsRunning) || (_tunModeController != null && _tunModeController.IsRunning);
                 if (active)
                 {
                     DisconnectCommunity();

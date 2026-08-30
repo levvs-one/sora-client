@@ -170,7 +170,6 @@ namespace v2rayN.Forms
             var nav = new Panel { Dock = DockStyle.Fill, BackColor = HappNav };
             var primary = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 298, BackColor = HappNav, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8, 10, 8, 0) };
             _happSelectableNavButtons = new List<Button>();
-            primary.Controls.Add(CreateHappNavButton("arrow-right", () => HideForm(), false, false));
             primary.Controls.Add(CreateHappNavButton("plus-square", ShowHappAddConfiguration, false, false));
             primary.Controls.Add(CreateHappNavButton("globe", () => ShowHappPage(_happServerPage), true));
             primary.Controls.Add(CreateHappNavButton("gear", () => ShowHappPage(BuildHappSettingsPage())));
@@ -190,15 +189,14 @@ namespace v2rayN.Forms
 
         private Button CreateHappNavButton(string icon, Action action, bool selected = false, bool selectable = true)
         {
-            string accessibleName = icon == "arrow-right" ? "Скрыть Sora"
-                : icon == "plus-square" ? "Добавить конфигурацию"
+            string accessibleName = icon == "plus-square" ? "Добавить конфигурацию"
                 : icon == "globe" ? "Серверы"
                 : icon == "gear" ? "Настройки"
                 : icon == "chart-line-up" ? "Статистика"
                 : icon == "terminal-window" ? "Логи"
                 : icon == "info" ? "О программе"
                 : "Раздел";
-            var button = new Button { Size = new Size(48, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = icon != "arrow-right", AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton, UseVisualStyleBackColor = false };
+            var button = new Button { Size = new Size(48, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton, UseVisualStyleBackColor = false };
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 48);
             button.FlatAppearance.MouseDownBackColor = Color.FromArgb(58, 58, 62);

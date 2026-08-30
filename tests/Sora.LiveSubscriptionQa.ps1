@@ -109,10 +109,10 @@ try {
         } 'Subscription did not produce any servers'
     }
     catch {
-        $failureShot = Join-Path $ScreenshotDirectory 'sora-sumivpn-import-error.png'
+        $failureShot = Join-Path $ScreenshotDirectory 'sora-live-import-error.png'
         Save-WindowScreenshot $process $failureShot
         [pscustomobject]@{
-            Subscription = 'sumivpn.co'
+            Subscription = ([Uri]$SubscriptionUrl).Host
             Servers = 0
             Failure = 'Сервер подписки не вернул конфигурации'
             ImportScreenshot = $failureShot
@@ -120,24 +120,28 @@ try {
         return
     }
 
-    $importShot = Join-Path $ScreenshotDirectory 'sora-sumivpn-import.png'
+    $importShot = Join-Path $ScreenshotDirectory 'sora-live-import.png'
     Save-WindowScreenshot $process $importShot
 
     Invoke-Element (Wait-Until { Find-Element $process.Id 'Серверы' } 'Servers navigation button not found')
+    $baselineWrite = (Get-Item -LiteralPath $configPath).LastWriteTimeUtc
     Invoke-Element (Wait-Until { Find-Element $process.Id 'Проверить задержку' } 'Latency button not found')
 
     $results = Wait-Until {
         try {
+            if ((Get-Item -LiteralPath $configPath).LastWriteTimeUtc -le $baselineWrite) { return $false }
             $saved = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
             $servers = @($saved.vmess | Where-Object subid -eq $state.Id)
-            $measured = @($servers | Where-Object { -not [string]::IsNullOrWhiteSpace($_.testResult) })
+            $measured = @($servers | Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_.testResult) -and $_.testResult -ne 'Проверка…'
+            })
             if ($measured.Count -lt $servers.Count) { return $false }
             return $measured
         }
         catch { return $false }
     } 'Latency measurement did not finish'
 
-    $pingShot = Join-Path $ScreenshotDirectory 'sora-sumivpn-latency.png'
+    $pingShot = Join-Path $ScreenshotDirectory 'sora-live-latency.png'
     Save-WindowScreenshot $process $pingShot
 
     $latencies = @($results | ForEach-Object {

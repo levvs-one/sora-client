@@ -169,6 +169,7 @@ namespace v2rayN.Handler
                 {
                     RunCustomRealPing(item, downloadHandle);
                 }
+                ConfigHandler.SaveConfig(ref _config, false);
             }
             catch (Exception ex)
             {

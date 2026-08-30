@@ -1,0 +1,24 @@
+{
+  "remarks": "QA VLESS",
+  "inbounds": [
+    {
+      "protocol": "socks",
+      "listen": "127.0.0.1",
+      "port": 10808
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "example.com",
+            "port": 443,
+            "users": []
+          }
+        ]
+      }
+    }
+  ]
+}

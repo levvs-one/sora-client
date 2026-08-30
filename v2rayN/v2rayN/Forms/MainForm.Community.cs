@@ -884,7 +884,7 @@ namespace v2rayN.Forms
 
         private void ShowCommunityAbout()
         {
-            using (var dialog = CreateSoraDialog(new Size(500, 274)))
+            using (var dialog = CreateSoraDialog(new Size(500, 318)))
             {
                 var close = CreateSoraIconButton("x", () => dialog.Close());
                 close.Location = new Point(444, 14);
@@ -927,7 +927,7 @@ namespace v2rayN.Forms
                 var details = new Panel
                 {
                     Location = new Point(32, 122),
-                    Size = new Size(436, 88),
+                    Size = new Size(436, 132),
                     BackColor = HappSurface
                 };
                 ApplyRoundedSurface(details, 6, Color.FromArgb(76, 76, 80));
@@ -935,12 +935,45 @@ namespace v2rayN.Forms
                 var licenseValue = new Label { Location = new Point(196, 0), Size = new Size(224, 44), Text = "GPL-3.0", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
                 var divider = new Panel { Location = new Point(0, 43), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
                 var sourceName = new Label { Location = new Point(16, 44), Size = new Size(160, 44), Text = "Исходный код", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-                var sourceValue = new Label { Location = new Point(176, 44), Size = new Size(244, 44), Text = "github.com/levvs-one/sora-client", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 8.5F) };
-                details.Controls.AddRange(new Control[] { licenseName, licenseValue, divider, sourceName, sourceValue });
+                var sourceValue = new LinkLabel
+                {
+                    Location = new Point(176, 44),
+                    Size = new Size(244, 44),
+                    Text = "github.com/levvs-one/sora-client",
+                    LinkColor = HappText,
+                    ActiveLinkColor = HappMuted,
+                    VisitedLinkColor = HappText,
+                    BackColor = HappSurface,
+                    LinkBehavior = LinkBehavior.HoverUnderline,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Font = new Font("Segoe UI", 8.5F),
+                    Cursor = Cursors.Hand,
+                    AccessibleName = "Открыть исходный код Sora на GitHub"
+                };
+                sourceValue.LinkClicked += (sender, args) => OpenSoraCommunityLink("https://github.com/levvs-one/sora-client");
+                var telegramDivider = new Panel { Location = new Point(0, 87), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
+                var telegramName = new Label { Location = new Point(16, 88), Size = new Size(160, 44), Text = "Telegram", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var telegramValue = new LinkLabel
+                {
+                    Location = new Point(196, 88),
+                    Size = new Size(224, 44),
+                    Text = "t.me/sora_client",
+                    LinkColor = HappText,
+                    ActiveLinkColor = HappMuted,
+                    VisitedLinkColor = HappText,
+                    BackColor = HappSurface,
+                    LinkBehavior = LinkBehavior.HoverUnderline,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Font = new Font("Segoe UI", 9F),
+                    Cursor = Cursors.Hand,
+                    AccessibleName = "Открыть Telegram-канал Sora"
+                };
+                telegramValue.LinkClicked += (sender, args) => OpenSoraCommunityLink("https://t.me/sora_client");
+                details.Controls.AddRange(new Control[] { licenseName, licenseValue, divider, sourceName, sourceValue, telegramDivider, telegramName, telegramValue });
 
                 var footer = new Label
                 {
-                    Location = new Point(32, 228),
+                    Location = new Point(32, 272),
                     Size = new Size(436, 20),
                     Text = "Независимый проект сообщества",
                     Font = new Font("Segoe UI", 8.5F),
@@ -950,6 +983,18 @@ namespace v2rayN.Forms
                 dialog.Controls.AddRange(new Control[] { logo, title, version, description, details, footer, close });
                 dialog.CancelButton = close;
                 dialog.ShowDialog(this);
+            }
+        }
+
+        private void OpenSoraCommunityLink(string address)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = address, UseShellExecute = true });
+            }
+            catch (Exception exception)
+            {
+                UI.ShowWarning("Не удалось открыть ссылку: " + exception.Message);
             }
         }
     }

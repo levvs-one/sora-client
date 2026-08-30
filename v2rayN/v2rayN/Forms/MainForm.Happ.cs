@@ -165,7 +165,7 @@ namespace v2rayN.Forms
             primary.Controls.Add(CreateHappNavButton("chart-line-up", () => ShowHappPage(BuildHappStatisticsPage())));
             primary.Controls.Add(CreateHappNavButton("terminal-window", () => ShowHappPage(BuildHappLogsPage())));
 
-            var infoHost = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = HappNav, Padding = new Padding(8, 8, 4, 8) };
+            var infoHost = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = HappNav, Padding = new Padding(8) };
             var info = CreateHappNavButton("info", ShowCommunityAbout, false, false);
             info.Dock = DockStyle.Left;
             info.Margin = Padding.Empty;
@@ -186,9 +186,10 @@ namespace v2rayN.Forms
                 : icon == "terminal-window" ? "Логи"
                 : icon == "info" ? "О программе"
                 : "Раздел";
-            var button = new Button { Size = new Size(52, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = icon != "arrow-right", AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
+            var button = new Button { Size = new Size(48, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = icon != "arrow-right", AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton, UseVisualStyleBackColor = false };
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 48);
+            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(58, 58, 62);
             button.Paint += (sender, args) =>
             {
                 if (button.BackColor == Color.Black)

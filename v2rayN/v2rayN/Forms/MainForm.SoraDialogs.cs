@@ -421,19 +421,28 @@ namespace v2rayN.Forms
                 Button save;
                 if (item.configType == EConfigType.Custom)
                 {
-                    TextBox path = CreateSoraTextField(dialog, "Файл конфигурации", 32, 168, 756, item.address, true);
-                    TextBox core = CreateSoraTextField(dialog, "Компонент подключения", 32, 240, 360, item.coreType?.ToString() ?? "Не определено", true);
+                    var details = new Panel
+                    {
+                        Location = new Point(32, 178),
+                        Size = new Size(756, 108),
+                        BackColor = Color.FromArgb(31, 31, 33)
+                    };
+                    ApplyRoundedSurface(details, 6, Color.FromArgb(76, 76, 80));
+                    var pathName = new Label { Location = new Point(16, 0), Size = new Size(190, 54), Text = "Файл конфигурации", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                    var pathValue = new Label { Location = new Point(220, 0), Size = new Size(520, 54), Text = item.address, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Font = new Font("Segoe UI", 8.5F) };
+                    var divider = new Panel { Location = new Point(0, 53), Size = new Size(756, 1), BackColor = Color.FromArgb(76, 76, 80) };
+                    var coreName = new Label { Location = new Point(16, 54), Size = new Size(190, 54), Text = "Компонент подключения", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                    var coreValue = new Label { Location = new Point(520, 54), Size = new Size(220, 54), Text = item.coreType == ECoreType.Xray ? "Xray · встроен" : item.coreType?.ToString() ?? "Не определено", ForeColor = item.coreType == ECoreType.Xray ? HappText : Color.FromArgb(238, 178, 178), TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI Semibold", 9F) };
+                    details.Controls.AddRange(new Control[] { pathName, pathValue, divider, coreName, coreValue });
                     var warning = new Label
                     {
-                        Location = new Point(32, 318),
-                        Size = new Size(520, 42),
-                        Text = item.coreType == ECoreType.Xray ? "Файл запускается встроенным Xray. Путь защищён от случайного изменения." : "Это ядро не входит в x86-сборку Sora; подключение работать не будет.",
+                        Location = new Point(32, 304),
+                        Size = new Size(756, 42),
+                        Text = item.coreType == ECoreType.Xray ? "Sora запускает этот файл встроенным Xray. Путь защищён от случайного изменения." : "Этот компонент не входит в x86-сборку Sora. Подключение работать не будет.",
                         ForeColor = item.coreType == ECoreType.Xray ? HappMuted : Color.FromArgb(238, 178, 178),
                         Font = new Font("Segoe UI", 9F)
                     };
-                    dialog.Controls.Add(warning);
-                    path.TabStop = false;
-                    core.TabStop = false;
+                    dialog.Controls.AddRange(new Control[] { details, warning });
                     save = CreateHappButton("Сохранить", () =>
                     {
                         if (string.IsNullOrWhiteSpace(remarks.Text))
@@ -505,6 +514,7 @@ namespace v2rayN.Forms
                 copy.TextImageRelation = TextImageRelation.ImageBeforeText;
                 copy.Padding = new Padding(8, 0, 8, 0);
                 copy.Enabled = !string.IsNullOrWhiteSpace(ShareHandler.GetShareUrl(item));
+                copy.Visible = copy.Enabled;
 
                 var delete = CreateHappButton("Удалить", () =>
                 {
@@ -519,7 +529,7 @@ namespace v2rayN.Forms
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
                 }, false);
-                delete.Location = new Point(188, dialog.ClientSize.Height - 64);
+                delete.Location = new Point(copy.Visible ? 188 : 32, dialog.ClientSize.Height - 64);
                 delete.Size = new Size(128, 38);
                 delete.TabStop = true;
                 delete.AccessibleName = "Удалить сервер";

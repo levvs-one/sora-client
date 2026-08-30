@@ -49,6 +49,32 @@ namespace v2rayN.Handler
             return title.Length > 80 ? title.Substring(0, 80) : title;
         }
 
+        internal static bool ShouldApplySoraProfileTitle(SubItem item)
+        {
+            if (!item.nameCustomized) return true;
+            if (!Uri.TryCreate(item.url, UriKind.Absolute, out Uri uri)) return false;
+            string host = uri.Host.ToLowerInvariant();
+            string[] labels = host.Split('.');
+            if (labels.Length > 2 && (labels[0] == "s" || labels[0] == "sub" || labels[0] == "subscribe" || labels[0] == "www"))
+            {
+                host = string.Join(".", labels.Skip(1));
+            }
+            return string.Equals(item.remarks?.Trim(), host, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static void ParseSoraSubscriptionUserinfo(SubItem item, string header)
+        {
+            foreach (Match match in Regex.Matches(header ?? string.Empty, @"(?:^|;)\s*(upload|download|total|expire)\s*=\s*(\d+)", RegexOptions.IgnoreCase))
+            {
+                if (!long.TryParse(match.Groups[2].Value, out long value)) continue;
+                string key = match.Groups[1].Value.ToLowerInvariant();
+                if (key == "upload") item.subscriptionUploadBytes = value;
+                else if (key == "download") item.subscriptionDownloadBytes = value;
+                else if (key == "total") item.subscriptionTotalBytes = value;
+                else if (key == "expire") item.subscriptionExpireUnixSeconds = value;
+            }
+        }
+
         public event EventHandler<ResultEventArgs> AbsoluteCompleted;
 
         public class ResultEventArgs : EventArgs
@@ -215,11 +241,17 @@ namespace v2rayN.Handler
                             }
 
                             string profileTitle = DecodeSoraProfileTitle(downloadHandle.LastProfileTitle);
-                            if (!item.nameCustomized && !Utils.IsNullOrEmpty(profileTitle))
+                            if (ShouldApplySoraProfileTitle(item) && !Utils.IsNullOrEmpty(profileTitle))
                             {
                                 item.remarks = profileTitle;
+                                item.nameCustomized = false;
                                 prefix = $"{item.remarks}->";
                             }
+                            if (int.TryParse(downloadHandle.LastProfileUpdateInterval, out int updateHours) && updateHours > 0 && updateHours <= 720)
+                            {
+                                item.updateIntervalMinutes = updateHours * 60;
+                            }
+                            ParseSoraSubscriptionUserinfo(item, downloadHandle.LastSubscriptionUserinfo);
 
                             if (Utils.IsNullOrEmpty(content))
                             {

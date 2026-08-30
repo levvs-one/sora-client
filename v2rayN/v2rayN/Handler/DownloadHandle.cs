@@ -41,6 +41,10 @@ namespace v2rayN.Handler
 
         public string LastProfileTitle { get; private set; }
 
+        public string LastProfileUpdateInterval { get; private set; }
+
+        public string LastSubscriptionUserinfo { get; private set; }
+
 
         public class ResultEventArgs : EventArgs
         {
@@ -193,15 +197,9 @@ namespace v2rayN.Handler
                             {
                                 throw new Exception(string.Format("The request returned with HTTP status code {0}", response.StatusCode));
                             }
-                            LastProfileTitle = null;
-                            if (response.Headers.TryGetValues("Profile-Title", out IEnumerable<string> profileTitles))
-                            {
-                                foreach (string profileTitle in profileTitles)
-                                {
-                                    LastProfileTitle = profileTitle;
-                                    break;
-                                }
-                            }
+                            LastProfileTitle = GetResponseHeader(response, "Profile-Title");
+                            LastProfileUpdateInterval = GetResponseHeader(response, "Profile-Update-Interval");
+                            LastSubscriptionUserinfo = GetResponseHeader(response, "Subscription-Userinfo");
                             return await response.Content.ReadAsStringAsync();
                         }
                     }
@@ -216,6 +214,13 @@ namespace v2rayN.Handler
                     Error?.Invoke(this, new ErrorEventArgs(ex.InnerException));
                 }
             }
+            return null;
+        }
+
+        private static string GetResponseHeader(HttpResponseMessage response, string name)
+        {
+            if (!response.Headers.TryGetValues(name, out IEnumerable<string> values)) return null;
+            foreach (string value in values) return value;
             return null;
         }
 

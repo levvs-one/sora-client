@@ -37,6 +37,9 @@ namespace v2rayN.Forms
         private Label _soraSubscriptionDetail;
         private Button _soraSubscriptionRefresh;
         private Button _soraSubscriptionPing;
+        private Panel _soraSubscriptionQuotaTrack;
+        private Panel _soraSubscriptionQuotaFill;
+        private Label _soraSubscriptionQuota;
         private Timer _soraSubscriptionSummaryTimer;
         private Label _soraTrafficSummary;
         private Timer _soraTrafficTimer;
@@ -239,7 +242,7 @@ namespace v2rayN.Forms
             var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 4, Padding = new Padding(28, 16, 18, 18) };
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 76F));
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 98F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
@@ -309,7 +312,11 @@ namespace v2rayN.Forms
             var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = HappSurface, AccessibleName = "Подписка" };
             ApplyRoundedCorners(card, 5);
             _soraSubscriptionTitle = new Label { Location = new Point(14, 7), Size = new Size(280, 21), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
-            _soraSubscriptionDetail = new Label { Location = new Point(14, 29), Size = new Size(280, 32), ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
+            _soraSubscriptionDetail = new Label { Location = new Point(14, 29), Size = new Size(280, 20), ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), AutoEllipsis = true, BackColor = HappSurface, Cursor = Cursors.Hand };
+            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(14, 55), Size = new Size(390, 5), BackColor = Color.FromArgb(82, 82, 87) };
+            _soraSubscriptionQuotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 5), BackColor = HappMuted };
+            _soraSubscriptionQuotaTrack.Controls.Add(_soraSubscriptionQuotaFill);
+            _soraSubscriptionQuota = new Label { Location = new Point(14, 64), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 7.5F), BackColor = HappSurface, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
             _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
             _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
             Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
@@ -318,7 +325,7 @@ namespace v2rayN.Forms
             {
                 buttons[index].Dock = DockStyle.None;
                 buttons[index].Size = new Size(32, 32);
-                buttons[index].Location = new Point(card.Width - 104 + index * 34, 17);
+                buttons[index].Location = new Point(card.Width - 104 + index * 34, 8);
                 buttons[index].BackColor = HappSurface;
                 buttons[index].UseVisualStyleBackColor = false;
                 buttons[index].FlatAppearance.MouseOverBackColor = Color.FromArgb(70, 70, 74);
@@ -334,7 +341,12 @@ namespace v2rayN.Forms
                 _soraSubscriptionTitle.Width = Math.Max(120, card.ClientSize.Width - 118);
                 _soraSubscriptionDetail.Width = _soraSubscriptionTitle.Width;
                 for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 104 + index * 34;
+                _soraSubscriptionQuotaTrack.Width = Math.Max(80, card.ClientSize.Width - 28);
+                _soraSubscriptionQuota.Width = _soraSubscriptionQuotaTrack.Width;
+                RefreshSoraSubscriptionCard();
             };
+            card.Controls.Add(_soraSubscriptionQuota);
+            card.Controls.Add(_soraSubscriptionQuotaTrack);
             card.Controls.Add(_soraSubscriptionDetail);
             card.Controls.Add(_soraSubscriptionTitle);
             StartSoraSubscriptionSummary();
@@ -450,6 +462,7 @@ namespace v2rayN.Forms
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
             pane.Resize += (sender, args) => { _soraTrafficSummary.Left = (pane.ClientSize.Width - _soraTrafficSummary.Width) / 2; _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
             pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_soraTrafficSummary); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            _soraTrafficSummary.BringToFront();
             return pane;
         }
 

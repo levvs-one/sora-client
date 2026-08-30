@@ -734,6 +734,14 @@ namespace v2rayN.Mode
         public int lastServerCount { get; set; }
 
         public bool nameCustomized { get; set; }
+
+        public long subscriptionUploadBytes { get; set; }
+
+        public long subscriptionDownloadBytes { get; set; }
+
+        public long subscriptionTotalBytes { get; set; }
+
+        public long subscriptionExpireUnixSeconds { get; set; }
     }
 
     [Serializable]

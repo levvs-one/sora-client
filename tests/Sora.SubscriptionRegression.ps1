@@ -57,7 +57,7 @@ $interval = [int]$subItemType.GetProperty('updateIntervalMinutes').GetValue($sub
 if ($interval -ne 720) {
     throw "Expected the default subscription interval to be 720 minutes, got $interval"
 }
-foreach ($property in 'lastUpdateAttemptUtcTicks', 'lastUpdateSuccessUtcTicks', 'lastUpdateError', 'lastServerCount', 'nameCustomized') {
+foreach ($property in 'lastUpdateAttemptUtcTicks', 'lastUpdateSuccessUtcTicks', 'lastUpdateError', 'lastServerCount', 'nameCustomized', 'subscriptionUploadBytes', 'subscriptionDownloadBytes', 'subscriptionTotalBytes', 'subscriptionExpireUnixSeconds') {
     if ($null -eq $subItemType.GetProperty($property)) {
         throw "Subscription lifecycle property is missing: $property"
     }
@@ -76,6 +76,18 @@ if ($null -eq $decodeTitle) {
 $decodedTitle = [string]$decodeTitle.Invoke($null, @('base64:RHIuIFdhdHNvbiBWUE4='))
 if ($decodedTitle -ne 'Dr. Watson VPN') {
     throw "Profile-Title decoding failed: $decodedTitle"
+}
+$subItemType.GetProperty('url').SetValue($subItem, 'https://s.wrmo.ru/s/example')
+$subItemType.GetProperty('remarks').SetValue($subItem, 'wrmo.ru')
+$subItemType.GetProperty('nameCustomized').SetValue($subItem, $true)
+$shouldApplyTitle = $updateType.GetMethod('ShouldApplySoraProfileTitle', [System.Reflection.BindingFlags]'NonPublic, Static')
+if (-not [bool]$shouldApplyTitle.Invoke($null, @($subItem))) {
+    throw 'A legacy host fallback must be replaceable by Profile-Title'
+}
+$parseUserinfo = $updateType.GetMethod('ParseSoraSubscriptionUserinfo', [System.Reflection.BindingFlags]'NonPublic, Static')
+$parseUserinfo.Invoke($null, @($subItem, 'upload=10; download=20; total=100; expire=1882779604')) | Out-Null
+if ([long]$subItemType.GetProperty('subscriptionDownloadBytes').GetValue($subItem) -ne 20 -or [long]$subItemType.GetProperty('subscriptionTotalBytes').GetValue($subItem) -ne 100) {
+    throw 'Subscription-Userinfo parsing failed'
 }
 
 $mainFormType = $assembly.GetType('v2rayN.Forms.MainForm', $true)

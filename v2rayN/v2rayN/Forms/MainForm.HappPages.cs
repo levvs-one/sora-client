@@ -219,6 +219,19 @@ namespace v2rayN.Forms
             return count + " " + suffix;
         }
 
+        private static string FormatSoraSubscriptionExpiry(long unixSeconds)
+        {
+            if (unixSeconds <= 0) return string.Empty;
+            try
+            {
+                return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(unixSeconds).ToLocalTime().ToString("dd.MM.yyyy");
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return string.Empty;
+            }
+        }
+
         private static string GetSoraSubscriptionTitle(SubItem subscription)
         {
             if (subscription == null) return "Подписка";
@@ -799,6 +812,8 @@ namespace v2rayN.Forms
                 _soraSubscriptionDetail.Text = "Вставьте ссылку — формат определится автоматически";
                 _soraSubscriptionRefresh.Enabled = false;
                 _soraSubscriptionPing.Enabled = false;
+                _soraSubscriptionQuotaTrack.Visible = false;
+                _soraSubscriptionQuota.Text = string.Empty;
                 return;
             }
 
@@ -811,7 +826,18 @@ namespace v2rayN.Forms
                 : "ещё не обновлялась";
             string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
             _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + " · " + state + "\r\nАвтообновление: " + schedule;
+            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + " · " + state + " · " + schedule;
+            ulong used = (ulong)Math.Max(0L, subscription.subscriptionUploadBytes) + (ulong)Math.Max(0L, subscription.subscriptionDownloadBytes);
+            ulong total = (ulong)Math.Max(0L, subscription.subscriptionTotalBytes);
+            bool hasQuota = total > 0;
+            _soraSubscriptionQuotaTrack.Visible = hasQuota;
+            _soraSubscriptionQuotaFill.Width = hasQuota
+                ? (int)Math.Round(_soraSubscriptionQuotaTrack.ClientSize.Width * Math.Min(1D, used / (double)total))
+                : 0;
+            string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
+            _soraSubscriptionQuota.Text = hasQuota
+                ? Utils.HumanFy(used) + " / " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "  ·  до " + expiry)
+                : "Источник: " + GetSoraSubscriptionHost(subscription.url);
             _soraSubscriptionRefresh.Enabled = !updating;
             _soraSubscriptionPing.Enabled = serverCount > 0 && !updating;
         }

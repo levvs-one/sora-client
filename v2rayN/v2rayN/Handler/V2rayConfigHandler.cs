@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using v2rayN.Base;
 using v2rayN.Mode;
 using v2rayN.Resx;
@@ -962,8 +965,10 @@ namespace v2rayN.Handler
                     {
                         case ECoreType.v2fly:
                         case ECoreType.SagerNet:
-                        case ECoreType.Xray:
                         case ECoreType.v2fly_v5:
+                            break;
+                        case ECoreType.Xray:
+                            RewriteCustomXrayInbounds(fileName, LazyConfig.Instance.GetConfig());
                             break;
                         case ECoreType.clash:
                         case ECoreType.clash_meta:
@@ -996,6 +1001,38 @@ namespace v2rayN.Handler
                 return -1;
             }
             return 0;
+        }
+
+        private static void RewriteCustomXrayInbounds(string fileName, Config config)
+        {
+            JObject document = JObject.Parse(File.ReadAllText(fileName));
+            JArray inbounds = document["inbounds"] as JArray ?? new JArray();
+            string listen = config.inbound[0].allowLANConn ? "0.0.0.0" : Global.Loopback;
+            SetCustomXrayInbound(inbounds, Global.InboundSocks, config.GetLocalPort(Global.InboundSocks), listen, true);
+            SetCustomXrayInbound(inbounds, Global.InboundHttp, config.GetLocalPort(Global.InboundHttp), listen, false);
+            document["inbounds"] = inbounds;
+            File.WriteAllText(fileName, document.ToString(Formatting.None), new UTF8Encoding(false));
+        }
+
+        private static void SetCustomXrayInbound(JArray inbounds, string protocol, int port, string listen, bool socks)
+        {
+            JObject inbound = inbounds
+                .OfType<JObject>()
+                .FirstOrDefault(item => string.Equals((string)item["protocol"], protocol, StringComparison.OrdinalIgnoreCase));
+            if (inbound == null)
+            {
+                inbound = new JObject
+                {
+                    ["tag"] = protocol,
+                    ["protocol"] = protocol,
+                    ["settings"] = socks
+                        ? new JObject { ["auth"] = "noauth", ["udp"] = true }
+                        : new JObject { ["allowTransparent"] = false }
+                };
+                inbounds.Add(inbound);
+            }
+            inbound["listen"] = listen;
+            inbound["port"] = port;
         }
 
         public static int GenerateClientConfigContent(VmessItem node, bool blExport, ref V2rayConfig v2rayConfig, out string msg)

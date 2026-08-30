@@ -313,7 +313,10 @@ namespace v2rayN.Handler
 
                 if (p.WaitForExit(1000))
                 {
-                    throw new Exception(coreInfo.redirectInfo ? p.StandardError.ReadToEnd() : "启动进程失败并退出 (Failed to start the process and exited)");
+                    string error = coreInfo.redirectInfo ? p.StandardError.ReadToEnd() : string.Empty;
+                    throw new Exception(string.IsNullOrWhiteSpace(error)
+                        ? $"Ядро завершилось сразу после запуска (код {p.ExitCode}). Проверьте вкладку «Ядро»."
+                        : error.Trim());
                 }
 
                 Global.processJob.AddProcess(p.Handle);
@@ -369,7 +372,10 @@ namespace v2rayN.Handler
 
                 if (p.WaitForExit(1000))
                 {
-                    throw new Exception(p.StandardError.ReadToEnd());
+                    string error = p.StandardError.ReadToEnd();
+                    throw new Exception(string.IsNullOrWhiteSpace(error)
+                        ? $"Ядро проверки завершилось сразу после запуска (код {p.ExitCode})."
+                        : error.Trim());
                 }
 
                 Global.processJob.AddProcess(p.Handle);

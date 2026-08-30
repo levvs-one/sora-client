@@ -200,6 +200,7 @@ namespace v2rayN.Forms
             if (selectable) _happSelectableNavButtons.Add(button);
             button.Click += (sender, args) =>
             {
+                ActiveControl = null;
                 action();
                 if (selectable)
                 {
@@ -209,7 +210,6 @@ namespace v2rayN.Forms
                         item.Invalidate();
                     }
                 }
-                ActiveControl = null;
             };
             ApplyRoundedCorners(button, 5);
             return button;

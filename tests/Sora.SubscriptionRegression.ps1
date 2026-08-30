@@ -68,6 +68,18 @@ if ($null -eq $removeMethod) {
     throw 'Atomic subscription removal method was not found'
 }
 
+$mainFormType = $assembly.GetType('v2rayN.Forms.MainForm', $true)
+$instanceBinding = [System.Reflection.BindingFlags]'NonPublic, Instance'
+if ($null -ne $mainFormType.GetMethod('BuildHappSubscriptionsPage', $instanceBinding)) {
+    throw 'The detached subscriptions page must not return'
+}
+if ($null -eq $mainFormType.GetMethod('BuildSoraInlineSubscriptionCard', $instanceBinding)) {
+    throw 'The inline subscriptions card is missing from the servers screen'
+}
+if ($null -ne $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
+    throw 'The floating traffic card must not return to the connection pane'
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     $realContent = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $SubscriptionPath))
     $realCount = [int]$countMethod.Invoke($null, @($realContent))
@@ -77,4 +89,4 @@ if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     Write-Output "Supplied subscription: PASS ($realCount Xray-compatible profiles)"
 }
 
-Write-Output 'Sora subscription regression: PASS (parser, lifecycle model, atomic removal)'
+Write-Output 'Sora subscription regression: PASS (parser, lifecycle model, atomic removal, inline management)'

@@ -33,9 +33,11 @@ namespace v2rayN.Forms
         private readonly DateTime _happStartedAt = DateTime.Now;
         private long _happUploadRate;
         private long _happDownloadRate;
-        private Label _soraTrafficSummary;
-        private Timer _soraTrafficTimer;
-        private Button _soraSubscriptionsButton;
+        private Label _soraSubscriptionTitle;
+        private Label _soraSubscriptionDetail;
+        private Button _soraSubscriptionRefresh;
+        private Button _soraSubscriptionPing;
+        private Timer _soraSubscriptionSummaryTimer;
         private bool _happUseTun;
         private Button _happModeButton;
         private bool _happReportShortcutWired;
@@ -123,6 +125,7 @@ namespace v2rayN.Forms
                     UpdateCommunityConnectionState(config == null ? ESysProxyType.ForcedClear : config.sysProxyType);
                 }
                 UpdateCommunityEmptyState();
+                RefreshSoraSubscriptionCard();
                 StartSoraSubscriptionScheduler();
             };
         }
@@ -234,7 +237,7 @@ namespace v2rayN.Forms
             var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 4, Padding = new Padding(28, 16, 18, 18) };
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 52F));
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 76F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
@@ -256,16 +259,7 @@ namespace v2rayN.Forms
             searchRow.Controls.Add(CreateHappSmallButton("dots-three", ShowHappServerMenu), 2, 0);
             pane.Controls.Add(searchRow, 0, 1);
 
-            _soraSubscriptionsButton = CreateHappButton(GetSoraServerSubscriptionSummary(), () => ShowHappPage(BuildHappSubscriptionsPage()), false);
-            _soraSubscriptionsButton.Name = "sora.servers.subscriptions";
-            _soraSubscriptionsButton.AccessibleName = "Управление подписками: " + GetSoraServerSubscriptionSummary();
-            _soraSubscriptionsButton.Dock = DockStyle.Fill;
-            _soraSubscriptionsButton.Margin = new Padding(0, 0, 0, 8);
-            _soraSubscriptionsButton.Padding = new Padding(14, 0, 10, 0);
-            _soraSubscriptionsButton.TextAlign = ContentAlignment.MiddleLeft;
-            _soraSubscriptionsButton.Image = HappIconLoader.Load("caret-right", HappMuted);
-            _soraSubscriptionsButton.ImageAlign = ContentAlignment.MiddleRight;
-            pane.Controls.Add(_soraSubscriptionsButton, 0, 2);
+            pane.Controls.Add(BuildSoraInlineSubscriptionCard(), 0, 2);
 
             var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappPane, Margin = Padding.Empty };
             lvServers.Parent = listHost;
@@ -308,12 +302,36 @@ namespace v2rayN.Forms
             return pane;
         }
 
-        private string GetSoraServerSubscriptionSummary()
+        private Control BuildSoraInlineSubscriptionCard()
         {
-            int count = config?.subItem?.Count ?? 0;
-            if (count == 0) return "Подписки   ·   добавить";
-            if (count == 1) return "Подписки   ·   " + GetSoraSubscriptionTitle(config.subItem[0]);
-            return "Подписки   ·   " + count;
+            var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = HappSurface, AccessibleName = "Подписка" };
+            ApplyRoundedCorners(card, 5);
+            _soraSubscriptionTitle = new Label { Location = new Point(14, 7), Size = new Size(270, 21), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 9.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = HappSurface };
+            _soraSubscriptionDetail = new Label { Location = new Point(14, 29), Size = new Size(270, 32), ForeColor = HappMuted, Font = new Font("Segoe UI", 7.5F), AutoEllipsis = true, BackColor = HappSurface };
+            _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
+            _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
+            Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
+            Button[] buttons = { _soraSubscriptionRefresh, _soraSubscriptionPing, actions };
+            for (int index = 0; index < buttons.Length; index++)
+            {
+                buttons[index].Dock = DockStyle.None;
+                buttons[index].Size = new Size(36, 36);
+                buttons[index].Location = new Point(card.Width - 116 + index * 38, 15);
+                card.Controls.Add(buttons[index]);
+            }
+            Action open = OpenSoraPrimarySubscription;
+            _soraSubscriptionTitle.Click += (sender, args) => open();
+            _soraSubscriptionDetail.Click += (sender, args) => open();
+            card.Resize += (sender, args) =>
+            {
+                _soraSubscriptionTitle.Width = Math.Max(120, card.ClientSize.Width - 132);
+                _soraSubscriptionDetail.Width = _soraSubscriptionTitle.Width;
+                for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 116 + index * 38;
+            };
+            card.Controls.Add(_soraSubscriptionDetail);
+            card.Controls.Add(_soraSubscriptionTitle);
+            StartSoraSubscriptionSummary();
+            return card;
         }
 
         private void HideSoraServerScrollbars()
@@ -419,59 +437,19 @@ namespace v2rayN.Forms
             };
             pane.Resize += (sender, args) => { _happConnection.Left = (pane.ClientSize.Width - _happConnection.Width) / 2; _happConnection.Top = 72; };
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
-            _soraTrafficSummary = new Label
-            {
-                Anchor = AnchorStyles.Top,
-                Location = new Point(126, 324),
-                Size = new Size(320, 52),
-                BackColor = Color.FromArgb(29, 29, 31),
-                ForeColor = HappText,
-                Font = new Font("Segoe UI", 8.5F),
-                Text = "↓ 0 B/s     ↑ 0 B/s\r\nСегодня ↓ 0 B · ↑ 0 B",
-                TextAlign = ContentAlignment.MiddleCenter,
-                AccessibleName = "Счётчик трафика"
-            };
-            ApplyRoundedCorners(_soraTrafficSummary, 6);
-            StartSoraTrafficCounter();
             var ping = CreateHappButton("Проверить задержку", TestAllCommunityServers, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
-            pane.Resize += (sender, args) => { _soraTrafficSummary.Left = (pane.ClientSize.Width - _soraTrafficSummary.Width) / 2; _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
-            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_soraTrafficSummary); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            pane.Resize += (sender, args) => { _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
+            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
             return pane;
         }
 
-        private void StartSoraTrafficCounter()
+        private void StartSoraSubscriptionSummary()
         {
-            if (_soraTrafficTimer != null) return;
-            _soraTrafficTimer = new Timer(components) { Interval = 500 };
-            _soraTrafficTimer.Tick += (sender, args) =>
-            {
-                if (_soraTrafficSummary == null) return;
-                ulong down = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happDownloadRate));
-                ulong up = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happUploadRate));
-                string rate = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s";
-                if (statistics == null || !statistics.Enable)
-                {
-                    _soraTrafficSummary.Text = rate + "\r\nСчётчик выключен в настройках";
-                    return;
-                }
-                try
-                {
-                    ulong todayDown = 0;
-                    ulong todayUp = 0;
-                    foreach (ServerStatItem item in statistics.Statistic.ToArray())
-                    {
-                        todayDown += item.todayDown;
-                        todayUp += item.todayUp;
-                    }
-                    _soraTrafficSummary.Text = rate + "\r\nСегодня ↓ " + Utils.HumanFy(todayDown) + " · ↑ " + Utils.HumanFy(todayUp);
-                }
-                catch (InvalidOperationException)
-                {
-                    _soraTrafficSummary.Text = rate + "\r\nСчитаем трафик…";
-                }
-            };
-            _soraTrafficTimer.Start();
+            if (_soraSubscriptionSummaryTimer != null) return;
+            _soraSubscriptionSummaryTimer = new Timer(components) { Interval = 500 };
+            _soraSubscriptionSummaryTimer.Tick += (sender, args) => RefreshSoraSubscriptionCard();
+            _soraSubscriptionSummaryTimer.Start();
         }
 
         private void DrawHappConnectionBackground(object sender, PaintEventArgs args)
@@ -488,7 +466,7 @@ namespace v2rayN.Forms
 
         private Button CreateHappSmallButton(string icon, Action action)
         {
-            string accessibleName = icon == "gauge" ? "Проверить задержку всех серверов" : icon == "dots-three" ? "Дополнительные действия" : "Действие";
+            string accessibleName = icon == "gauge" ? "Проверить задержку серверов подписки" : icon == "arrows-clockwise" ? "Обновить подписку" : icon == "dots-three" ? "Действия с подпиской" : "Действие";
             var button = new Button { Dock = DockStyle.Fill, Margin = new Padding(2, 3, 2, 5), FlatStyle = FlatStyle.Flat, BackColor = HappPane, Image = HappIconLoader.Load(icon, HappMuted), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = HappSurface; button.Click += (sender, args) => action(); return button;
         }
@@ -756,7 +734,6 @@ namespace v2rayN.Forms
         {
             var menu = BuildHappMenu();
             menu.Items.Add("Добавить", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
-            menu.Items.Add("Подписки", HappIconLoader.Load("globe", HappText), (sender, args) => ShowHappPage(BuildHappSubscriptionsPage()));
             menu.Items.Add("Проверить все серверы", HappIconLoader.Load("gauge", HappText), (sender, args) => TestAllCommunityServers());
             if (GetLvSelectedIndex(false) >= 0)
             {

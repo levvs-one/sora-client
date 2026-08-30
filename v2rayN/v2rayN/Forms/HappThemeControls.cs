@@ -465,4 +465,238 @@ namespace v2rayN.Forms
             return path;
         }
     }
+
+    internal sealed class HappListScrollRail : Control
+    {
+        private const int SbVert = 1;
+        private const int LvmGetCountPerPage = 0x1028;
+        private readonly ListView _target;
+        private readonly Color _thumbColor;
+        private readonly Timer _animation;
+        private bool _dragging;
+        private bool _hovered;
+        private int _dragOffset;
+        private float _presence;
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowScrollBar(IntPtr handle, int bar, bool show);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
+
+        internal HappListScrollRail(ListView target, Color background, Color thumbColor)
+        {
+            _target = target;
+            _thumbColor = thumbColor;
+            BackColor = background;
+            TabStop = false;
+            AccessibleRole = AccessibleRole.ScrollBar;
+            AccessibleName = "Прокрутка списка серверов";
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            _animation = new Timer { Interval = 16 };
+            _animation.Tick += AnimatePresence;
+            _target.HandleCreated += (sender, args) => BeginRefresh();
+            _target.Layout += (sender, args) => BeginRefresh();
+            _target.Resize += (sender, args) => BeginRefresh();
+            _target.MouseWheel += (sender, args) => BeginRefresh();
+            _target.KeyUp += (sender, args) => BeginRefresh();
+            _target.SelectedIndexChanged += (sender, args) => BeginRefresh();
+        }
+
+        internal void RefreshState()
+        {
+            if (IsDisposed || _target.IsDisposed)
+            {
+                return;
+            }
+            if (_target.IsHandleCreated)
+            {
+                ShowScrollBar(_target.Handle, SbVert, false);
+            }
+            bool canScroll = GetMaximumTopIndex() > 0;
+            if (Visible != canScroll)
+            {
+                Visible = canScroll;
+            }
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Rectangle thumb = GetThumbBounds();
+            if (thumb.IsEmpty)
+            {
+                return;
+            }
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            int alpha = 150 + (int)Math.Round(52F * _presence);
+            using (GraphicsPath path = Rounded(thumb, thumb.Width / 2))
+            using (var brush = new SolidBrush(Color.FromArgb(alpha, _thumbColor)))
+            {
+                e.Graphics.FillPath(brush, path);
+            }
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            _hovered = true;
+            _animation.Start();
+            base.OnMouseEnter(e);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            _hovered = false;
+            if (!_dragging)
+            {
+                _animation.Start();
+            }
+            base.OnMouseLeave(e);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+            Rectangle thumb = GetThumbBounds();
+            if (thumb.IsEmpty)
+            {
+                return;
+            }
+            if (thumb.Contains(e.Location))
+            {
+                _dragging = true;
+                _dragOffset = e.Y - thumb.Top;
+                Capture = true;
+                _animation.Start();
+            }
+            else
+            {
+                int page = Math.Max(1, GetVisibleItemCount() - 1);
+                SetTopIndex(GetCurrentTopIndex() + (e.Y < thumb.Top ? -page : page));
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            if (_dragging)
+            {
+                SetScrollFromThumbTop(e.Y - _dragOffset, GetThumbBounds().Height);
+            }
+            base.OnMouseMove(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            _dragging = false;
+            Capture = false;
+            _animation.Start();
+            base.OnMouseUp(e);
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            int rows = Math.Max(1, SystemInformation.MouseWheelScrollLines);
+            SetTopIndex(GetCurrentTopIndex() - Math.Sign(e.Delta) * rows);
+            base.OnMouseWheel(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _animation.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private void BeginRefresh()
+        {
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new Action(RefreshState));
+            }
+        }
+
+        private void AnimatePresence(object sender, EventArgs args)
+        {
+            float target = _hovered || _dragging ? 1F : 0F;
+            _presence += (target - _presence) * 0.34F;
+            if (Math.Abs(target - _presence) < 0.03F)
+            {
+                _presence = target;
+                _animation.Stop();
+            }
+            Invalidate();
+        }
+
+        private Rectangle GetThumbBounds()
+        {
+            int maximum = GetMaximumTopIndex();
+            if (maximum < 1 || Height < 64)
+            {
+                return Rectangle.Empty;
+            }
+            int total = Math.Max(1, _target.Items.Count);
+            int visible = Math.Max(1, GetVisibleItemCount());
+            int trackHeight = Height - 12;
+            int thumbHeight = Math.Max(42, (int)Math.Round(trackHeight * Math.Min(1D, (double)visible / total)));
+            int travel = Math.Max(1, trackHeight - thumbHeight);
+            int top = 6 + (int)Math.Round(travel * (double)GetCurrentTopIndex() / maximum);
+            int width = 5 + (int)Math.Round(3F * _presence);
+            return new Rectangle((Width - width) / 2, top, width, thumbHeight);
+        }
+
+        private void SetScrollFromThumbTop(int top, int thumbHeight)
+        {
+            int maximum = GetMaximumTopIndex();
+            int travel = Math.Max(1, Height - 12 - thumbHeight);
+            int clamped = Math.Max(6, Math.Min(6 + travel, top));
+            SetTopIndex((int)Math.Round(maximum * (double)(clamped - 6) / travel));
+        }
+
+        private int GetVisibleItemCount()
+        {
+            if (!_target.IsHandleCreated)
+            {
+                return 1;
+            }
+            return Math.Max(1, SendMessage(_target.Handle, LvmGetCountPerPage, IntPtr.Zero, IntPtr.Zero).ToInt32());
+        }
+
+        private int GetMaximumTopIndex()
+        {
+            return Math.Max(0, _target.Items.Count - GetVisibleItemCount());
+        }
+
+        private int GetCurrentTopIndex()
+        {
+            try
+            {
+                return _target.TopItem?.Index ?? 0;
+            }
+            catch (InvalidOperationException)
+            {
+                return 0;
+            }
+        }
+
+        private void SetTopIndex(int index)
+        {
+            int maximum = GetMaximumTopIndex();
+            int clamped = Math.Max(0, Math.Min(maximum, index));
+            if (_target.Items.Count == 0)
+            {
+                return;
+            }
+            _target.TopItem = _target.Items[clamped];
+            _target.Invalidate();
+            Invalidate();
+            AccessibilityNotifyClients(AccessibleEvents.ValueChange, -1);
+        }
+    }
 }

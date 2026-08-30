@@ -2,11 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Newtonsoft.Json.Linq;
 using v2rayN.Handler;
 using v2rayN.Mode;
+using v2rayN.Tool;
 
 namespace v2rayN.Forms
 {
@@ -32,6 +36,9 @@ namespace v2rayN.Forms
         private bool _happUseTun;
         private Button _happModeButton;
         private bool _happReportShortcutWired;
+        private int _happHoveredServerIndex = -1;
+        private HappListScrollRail _happServerScroll;
+        private readonly Dictionary<string, SoraProtocolDisplay> _soraProtocolDisplayCache = new Dictionary<string, SoraProtocolDisplay>(StringComparer.OrdinalIgnoreCase);
 
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
@@ -243,6 +250,8 @@ namespace v2rayN.Forms
             lvServers.DrawSubItem += DrawHappServerSubItem;
             lvServers.ContextMenuStrip = null;
             lvServers.MouseUp += SoraServersMouseUp;
+            lvServers.MouseMove += SoraServersMouseMove;
+            lvServers.MouseLeave += SoraServersMouseLeave;
             lvServers.HandleCreated += (sender, args) => HideSoraServerScrollbars();
             lvServers.Layout += (sender, args) => HideSoraServerScrollbars();
             lvServers.DoubleClick -= lvServers_DoubleClick;
@@ -252,6 +261,13 @@ namespace v2rayN.Forms
             lvServers.Resize += (sender, args) => ConfigureSoraServerList();
             _communityRowHeight = new ImageList(components) { ImageSize = new Size(1, 58), ColorDepth = ColorDepth.Depth32Bit };
             lvServers.SmallImageList = _communityRowHeight;
+            _happServerScroll = new HappListScrollRail(lvServers, HappPane, Color.FromArgb(124, 124, 130))
+            {
+                Dock = DockStyle.Right,
+                Width = 14
+            };
+            listHost.Controls.Add(_happServerScroll);
+            _happServerScroll.BringToFront();
             _communityEmptyState = BuildHappEmptyState();
             listHost.Controls.Add(_communityEmptyState);
             _communityEmptyState.BringToFront();
@@ -265,7 +281,30 @@ namespace v2rayN.Forms
             {
                 return;
             }
-            ShowScrollBar(lvServers.Handle, 0, false);
+            ShowScrollBar(lvServers.Handle, 3, false);
+            _happServerScroll?.RefreshState();
+        }
+
+        private void SoraServersMouseMove(object sender, MouseEventArgs args)
+        {
+            ListViewItem item = lvServers.GetItemAt(args.X, args.Y);
+            int hovered = item?.Index ?? -1;
+            if (_happHoveredServerIndex == hovered)
+            {
+                return;
+            }
+            _happHoveredServerIndex = hovered;
+            lvServers.Invalidate();
+        }
+
+        private void SoraServersMouseLeave(object sender, EventArgs args)
+        {
+            if (_happHoveredServerIndex < 0)
+            {
+                return;
+            }
+            _happHoveredServerIndex = -1;
+            lvServers.Invalidate();
         }
 
         private void WireHappSearch()
@@ -366,7 +405,8 @@ namespace v2rayN.Forms
         private void DrawHappServerSubItem(object sender, DrawListViewSubItemEventArgs args)
         {
             bool selected = args.Item.Selected;
-            Color background = selected ? Color.FromArgb(55, 55, 58) : args.ItemIndex % 2 == 0 ? HappPane : Color.FromArgb(29, 29, 31);
+            bool hovered = args.ItemIndex == _happHoveredServerIndex;
+            Color background = selected ? Color.FromArgb(52, 52, 56) : hovered ? Color.FromArgb(37, 37, 41) : Color.FromArgb(29, 29, 32);
             using (var fill = new SolidBrush(background)) args.Graphics.FillRectangle(fill, args.Bounds);
             VmessItem item = args.ItemIndex >= 0 && args.ItemIndex < lstVmess.Count ? lstVmess[args.ItemIndex] : null;
             if (args.ColumnIndex == 0)
@@ -378,8 +418,17 @@ namespace v2rayN.Forms
                 string country = GetSoraCountryCode(item?.remarks);
                 if (!string.IsNullOrWhiteSpace(country))
                 {
-                    using (var badge = new SolidBrush(Color.FromArgb(61, 61, 65))) args.Graphics.FillRectangle(badge, args.Bounds.Left + 7, args.Bounds.Top + 19, 22, 18);
-                    using (var badgeFont = new Font("Segoe UI Semibold", 7F)) TextRenderer.DrawText(args.Graphics, country, badgeFont, new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 19, 22, 18), HappText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    Rectangle badgeBounds = new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 20, 22, 17);
+                    using (GraphicsPath badge = CreateRoundedPath(badgeBounds, 4))
+                    using (var badgeFill = new SolidBrush(selected ? Color.FromArgb(74, 74, 79) : Color.FromArgb(47, 47, 51)))
+                    using (var badgeBorder = new Pen(Color.FromArgb(83, 83, 89)))
+                    using (var badgeFont = new Font("Segoe UI Semibold", 7F))
+                    {
+                        args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        args.Graphics.FillPath(badgeFill, badge);
+                        args.Graphics.DrawPath(badgeBorder, badge);
+                        TextRenderer.DrawText(args.Graphics, country, badgeFont, badgeBounds, HappText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    }
                 }
                 else if (item != null && config.IsActiveNode(item))
                 {
@@ -388,23 +437,103 @@ namespace v2rayN.Forms
             }
             else if (args.ColumnIndex == (int)EServerColName.remarks && item != null)
             {
-                string name = string.IsNullOrWhiteSpace(item.remarks) ? "Сервер без названия" : item.remarks;
-                string details = GetSoraProtocolName(item);
-                if (!string.IsNullOrWhiteSpace(item.network)) details += "  ·  " + item.network.ToUpperInvariant();
-                if (!string.IsNullOrWhiteSpace(item.streamSecurity)) details += "  ·  " + item.streamSecurity.ToUpperInvariant();
-                using (var titleFont = new Font("Segoe UI Semibold", 9.5F))
+                string name = GetSoraDisplayName(item.remarks);
+                string[] protocols = GetSoraProtocolDisplay(item);
+                using (var titleFont = new Font("Segoe UI Semibold", 10F))
+                using (var protocolFont = new Font("Segoe UI Semibold", 7.5F))
                 using (var detailFont = new Font("Segoe UI", 7.5F))
                 {
-                    TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 8, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                    TextRenderer.DrawText(args.Graphics, details, detailFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 31, Math.Max(0, args.Bounds.Width - 18), 17), HappMuted, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 7, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    DrawSoraProtocolLine(args.Graphics, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 32, Math.Max(0, args.Bounds.Width - 18), 16), protocols, protocolFont, detailFont);
                 }
             }
             else if (args.ColumnIndex == (int)EServerColName.testResult)
             {
                 string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? "—" : args.SubItem.Text;
-                TextRenderer.DrawText(args.Graphics, result, lvServers.Font, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), selected ? HappText : HappMuted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                bool measured = result.Any(char.IsDigit);
+                Color resultColor = measured || selected ? HappText : HappMuted;
+                using (var resultFont = new Font("Segoe UI Semibold", 8F))
+                {
+                    TextRenderer.DrawText(args.Graphics, result, resultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                }
             }
-            using (var line = new Pen(Color.FromArgb(47, 47, 50))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+            using (var line = new Pen(Color.FromArgb(48, 48, 52))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+        }
+
+        private static string GetSoraDisplayName(string remarks)
+        {
+            string name = string.IsNullOrWhiteSpace(remarks) ? "Сервер без названия" : remarks.Trim();
+            return Regex.Replace(name, @"^[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]\s*", string.Empty);
+        }
+
+        private string[] GetSoraProtocolDisplay(VmessItem item)
+        {
+            if (item.configType != EConfigType.Custom)
+            {
+                return BuildSoraProtocolDisplay(GetSoraProtocolName(item), item.network, item.streamSecurity);
+            }
+
+            string path = File.Exists(item.address) ? item.address : Utils.GetConfigPath(item.address);
+            long stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks : 0L;
+            if (_soraProtocolDisplayCache.TryGetValue(path, out SoraProtocolDisplay cached) && cached.Stamp == stamp)
+            {
+                return cached.Values;
+            }
+
+            string[] values = new[] { "XRAY", "JSON" };
+            try
+            {
+                JObject document = JObject.Parse(File.ReadAllText(path));
+                JObject outbound = (document["outbounds"] as JArray)?.OfType<JObject>().FirstOrDefault(candidate =>
+                {
+                    string protocol = (string)candidate["protocol"];
+                    return !string.Equals(protocol, "freedom", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(protocol, "blackhole", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(protocol, "dns", StringComparison.OrdinalIgnoreCase);
+                });
+                JObject stream = outbound?["streamSettings"] as JObject;
+                values = BuildSoraProtocolDisplay((string)outbound?["protocol"], (string)stream?["network"], (string)stream?["security"], "JSON");
+            }
+            catch (Exception exception)
+            {
+                Utils.SaveLog("Не удалось прочитать протокол импортированной конфигурации.", exception);
+            }
+            _soraProtocolDisplayCache[path] = new SoraProtocolDisplay { Stamp = stamp, Values = values };
+            return values;
+        }
+
+        private static string[] BuildSoraProtocolDisplay(params string[] values)
+        {
+            return values
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private static void DrawSoraProtocolLine(Graphics graphics, Rectangle bounds, string[] values, Font primaryFont, Font secondaryFont)
+        {
+            int x = bounds.Left;
+            for (int index = 0; index < values.Length && x < bounds.Right; index++)
+            {
+                Font font = index == 0 ? primaryFont : secondaryFont;
+                Color color = index == 0 ? Color.FromArgb(224, 224, 228) : HappMuted;
+                Size size = TextRenderer.MeasureText(graphics, values[index], font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+                int available = bounds.Right - x;
+                TextRenderer.DrawText(graphics, values[index], font, new Rectangle(x, bounds.Top, available, bounds.Height), color, TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter);
+                x += Math.Min(size.Width, available);
+                if (index < values.Length - 1 && x + 14 < bounds.Right)
+                {
+                    TextRenderer.DrawText(graphics, "/", secondaryFont, new Rectangle(x + 4, bounds.Top, 10, bounds.Height), Color.FromArgb(105, 105, 111), TextFormatFlags.NoPadding | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    x += 17;
+                }
+            }
+        }
+
+        private sealed class SoraProtocolDisplay
+        {
+            internal long Stamp { get; set; }
+            internal string[] Values { get; set; }
         }
 
         private void ShowHappServerMenu()

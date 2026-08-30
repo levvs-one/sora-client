@@ -52,14 +52,13 @@ namespace v2rayN.Forms
         }
     }
 
-    internal sealed class HappConnectionControl : Control
+    internal sealed class HappConnectionControl : Button
     {
         private readonly Timer _animation;
         private readonly Image _powerImage;
         private readonly Font _stateFont;
         private readonly Font _timeFont;
         private float _phase;
-        private bool _pressed;
         private SoraConnectionState _state;
         private DateTime _connectedAt;
 
@@ -102,10 +101,12 @@ namespace v2rayN.Forms
         internal HappConnectionControl()
         {
             SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
-            SetStyle(ControlStyles.StandardClick | ControlStyles.StandardDoubleClick, false);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
             BackColor = Color.Transparent;
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            UseVisualStyleBackColor = false;
             Size = new Size(270, 270);
             TabStop = true;
             AccessibleRole = AccessibleRole.PushButton;
@@ -132,44 +133,8 @@ namespace v2rayN.Forms
             PowerClick?.Invoke(this, EventArgs.Empty);
         }
 
-        protected override void OnMouseDown(MouseEventArgs e)
-        {
-            base.OnMouseDown(e);
-            if (e.Button != MouseButtons.Left || _state == SoraConnectionState.Connecting || _state == SoraConnectionState.Disconnecting)
-            {
-                return;
-            }
-            _pressed = true;
-            Capture = true;
-            Focus();
-        }
-
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            bool invoke = _pressed && e.Button == MouseButtons.Left && ClientRectangle.Contains(e.Location);
-            _pressed = false;
-            Capture = false;
-            base.OnMouseUp(e);
-            if (invoke)
-            {
-                OnClick(EventArgs.Empty);
-            }
-        }
-
-        protected override void OnKeyDown(KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
-            {
-                OnClick(EventArgs.Empty);
-                e.Handled = true;
-                e.SuppressKeyPress = true;
-            }
-            base.OnKeyDown(e);
-        }
-
         protected override void OnPaint(PaintEventArgs e)
         {
-            base.OnPaint(e);
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             Color accent = MainForm.HappAccent;
             float pulse = (float)((Math.Sin(_phase) + 1D) * 0.5D);

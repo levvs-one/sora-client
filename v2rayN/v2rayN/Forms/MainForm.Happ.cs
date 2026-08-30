@@ -311,10 +311,12 @@ namespace v2rayN.Forms
                 bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
                 if (active)
                 {
+                    _happConnection.State = SoraConnectionState.Disconnecting;
                     DisconnectCommunity();
                 }
                 else if (_happUseTun)
                 {
+                    _happConnection.State = SoraConnectionState.Connecting;
                     await StartCommunityTunAsync();
                 }
                 else if (config == null || config.GetVmessItem(config.indexId) == null)
@@ -323,12 +325,13 @@ namespace v2rayN.Forms
                 }
                 else
                 {
+                    _happConnection.State = SoraConnectionState.Connecting;
                     SetListenerType(ESysProxyType.ForcedChange);
                 }
             };
             pane.Resize += (sender, args) => { _happConnection.Left = (pane.ClientSize.Width - _happConnection.Width) / 2; _happConnection.Top = 72; };
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
-            var ping = CreateHappButton("Тест пинга", TestAllCommunityServers, true);
+            var ping = CreateHappButton("Проверить задержку", TestAllCommunityServers, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
             pane.Resize += (sender, args) => { _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
             pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
@@ -349,7 +352,7 @@ namespace v2rayN.Forms
 
         private Button CreateHappSmallButton(string icon, Action action)
         {
-            string accessibleName = icon == "gauge" ? "Проверить пинг всех серверов" : icon == "dots-three" ? "Дополнительные действия" : "Действие";
+            string accessibleName = icon == "gauge" ? "Проверить задержку всех серверов" : icon == "dots-three" ? "Дополнительные действия" : "Действие";
             var button = new Button { Dock = DockStyle.Fill, Margin = new Padding(2, 3, 2, 5), FlatStyle = FlatStyle.Flat, BackColor = HappPane, Image = HappIconLoader.Load(icon, HappMuted), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = HappSurface; button.Click += (sender, args) => action(); return button;
         }
@@ -408,13 +411,13 @@ namespace v2rayN.Forms
         {
             var menu = BuildHappMenu();
             menu.Items.Add("Добавить", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
-            menu.Items.Add("Пинг всех", HappIconLoader.Load("gauge", HappText), (sender, args) => TestAllCommunityServers());
+            menu.Items.Add("Проверить все серверы", HappIconLoader.Load("gauge", HappText), (sender, args) => TestAllCommunityServers());
             if (GetLvSelectedIndex(false) >= 0)
             {
                 menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Настройки сервера", null, (sender, args) => ShowSoraServerEditor());
                 menu.Items.Add("Копировать ссылку", HappIconLoader.Load("copy", HappText), (sender, args) => menuExport2ShareUrl_Click(null, null));
-                menu.Items.Add("Удалить", HappIconLoader.Load("trash", Color.FromArgb(238, 178, 178)), (sender, args) => DeleteSelectedSoraServers());
+                menu.Items.Add("Удалить", HappIconLoader.Load("trash", HappText), (sender, args) => DeleteSelectedSoraServers());
             }
             menu.Show(Cursor.Position);
         }
@@ -422,13 +425,9 @@ namespace v2rayN.Forms
         private void ShowHappModeMenu()
         {
             var menu = BuildHappMenu();
-            var proxy = (ToolStripMenuItem)menu.Items.Add("Прокси", null, (sender, args) => SetHappConnectionMode(false));
+            var proxy = (ToolStripMenuItem)menu.Items.Add("Для приложений", null, (sender, args) => SetHappConnectionMode(false));
             proxy.Checked = !_happUseTun;
-            menu.Items.Add("TUN", null).Enabled = false;
-            menu.Items.Add("Sing-box", null).Enabled = false;
-            menu.Items.Add("Happ TUN", null).Enabled = false;
-            menu.Items.Add("Xray TUN", null).Enabled = false;
-            var tun = (ToolStripMenuItem)menu.Items.Add("tun2proxy", null, (sender, args) => SetHappConnectionMode(true));
+            var tun = (ToolStripMenuItem)menu.Items.Add("Для всей системы (TUN)", null, (sender, args) => SetHappConnectionMode(true));
             tun.Checked = _happUseTun;
             menu.Show(Cursor.Position);
         }

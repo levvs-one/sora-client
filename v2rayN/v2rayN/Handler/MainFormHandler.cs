@@ -185,7 +185,7 @@ namespace v2rayN.Handler
             {
                 if (ret == 0)
                 {
-                    UI.Show("Резервная копия сохранена без системного окна:\r\n" + fileName);
+                    UI.Show("Резервная копия сохранена:\r\n" + fileName);
                 }
                 else
                 {
@@ -236,6 +236,8 @@ namespace v2rayN.Handler
 
             config = resConfig;
             LazyConfig.Instance.SetConfig(ref config);
+
+            UI.Show("Настройки восстановлены.");
 
             return true;
         }

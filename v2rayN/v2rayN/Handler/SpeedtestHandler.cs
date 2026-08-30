@@ -266,13 +266,13 @@ namespace v2rayN.Handler
             return responseTime;
         }
 
-        private string FormatOut(object time, string unit)
+        private static string FormatOut(object time, string unit)
         {
             if (time.ToString().Equals("-1"))
             {
-                return "Timeout";
+                return "Нет ответа";
             }
-            return $"{time}{unit}".PadLeft(8, ' ');
+            return $"{time} {unit}";
         }
     }
 }

@@ -50,7 +50,7 @@ namespace v2rayN.Tool
 
                 ZipFile.CreateFromDirectory(temporaryDirectory, destination, CompressionLevel.Optimal, false);
 
-                UI.Show("Диагностика сохранена без системного окна:\r\n" + destination + "\r\n\r\nСсылки подписок, идентификаторы серверов и конфигурация в архив не включаются.");
+                UI.Show("Архив диагностики сохранён:\r\n" + destination + "\r\n\r\nСсылки подписок, идентификаторы серверов и конфигурация в архив не включаются.");
 
                 Process.Start("explorer.exe", "/select,\"" + destination + "\"");
             }

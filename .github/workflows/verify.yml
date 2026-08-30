@@ -1,0 +1,30 @@
+name: Verify Sora
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x86:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.424
+      - name: Restore
+        run: dotnet restore v2rayN\v2rayN\v2rayN.csproj --runtime win7-x86
+      - name: Build
+        run: dotnet build v2rayN\v2rayN\v2rayN.csproj --configuration Release --runtime win7-x86 --no-restore --property:Platform=x86
+      - name: Subscription regression
+        shell: powershell
+        run: |
+          & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File tests\Sora.SubscriptionRegression.ps1 -SoraExe v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\Sora.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sora-win7-x86
+          path: v2rayN\v2rayN\bin\x86\Release\net48\win7-x86
+          if-no-files-found: error

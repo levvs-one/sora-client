@@ -29,30 +29,23 @@ namespace v2rayN.Forms
                 routingName = GetHappRoutingDisplayName(config.routings[config.routingIndex].remarks, config.routingIndex);
             }
             var page = CreateHappScrollablePage("Настройки");
-            AddHappSection(page, "Настройки интерфейса",
-                CreateHappSettingRow("Язык", "Русский"),
-                CreateHappSettingRow("Тема", "Тёмная"));
-            AddHappSection(page, "Настройки туннеля",
-                CreateHappSettingRow("Правила маршрутизации", routingName, () => ShowHappPage(BuildHappRoutingPage())),
-                CreateHappToggleRow("Включить мультиплексор", config != null && config.muxEnabled, value => { config.muxEnabled = value; SaveAndReloadHapp(); }),
-                CreateHappSettingRow("Предпочитаемый тип IP", GetHappSettingValueDisplay(config?.domainStrategy4Freedom ?? "AsIs")),
-                CreateHappSettingRow("Локальные входы", config != null && config.inbound[0].allowLANConn ? "LAN включён" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
-            AddHappSection(page, "Дополнительные настройки",
+            AddHappSection(page, "Подключение",
+                CreateHappSettingRow("Маршрутизация", routingName, () => ShowHappPage(BuildHappRoutingPage())),
+                CreateHappSettingRow("Локальный прокси", config != null && config.inbound[0].allowLANConn ? "Доступ из локальной сети" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
+            AddHappSection(page, "Данные",
                 CreateHappSettingRow("Подписки", config?.subItem == null ? "0" : config.subItem.Count.ToString(), () => ShowHappPage(BuildHappSubscriptionsPage())),
-                CreateHappSettingRow("Пинг", "", TestAllCommunityServers),
-                CreateHappToggleRow("Разрешить подключения из LAN", config != null && config.inbound[0].allowLANConn, value => { config.inbound[0].allowLANConn = value; SaveAndReloadHapp(); }));
-            AddHappSection(page, "Другие",
-                CreateHappSettingRow("Логи", "", () => ShowHappPage(BuildHappLogsPage())),
+                CreateHappSettingRow("Проверить задержку", "", TestAllCommunityServers));
+            AddHappSection(page, "Sora",
+                CreateHappSettingRow("Журнал", "", () => ShowHappPage(BuildHappLogsPage())),
                 CreateHappSettingRow("Резервные копии", "", ShowSoraBackupMenu));
-            AddHappSection(page, "О программе",
-                CreateHappSettingRow("Часто задаваемые вопросы", "", ShowCommunityAbout),
-                CreateHappSettingRow("О программе", "", ShowCommunityAbout));
+            AddHappSection(page, "О приложении",
+                CreateHappSettingRow("О Sora", "", ShowCommunityAbout));
             return page;
         }
 
         private Control BuildHappSubscriptionsPage()
         {
-            var page = CreateHappScrollablePage("Подписки");
+            var page = CreateHappScrollablePage("Подписки", true);
             _happSubscriptionsPage = page;
             AddHappSection(page, "Действия",
                 CreateHappSettingRow("Добавить подписку", "", ShowHappAddConfiguration),
@@ -108,7 +101,7 @@ namespace v2rayN.Forms
         private Control BuildHappRoutingPage()
         {
             ConfigHandler.InitBuiltinRouting(ref config);
-            var page = CreateHappScrollablePage("Маршрутизация");
+            var page = CreateHappScrollablePage("Маршрутизация", true);
             AddHappSection(page, "Общие настройки",
                 CreateHappSettingRow("Стратегия доменов", GetHappSettingValueDisplay(config.domainStrategy), () =>
                     ShowHappChoiceMenu(new[] { "AsIs", "IPIfNonMatch", "IPOnDemand" }, config.domainStrategy, value =>
@@ -201,7 +194,7 @@ namespace v2rayN.Forms
 
         private Control BuildHappInboundPage()
         {
-            var page = CreateHappScrollablePage("Локальные входы");
+            var page = CreateHappScrollablePage("Локальный прокси", true);
             if (config?.inbound == null || config.inbound.Count == 0)
             {
                 AddHappSection(page, "Состояние", CreateHappSettingRow("Локальный вход не настроен", ""));
@@ -213,14 +206,14 @@ namespace v2rayN.Forms
                 CreateHappSettingRow("Порт", inbound.localPort.ToString()),
                 CreateHappSettingRow("Протокол", inbound.protocol),
                 CreateHappToggleRow("UDP", inbound.udpEnabled, value => { inbound.udpEnabled = value; SaveAndReloadHapp(); }),
-                CreateHappToggleRow("Анализ трафика", inbound.sniffingEnabled, value => { inbound.sniffingEnabled = value; SaveAndReloadHapp(); }),
-                CreateHappToggleRow("Доступ из LAN", inbound.allowLANConn, value => { inbound.allowLANConn = value; SaveAndReloadHapp(); }));
-            AddHappSection(page, "Ядро и трафик",
-                CreateHappToggleRow("Мультиплексор", config.muxEnabled, value => { config.muxEnabled = value; SaveAndReloadHapp(); }),
-                CreateHappToggleRow("Статистика", config.enableStatistics, value => { config.enableStatistics = value; SaveAndReloadHapp(); }),
-                CreateHappToggleRow("Логи ядра", config.logEnabled, value => { config.logEnabled = value; SaveAndReloadHapp(); }),
-                CreateHappToggleRow("Разрешать небезопасные серверы", config.defAllowInsecure, value => { config.defAllowInsecure = value; SaveAndReloadHapp(); }),
-                CreateHappSettingRow("Предпочитаемый IP", GetHappSettingValueDisplay(config.domainStrategy4Freedom), () =>
+                CreateHappToggleRow("Определять протоколы", inbound.sniffingEnabled, value => { inbound.sniffingEnabled = value; SaveAndReloadHapp(); }),
+                CreateHappToggleRow("Доступ из локальной сети", inbound.allowLANConn, value => { inbound.allowLANConn = value; SaveAndReloadHapp(); }));
+            AddHappSection(page, "Дополнительно",
+                CreateHappToggleRow("Объединять подключения", config.muxEnabled, value => { config.muxEnabled = value; SaveAndReloadHapp(); }),
+                CreateHappToggleRow("Собирать статистику", config.enableStatistics, value => { config.enableStatistics = value; SaveAndReloadHapp(); }),
+                CreateHappToggleRow("Подробный журнал", config.logEnabled, value => { config.logEnabled = value; SaveAndReloadHapp(); }),
+                CreateHappToggleRow("Разрешать соединения без проверки сертификата", config.defAllowInsecure, value => { config.defAllowInsecure = value; SaveAndReloadHapp(); }),
+                CreateHappSettingRow("IP-версия", GetHappSettingValueDisplay(config.domainStrategy4Freedom), () =>
                     ShowHappChoiceMenu(Global.domainStrategy4Freedoms.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray(), config.domainStrategy4Freedom, value =>
                     {
                         config.domainStrategy4Freedom = value;
@@ -255,10 +248,24 @@ namespace v2rayN.Forms
             return string.IsNullOrWhiteSpace(value) ? "Не задано" : value;
         }
 
-        private HappScrollPage CreateHappScrollablePage(string title)
+        private HappScrollPage CreateHappScrollablePage(string title, bool showBack = false)
         {
             var page = new HappScrollPage(HappNav, Color.FromArgb(112, 112, 116)) { Dock = DockStyle.Fill };
-            page.Content.Controls.Add(new Label { Width = 850, Height = 42, Text = title, ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft, Margin = Padding.Empty });
+            var header = new Panel { Width = 850, Height = 42, BackColor = HappNav, Margin = Padding.Empty };
+            int titleLeft = 0;
+            if (showBack)
+            {
+                Image backImage = HappIconLoader.Load("caret-right", HappText);
+                backImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
+                var back = new Button { Location = new Point(0, 5), Size = new Size(32, 32), FlatStyle = FlatStyle.Flat, BackColor = HappNav, Image = backImage, Cursor = Cursors.Hand, AccessibleName = "Назад к настройкам", AccessibleRole = AccessibleRole.PushButton };
+                back.FlatAppearance.BorderSize = 0;
+                back.FlatAppearance.MouseOverBackColor = HappSurface;
+                back.Click += (sender, args) => ShowHappPage(BuildHappSettingsPage());
+                header.Controls.Add(back);
+                titleLeft = 44;
+            }
+            header.Controls.Add(new Label { Location = new Point(titleLeft, 0), Size = new Size(806, 42), Text = title, ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft });
+            page.Content.Controls.Add(header);
             page.Content.Resize += (sender, args) => { foreach (Control child in page.Content.Controls) child.Width = Math.Max(400, page.Content.ClientSize.Width - 52); };
             return page;
         }
@@ -275,20 +282,28 @@ namespace v2rayN.Forms
 
         private Control CreateHappSettingRow(string title, string value, Action action = null)
         {
-            var row = new Panel
+            Control row = action == null ? (Control)new Panel() : new Button();
+            row.Height = 44;
+            row.BackColor = HappSurface;
+            row.Margin = Padding.Empty;
+            row.Cursor = action == null ? Cursors.Default : Cursors.Hand;
+            row.TabStop = action != null;
+            row.AccessibleRole = action == null ? AccessibleRole.StaticText : AccessibleRole.PushButton;
+            row.AccessibleName = string.IsNullOrEmpty(value) ? title : title + ": " + value;
+            if (row is Button rowButton)
             {
-                Height = 44,
-                BackColor = HappSurface,
-                Margin = Padding.Empty,
-                Cursor = action == null ? Cursors.Default : Cursors.Hand,
-                TabStop = action != null,
-                AccessibleRole = action == null ? AccessibleRole.StaticText : AccessibleRole.Link,
-                AccessibleName = string.IsNullOrEmpty(value) ? title : title + ": " + value
-            };
+                rowButton.FlatStyle = FlatStyle.Flat;
+                rowButton.FlatAppearance.BorderSize = 0;
+                rowButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(61, 61, 65);
+                rowButton.UseVisualStyleBackColor = false;
+                rowButton.Text = string.Empty;
+            }
             var label = new Label { Dock = DockStyle.Left, Width = 420, Padding = new Padding(16, 0, 0, 0), Text = title, ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-            var detail = new Label { Dock = DockStyle.Right, Width = 260, Padding = new Padding(0, 0, 16, 0), Text = string.IsNullOrEmpty(value) ? "›" : value + (action == null ? "" : "  ›"), ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
+            var detail = new Label { Dock = DockStyle.Right, Width = 260, Padding = new Padding(0, 0, action == null ? 16 : 36, 0), Text = value, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
             if (action != null)
             {
+                detail.Image = HappIconLoader.Load("caret-right", HappMuted);
+                detail.ImageAlign = ContentAlignment.MiddleRight;
                 row.Click += (sender, args) => action();
                 label.Click += (sender, args) => action();
                 detail.Click += (sender, args) => action();
@@ -298,6 +313,7 @@ namespace v2rayN.Forms
                     {
                         action();
                         args.Handled = true;
+                        args.SuppressKeyPress = true;
                     }
                 };
             }
@@ -308,7 +324,7 @@ namespace v2rayN.Forms
         private Control CreateHappToggleRow(string title, bool value, Action<bool> changed)
         {
             var row = CreateHappSettingRow(title, string.Empty);
-            var toggle = new HappToggle { Checked = value, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(row.Width - 62, 11) };
+            var toggle = new HappToggle { Checked = value, Anchor = AnchorStyles.Top | AnchorStyles.Right, Location = new Point(row.Width - 62, 11), AccessibleName = title };
             row.Resize += (sender, args) => toggle.Left = row.ClientSize.Width - 62;
             toggle.CheckedChanged += (sender, args) => changed(toggle.Checked);
             row.Controls.Add(toggle); toggle.BringToFront(); return row;
@@ -322,18 +338,15 @@ namespace v2rayN.Forms
             string connectedAt = _happConnection?.ConnectedAt?.ToString("HH:mm:ss") ?? "—";
             string downloadRate = Utils.HumanFy((ulong)Math.Max(0L, Interlocked.Read(ref _happDownloadRate))) + "/s";
             string uploadRate = Utils.HumanFy((ulong)Math.Max(0L, Interlocked.Read(ref _happUploadRate))) + "/s";
-            AddHappSection(page, "Сервер",
-                CreateHappSettingRow("Время начала", _happStartedAt.ToString("HH:mm:ss")),
-                CreateHappSettingRow("Время подключения", connectedAt));
-            AddHappSection(page, "Пропускная способность прокси",
+            AddHappSection(page, "Сеанс",
+                CreateHappSettingRow("Sora запущена", _happStartedAt.ToString("HH:mm:ss")),
+                CreateHappSettingRow("Подключение установлено", connectedAt));
+            AddHappSection(page, "Текущая скорость",
                 CreateHappSettingRow("Загрузка", downloadRate),
                 CreateHappSettingRow("Выгрузка", uploadRate));
-            AddHappSection(page, "Использование данных через прокси",
+            AddHappSection(page, "Передано через сервер",
                 CreateHappSettingRow("Загрузка", activeStatistics == null ? "Нет данных" : Utils.HumanFy(activeStatistics.totalDown)),
                 CreateHappSettingRow("Выгрузка", activeStatistics == null ? "Нет данных" : Utils.HumanFy(activeStatistics.totalUp)));
-            AddHappSection(page, "Прямое использование данных",
-                CreateHappSettingRow("Прямая загрузка", "Нет данных"),
-                CreateHappSettingRow("Прямая выгрузка", "Нет данных"));
             return page;
         }
 
@@ -342,18 +355,15 @@ namespace v2rayN.Forms
             var page = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, ColumnCount = 1, RowCount = 4, Padding = new Padding(24, 16, 24, 18) };
             _happLogsPage = page;
             page.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F)); page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Логи", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить текущую вкладку · Ctrl+R — диагностический ZIP", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
+            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Журнал", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
+            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить · Ctrl+R — создать архив диагностики", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
             var tabs = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
             var buttons = new[]
             {
-                CreateHappLogTab("Основной лог", string.Empty, true),
-                CreateHappLogTab("Лог ядра", @"\[(CORE|XRAY|V2RAY|SING-BOX|PROC|DAEMON)]", false),
-                CreateHappLogTab("Лог туннеля", @"\[TUN]", false),
-                CreateHappLogTab("Лог AntiFilter", @"\[ANTIFILTER]", false),
-                CreateHappLogTab("Лог подписок", @"\[SUBSCRIPTION]", false),
-                CreateHappLogTab("Лог службы", @"\[(SERVICE|DAEMON|PROC)]", false),
-                CreateHappLogTab("Лог пушей", @"\[PUSH]", false)
+                CreateHappLogTab("События", string.Empty, true),
+                CreateHappLogTab("Ядро", @"\[(CORE|XRAY|V2RAY|SING-BOX|PROC|DAEMON)]", false),
+                CreateHappLogTab("TUN", @"\[TUN]", false),
+                CreateHappLogTab("Подписки", @"\[SUBSCRIPTION]", false)
             };
             foreach (Button button in buttons)
             {
@@ -370,8 +380,8 @@ namespace v2rayN.Forms
                 menu.Items.Add("Сохранить текущую вкладку (.txt)", null, (sender, args) => ExportVisibleSoraLog());
                 menu.Items.Add("Скопировать текущую вкладку", null, (sender, args) => Utils.SetClipboardData(mainMsgControl.GetVisibleText()));
                 menu.Items.Add(new ToolStripSeparator());
-                menu.Items.Add("Создать диагностический ZIP", null, (sender, args) => ExportCommunityDiagnostics());
-                menu.Items.Add("Очистить все журналы", null, (sender, args) => mainMsgControl.ClearMsg());
+                menu.Items.Add("Создать архив диагностики", null, (sender, args) => ExportCommunityDiagnostics());
+                menu.Items.Add("Очистить журнал", null, (sender, args) => mainMsgControl.ClearMsg());
                 menu.Show(Cursor.Position);
             });
             actions.Dock = DockStyle.None; actions.Size = new Size(38, 32); actions.Margin = Padding.Empty;
@@ -418,7 +428,7 @@ namespace v2rayN.Forms
             try
             {
                 File.WriteAllText(path, content, new UTF8Encoding(false));
-                UI.Show("Журнал сохранён в UTF-8 без системного окна:\r\n" + path);
+                UI.Show("Журнал сохранён:\r\n" + path);
                 Process.Start("explorer.exe", "/select,\"" + path + "\"");
             }
             catch (Exception exception)
@@ -457,7 +467,7 @@ namespace v2rayN.Forms
             bool imported = false;
             Action<bool, string> update = (completed, message) =>
             {
-                AppendText(false, message);
+                AppendText(false, message.StartsWith("[SUBSCRIPTION]", StringComparison.Ordinal) ? message : "[SUBSCRIPTION] " + message);
                 if (!completed)
                 {
                     if (message.IndexOf(ResUI.MsgGetSubscriptionSuccessfully, StringComparison.Ordinal) >= 0)
@@ -510,7 +520,7 @@ namespace v2rayN.Forms
             bool anyContentReceived = false;
             Action<bool, string> update = (completed, message) =>
             {
-                AppendText(false, message);
+                AppendText(false, message.StartsWith("[SUBSCRIPTION]", StringComparison.Ordinal) ? message : "[SUBSCRIPTION] " + message);
                 if (!completed)
                 {
                     anyContentReceived |= message.IndexOf(ResUI.MsgGetSubscriptionSuccessfully, StringComparison.Ordinal) >= 0;

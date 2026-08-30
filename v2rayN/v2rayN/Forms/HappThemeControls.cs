@@ -8,6 +8,15 @@ using System.Windows.Forms;
 
 namespace v2rayN.Forms
 {
+    internal enum SoraConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+        Disconnecting,
+        Error
+    }
+
     internal static class HappIconLoader
     {
         internal static Image LoadSoraLogo()
@@ -50,38 +59,55 @@ namespace v2rayN.Forms
         private readonly Font _stateFont;
         private readonly Font _timeFont;
         private float _phase;
-        private bool _connected;
+        private SoraConnectionState _state;
         private DateTime _connectedAt;
 
         internal event EventHandler PowerClick;
 
-        internal DateTime? ConnectedAt => _connected ? _connectedAt : (DateTime?)null;
+        internal DateTime? ConnectedAt => _state == SoraConnectionState.Connected ? _connectedAt : (DateTime?)null;
 
-        internal bool Connected
+        internal SoraConnectionState State
         {
-            get => _connected;
+            get => _state;
             set
             {
-                if (_connected == value)
+                if (_state == value)
                 {
                     return;
                 }
-                _connected = value;
-                if (value)
+                bool becameConnected = value == SoraConnectionState.Connected && _state != SoraConnectionState.Connected;
+                _state = value;
+                if (becameConnected)
                 {
                     _connectedAt = DateTime.Now;
                 }
+                AccessibleName = value == SoraConnectionState.Connected ? "Отключиться" :
+                    value == SoraConnectionState.Connecting ? "Подключение выполняется" :
+                    value == SoraConnectionState.Disconnecting ? "Отключение выполняется" : "Подключиться";
                 Invalidate();
+                AccessibilityNotifyClients(AccessibleEvents.NameChange, -1);
+            }
+        }
+
+        internal bool Connected
+        {
+            get => _state == SoraConnectionState.Connected;
+            set
+            {
+                State = value ? SoraConnectionState.Connected : SoraConnectionState.Disconnected;
             }
         }
 
         internal HappConnectionControl()
         {
-            SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
             BackColor = Color.Transparent;
             Size = new Size(270, 270);
+            TabStop = true;
+            AccessibleRole = AccessibleRole.PushButton;
+            AccessibleName = "Подключиться";
             _powerImage = HappIconLoader.Load("power", MainForm.HappAccent);
             _stateFont = new Font("Segoe UI", 8F);
             _timeFont = new Font("Segoe UI Semibold", 9F);
@@ -97,7 +123,22 @@ namespace v2rayN.Forms
         protected override void OnClick(EventArgs e)
         {
             base.OnClick(e);
+            if (_state == SoraConnectionState.Connecting || _state == SoraConnectionState.Disconnecting)
+            {
+                return;
+            }
             PowerClick?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
+            {
+                OnClick(EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            base.OnKeyDown(e);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -108,22 +149,31 @@ namespace v2rayN.Forms
             float pulse = (float)((Math.Sin(_phase) + 1D) * 0.5D);
             int diameter = 154 + (int)Math.Round(pulse * 4F);
             var button = new Rectangle((Width - diameter) / 2, Height / 2 - diameter / 2 - 17, diameter, diameter);
-            using (var fill = new LinearGradientBrush(
-                button,
-                Color.FromArgb(74 + (int)(pulse * 14F), 82, 82, 86),
-                Color.FromArgb(255, 31, 31, 34),
-                LinearGradientMode.Vertical))
-            using (var border = new Pen(Color.FromArgb(_connected ? 170 : 105, accent), 2F))
+            bool connected = _state == SoraConnectionState.Connected;
+            bool transitioning = _state == SoraConnectionState.Connecting || _state == SoraConnectionState.Disconnecting;
+            using (var fill = new SolidBrush(Color.FromArgb(37 + (int)(pulse * 8F), 37 + (int)(pulse * 8F), 40 + (int)(pulse * 8F))))
+            using (var border = new Pen(Color.FromArgb(connected ? 190 : transitioning ? 155 : 112, accent), 2F))
             {
                 e.Graphics.FillEllipse(fill, button);
                 e.Graphics.DrawEllipse(border, button);
             }
 
+            if (Focused && ShowFocusCues)
+            {
+                using (var focus = new Pen(Color.FromArgb(220, accent)) { DashStyle = DashStyle.Dot })
+                {
+                    e.Graphics.DrawEllipse(focus, Rectangle.Inflate(button, 5, 5));
+                }
+            }
+
             e.Graphics.DrawImage(_powerImage, new Rectangle(Width / 2 - 14, Height / 2 - 49, 28, 28));
 
-            string state = _connected ? "ПОДКЛЮЧЕНО" : "ОТКЛЮЧЕНО";
+            string state = _state == SoraConnectionState.Connected ? "ПОДКЛЮЧЕНО" :
+                _state == SoraConnectionState.Connecting ? "ПОДКЛЮЧЕНИЕ" :
+                _state == SoraConnectionState.Disconnecting ? "ОТКЛЮЧЕНИЕ" :
+                _state == SoraConnectionState.Error ? "ОШИБКА" : "ОТКЛЮЧЕНО";
             TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(172, 176, 190), TextFormatFlags.HorizontalCenter);
-            if (_connected)
+            if (connected)
             {
                 string elapsed = (DateTime.Now - _connectedAt).ToString(@"hh\:mm\:ss");
                 TextRenderer.DrawText(e.Graphics, elapsed, _timeFont, new Rectangle(0, Height / 2 + 12, Width, 20), Color.White, TextFormatFlags.HorizontalCenter);
@@ -168,9 +218,12 @@ namespace v2rayN.Forms
 
         internal HappToggle()
         {
+            SetStyle(ControlStyles.Selectable, true);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
             Size = new Size(42, 22);
+            TabStop = true;
+            AccessibleRole = AccessibleRole.CheckButton;
             _animation = new Timer { Interval = 16 };
             _animation.Tick += (sender, args) =>
             {
@@ -191,6 +244,17 @@ namespace v2rayN.Forms
             base.OnClick(e);
         }
 
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
+            {
+                OnClick(EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            base.OnKeyDown(e);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -200,6 +264,10 @@ namespace v2rayN.Forms
             {
                 e.Graphics.FillPath(brush, track);
                 e.Graphics.DrawPath(border, track);
+            }
+            if (Focused && ShowFocusCues)
+            {
+                ControlPaint.DrawFocusRectangle(e.Graphics, ClientRectangle, Color.White, Color.Transparent);
             }
             float x = 3F + _position * (Width - 20F);
             using (var knob = new SolidBrush(!Enabled ? Color.FromArgb(77, 77, 82) : _checked ? Color.FromArgb(18, 18, 19) : Color.White)) e.Graphics.FillEllipse(knob, x, 4F, 14F, 14F);

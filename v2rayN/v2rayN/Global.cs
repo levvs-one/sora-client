@@ -182,7 +182,7 @@ namespace v2rayN
         /// <summary>
         /// MyRegPath
         /// </summary>
-        public const string MyRegPath = "Software\\v2rayNGUI";
+        public const string MyRegPath = "Software\\Sora";
 
         /// <summary>
         /// Language

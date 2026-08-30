@@ -10,28 +10,28 @@ namespace v2rayN
     {
         public static void Show(string message)
         {
-            SoraMessageBox.Show(message, MessageBoxButtons.OK);
+            SoraMessageBox.Show(message, MessageBoxButtons.OK, "Готово", "check");
         }
 
         public static void ShowWarning(string message)
         {
-            SoraMessageBox.Show(message, MessageBoxButtons.OK);
+            SoraMessageBox.Show(message, MessageBoxButtons.OK, "Обратите внимание", "warning");
         }
 
         public static void ShowError(string message)
         {
-            SoraMessageBox.Show(message, MessageBoxButtons.OK);
+            SoraMessageBox.Show(message, MessageBoxButtons.OK, "Не удалось выполнить действие", "warning");
         }
 
         public static DialogResult ShowYesNo(string message)
         {
-            return SoraMessageBox.Show(message, MessageBoxButtons.YesNo);
+            return SoraMessageBox.Show(message, MessageBoxButtons.YesNo, "Подтвердите действие", "warning");
         }
     }
 
     internal static class SoraMessageBox
     {
-        internal static DialogResult Show(string message, MessageBoxButtons buttons)
+        internal static DialogResult Show(string message, MessageBoxButtons buttons, string title, string icon)
         {
             message = NormalizeSoraMessage(message);
             Form owner = Form.ActiveForm;
@@ -41,10 +41,10 @@ namespace v2rayN
             }
             if (owner != null && owner.InvokeRequired)
             {
-                return (DialogResult)owner.Invoke(new Func<DialogResult>(() => Show(message, buttons)));
+                return (DialogResult)owner.Invoke(new Func<DialogResult>(() => Show(message, buttons, title, icon)));
             }
 
-            using (var dialog = BuildDialog(message ?? string.Empty, buttons))
+            using (var dialog = BuildDialog(message ?? string.Empty, buttons, title, icon))
             {
                 return owner == null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
             }
@@ -63,7 +63,7 @@ namespace v2rayN
             return message.Replace("v2rayN", "Sora");
         }
 
-        private static Form BuildDialog(string message, MessageBoxButtons buttons)
+        private static Form BuildDialog(string message, MessageBoxButtons buttons, string titleText, string icon)
         {
             const int minimumWidth = 460;
             const int maximumWidth = 720;
@@ -91,7 +91,7 @@ namespace v2rayN
                 {
                     Location = new Point(28, 25),
                     Size = new Size(22, 22),
-                    Image = HappIconLoader.LoadSoraLogo(),
+                    Image = HappIconLoader.Load(icon, Color.FromArgb(247, 247, 248)),
                     SizeMode = PictureBoxSizeMode.Zoom,
                     BackColor = dialog.BackColor
                 };
@@ -99,7 +99,7 @@ namespace v2rayN
                 {
                     Location = new Point(60, 20),
                     Size = new Size(width - 116, 34),
-                    Text = "Sora",
+                    Text = titleText,
                     Font = new Font("Segoe UI Semibold", 14F),
                     ForeColor = dialog.ForeColor,
                     TextAlign = ContentAlignment.MiddleLeft

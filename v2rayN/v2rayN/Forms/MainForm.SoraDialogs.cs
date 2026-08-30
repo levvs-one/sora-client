@@ -39,7 +39,7 @@ namespace v2rayN.Forms
                 {
                     Location = new Point(32, 20),
                     Size = new Size(650, 32),
-                    Text = "Добавить в Sora",
+                    Text = "Добавить конфигурацию",
                     Font = new Font("Segoe UI Semibold", 14F),
                     ForeColor = HappText,
                     TextAlign = ContentAlignment.MiddleLeft
@@ -48,7 +48,7 @@ namespace v2rayN.Forms
                 {
                     Location = new Point(32, 54),
                     Size = new Size(700, 24),
-                    Text = "Подписка, ссылки серверов, Base64, SIP008 или конфигурация Xray — формат определится автоматически.",
+                    Text = "Вставьте ссылку подписки или конфигурацию — формат определится автоматически.",
                     Font = new Font("Segoe UI", 8.5F),
                     ForeColor = HappMuted
                 };
@@ -120,15 +120,6 @@ namespace v2rayN.Forms
                 };
 
                 TextBox name = CreateSoraTextField(dialog, "Название — необязательно", 32, 316, 716);
-                var formats = new Label
-                {
-                    Location = new Point(32, 394),
-                    Size = new Size(520, 38),
-                    Text = "HTTPS · VMess · VLESS · Trojan · Shadowsocks · SOCKS · Base64 · SIP008 · Xray JSON",
-                    ForeColor = Color.FromArgb(164, 164, 170),
-                    Font = new Font("Segoe UI", 8.5F)
-                };
-
                 SoraImportAnalysis analysis = AnalyzeSoraImport(string.Empty);
                 Button import = null;
                 import = CreateHappButton("Добавить", () =>
@@ -148,7 +139,7 @@ namespace v2rayN.Forms
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
                 }, true);
-                import.Location = new Point(624, 438);
+                import.Location = new Point(624, 430);
                 import.Size = new Size(124, 38);
                 import.TabStop = true;
                 import.AccessibleName = "Добавить распознанную конфигурацию";
@@ -158,14 +149,14 @@ namespace v2rayN.Forms
                     analysis = AnalyzeSoraImport(input.Text);
                     detected.Text = analysis.Title;
                     detail.Text = analysis.Detail;
-                    detail.ForeColor = analysis.Kind == SoraImportKind.Unsupported ? Color.FromArgb(238, 178, 178) : HappMuted;
+                    detail.ForeColor = HappMuted;
                     import.Enabled = analysis.CanImport;
                     import.BackColor = import.Enabled ? HappAccent : Color.FromArgb(67, 67, 70);
                     import.ForeColor = import.Enabled ? HappTitle : Color.FromArgb(142, 142, 148);
                 };
                 input.TextChanged += (sender, args) => refreshState();
 
-                dialog.Controls.AddRange(new Control[] { title, subtitle, close, inputCaption, inputShell, paste, detected, detail, formats, import });
+                dialog.Controls.AddRange(new Control[] { title, subtitle, close, inputCaption, inputShell, paste, detected, detail, import });
                 dialog.AcceptButton = import;
                 dialog.CancelButton = close;
                 string clipboard = Utils.GetClipboardData().Trim();
@@ -318,7 +309,31 @@ namespace v2rayN.Forms
             }
 
             var previousIds = new HashSet<string>(config.vmess.Select(server => server.indexId));
-            int imported = ConfigHandler.AddBatchServers(ref config, input, string.Empty, _groupId);
+            int imported = 0;
+            if (analysis.Kind == SoraImportKind.ShareLinks || analysis.Kind == SoraImportKind.EncodedShareLinks)
+            {
+                string source = input;
+                if (analysis.Kind == SoraImportKind.EncodedShareLinks && !TryDecodeSoraBase64(input, out source))
+                {
+                    return 0;
+                }
+                string[] candidates = source.Split(new[] { '\r', '\n', '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (string candidate in candidates.Where(IsSoraShareLink))
+                {
+                    try
+                    {
+                        imported += ConfigHandler.AddBatchServers(ref config, candidate, string.Empty, _groupId);
+                    }
+                    catch (Exception exception)
+                    {
+                        Utils.SaveLog("Не удалось импортировать одну из ссылок: " + exception.Message);
+                    }
+                }
+            }
+            else
+            {
+                imported = ConfigHandler.AddBatchServers(ref config, input, string.Empty, _groupId);
+            }
             if (imported > 0)
             {
                 List<VmessItem> addedServers = config.vmess.Where(server => !previousIds.Contains(server.indexId)).ToList();
@@ -346,6 +361,15 @@ namespace v2rayN.Forms
             return imported;
         }
 
+        private static bool IsSoraShareLink(string value)
+        {
+            return value.StartsWith(Global.vmessProtocol, StringComparison.OrdinalIgnoreCase) ||
+                value.StartsWith(Global.vlessProtocol, StringComparison.OrdinalIgnoreCase) ||
+                value.StartsWith(Global.trojanProtocol, StringComparison.OrdinalIgnoreCase) ||
+                value.StartsWith(Global.ssProtocol, StringComparison.OrdinalIgnoreCase) ||
+                value.StartsWith(Global.socksProtocol, StringComparison.OrdinalIgnoreCase);
+        }
+
         private void ShowSoraServerEditor()
         {
             int index = GetLvSelectedIndex(false);
@@ -363,7 +387,7 @@ namespace v2rayN.Forms
                 {
                     Location = new Point(32, 22),
                     Size = new Size(660, 34),
-                    Text = item.configType == EConfigType.Custom ? "Конфигурация Xray" : "Настройки сервера",
+                    Text = item.configType == EConfigType.Custom ? "Пользовательская конфигурация" : "Настройки сервера",
                     Font = new Font("Segoe UI Semibold", 15F),
                     ForeColor = HappText,
                     TextAlign = ContentAlignment.MiddleLeft
@@ -387,7 +411,7 @@ namespace v2rayN.Forms
                 if (item.configType == EConfigType.Custom)
                 {
                     TextBox path = CreateSoraTextField(dialog, "Файл конфигурации", 32, 168, 756, item.address, true);
-                    TextBox core = CreateSoraTextField(dialog, "Ядро", 32, 240, 360, item.coreType?.ToString() ?? "Не определено", true);
+                    TextBox core = CreateSoraTextField(dialog, "Компонент подключения", 32, 240, 360, item.coreType?.ToString() ?? "Не определено", true);
                     var warning = new Label
                     {
                         Location = new Point(32, 318),
@@ -424,10 +448,10 @@ namespace v2rayN.Forms
                     TextBox security = CreateSoraTextField(dialog, securityCaption, 518, 240, 270, item.security);
                     TextBox network = CreateSoraTextField(dialog, "Транспорт", 32, 312, 230, item.network);
                     TextBox tls = CreateSoraTextField(dialog, "TLS", 278, 312, 230, string.IsNullOrWhiteSpace(item.streamSecurity) ? "none" : item.streamSecurity);
-                    TextBox flow = CreateSoraTextField(dialog, "Flow", 524, 312, 264, item.flow);
-                    TextBox sni = CreateSoraTextField(dialog, "SNI", 32, 384, 368, item.sni);
-                    TextBox host = CreateSoraTextField(dialog, "Host", 416, 384, 372, item.requestHost);
-                    TextBox path = CreateSoraTextField(dialog, "Path / service name", 32, 456, 756, item.path);
+                    TextBox flow = CreateSoraTextField(dialog, "Режим потока (Flow)", 524, 312, 264, item.flow);
+                    TextBox sni = CreateSoraTextField(dialog, "Имя сервера (SNI)", 32, 384, 368, item.sni);
+                    TextBox host = CreateSoraTextField(dialog, "Заголовок Host", 416, 384, 372, item.requestHost);
+                    TextBox path = CreateSoraTextField(dialog, "Путь или имя сервиса", 32, 456, 756, item.path);
                     foreach (TextBox field in new[] { remarks, address, port, credential, security, network, tls, flow, sni, host, path })
                     {
                         field.ReadOnly = locked;
@@ -658,15 +682,23 @@ namespace v2rayN.Forms
             var menu = BuildHappMenu();
             menu.Items.Add("Открыть Sora", null, (sender, args) => ShowForm());
             var connection = menu.Items.Add("Подключить");
-            connection.Click += (sender, args) =>
+            connection.Click += async (sender, args) =>
             {
-                if (config != null && config.sysProxyType == ESysProxyType.ForcedChange)
+                bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
+                if (active)
                 {
                     DisconnectCommunity();
                 }
                 else if (config?.GetVmessItem(config.indexId) != null)
                 {
-                    SetListenerType(ESysProxyType.ForcedChange);
+                    if (_happUseTun)
+                    {
+                        await StartCommunityTunAsync();
+                    }
+                    else
+                    {
+                        SetListenerType(ESysProxyType.ForcedChange);
+                    }
                 }
                 else
                 {
@@ -678,7 +710,8 @@ namespace v2rayN.Forms
             menu.Items.Add("Выйти", null, menuExit_Click);
             menu.Opening += (sender, args) =>
             {
-                connection.Text = config != null && config.sysProxyType == ESysProxyType.ForcedChange ? "Отключить" : "Подключить";
+                bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
+                connection.Text = active ? "Отключить" : _happUseTun ? "Подключить через TUN" : "Подключить для приложений";
             };
             return menu;
         }

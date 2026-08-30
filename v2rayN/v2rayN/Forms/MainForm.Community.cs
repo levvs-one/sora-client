@@ -631,7 +631,7 @@ namespace v2rayN.Forms
             bool connected = type == ESysProxyType.ForcedChange && config != null && config.GetVmessItem(config.indexId) != null;
             if (_happConnection != null)
             {
-                _happConnection.Connected = connected || tunConnected;
+                _happConnection.State = connected || tunConnected ? SoraConnectionState.Connected : SoraConnectionState.Disconnected;
             }
             if (_communityConnectionStatus == null)
             {
@@ -783,6 +783,10 @@ namespace v2rayN.Forms
 
         private void DisconnectCommunity()
         {
+            if (_happConnection != null)
+            {
+                _happConnection.State = SoraConnectionState.Disconnecting;
+            }
             StopCommunityTun();
             SetListenerType(ESysProxyType.ForcedClear);
         }
@@ -804,7 +808,7 @@ namespace v2rayN.Forms
             }
             var active = config.GetVmessItem(config.indexId);
             _communityActiveServer.Text = active == null ? "Сервер не выбран" :
-                string.Format(CultureInfo.CurrentCulture, "{0} · {1}:{2}", active.remarks, active.address, active.port);
+                string.IsNullOrWhiteSpace(active.remarks) ? "Сервер без названия" : active.remarks;
         }
 
         private void UpdateCommunityEmptyState()
@@ -879,10 +883,7 @@ namespace v2rayN.Forms
 
         private void ShowCommunityAbout()
         {
-            UI.Show(
-                "Sora " + SoraVersion + "\r\n\r\nНеофициальный открытый клиент для Windows 7 x86. " +
-                "Использует открытые компоненты Xray, sing-box, tun2proxy и Wintun. Происхождение кода и лицензии перечислены в NOTICE.md.\r\n\r\n" +
-                "Проект не связан с Flyfrog LLC и официальным Happ Desktop.");
+            UI.Show("Sora " + SoraVersion + "\r\nКлиент подключений для Windows 7\r\n\r\nОткрытый исходный код · GPL-3.0\r\nНезависимый проект");
         }
     }
 }

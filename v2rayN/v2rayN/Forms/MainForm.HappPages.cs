@@ -34,9 +34,6 @@ namespace v2rayN.Forms
             AddHappSection(page, "Подключение",
                 CreateHappSettingRow("Маршрутизация", routingName, () => ShowHappPage(BuildHappRoutingPage())),
                 CreateHappSettingRow("Локальный прокси", config != null && config.inbound[0].allowLANConn ? "Доступ из локальной сети" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
-            AddHappSection(page, "Данные",
-                CreateHappSettingRow("Подписки", config?.subItem == null ? "0" : config.subItem.Count.ToString(), () => ShowHappPage(BuildHappSubscriptionsPage())),
-                CreateHappSettingRow("Проверить задержку", "", TestAllCommunityServers));
             AddHappSection(page, "Sora",
                 CreateHappSettingRow("Журнал", "", () => ShowHappPage(BuildHappLogsPage())),
                 CreateHappSettingRow("Резервные копии", "", ShowSoraBackupMenu));
@@ -47,7 +44,7 @@ namespace v2rayN.Forms
 
         private Control BuildHappSubscriptionsPage()
         {
-            var page = CreateHappScrollablePage("Подписки", true);
+            var page = CreateHappScrollablePage("Подписки", true, () => ShowHappPage(_happServerPage), "Назад к серверам");
             page.Name = "sora.subscriptions.page";
             page.AccessibleName = "Подписки";
             _happSubscriptionsPage = page;
@@ -250,7 +247,7 @@ namespace v2rayN.Forms
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
                     RefreshServers();
-                    ShowHappPage(BuildHappSubscriptionsPage());
+                    ShowHappPage(_happServerPage);
                 }, false);
                 delete.Name = "sora.subscription.delete";
                 delete.Size = new Size(112, 36);
@@ -513,7 +510,7 @@ namespace v2rayN.Forms
             return string.IsNullOrWhiteSpace(value) ? "Не задано" : value;
         }
 
-        private HappScrollPage CreateHappScrollablePage(string title, bool showBack = false)
+        private HappScrollPage CreateHappScrollablePage(string title, bool showBack = false, Action backAction = null, string backAccessibleName = "Назад к настройкам")
         {
             var page = new HappScrollPage(HappNav, Color.FromArgb(112, 112, 116)) { Dock = DockStyle.Fill };
             var header = new Panel { Width = 850, Height = 42, BackColor = HappNav, Margin = Padding.Empty };
@@ -522,10 +519,10 @@ namespace v2rayN.Forms
             {
                 Image backImage = HappIconLoader.Load("caret-right", HappText);
                 backImage.RotateFlip(RotateFlipType.Rotate180FlipNone);
-                var back = new Button { Location = new Point(0, 5), Size = new Size(32, 32), FlatStyle = FlatStyle.Flat, BackColor = HappNav, Image = backImage, Cursor = Cursors.Hand, AccessibleName = "Назад к настройкам", AccessibleRole = AccessibleRole.PushButton };
+                var back = new Button { Location = new Point(0, 5), Size = new Size(32, 32), FlatStyle = FlatStyle.Flat, BackColor = HappNav, Image = backImage, Cursor = Cursors.Hand, AccessibleName = backAccessibleName, AccessibleRole = AccessibleRole.PushButton };
                 back.FlatAppearance.BorderSize = 0;
                 back.FlatAppearance.MouseOverBackColor = HappSurface;
-                back.Click += (sender, args) => ShowHappPage(BuildHappSettingsPage());
+                back.Click += (sender, args) => (backAction ?? (() => ShowHappPage(BuildHappSettingsPage())))();
                 header.Controls.Add(back);
                 titleLeft = 44;
             }
@@ -816,6 +813,11 @@ namespace v2rayN.Forms
 
         private void RefreshSoraSubscriptionsPage()
         {
+            if (_soraSubscriptionsButton != null)
+            {
+                _soraSubscriptionsButton.Text = GetSoraServerSubscriptionSummary();
+                _soraSubscriptionsButton.AccessibleName = "Управление подписками: " + _soraSubscriptionsButton.Text;
+            }
             if (_happSubscriptionsPage != null && _happSubscriptionsPage.Visible)
             {
                 ShowHappPage(BuildHappSubscriptionsPage());

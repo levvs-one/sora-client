@@ -439,7 +439,7 @@ namespace v2rayN.Forms
             };
             pane.Resize += (sender, args) => { _happConnection.Left = (pane.ClientSize.Width - _happConnection.Width) / 2; _happConnection.Top = 72; };
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
-            _soraTrafficSummary = new Label { Anchor = AnchorStyles.Top, Location = new Point(126, 350), Size = new Size(320, 42), BackColor = Color.Transparent, ForeColor = HappMuted, Font = new Font("Segoe UI", 8.5F), Text = "↓ 0 B/s     ↑ 0 B/s\r\nСегодня 0 B", TextAlign = ContentAlignment.TopCenter, AccessibleName = "Счётчик трафика" };
+            _soraTrafficSummary = new Label { Anchor = AnchorStyles.Top, Location = new Point(126, 300), Size = new Size(320, 42), BackColor = Color.Transparent, ForeColor = HappMuted, Font = new Font("Segoe UI", 8.5F), Text = "↓ 0 B/s     ↑ 0 B/s\r\nСегодня 0 B", TextAlign = ContentAlignment.TopCenter, AccessibleName = "Счётчик трафика" };
             StartSoraTrafficCounter();
             var ping = CreateHappButton("Проверить задержку", TestAllCommunityServers, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);

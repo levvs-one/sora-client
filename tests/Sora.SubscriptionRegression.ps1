@@ -76,8 +76,11 @@ if ($null -ne $mainFormType.GetMethod('BuildHappSubscriptionsPage', $instanceBin
 if ($null -eq $mainFormType.GetMethod('BuildSoraInlineSubscriptionCard', $instanceBinding)) {
     throw 'The inline subscriptions card is missing from the servers screen'
 }
-if ($null -ne $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
-    throw 'The floating traffic card must not return to the connection pane'
+if ($null -eq $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
+    throw 'The compact traffic summary is missing below the connection button'
+}
+if ($null -ne $mainFormType.GetField('_soraTrafficTotal', $instanceBinding)) {
+    throw 'The layered traffic card must not return to the connection pane'
 }
 
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {

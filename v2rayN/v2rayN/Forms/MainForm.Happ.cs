@@ -38,6 +38,8 @@ namespace v2rayN.Forms
         private Button _soraSubscriptionRefresh;
         private Button _soraSubscriptionPing;
         private Timer _soraSubscriptionSummaryTimer;
+        private Label _soraTrafficSummary;
+        private Timer _soraTrafficTimer;
         private bool _happUseTun;
         private Button _happModeButton;
         private bool _happReportShortcutWired;
@@ -437,11 +439,39 @@ namespace v2rayN.Forms
             };
             pane.Resize += (sender, args) => { _happConnection.Left = (pane.ClientSize.Width - _happConnection.Width) / 2; _happConnection.Top = 72; };
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
+            _soraTrafficSummary = new Label { Anchor = AnchorStyles.Top, Location = new Point(126, 350), Size = new Size(320, 42), BackColor = Color.Transparent, ForeColor = HappMuted, Font = new Font("Segoe UI", 8.5F), Text = "↓ 0 B/s     ↑ 0 B/s\r\nСегодня 0 B", TextAlign = ContentAlignment.TopCenter, AccessibleName = "Счётчик трафика" };
+            StartSoraTrafficCounter();
             var ping = CreateHappButton("Проверить задержку", TestAllCommunityServers, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
-            pane.Resize += (sender, args) => { _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
-            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            pane.Resize += (sender, args) => { _soraTrafficSummary.Left = (pane.ClientSize.Width - _soraTrafficSummary.Width) / 2; _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
+            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_soraTrafficSummary); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
             return pane;
+        }
+
+        private void StartSoraTrafficCounter()
+        {
+            if (_soraTrafficTimer != null) return;
+            _soraTrafficTimer = new Timer(components) { Interval = 500 };
+            _soraTrafficTimer.Tick += (sender, args) =>
+            {
+                if (_soraTrafficSummary == null) return;
+                ulong down = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happDownloadRate));
+                ulong up = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happUploadRate));
+                ulong today = 0;
+                try
+                {
+                    if (statistics != null && statistics.Enable)
+                    {
+                        foreach (ServerStatItem item in statistics.Statistic.ToArray()) today += item.todayDown + item.todayUp;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    today = 0;
+                }
+                _soraTrafficSummary.Text = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s\r\nСегодня " + Utils.HumanFy(today);
+            };
+            _soraTrafficTimer.Start();
         }
 
         private void StartSoraSubscriptionSummary()

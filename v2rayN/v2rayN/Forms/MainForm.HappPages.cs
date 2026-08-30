@@ -799,26 +799,8 @@ namespace v2rayN.Forms
                 : subscription.lastUpdateSuccessUtcTicks > 0 ? FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
                 : "ещё не обновлялась";
             string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
-            ulong rateDown = (ulong)Math.Max(0L, Interlocked.Read(ref _happDownloadRate));
-            ulong rateUp = (ulong)Math.Max(0L, Interlocked.Read(ref _happUploadRate));
-            ulong today = 0;
-            try
-            {
-                if (statistics != null && statistics.Enable)
-                {
-                    var serverIds = new HashSet<string>(config.vmess.Where(server => server.subid == subscription.id).Select(server => server.indexId));
-                    foreach (ServerStatItem item in statistics.Statistic.ToArray())
-                    {
-                        if (serverIds.Contains(item.itemId)) today += item.todayDown + item.todayUp;
-                    }
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                today = 0;
-            }
             _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = serverCount + " серверов · " + state + " · " + schedule + "\r\n↓ " + Utils.HumanFy(rateDown) + "/s · ↑ " + Utils.HumanFy(rateUp) + "/s · сегодня " + Utils.HumanFy(today);
+            _soraSubscriptionDetail.Text = GetSoraSubscriptionHost(subscription.url) + " · " + serverCount + " серверов\r\n" + state + " · " + schedule;
             _soraSubscriptionRefresh.Enabled = !updating;
             _soraSubscriptionPing.Enabled = serverCount > 0 && !updating;
         }

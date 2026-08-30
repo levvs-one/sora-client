@@ -208,8 +208,8 @@ namespace v2rayN.Forms
                         item.BackColor = item == button ? Color.Black : HappNav;
                         item.Invalidate();
                     }
-                    ActiveControl = null;
                 }
+                ActiveControl = null;
             };
             ApplyRoundedCorners(button, 5);
             return button;

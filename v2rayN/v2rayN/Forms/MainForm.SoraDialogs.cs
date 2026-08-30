@@ -428,18 +428,18 @@ namespace v2rayN.Forms
                         BackColor = Color.FromArgb(31, 31, 33)
                     };
                     ApplyRoundedSurface(details, 6, Color.FromArgb(76, 76, 80));
-                    var pathName = new Label { Location = new Point(16, 0), Size = new Size(190, 54), Text = "Файл конфигурации", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-                    var pathValue = new Label { Location = new Point(220, 0), Size = new Size(520, 54), Text = item.address, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Font = new Font("Segoe UI", 8.5F) };
+                    var pathName = new Label { Location = new Point(16, 1), Size = new Size(190, 52), Text = "Файл конфигурации", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                    var pathValue = new Label { Location = new Point(220, 1), Size = new Size(520, 52), Text = item.address, ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Font = new Font("Segoe UI", 8.5F) };
                     var divider = new Panel { Location = new Point(0, 53), Size = new Size(756, 1), BackColor = Color.FromArgb(76, 76, 80) };
-                    var coreName = new Label { Location = new Point(16, 54), Size = new Size(190, 54), Text = "Компонент подключения", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-                    var coreValue = new Label { Location = new Point(520, 54), Size = new Size(220, 54), Text = item.coreType == ECoreType.Xray ? "Xray · встроен" : item.coreType?.ToString() ?? "Не определено", ForeColor = item.coreType == ECoreType.Xray ? HappText : Color.FromArgb(238, 178, 178), TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI Semibold", 9F) };
+                    var coreName = new Label { Location = new Point(16, 55), Size = new Size(190, 51), Text = "Компонент подключения", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                    var coreValue = new Label { Location = new Point(520, 55), Size = new Size(220, 51), Text = item.coreType == ECoreType.Xray ? "Xray · встроен" : item.coreType?.ToString() ?? "Не определено", ForeColor = item.coreType == ECoreType.Xray ? HappText : HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI Semibold", 9F) };
                     details.Controls.AddRange(new Control[] { pathName, pathValue, divider, coreName, coreValue });
                     var warning = new Label
                     {
                         Location = new Point(32, 304),
                         Size = new Size(756, 42),
                         Text = item.coreType == ECoreType.Xray ? "Sora запускает этот файл встроенным Xray. Путь защищён от случайного изменения." : "Этот компонент не входит в x86-сборку Sora. Подключение работать не будет.",
-                        ForeColor = item.coreType == ECoreType.Xray ? HappMuted : Color.FromArgb(238, 178, 178),
+                        ForeColor = HappMuted,
                         Font = new Font("Segoe UI", 9F)
                     };
                     dialog.Controls.AddRange(new Control[] { details, warning });
@@ -533,7 +533,7 @@ namespace v2rayN.Forms
                 delete.Size = new Size(128, 38);
                 delete.TabStop = true;
                 delete.AccessibleName = "Удалить сервер";
-                delete.ForeColor = Color.FromArgb(238, 178, 178);
+                delete.ForeColor = HappText;
                 delete.Image = HappIconLoader.Load("trash", delete.ForeColor);
                 delete.ImageAlign = ContentAlignment.MiddleLeft;
                 delete.TextImageRelation = TextImageRelation.ImageBeforeText;

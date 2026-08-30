@@ -931,14 +931,14 @@ namespace v2rayN.Forms
                     BackColor = HappSurface
                 };
                 ApplyRoundedSurface(details, 6, Color.FromArgb(76, 76, 80));
-                var licenseName = new Label { Location = new Point(16, 0), Size = new Size(160, 44), Text = "Лицензия", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
-                var licenseValue = new Label { Location = new Point(196, 0), Size = new Size(224, 44), Text = "GPL-3.0", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
+                var licenseName = new Label { Location = new Point(16, 1), Size = new Size(160, 42), Text = "Лицензия", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var licenseValue = new Label { Location = new Point(196, 1), Size = new Size(224, 42), Text = "GPL-3.0", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
                 var divider = new Panel { Location = new Point(0, 43), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
-                var sourceName = new Label { Location = new Point(16, 44), Size = new Size(160, 44), Text = "Исходный код", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var sourceName = new Label { Location = new Point(16, 45), Size = new Size(160, 42), Text = "Исходный код", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
                 var sourceValue = new LinkLabel
                 {
-                    Location = new Point(176, 44),
-                    Size = new Size(244, 44),
+                    Location = new Point(176, 45),
+                    Size = new Size(244, 42),
                     Text = "github.com/levvs-one/sora-client",
                     LinkColor = HappText,
                     ActiveLinkColor = HappMuted,
@@ -952,11 +952,11 @@ namespace v2rayN.Forms
                 };
                 sourceValue.LinkClicked += (sender, args) => OpenSoraCommunityLink("https://github.com/levvs-one/sora-client");
                 var telegramDivider = new Panel { Location = new Point(0, 87), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
-                var telegramName = new Label { Location = new Point(16, 88), Size = new Size(160, 44), Text = "Telegram", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var telegramName = new Label { Location = new Point(16, 89), Size = new Size(160, 42), Text = "Telegram", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
                 var telegramValue = new LinkLabel
                 {
-                    Location = new Point(196, 88),
-                    Size = new Size(224, 44),
+                    Location = new Point(196, 89),
+                    Size = new Size(224, 42),
                     Text = "t.me/sora_client",
                     LinkColor = HappText,
                     ActiveLinkColor = HappMuted,

@@ -401,8 +401,8 @@ namespace v2rayN.Forms
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
             var traffic = new Panel { Anchor = AnchorStyles.Top, Location = new Point(136, 318), Size = new Size(300, 58), BackColor = Color.FromArgb(29, 29, 31), AccessibleName = "Счётчик трафика" };
             ApplyRoundedCorners(traffic, 6);
-            _soraTrafficRate = new Label { Dock = DockStyle.Top, Height = 31, Text = "↓ 0 B/s    ↑ 0 B/s", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 9.5F), TextAlign = ContentAlignment.BottomCenter };
-            _soraTrafficTotal = new Label { Dock = DockStyle.Fill, Text = "Сегодня 0 B", ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), TextAlign = ContentAlignment.TopCenter };
+            _soraTrafficRate = new Label { Dock = DockStyle.Top, Height = 31, Text = "↓ 0 B/s    ↑ 0 B/s", BackColor = traffic.BackColor, ForeColor = HappText, Font = new Font("Segoe UI Semibold", 9.5F), TextAlign = ContentAlignment.BottomCenter };
+            _soraTrafficTotal = new Label { Dock = DockStyle.Fill, Text = "Сегодня 0 B", BackColor = traffic.BackColor, ForeColor = HappMuted, Font = new Font("Segoe UI", 8F), TextAlign = ContentAlignment.TopCenter };
             traffic.Controls.Add(_soraTrafficTotal);
             traffic.Controls.Add(_soraTrafficRate);
             StartSoraTrafficCounter();

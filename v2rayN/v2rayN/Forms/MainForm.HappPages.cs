@@ -131,7 +131,7 @@ namespace v2rayN.Forms
                 TabStop = true,
                 UseVisualStyleBackColor = false,
                 AccessibleName = title + ", " + serverCount + " серверов, " + state,
-                AccessibleRole = AccessibleRole.ListItem
+                AccessibleRole = AccessibleRole.PushButton
             };
             row.FlatAppearance.BorderSize = 0;
             row.FlatAppearance.MouseOverBackColor = Color.FromArgb(61, 61, 65);
@@ -318,7 +318,18 @@ namespace v2rayN.Forms
 
         private static string GetSoraSubscriptionTitle(SubItem subscription)
         {
-            return string.IsNullOrWhiteSpace(subscription?.remarks) ? GetSoraSubscriptionHost(subscription?.url) : subscription.remarks.Trim();
+            if (subscription == null) return "Подписка";
+            string host = GetSoraSubscriptionHost(subscription.url);
+            string remarks = subscription.remarks?.Trim();
+            if (!subscription.nameCustomized
+                && (string.IsNullOrWhiteSpace(remarks)
+                    || string.Equals(remarks, "import sub", StringComparison.OrdinalIgnoreCase)
+                    || (Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed)
+                        && string.Equals(remarks, parsed.Host, StringComparison.OrdinalIgnoreCase))))
+            {
+                return host;
+            }
+            return string.IsNullOrWhiteSpace(remarks) ? host : remarks;
         }
 
         private static string GetSoraSubscriptionHost(string url)

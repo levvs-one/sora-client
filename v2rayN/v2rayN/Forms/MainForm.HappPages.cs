@@ -30,6 +30,8 @@ namespace v2rayN.Forms
                 routingName = GetHappRoutingDisplayName(config.routings[config.routingIndex].remarks, config.routingIndex);
             }
             var page = CreateHappScrollablePage("Настройки");
+            AddHappSection(page, "Интерфейс",
+                CreateHappSettingRow("Язык", GetSoraLanguageDisplayName(SoraText.CurrentLanguage), ShowSoraLanguageMenu));
             AddHappSection(page, "Подключение",
                 CreateHappSettingRow("Маршрутизация", routingName, () => ShowHappPage(BuildHappRoutingPage())),
                 CreateHappSettingRow("Локальный прокси", config != null && config.inbound[0].allowLANConn ? "Доступ из локальной сети" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
@@ -329,6 +331,31 @@ namespace v2rayN.Forms
             }
             AddHappSection(page, "Наборы правил", routeRows.ToArray());
             return page;
+        }
+
+        private static string GetSoraLanguageDisplayName(string language)
+        {
+            if (language == SoraText.PreReformRussian) return "Русский дореформенный";
+            if (language == SoraText.English) return "English";
+            if (language == SoraText.Chinese) return "简体中文";
+            return "Русский";
+        }
+
+        private void ShowSoraLanguageMenu()
+        {
+            var menu = BuildHappMenu();
+            AddSoraLanguageItem(menu, "Русский", SoraText.Russian);
+            AddSoraLanguageItem(menu, "Русский дореформенный", SoraText.PreReformRussian);
+            AddSoraLanguageItem(menu, "English", SoraText.English);
+            AddSoraLanguageItem(menu, "简体中文", SoraText.Chinese);
+            menu.Show(Cursor.Position);
+        }
+
+        private static void AddSoraLanguageItem(ContextMenuStrip menu, string title, string language)
+        {
+            var item = (ToolStripMenuItem)menu.Items.Add(title);
+            item.Checked = SoraText.CurrentLanguage == language;
+            item.Click += (sender, args) => SoraText.Select(language);
         }
 
         private static string GetHappRoutingDisplayName(string name, int index)

@@ -109,6 +109,7 @@ namespace v2rayN.Forms
             Controls.Add(root);
             _happServerPage = BuildHappServerPage();
             ShowHappPage(_happServerPage);
+            SoraText.Apply(root);
             ResumeLayout(true);
 
             Shown += (sender, args) =>
@@ -825,11 +826,14 @@ namespace v2rayN.Forms
 
         private ContextMenuStrip BuildHappMenu()
         {
-            return new ContextMenuStrip(components) { BackColor = Color.FromArgb(64, 64, 64), ForeColor = HappText, Font = new Font("Segoe UI", 9F), ShowImageMargin = true, Renderer = new ToolStripProfessionalRenderer(new HappMenuColors()) };
+            var menu = new ContextMenuStrip(components) { BackColor = Color.FromArgb(64, 64, 64), ForeColor = HappText, Font = new Font("Segoe UI", 9F), ShowImageMargin = true, Renderer = new ToolStripProfessionalRenderer(new HappMenuColors()) };
+            menu.Opening += (sender, args) => SoraText.Apply(menu.Items);
+            return menu;
         }
 
         private void ShowHappPage(Control page)
         {
+            SoraText.Apply(page);
             if (page.Parent != _happPageHost) { page.Dock = DockStyle.Fill; _happPageHost.Controls.Add(page); }
             page.BringToFront(); page.Visible = true;
             foreach (Control sibling in _happPageHost.Controls) if (sibling != page) sibling.Visible = false;

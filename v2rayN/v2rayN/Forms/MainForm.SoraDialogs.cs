@@ -6,6 +6,7 @@ using System.Text;
 using System.Windows.Forms;
 using v2rayN.Handler;
 using v2rayN.Mode;
+using v2rayN.Tool;
 
 namespace v2rayN.Forms
 {
@@ -800,6 +801,7 @@ namespace v2rayN.Forms
                     dialog.Close();
                 }
             };
+            dialog.Shown += (sender, args) => SoraText.Apply(dialog);
             return dialog;
         }
 

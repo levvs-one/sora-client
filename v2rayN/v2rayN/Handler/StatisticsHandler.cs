@@ -1,6 +1,7 @@
 ﻿using Grpc.Core;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -141,11 +142,14 @@ namespace v2rayN.Handler
         {
             try
             {
-                string result = Utils.LoadResource(Utils.GetPath(Global.StatisticLogOverall));
-                if (!Utils.IsNullOrEmpty(result))
+                string path = Utils.GetPath(Global.StatisticLogOverall);
+                if (File.Exists(path))
                 {
-                    //转成Json
-                    serverStatistics_ = Utils.FromJson<ServerStatistics>(result);
+                    string result = Utils.LoadResource(path);
+                    if (!Utils.IsNullOrEmpty(result))
+                    {
+                        serverStatistics_ = Utils.FromJson<ServerStatistics>(result);
+                    }
                 }
 
                 if (serverStatistics_ == null)

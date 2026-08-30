@@ -5,6 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using v2rayN.Tool;
 
 namespace v2rayN.Forms
 {
@@ -188,6 +189,7 @@ namespace v2rayN.Forms
                 _state == SoraConnectionState.Connecting ? "ПОДКЛЮЧЕНИЕ" :
                 _state == SoraConnectionState.Disconnecting ? "ОТКЛЮЧЕНИЕ" :
                 _state == SoraConnectionState.Error ? "ОШИБКА" : "ОТКЛЮЧЕНО";
+            state = SoraText.Translate(state);
             TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(210, 212, 220), TextFormatFlags.HorizontalCenter);
             if (connected)
             {

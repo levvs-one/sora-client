@@ -112,6 +112,48 @@ if ($null -ne $mainFormType.GetField('_soraTrafficTotal', $instanceBinding)) {
     throw 'The layered traffic card must not return to the connection pane'
 }
 
+$soraTextType = $assembly.GetType('v2rayN.Tool.SoraText', $true)
+$resourceField = $soraTextType.GetField('Standard', [System.Reflection.BindingFlags]'NonPublic, Static')
+$preReformField = $soraTextType.GetField('PreReform', [System.Reflection.BindingFlags]'NonPublic, Static')
+$resourceManager = $resourceField.GetValue($null)
+$preReformManager = $preReformField.GetValue($null)
+if ($resourceManager.GetString('Настройки', [Globalization.CultureInfo]::GetCultureInfo('en-US')) -ne 'Settings') {
+    throw 'English Sora resources are missing'
+}
+if ($resourceManager.GetString('Настройки', [Globalization.CultureInfo]::GetCultureInfo('zh-Hans')) -ne '设置') {
+    throw 'Chinese Sora resources are missing'
+}
+if ($preReformManager.GetString('Журнал', [Globalization.CultureInfo]::GetCultureInfo('ru-RU')) -ne 'Журналъ') {
+    throw 'Pre-reform Russian Sora resources are missing'
+}
+
+$configType = $assembly.GetType('v2rayN.Mode.Config', $true)
+$inboundType = $assembly.GetType('v2rayN.Mode.InItem', $true)
+$testConfig = [Activator]::CreateInstance($configType)
+$testInbound = [Activator]::CreateInstance($inboundType)
+$inboundType.GetProperty('protocol').SetValue($testInbound, 'socks')
+$inboundType.GetProperty('localPort').SetValue($testInbound, 19080)
+$inboundType.GetProperty('allowLANConn').SetValue($testInbound, $false)
+$inboundListType = [System.Collections.Generic.List``1].MakeGenericType($inboundType)
+$inboundList = [Activator]::CreateInstance($inboundListType)
+$inboundList.Add($testInbound)
+$configType.GetProperty('inbound').SetValue($testConfig, $inboundList)
+$normalizer = $assembly.GetType('v2rayN.Handler.V2rayHandler', $true).GetMethod('NormalizeCustomXrayInbounds', [System.Reflection.BindingFlags]'NonPublic, Static')
+$temporaryConfig = Join-Path ([IO.Path]::GetTempPath()) ('sora-xray-' + [Guid]::NewGuid().ToString('N') + '.json')
+try {
+    [IO.File]::WriteAllText($temporaryConfig, '{"inbounds":[{"protocol":"socks","port":10808}],"outbounds":[{"protocol":"freedom"}]}', [Text.UTF8Encoding]::new($false))
+    $normalizer.Invoke($null, @($testConfig, $temporaryConfig)) | Out-Null
+    $normalized = [IO.File]::ReadAllText($temporaryConfig) | ConvertFrom-Json
+    $socks = @($normalized.inbounds | Where-Object protocol -eq 'socks') | Select-Object -First 1
+    $http = @($normalized.inbounds | Where-Object protocol -eq 'http') | Select-Object -First 1
+    if ($socks.port -ne 19080 -or $http.port -ne 19081 -or $socks.listen -ne '127.0.0.1' -or $http.listen -ne '127.0.0.1') {
+        throw 'Custom Xray inbounds were not normalized to the Sora local proxy ports'
+    }
+}
+finally {
+    Remove-Item -LiteralPath $temporaryConfig -Force -ErrorAction SilentlyContinue
+}
+
 if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     $realContent = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath $SubscriptionPath))
     $realCount = [int]$countMethod.Invoke($null, @($realContent))
@@ -121,4 +163,4 @@ if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     Write-Output "Supplied subscription: PASS ($realCount Xray-compatible profiles)"
 }
 
-Write-Output 'Sora subscription regression: PASS (parser, lifecycle model, atomic removal, inline management)'
+Write-Output 'Sora regression: PASS (subscription, local Xray ports, localization resources, inline management)'

@@ -41,7 +41,7 @@ namespace v2rayN
             Utils.SaveLog($"Sora start up | {Utils.GetVersion()}");
                 Logging.ClearLogs();
 
-                var culture = new System.Globalization.CultureInfo("ru-RU");
+                var culture = SoraText.CurrentCulture;
                 Thread.CurrentThread.CurrentCulture = culture;
                 Thread.CurrentThread.CurrentUICulture = culture;
 

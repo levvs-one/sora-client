@@ -148,6 +148,59 @@ if ($null -ne $mainFormType.GetField('_soraTrafficTotal', $instanceBinding)) {
     throw 'The layered traffic card must not return to the connection pane'
 }
 
+$logControlType = $assembly.GetType('v2rayN.Forms.MainMsgControl', $true)
+foreach ($constant in @{
+    MaximumVisibleEntries = 1000
+    MaximumFlushBatchEntries = 250
+    LogFlushIntervalMilliseconds = 80
+}.GetEnumerator()) {
+    $field = $logControlType.GetField($constant.Key, [System.Reflection.BindingFlags]'NonPublic, Static')
+    if ($null -eq $field -or [int]$field.GetRawConstantValue() -ne $constant.Value) {
+        throw "Unexpected log batching setting: $($constant.Key)"
+    }
+}
+if ($null -eq $logControlType.GetField('_pendingMessages', $instanceBinding) -or
+    $null -eq $logControlType.GetMethod('FlushPendingMessages', $instanceBinding) -or
+    $null -eq $logControlType.GetMethod('RenderHistory', $instanceBinding)) {
+    throw 'The Win7-safe batched log renderer is missing'
+}
+$logControl = [Activator]::CreateInstance($logControlType)
+try {
+    $logControl.CreateControl()
+    foreach ($index in 1..1500) {
+        $logControl.AppendText(('[CORE] event {0:D4}' -f $index))
+    }
+    $getVisibleLog = $logControlType.GetMethod('GetVisibleText', $instanceBinding)
+    $visibleLog = [string]$getVisibleLog.Invoke($logControl, @())
+    $visibleLines = @($visibleLog -split "`r?`n" | Where-Object { $_ -ne '' })
+    if ($visibleLines.Count -ne 1000 -or $visibleLines[0] -ne '[CORE] event 0501' -or $visibleLines[-1] -ne '[CORE] event 1500') {
+        throw 'The batched log renderer did not retain the latest 1000 entries'
+    }
+    $logControl.SetCommunityFilter('\[TUN]')
+    if (-not [string]::IsNullOrEmpty([string]$getVisibleLog.Invoke($logControl, @()))) {
+        throw 'Log filtering left unrelated entries visible'
+    }
+    $logControl.AppendText('[TUN] connected')
+    if ([string]$getVisibleLog.Invoke($logControl, @()) -notmatch '^\[TUN\] connected') {
+        throw 'A filtered pending log entry was not flushed for export'
+    }
+    $logControl.SetCommunityFilter('[')
+    $themeMethod = $logControlType.GetMethod('ApplySoraTheme', $instanceBinding)
+    $logTextColor = [System.Drawing.Color]::FromArgb(247, 247, 248)
+    $themeMethod.Invoke($logControl, @([System.Drawing.Color]::Black, [System.Drawing.Color]::FromArgb(24, 24, 25), $logTextColor, [System.Drawing.Color]::FromArgb(66, 66, 70))) | Out-Null
+    $statusStrip = $logControlType.GetField('ssMain', $instanceBinding).GetValue($logControl)
+    if ($statusStrip.ForeColor.ToArgb() -ne $logTextColor.ToArgb()) {
+        throw 'Gray status text returned to the log screen'
+    }
+    $logControl.ClearMsg()
+    if (-not [string]::IsNullOrEmpty([string]$getVisibleLog.Invoke($logControl, @()))) {
+        throw 'Log clearing left buffered entries visible'
+    }
+}
+finally {
+    $logControl.Dispose()
+}
+
 $markdownType = $assembly.GetType('v2rayN.Forms.SoraMarkdownView', $true)
 $renderMarkdown = $markdownType.GetMethod('RenderToRtf', [System.Reflection.BindingFlags]'NonPublic, Static')
 if ($null -eq $renderMarkdown) {
@@ -225,4 +278,4 @@ if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     Write-Output "Supplied subscription: PASS ($realCount Xray-compatible profiles)"
 }
 
-Write-Output 'Sora regression: PASS (separate subscriptions, local Xray ports, localization, Markdown, inline management)'
+Write-Output 'Sora regression: PASS (separate subscriptions, batched logs, local Xray ports, localization, Markdown, inline management)'

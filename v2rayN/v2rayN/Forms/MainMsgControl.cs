@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 using v2rayN.Base;
 using v2rayN.Mode;
@@ -17,19 +15,30 @@ namespace v2rayN.Forms
     public partial class MainMsgControl : UserControl
     {
         private const int MaximumHistoryEntries = 2000;
+        private const int MaximumVisibleEntries = 1000;
+        private const int MaximumFlushBatchEntries = 250;
+        private const int LogFlushIntervalMilliseconds = 80;
         private string _msgFilter = string.Empty;
         private readonly List<string> _history = new List<string>();
-        delegate void AppendTextDelegate(string text);
+        private readonly Queue<string> _pendingMessages = new Queue<string>();
+        private readonly System.Windows.Forms.Timer _flushTimer;
+        private Regex _filter;
+        private int _flushRequested;
+        private int _visibleEntryCount;
 
         public MainMsgControl()
         {
             InitializeComponent();
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            _flushTimer = new System.Windows.Forms.Timer(components) { Interval = LogFlushIntervalMilliseconds };
+            _flushTimer.Tick += (sender, args) => FlushPendingMessages(MaximumFlushBatchEntries);
             HandleCreated += (sender, args) => SetCommunityFilter(_msgFilter);
         }
 
         private void MainMsgControl_Load(object sender, EventArgs e)
         {
             _msgFilter = Utils.RegReadValue(Global.MyRegPath, Utils.MainMsgFilterKey, "");
+            SetCommunityFilter(_msgFilter);
             if (!Utils.IsNullOrEmpty(_msgFilter))
             {
                 gbMsgTitle.Text = string.Format(ResUI.MsgInformationTitle, _msgFilter);
@@ -41,34 +50,51 @@ namespace v2rayN.Forms
         public void AppendText(string text)
         {
             text = SanitizeSoraLogText(text);
-            if (!IsHandleCreated)
+            lock (_history)
             {
-                lock (_history)
-                {
-                    Remember(text);
-                }
+                Remember(text);
+                _pendingMessages.Enqueue(text);
+            }
+
+            ScheduleFlush();
+        }
+
+        private void ScheduleFlush()
+        {
+            if (IsDisposed || Disposing || !IsHandleCreated || Interlocked.CompareExchange(ref _flushRequested, 1, 0) != 0)
+            {
                 return;
             }
-            if (txtMsgBox.InvokeRequired)
+
+            try
             {
-                BeginInvoke(new AppendTextDelegate(AppendText), text);
+                if (InvokeRequired)
+                {
+                    BeginInvoke((Action)StartFlushTimer);
+                }
+                else
+                {
+                    StartFlushTimer();
+                }
             }
-            else
+            catch (ObjectDisposedException)
             {
-                lock (_history)
-                {
-                    Remember(text);
-                }
-                if (!Utils.IsNullOrEmpty(_msgFilter))
-                {
-                    if (!Regex.IsMatch(text, _msgFilter))
-                    {
-                        return;
-                    }
-                }
-                //this.txtMsgBox.AppendText(text);
-                ShowMsg(text);
+                Interlocked.Exchange(ref _flushRequested, 0);
             }
+            catch (InvalidOperationException)
+            {
+                Interlocked.Exchange(ref _flushRequested, 0);
+            }
+        }
+
+        private void StartFlushTimer()
+        {
+            if (IsDisposed || Disposing)
+            {
+                Interlocked.Exchange(ref _flushRequested, 0);
+                return;
+            }
+            _flushTimer.Start();
         }
 
         private static string SanitizeSoraLogText(string text)
@@ -78,20 +104,58 @@ namespace v2rayN.Forms
                 .Replace("v2rayN", "Sora");
         }
 
-        /// <summary>
-        /// 提示信息
-        /// </summary>
-        /// <param name="msg"></param>
-        private void ShowMsg(string msg)
+        private void FlushPendingMessages(int maximumEntries)
         {
-            if (txtMsgBox.Lines.Length > 999)
+            if (IsDisposed || Disposing || !IsHandleCreated)
             {
-                txtMsgBox.Clear();
+                return;
             }
-            txtMsgBox.AppendText(msg);
-            if (!msg.EndsWith(Environment.NewLine))
+
+            var messages = new List<string>(Math.Min(maximumEntries, MaximumFlushBatchEntries));
+            bool hasMore;
+            lock (_history)
             {
-                txtMsgBox.AppendText(Environment.NewLine);
+                while (_pendingMessages.Count > 0 && messages.Count < maximumEntries)
+                {
+                    messages.Add(_pendingMessages.Dequeue());
+                }
+                hasMore = _pendingMessages.Count > 0;
+            }
+
+            if (messages.Count > 0)
+            {
+                string[] visible = messages.Where(MatchesFilter).ToArray();
+                if (visible.Length > 0)
+                {
+                    if (_visibleEntryCount + visible.Length > MaximumVisibleEntries)
+                    {
+                        RenderHistory();
+                        hasMore = false;
+                    }
+                    else
+                    {
+                        txtMsgBox.AppendText(JoinLogMessages(visible));
+                        _visibleEntryCount += visible.Length;
+                        txtMsgBox.SelectionStart = txtMsgBox.TextLength;
+                        txtMsgBox.ScrollToCaret();
+                    }
+                }
+            }
+
+            if (hasMore)
+            {
+                return;
+            }
+
+            _flushTimer.Stop();
+            Interlocked.Exchange(ref _flushRequested, 0);
+            lock (_history)
+            {
+                hasMore = _pendingMessages.Count > 0;
+            }
+            if (hasMore)
+            {
+                ScheduleFlush();
             }
         }
 
@@ -109,8 +173,8 @@ namespace v2rayN.Forms
                 lock (_history)
                 {
                     _history.Clear();
+                    _pendingMessages.Clear();
                 }
-                txtMsgBox.Text = string.Empty;
                 return;
             }
             if (txtMsgBox.InvokeRequired)
@@ -121,7 +185,11 @@ namespace v2rayN.Forms
             lock (_history)
             {
                 _history.Clear();
+                _pendingMessages.Clear();
             }
+            _flushTimer.Stop();
+            Interlocked.Exchange(ref _flushRequested, 0);
+            _visibleEntryCount = 0;
             txtMsgBox.Clear();
         }
 
@@ -136,28 +204,70 @@ namespace v2rayN.Forms
 
         public void SetCommunityFilter(string pattern)
         {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
             if (txtMsgBox.InvokeRequired)
             {
                 txtMsgBox.Invoke((Action)(() => SetCommunityFilter(pattern)));
                 return;
             }
             _msgFilter = pattern ?? string.Empty;
-            txtMsgBox.Clear();
-            string[] messages;
-            lock (_history)
+            _filter = CreateFilter(_msgFilter);
+            _flushTimer.Stop();
+            Interlocked.Exchange(ref _flushRequested, 0);
+            RenderHistory();
+        }
+
+        private static Regex CreateFilter(string pattern)
+        {
+            if (Utils.IsNullOrEmpty(pattern))
             {
-                messages = _history.ToArray();
+                return null;
             }
-            foreach (string message in messages)
+            try
             {
-                if (Utils.IsNullOrEmpty(_msgFilter) || Regex.IsMatch(message, _msgFilter, RegexOptions.IgnoreCase))
-                {
-                    ShowMsg(message);
-                }
+                return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            }
+            catch (ArgumentException)
+            {
+                return null;
             }
         }
 
-        internal void ApplySoraTheme(Color background, Color surface, Color text, Color muted, Color border)
+        private bool MatchesFilter(string message)
+        {
+            return _filter == null || _filter.IsMatch(message ?? string.Empty);
+        }
+
+        private void RenderHistory()
+        {
+            string[] visible;
+            lock (_history)
+            {
+                _pendingMessages.Clear();
+                string[] matching = _history.Where(MatchesFilter).ToArray();
+                visible = matching.Skip(Math.Max(0, matching.Length - MaximumVisibleEntries)).ToArray();
+            }
+            txtMsgBox.Text = JoinLogMessages(visible);
+            _visibleEntryCount = visible.Length;
+            txtMsgBox.SelectionStart = txtMsgBox.TextLength;
+            txtMsgBox.ScrollToCaret();
+        }
+
+        private static string JoinLogMessages(IEnumerable<string> messages)
+        {
+            var text = new StringBuilder();
+            foreach (string message in messages)
+            {
+                text.Append((message ?? string.Empty).TrimEnd('\r', '\n'));
+                text.Append(Environment.NewLine);
+            }
+            return text.ToString();
+        }
+
+        internal void ApplySoraTheme(Color background, Color surface, Color text, Color border)
         {
             SuspendLayout();
             BackColor = background;
@@ -177,11 +287,11 @@ namespace v2rayN.Forms
             ssMain.Dock = DockStyle.Bottom;
             ssMain.Height = 24;
             ssMain.BackColor = background;
-            ssMain.ForeColor = muted;
+            ssMain.ForeColor = text;
             ssMain.SizingGrip = false;
             foreach (ToolStripItem item in ssMain.Items)
             {
-                item.ForeColor = muted;
+                item.ForeColor = text;
                 item.BackColor = background;
             }
             cmsMsgBox.BackColor = surface;
@@ -208,6 +318,7 @@ namespace v2rayN.Forms
             {
                 return (string)txtMsgBox.Invoke(new Func<string>(GetVisibleText));
             }
+            FlushPendingMessages(int.MaxValue);
             return txtMsgBox.Text;
         }
 

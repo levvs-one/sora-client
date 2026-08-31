@@ -24,7 +24,7 @@ jobs:
           - target: win11
             executable: sora_win11.exe
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.424
@@ -50,7 +50,7 @@ jobs:
             & $powershell -NoProfile -Command '$parseErrors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:SORA_QA_SCRIPT, [ref]$null, [ref]$parseErrors) | Out-Null; if ($parseErrors.Count) { $parseErrors | Out-String | Write-Error; exit 1 }'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: sora-${{ matrix.target }}-x86
           path: v2rayN\v2rayN\bin\x86\Release\net48\win7-x86

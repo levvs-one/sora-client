@@ -841,17 +841,13 @@ namespace v2rayN.Forms
                 UI.ShowWarning("Сначала добавьте подписку.");
                 return;
             }
-            lvServers.SelectedIndices.Clear();
-            for (int index = 0; index < lstVmess.Count; index++)
-            {
-                if (lstVmess[index].subid == subscription.id) lvServers.Items[index].Selected = true;
-            }
-            if (lvServers.SelectedIndices.Count == 0)
+            List<VmessItem> targets = lstVmess.Where(item => item.subid == subscription.id).ToList();
+            if (targets.Count == 0)
             {
                 UI.ShowWarning("В этой подписке пока нет серверов.");
                 return;
             }
-            Speedtest(ESpeedActionType.Realping);
+            Speedtest(ESpeedActionType.Realping, targets);
         }
 
         private void ShowSoraSubscriptionCardMenu()

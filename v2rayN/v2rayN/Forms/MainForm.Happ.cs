@@ -430,8 +430,10 @@ namespace v2rayN.Forms
             {
                 return;
             }
+            int previous = _happHoveredServerIndex;
             _happHoveredServerIndex = hovered;
-            lvServers.Invalidate();
+            if (previous >= 0 && previous < lvServers.Items.Count) lvServers.RedrawItems(previous, previous, false);
+            if (hovered >= 0 && hovered < lvServers.Items.Count) lvServers.RedrawItems(hovered, hovered, false);
         }
 
         private void SoraServersMouseLeave(object sender, EventArgs args)
@@ -440,8 +442,9 @@ namespace v2rayN.Forms
             {
                 return;
             }
+            int previous = _happHoveredServerIndex;
             _happHoveredServerIndex = -1;
-            lvServers.Invalidate();
+            if (previous < lvServers.Items.Count) lvServers.RedrawItems(previous, previous, false);
         }
 
         private void WireHappSearch()
@@ -657,7 +660,13 @@ namespace v2rayN.Forms
                         return;
                     }
                     _soraPingAnimationFrame = (_soraPingAnimationFrame + 1) % 6;
-                    lvServers.Invalidate();
+                    for (int index = 0; index < lstVmess.Count && index < lvServers.Items.Count; index++)
+                    {
+                        if (string.Equals(lstVmess[index].testResult, "Проверка…", StringComparison.Ordinal))
+                        {
+                            lvServers.RedrawItems(index, index, false);
+                        }
+                    }
                 };
             }
             if (!_soraPingAnimationTimer.Enabled)

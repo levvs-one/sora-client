@@ -850,8 +850,17 @@ namespace v2rayN.Forms
         private void Speedtest(ESpeedActionType actionType)
         {
             if (GetLvSelectedIndex() < 0) return;
-            ClearTestResult();
-            SpeedtestHandler statistics = new SpeedtestHandler(config, v2rayHandler, lstSelecteds, actionType, UpdateSpeedtestHandler);
+            Speedtest(actionType, lstSelecteds.ToList());
+        }
+        private void Speedtest(ESpeedActionType actionType, IEnumerable<VmessItem> servers)
+        {
+            List<VmessItem> targets = servers?.Where(item => item != null).ToList() ?? new List<VmessItem>();
+            if (targets.Count == 0) return;
+            foreach (VmessItem target in targets)
+            {
+                SetTestResult(target.indexId, string.Empty);
+            }
+            SpeedtestHandler statistics = new SpeedtestHandler(config, v2rayHandler, targets, actionType, UpdateSpeedtestHandler);
         }
         private void menuSortServerResult_Click(object sender, EventArgs e)
         {
@@ -1258,25 +1267,11 @@ namespace v2rayN.Forms
             {
                 lstVmess[k].testResult = txt;
                 lvServers.Items[k].SubItems["testResult"].Text = txt;
+                lvServers.RedrawItems(k, k, false);
             }
             else
             {
                 AppendText(false, txt);
-            }
-        }
-        private void SetTestResult(int k, string txt)
-        {
-            if (k < lvServers.Items.Count)
-            {
-                lstVmess[k].testResult = txt;
-                lvServers.Items[k].SubItems["testResult"].Text = txt;
-            }
-        }
-        private void ClearTestResult()
-        {
-            foreach (var it in lstSelecteds)
-            {
-                SetTestResult(it.indexId, "");
             }
         }
         private void UpdateSpeedtestHandler(string indexId, string msg)

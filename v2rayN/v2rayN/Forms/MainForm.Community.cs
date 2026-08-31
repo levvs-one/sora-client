@@ -992,25 +992,7 @@ namespace v2rayN.Forms
                 UI.ShowWarning("Нет серверов для проверки.");
                 return;
             }
-            menuSelectAll_Click(this, EventArgs.Empty);
-            Speedtest(method);
-            RestoreActiveServerSelection();
-        }
-
-        private void RestoreActiveServerSelection()
-        {
-            lvServers.SelectedIndices.Clear();
-            if (config == null || lstVmess == null)
-            {
-                return;
-            }
-            int activeIndex = lstVmess.FindIndex(item => config.IsActiveNode(item));
-            if (activeIndex >= 0 && activeIndex < lvServers.Items.Count)
-            {
-                lvServers.Items[activeIndex].Selected = true;
-                lvServers.Items[activeIndex].Focused = true;
-                lvServers.EnsureVisible(activeIndex);
-            }
+            Speedtest(method, lstVmess.ToList());
         }
 
         private void SelectBestMeasuredServer()

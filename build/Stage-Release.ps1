@@ -6,7 +6,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CompatPayload,
     [Parameter(Mandatory = $true)]
-    [string]$XrayArchive
+    [string]$XrayArchive,
+    [ValidateSet('win7', 'win8', 'win10', 'win11')]
+    [string]$WindowsTarget = 'win7'
 )
 
 function Assert-Sha256 {
@@ -98,7 +100,7 @@ New-Item -ItemType Directory -Path $phosphorLicenseDirectory | Out-Null
 Copy-Item -LiteralPath (Join-Path $projectRoot 'v2rayN\v2rayN\Assets\Phosphor\LICENSE') -Destination $phosphorLicenseDirectory
 
 $requiredFiles = @(
-    'Sora.exe',
+    "sora_$WindowsTarget.exe",
     'Markdig.dll',
     'xray.exe',
     'sing-box.exe',

@@ -23,6 +23,7 @@
 /stage/
 /installer-output/
 /outputs/
+/artifacts/
 /**/guiLogs/
 /**/guiTemps/
 /**/guiBackups/

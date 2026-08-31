@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$StagePath,
     [int]$LocalPort = 19080,
-    [int]$TimeoutSeconds = 30
+    [int]$TimeoutSeconds = 30,
+    [string]$ExecutableName = 'sora_win7.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -155,10 +156,10 @@ function Invoke-SocksProbe {
 }
 
 $stage = (Resolve-Path -LiteralPath $StagePath).Path
-$soraExe = Join-Path $stage 'Sora.exe'
+$soraExe = Join-Path $stage $ExecutableName
 $xrayExe = Join-Path $stage 'xray.exe'
 $configPath = Join-Path $stage 'guiNConfig.json'
-if (-not (Test-Path -LiteralPath $soraExe -PathType Leaf)) { throw 'Sora.exe is missing from the stage' }
+if (-not (Test-Path -LiteralPath $soraExe -PathType Leaf)) { throw "$ExecutableName is missing from the stage" }
 if (-not (Test-Path -LiteralPath $xrayExe -PathType Leaf)) { throw 'xray.exe is missing from the stage' }
 if (Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $soraExe -or $_.ExecutablePath -eq $xrayExe }) {
     throw 'The QA stage already has a running Sora or Xray process'

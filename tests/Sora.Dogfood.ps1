@@ -3,7 +3,8 @@
     [string]$SubscriptionUrl = '',
     [string]$SubscriptionPayloadPath = '',
     [int]$ExpectedProfiles = 10,
-    [int]$TimeoutSeconds = 90
+    [int]$TimeoutSeconds = 90,
+    [string]$ExecutableName = 'sora_win7.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,9 +47,9 @@ function Invoke-Element {
 }
 
 $resolvedStage = (Resolve-Path -LiteralPath $StagePath).Path
-$executable = Join-Path $resolvedStage 'Sora.exe'
+$executable = Join-Path $resolvedStage $ExecutableName
 $configPath = Join-Path $resolvedStage 'guiNConfig.json'
-if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw "Sora.exe not found in $resolvedStage" }
+if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw "$ExecutableName not found in $resolvedStage" }
 if (Test-Path -LiteralPath $configPath) { throw "Dogfood stage is not clean: $configPath already exists" }
 if ([string]::IsNullOrWhiteSpace($SubscriptionUrl) -eq [string]::IsNullOrWhiteSpace($SubscriptionPayloadPath)) {
     throw 'Supply either SubscriptionUrl or SubscriptionPayloadPath'

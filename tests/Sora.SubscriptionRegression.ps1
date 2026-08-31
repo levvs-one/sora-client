@@ -1,6 +1,6 @@
 param(
     [Alias('SoraExe')]
-    [string]$AssemblyPath = (Join-Path $PSScriptRoot '..\v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\Sora.exe'),
+    [string]$AssemblyPath = (Join-Path $PSScriptRoot '..\v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\sora_win7.exe'),
     [string]$SubscriptionPath = ''
 )
 
@@ -129,6 +129,20 @@ if ([string]::IsNullOrWhiteSpace($subItemType.GetProperty('id').GetValue($localC
 }
 if ($null -eq $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
     throw 'The compact traffic summary is missing below the connection button'
+}
+foreach ($timer in @{
+    SoraTrafficRefreshIntervalMilliseconds = 1000
+    SoraSubscriptionRefreshIntervalMilliseconds = 30000
+}.GetEnumerator()) {
+    $timerField = $mainFormType.GetField($timer.Key, [System.Reflection.BindingFlags]'NonPublic, Static')
+    if ($null -eq $timerField -or [int]$timerField.GetRawConstantValue() -ne $timer.Value) {
+        throw "Unexpected low-end Windows refresh interval: $($timer.Key)"
+    }
+}
+foreach ($fontField in '_soraServerTitleFont', '_soraServerProtocolFont', '_soraServerDetailFont', '_soraServerResultFont') {
+    if ($null -eq $mainFormType.GetField($fontField, $instanceBinding)) {
+        throw "Cached server-list font is missing: $fontField"
+    }
 }
 if ($null -ne $mainFormType.GetField('_soraTrafficTotal', $instanceBinding)) {
     throw 'The layered traffic card must not return to the connection pane'

@@ -29,6 +29,8 @@ namespace v2rayN.Forms
         private static readonly Color HappListBorder = Color.FromArgb(45, 45, 49);
         private static readonly Color HappDivider = Color.FromArgb(49, 49, 53);
         private static readonly Color HappServerSurface = Color.FromArgb(29, 29, 32);
+        private const int SoraTrafficRefreshIntervalMilliseconds = 1000;
+        private const int SoraSubscriptionRefreshIntervalMilliseconds = 30000;
 
         private Panel _happPageHost;
         private Control _happServerPage;
@@ -61,6 +63,10 @@ namespace v2rayN.Forms
         private readonly Dictionary<string, SoraProtocolDisplay> _soraProtocolDisplayCache = new Dictionary<string, SoraProtocolDisplay>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Image> _soraCountryFlagCache = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
         private Image _soraDefaultCountryIcon;
+        private readonly Font _soraServerTitleFont = new Font("Segoe UI Semibold", 10F);
+        private readonly Font _soraServerProtocolFont = new Font("Segoe UI Semibold", 8.25F);
+        private readonly Font _soraServerDetailFont = new Font("Segoe UI", 8.25F);
+        private readonly Font _soraServerResultFont = new Font("Segoe UI Semibold", 8.5F);
 
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
@@ -90,7 +96,7 @@ namespace v2rayN.Forms
             NormalizeSoraVisibleConfiguration();
             KeyPreview = true;
             KeyDown += HandleHappShortcut;
-            FormClosed += DisposeSoraCountryImages;
+            FormClosed += DisposeSoraVisualResources;
 
             tsMain.Visible = false;
             panel1.Visible = false;
@@ -705,7 +711,7 @@ namespace v2rayN.Forms
         private void StartSoraTrafficCounter()
         {
             if (_soraTrafficTimer != null) return;
-            _soraTrafficTimer = new Timer(components) { Interval = 500 };
+            _soraTrafficTimer = new Timer(components) { Interval = SoraTrafficRefreshIntervalMilliseconds };
             _soraTrafficTimer.Tick += (sender, args) =>
             {
                 if (_soraTrafficSummary == null) return;
@@ -723,7 +729,11 @@ namespace v2rayN.Forms
                 {
                     today = 0;
                 }
-                _soraTrafficSummary.Text = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s\r\n" + SoraText.Translate("Сегодня") + " " + Utils.HumanFy(today);
+                string summary = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s\r\n" + SoraText.Translate("Сегодня") + " " + Utils.HumanFy(today);
+                if (!string.Equals(_soraTrafficSummary.Text, summary, StringComparison.Ordinal))
+                {
+                    _soraTrafficSummary.Text = summary;
+                }
             };
             _soraTrafficTimer.Start();
         }
@@ -731,7 +741,7 @@ namespace v2rayN.Forms
         private void StartSoraSubscriptionSummary()
         {
             if (_soraSubscriptionSummaryTimer != null) return;
-            _soraSubscriptionSummaryTimer = new Timer(components) { Interval = 500 };
+            _soraSubscriptionSummaryTimer = new Timer(components) { Interval = SoraSubscriptionRefreshIntervalMilliseconds };
             _soraSubscriptionSummaryTimer.Tick += (sender, args) => RefreshSoraSubscriptionCard();
             _soraSubscriptionSummaryTimer.Start();
         }
@@ -792,13 +802,8 @@ namespace v2rayN.Forms
             {
                 string name = GetSoraDisplayName(item.remarks);
                 string[] protocols = GetSoraProtocolDisplay(item);
-                using (var titleFont = new Font("Segoe UI Semibold", 10F))
-                using (var protocolFont = new Font("Segoe UI Semibold", 8.25F))
-                using (var detailFont = new Font("Segoe UI", 8.25F))
-                {
-                    TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 7, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                    DrawSoraProtocolLine(args.Graphics, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 32, Math.Max(0, args.Bounds.Width - 18), 16), protocols, protocolFont, detailFont);
-                }
+                TextRenderer.DrawText(args.Graphics, name, _soraServerTitleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 7, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                DrawSoraProtocolLine(args.Graphics, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 32, Math.Max(0, args.Bounds.Width - 18), 16), protocols, _soraServerProtocolFont, _soraServerDetailFont);
             }
             else if (args.ColumnIndex == (int)EServerColName.testResult)
             {
@@ -812,10 +817,7 @@ namespace v2rayN.Forms
                 {
                     bool measured = result.Any(char.IsDigit);
                     Color resultColor = measured || selected ? HappText : HappMuted;
-                    using (var resultFont = new Font("Segoe UI Semibold", 8.5F))
-                    {
-                        TextRenderer.DrawText(args.Graphics, result, resultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                    }
+                    TextRenderer.DrawText(args.Graphics, result, _soraServerResultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
                 }
             }
             using (var line = new Pen(HappDivider)) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
@@ -961,7 +963,7 @@ namespace v2rayN.Forms
             return GetSoraCountryCode(remarks);
         }
 
-        private void DisposeSoraCountryImages(object sender, FormClosedEventArgs args)
+        private void DisposeSoraVisualResources(object sender, FormClosedEventArgs args)
         {
             foreach (Image flag in _soraCountryFlagCache.Values.Where(value => value != null))
             {
@@ -970,6 +972,10 @@ namespace v2rayN.Forms
             _soraCountryFlagCache.Clear();
             _soraDefaultCountryIcon?.Dispose();
             _soraDefaultCountryIcon = null;
+            _soraServerTitleFont.Dispose();
+            _soraServerProtocolFont.Dispose();
+            _soraServerDetailFont.Dispose();
+            _soraServerResultFont.Dispose();
         }
 
         private string[] GetSoraProtocolDisplay(VmessItem item)

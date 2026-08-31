@@ -4,13 +4,14 @@
     <LangVersion>preview</LangVersion>
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>Sora</AssemblyName>
+    <SoraWindowsTarget Condition="'$(SoraWindowsTarget)' == ''">win7</SoraWindowsTarget>
+    <AssemblyName>sora_$(SoraWindowsTarget)</AssemblyName>
     <RootNamespace>v2rayN</RootNamespace>
     <Product>Sora</Product>
     <AssemblyTitle>Sora</AssemblyTitle>
     <PackageId>sora-client</PackageId>
     <RepositoryUrl>https://github.com/levvs-one/sora-client</RepositoryUrl>
-    <Description>Sora — клиент подключений для Windows 7</Description>
+    <Description>Sora — клиент подключений для Windows</Description>
     <Company>Сообщество Sora</Company>
     <Copyright>Copyright © 2019-2022 v2rayN contributors; 2026 Sora contributors (GPLv3)</Copyright>
     <Version>0.2.3</Version>

@@ -2,7 +2,8 @@
     [Parameter(Mandatory = $true)][string]$StagePath,
     [Parameter(Mandatory = $true)][string]$SubscriptionUrl,
     [Parameter(Mandatory = $true)][string]$ScreenshotDirectory,
-    [int]$TimeoutSeconds = 120
+    [int]$TimeoutSeconds = 120,
+    [string]$ExecutableName = 'sora_win7.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -77,9 +78,9 @@ function Save-WindowScreenshot {
 }
 
 $stage = (Resolve-Path -LiteralPath $StagePath).Path
-$executable = Join-Path $stage 'Sora.exe'
+$executable = Join-Path $stage $ExecutableName
 $configPath = Join-Path $stage 'guiNConfig.json'
-if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw 'Sora.exe not found' }
+if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw "$ExecutableName not found" }
 if (Test-Path -LiteralPath $configPath) { throw 'QA stage must be clean' }
 [System.IO.Directory]::CreateDirectory($ScreenshotDirectory) | Out-Null
 

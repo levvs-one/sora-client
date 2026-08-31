@@ -243,7 +243,7 @@ namespace v2rayN.Forms
             var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 4, Padding = new Padding(28, 16, 18, 18) };
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 176F));
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 204F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
@@ -252,14 +252,32 @@ namespace v2rayN.Forms
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(12, 9, 42, 5) };
+            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = Padding.Empty };
             ApplyRoundedSurface(searchBox, 5, Color.FromArgb(100, 100, 105));
-            _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = SoraText.Translate("Введите текст для поиска"), TabStop = true, AccessibleName = "Поиск серверов" };
+            _communitySearch = new TextBox { BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = SoraText.Translate("Введите текст для поиска"), TabStop = true, AccessibleName = "Поиск серверов" };
             _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
+            var searchButton = CreateHappSmallButton("magnifying-glass", () =>
+            {
+                _communitySearch.Focus();
+                _communitySearch.SelectAll();
+            });
+            searchButton.Dock = DockStyle.Right;
+            searchButton.Width = 42;
+            searchButton.Margin = Padding.Empty;
+            searchButton.BackColor = HappNav;
+            searchButton.UseVisualStyleBackColor = false;
             searchBox.Controls.Add(_communitySearch);
-            var searchIcon = new PictureBox { Dock = DockStyle.Right, Width = 30, Image = HappIconLoader.Load("magnifying-glass", HappMuted), SizeMode = PictureBoxSizeMode.CenterImage, BackColor = HappNav };
-            searchBox.Controls.Add(searchIcon);
+            searchBox.Controls.Add(searchButton);
+            Action positionSearch = () =>
+            {
+                int textHeight = _communitySearch.PreferredHeight;
+                int textTop = Math.Max(0, (searchBox.ClientSize.Height - textHeight) / 2);
+                _communitySearch.SetBounds(12, textTop, Math.Max(80, searchBox.ClientSize.Width - searchButton.Width - 20), textHeight);
+            };
+            searchBox.Resize += (sender, args) => positionSearch();
+            positionSearch();
+            searchButton.BringToFront();
             searchRow.Controls.Add(searchBox, 0, 0);
             searchRow.Controls.Add(CreateHappSmallButton("gauge", TestAllCommunityServers), 1, 0);
             searchRow.Controls.Add(CreateHappSmallButton("dots-three", ShowHappServerMenu), 2, 0);
@@ -313,14 +331,14 @@ namespace v2rayN.Forms
             Color cardBackground = Color.FromArgb(35, 35, 38);
             var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = cardBackground, AccessibleName = "Подписка" };
             ApplyRoundedCorners(card, 7);
-            _soraSubscriptionTitle = new Label { Location = new Point(16, 9), Size = new Size(280, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionDetail = new Label { Location = new Point(16, 34), Size = new Size(390, 18), ForeColor = Color.FromArgb(214, 214, 218), Font = new Font("Segoe UI", 8.5F), AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionSchedule = new Label { Location = new Point(16, 53), Size = new Size(390, 18), ForeColor = Color.FromArgb(185, 185, 192), Font = new Font("Segoe UI", 8.5F), AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(16, 78), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84) };
+            _soraSubscriptionTitle = new Label { Location = new Point(16, 10), Size = new Size(280, 24), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            _soraSubscriptionDetail = new Label { Location = new Point(16, 38), Size = new Size(390, 20), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            _soraSubscriptionSchedule = new Label { Location = new Point(16, 62), Size = new Size(390, 20), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(16, 90), Size = new Size(390, 4), BackColor = Color.FromArgb(78, 78, 84) };
             _soraSubscriptionQuotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
             _soraSubscriptionQuotaTrack.Controls.Add(_soraSubscriptionQuotaFill);
-            _soraSubscriptionQuota = new Label { Location = new Point(16, 85), Size = new Size(390, 18), ForeColor = Color.FromArgb(185, 185, 192), Font = new Font("Segoe UI", 8.25F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
-            _soraSubscriptionAnnouncement = new SoraMarkdownView { Location = new Point(12, 106), Size = new Size(398, 51), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки" };
+            _soraSubscriptionQuota = new Label { Location = new Point(16, 99), Size = new Size(390, 20), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+            _soraSubscriptionAnnouncement = new SoraMarkdownView { Location = new Point(12, 126), Size = new Size(398, 58), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки" };
             _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
             _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
             Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
@@ -351,6 +369,7 @@ namespace v2rayN.Forms
                 _soraSubscriptionQuota.Width = _soraSubscriptionQuotaTrack.Width;
                 _soraSubscriptionSchedule.Width = _soraSubscriptionQuotaTrack.Width;
                 _soraSubscriptionAnnouncement.Width = Math.Max(80, card.ClientSize.Width - 24);
+                _soraSubscriptionAnnouncement.Height = Math.Max(48, card.ClientSize.Height - 136);
                 RefreshSoraSubscriptionCard();
             };
             card.Controls.Add(_soraSubscriptionAnnouncement);
@@ -525,7 +544,7 @@ namespace v2rayN.Forms
 
         private Button CreateHappSmallButton(string icon, Action action)
         {
-            string accessibleName = icon == "gauge" ? "Проверить задержку серверов подписки" : icon == "arrows-clockwise" ? "Обновить подписку" : icon == "dots-three" ? "Действия с подпиской" : "Действие";
+            string accessibleName = icon == "gauge" ? "Проверить задержку серверов подписки" : icon == "arrows-clockwise" ? "Обновить подписку" : icon == "dots-three" ? "Действия с подпиской" : icon == "magnifying-glass" ? "Поиск серверов" : "Действие";
             var button = new Button { Dock = DockStyle.Fill, Margin = new Padding(2, 3, 2, 5), FlatStyle = FlatStyle.Flat, BackColor = HappPane, Image = HappIconLoader.Load(icon, HappMuted), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = HappSurface; button.Click += (sender, args) => action(); return button;
         }

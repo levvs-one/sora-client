@@ -585,11 +585,11 @@ namespace v2rayN.Forms
             {
                 if (item != null && config.IsActiveNode(item))
                 {
-                    Rectangle markerBounds = new Rectangle(args.Bounds.Left + 3, args.Bounds.Top + 15, 4, args.Bounds.Height - 30);
+                    Rectangle markerBounds = new Rectangle(args.Bounds.Left, args.Bounds.Top + 12, 3, args.Bounds.Height - 24);
                     SmoothingMode previous = args.Graphics.SmoothingMode;
                     args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                     using (GraphicsPath markerPath = CreateRoundedPath(markerBounds, 2))
-                    using (var marker = new SolidBrush(Color.FromArgb(142, 142, 149)))
+                    using (var marker = new SolidBrush(Color.FromArgb(108, 108, 114)))
                     {
                         args.Graphics.FillPath(marker, markerPath);
                     }

@@ -606,7 +606,7 @@ namespace v2rayN.Forms
             _happLogsPage = page;
             page.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F)); page.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F)); page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Журнал", ForeColor = HappText, Font = new Font("Segoe UI Semibold", 17F), TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить    Ctrl+R — создать архив диагностики", ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
+            page.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Ctrl+S — сохранить    Ctrl+R — создать архив диагностики", ForeColor = HappText, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
             var tabs = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
             var buttons = new[]
             {
@@ -637,7 +637,7 @@ namespace v2rayN.Forms
             actions.Dock = DockStyle.None; actions.Size = new Size(38, 32); actions.Margin = Padding.Empty;
             tabs.Controls.Add(actions);
             page.Controls.Add(tabs, 0, 2);
-            mainMsgControl.ApplySoraTheme(HappNav, Color.FromArgb(24, 24, 25), HappText, HappMuted, HappLine); mainMsgControl.Parent = page; mainMsgControl.Dock = DockStyle.Fill;
+            mainMsgControl.ApplySoraTheme(HappNav, Color.FromArgb(24, 24, 25), HappText, HappLine); mainMsgControl.Parent = page; mainMsgControl.Dock = DockStyle.Fill;
             page.Controls.Add(mainMsgControl, 0, 3);
             if (!_happReportShortcutWired)
             {

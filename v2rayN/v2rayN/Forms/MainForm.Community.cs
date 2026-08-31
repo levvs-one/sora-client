@@ -274,7 +274,7 @@ namespace v2rayN.Forms
             {
                 Dock = DockStyle.Bottom,
                 Height = 38,
-                Text = "Win7 x86 · GPL-3.0",
+                Text = "Win7 x86, GPL-3.0",
                 ForeColor = Color.FromArgb(153, 167, 181),
                 Font = new Font("Segoe UI", 8.5F),
                 TextAlign = ContentAlignment.MiddleCenter
@@ -358,16 +358,7 @@ namespace v2rayN.Forms
             _communityTun.Click += async (sender, args) => await StartCommunityTunAsync();
 
             _communityConnect = CreateHeaderButton("Подключить", CommunityAccent, Color.White, CommunityAccent);
-            _communityConnect.Click += (sender, args) =>
-            {
-                if (config == null || config.vmess == null || config.vmess.Count == 0)
-                {
-                    UI.ShowWarning("Сначала добавьте сервер или подписку.");
-                    return;
-                }
-                StopCommunityTun();
-                SetListenerType(ESysProxyType.ForcedChange);
-            };
+            _communityConnect.Click += async (sender, args) => await StartCommunityProxyAsync();
 
             var connectionActions = new FlowLayoutPanel
             {
@@ -628,10 +619,11 @@ namespace v2rayN.Forms
         private void UpdateCommunityConnectionState(ESysProxyType type)
         {
             bool tunConnected = _tunModeController != null && _tunModeController.IsRunning;
-            bool connected = type == ESysProxyType.ForcedChange && config != null && config.GetVmessItem(config.indexId) != null;
+            bool connected = type == ESysProxyType.ForcedChange && config != null &&
+                config.GetVmessItem(config.indexId) != null && v2rayHandler != null && v2rayHandler.IsRunning;
             if (_happConnection != null)
             {
-                _happConnection.Connected = connected || tunConnected;
+                _happConnection.State = connected || tunConnected ? SoraConnectionState.Connected : SoraConnectionState.Disconnected;
             }
             if (_communityConnectionStatus == null)
             {
@@ -639,13 +631,147 @@ namespace v2rayN.Forms
                 return;
             }
 
-            _communityConnectionStatus.Text = tunConnected ? "Подключено · TUN для всей системы" : connected ? "Подключено · системный прокси" :
-                type == ESysProxyType.Unchanged ? "Ядро запущено · прокси не изменён" : "Отключено";
+            _communityConnectionStatus.Text = tunConnected ? "Подключено, TUN для всей системы" : connected ? "Подключено, системный прокси" :
+                type == ESysProxyType.Unchanged ? "Ядро запущено, прокси не изменён" : "Отключено";
             _communityConnectionStatus.ForeColor = connected || tunConnected ? CommunitySuccess : CommunityMuted;
             _communityConnect.Enabled = !connected && !tunConnected;
             _communityTun.Enabled = !tunConnected;
             _communityDisconnect.Enabled = connected || tunConnected || type == ESysProxyType.Unchanged;
             UpdateCommunityActiveServer();
+        }
+
+        private async Task StartCommunityProxyAsync()
+        {
+            if (config == null || config.vmess == null || config.vmess.Count == 0)
+            {
+                UI.ShowWarning("Сначала добавьте сервер или подписку.");
+                return;
+            }
+            if (config.GetVmessItem(config.indexId) == null)
+            {
+                UI.ShowWarning("Выберите сервер.");
+                return;
+            }
+
+            StopCommunityTun();
+            if (_happConnection != null)
+            {
+                _happConnection.State = SoraConnectionState.Connecting;
+            }
+            if (!await EnsureCommunityCoreAsync(false))
+            {
+                if (_happConnection != null)
+                {
+                    _happConnection.State = SoraConnectionState.Error;
+                }
+                UI.ShowWarning("Sora не смогла запустить Xray. Подробности сохранены в журнале подключения.");
+                return;
+            }
+
+            SetListenerType(ESysProxyType.ForcedChange);
+            config.soraUseTun = false;
+            config.soraReconnectOnStart = true;
+            ConfigHandler.SaveConfig(ref config, false);
+            Utils.SetAutoRun(true);
+        }
+
+        private async Task<bool> EnsureCommunityCoreAsync(bool forceReload)
+        {
+            if (config == null || v2rayHandler == null)
+            {
+                return false;
+            }
+
+            int currentPort = config.GetLocalPort(Global.InboundSocks);
+            bool running = v2rayHandler.IsRunning;
+            if (!forceReload && running && await WaitForCommunitySocksAsync(currentPort, 1200))
+            {
+                return true;
+            }
+            if (running && !forceReload)
+            {
+                v2rayHandler.V2rayStop();
+                running = false;
+            }
+
+            if (!running)
+            {
+                int availablePort = FindCommunityLocalPortBlock(currentPort);
+                if (availablePort < 1)
+                {
+                    Utils.SaveLog("[CORE] Не найден свободный блок локальных портов для Sora.");
+                    return false;
+                }
+                if (availablePort != currentPort)
+                {
+                    var inbound = config.inbound.FirstOrDefault(item => item.protocol == Global.InboundSocks);
+                    if (inbound == null)
+                    {
+                        Utils.SaveLog("[CORE] В настройках Sora отсутствует локальный SOCKS-вход.");
+                        return false;
+                    }
+                    inbound.localPort = availablePort;
+                    ConfigHandler.SaveConfig(ref config, false);
+                    Utils.SaveLog($"[CORE] Порты {currentPort}–{currentPort + 3} заняты. Sora выбрала {availablePort}–{availablePort + 3}.");
+                }
+            }
+
+            Global.reloadV2ray = true;
+            await LoadV2ray();
+            int socksPort = config.GetLocalPort(Global.InboundSocks);
+            return v2rayHandler.IsRunning && await WaitForCommunitySocksAsync(socksPort, 12000);
+        }
+
+        private static int FindCommunityLocalPortBlock(int preferredPort)
+        {
+            int start = preferredPort >= 1024 && preferredPort <= 65000 ? preferredPort : 10808;
+            for (int candidate = start; candidate <= 65000; candidate += 4)
+            {
+                if (IsCommunityLocalPortBlockAvailable(candidate))
+                {
+                    return candidate;
+                }
+            }
+            for (int candidate = 10808; candidate < start; candidate += 4)
+            {
+                if (IsCommunityLocalPortBlockAvailable(candidate))
+                {
+                    return candidate;
+                }
+            }
+            return -1;
+        }
+
+        private static bool IsCommunityLocalPortBlockAvailable(int basePort)
+        {
+            var tcp = new TcpListener[4];
+            var udp = new UdpClient[4];
+            try
+            {
+                for (int offset = 0; offset < 4; offset++)
+                {
+                    int port = basePort + offset;
+                    tcp[offset] = new TcpListener(IPAddress.Loopback, port);
+                    tcp[offset].Server.ExclusiveAddressUse = true;
+                    tcp[offset].Start();
+                    udp[offset] = new UdpClient(AddressFamily.InterNetwork);
+                    udp[offset].Client.ExclusiveAddressUse = true;
+                    udp[offset].Client.Bind(new IPEndPoint(IPAddress.Loopback, port));
+                }
+                return true;
+            }
+            catch (SocketException)
+            {
+                return false;
+            }
+            finally
+            {
+                for (int index = 0; index < 4; index++)
+                {
+                    tcp[index]?.Stop();
+                    udp[index]?.Dispose();
+                }
+            }
         }
 
         private async Task StartCommunityTunAsync()
@@ -657,6 +783,10 @@ namespace v2rayN.Forms
             }
             if (!Utils.IsAdministrator())
             {
+                config.soraUseTun = true;
+                config.soraReconnectOnStart = true;
+                ConfigHandler.SaveConfig(ref config, false);
+                Utils.SetAutoRun(true);
                 RestartCommunityAsAdministrator();
                 return;
             }
@@ -669,6 +799,15 @@ namespace v2rayN.Forms
             }
 
             SetListenerType(ESysProxyType.ForcedClear);
+            if (!await EnsureCommunityCoreAsync(false))
+            {
+                if (_happConnection != null)
+                {
+                    _happConnection.State = SoraConnectionState.Error;
+                }
+                UI.ShowWarning("Sora не смогла запустить Xray. Подробности сохранены в журнале подключения.");
+                return;
+            }
             int socksPort = config.GetLocalPort(Global.InboundSocks);
             if (_communityConnectionStatus != null)
             {
@@ -719,6 +858,10 @@ namespace v2rayN.Forms
                 UI.ShowWarning("TUN завершился при запуске. Подробности находятся в журнале подключения.");
                 return;
             }
+            config.soraUseTun = true;
+            config.soraReconnectOnStart = true;
+            ConfigHandler.SaveConfig(ref config, false);
+            Utils.SetAutoRun(true);
             UpdateCommunityConnectionState(config.sysProxyType);
         }
 
@@ -738,10 +881,14 @@ namespace v2rayN.Forms
             }
             catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
             {
+                config.soraReconnectOnStart = false;
+                ConfigHandler.SaveConfig(ref config, false);
                 UI.ShowWarning("TUN не включён: запрос прав администратора отменён.");
             }
             catch (Exception exception)
             {
+                config.soraReconnectOnStart = false;
+                ConfigHandler.SaveConfig(ref config, false);
                 UI.ShowWarning("Не удалось перезапустить приложение с правами администратора: " + exception.Message);
             }
         }
@@ -783,13 +930,25 @@ namespace v2rayN.Forms
 
         private void DisconnectCommunity()
         {
+            if (_happConnection != null)
+            {
+                _happConnection.State = SoraConnectionState.Disconnecting;
+            }
             StopCommunityTun();
+            config.soraReconnectOnStart = false;
             SetListenerType(ESysProxyType.ForcedClear);
         }
 
         private async Task ReloadCommunityCoreAsync(bool resumeTun)
         {
-            await LoadV2ray();
+            if (!await EnsureCommunityCoreAsync(true))
+            {
+                if (_happConnection != null)
+                {
+                    _happConnection.State = SoraConnectionState.Error;
+                }
+                return;
+            }
             if (resumeTun)
             {
                 await StartCommunityTunAsync();
@@ -803,8 +962,8 @@ namespace v2rayN.Forms
                 return;
             }
             var active = config.GetVmessItem(config.indexId);
-            _communityActiveServer.Text = active == null ? "Сервер не выбран" :
-                string.Format(CultureInfo.CurrentCulture, "{0} · {1}:{2}", active.remarks, active.address, active.port);
+            _communityActiveServer.Text = active == null ? SoraText.Translate("Сервер не выбран") :
+                string.IsNullOrWhiteSpace(active.remarks) ? SoraText.Translate("Сервер без названия") : GetSoraDisplayName(active.remarks);
         }
 
         private void UpdateCommunityEmptyState()
@@ -823,13 +982,17 @@ namespace v2rayN.Forms
 
         private void TestAllCommunityServers()
         {
+            TestAllCommunityServers(ESpeedActionType.Realping);
+        }
+
+        private void TestAllCommunityServers(ESpeedActionType method)
+        {
             if (lvServers.Items.Count == 0)
             {
                 UI.ShowWarning("Нет серверов для проверки.");
                 return;
             }
-            menuSelectAll_Click(this, EventArgs.Empty);
-            Speedtest(ESpeedActionType.Tcping);
+            Speedtest(method, lstVmess.ToList());
         }
 
         private void SelectBestMeasuredServer()
@@ -879,10 +1042,118 @@ namespace v2rayN.Forms
 
         private void ShowCommunityAbout()
         {
-            UI.Show(
-                "Sora " + SoraVersion + "\r\n\r\nНеофициальный открытый клиент для Windows 7 x86. " +
-                "Использует открытые компоненты Xray, sing-box, tun2proxy и Wintun. Происхождение кода и лицензии перечислены в NOTICE.md.\r\n\r\n" +
-                "Проект не связан с Flyfrog LLC и официальным Happ Desktop.");
+            using (var dialog = CreateSoraDialog(new Size(500, 318)))
+            {
+                var close = CreateSoraIconButton("x", () => dialog.Close());
+                close.Location = new Point(444, 14);
+                close.AccessibleName = "Закрыть сведения о Sora";
+                close.DialogResult = DialogResult.Cancel;
+
+                var logo = new PictureBox
+                {
+                    Location = new Point(32, 24),
+                    Size = new Size(36, 36),
+                    Image = HappIconLoader.LoadSoraLogo(),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    BackColor = dialog.BackColor
+                };
+                var title = new Label
+                {
+                    Location = new Point(84, 18),
+                    Size = new Size(340, 28),
+                    Text = "О Sora",
+                    Font = new Font("Segoe UI Semibold", 15F),
+                    ForeColor = HappText,
+                    TextAlign = ContentAlignment.MiddleLeft
+                };
+                var version = new Label
+                {
+                    Location = new Point(85, 47),
+                    Size = new Size(340, 22),
+                    Text = "Версия " + SoraVersion + ", Windows 7 x86",
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = HappMuted
+                };
+                var description = new Label
+                {
+                    Location = new Point(32, 86),
+                    Size = new Size(436, 24),
+                    Text = "Клиент подключений для устаревших систем",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = HappText
+                };
+                var details = new Panel
+                {
+                    Location = new Point(32, 122),
+                    Size = new Size(436, 132),
+                    BackColor = HappSurface
+                };
+                ApplyRoundedSurface(details, 6, Color.FromArgb(76, 76, 80));
+                var licenseName = new Label { Location = new Point(16, 1), Size = new Size(160, 42), Text = "Лицензия", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var licenseValue = new Label { Location = new Point(196, 1), Size = new Size(224, 42), Text = "GPL-3.0", ForeColor = HappMuted, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 9F) };
+                var divider = new Panel { Location = new Point(0, 43), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
+                var sourceName = new Label { Location = new Point(16, 45), Size = new Size(160, 42), Text = "Исходный код", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var sourceValue = new LinkLabel
+                {
+                    Location = new Point(176, 45),
+                    Size = new Size(244, 42),
+                    Text = "github.com/levvs-one/sora-client",
+                    LinkColor = HappText,
+                    ActiveLinkColor = HappMuted,
+                    VisitedLinkColor = HappText,
+                    BackColor = HappSurface,
+                    LinkBehavior = LinkBehavior.HoverUnderline,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Font = new Font("Segoe UI", 8.5F),
+                    Cursor = Cursors.Hand,
+                    AccessibleName = "Открыть исходный код Sora на GitHub"
+                };
+                sourceValue.LinkClicked += (sender, args) => OpenSoraCommunityLink("https://github.com/levvs-one/sora-client");
+                var telegramDivider = new Panel { Location = new Point(0, 87), Size = new Size(436, 1), BackColor = Color.FromArgb(76, 76, 80) };
+                var telegramName = new Label { Location = new Point(16, 89), Size = new Size(160, 42), Text = "Telegram", ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F) };
+                var telegramValue = new LinkLabel
+                {
+                    Location = new Point(196, 89),
+                    Size = new Size(224, 42),
+                    Text = "t.me/sora_client",
+                    LinkColor = HappText,
+                    ActiveLinkColor = HappMuted,
+                    VisitedLinkColor = HappText,
+                    BackColor = HappSurface,
+                    LinkBehavior = LinkBehavior.HoverUnderline,
+                    TextAlign = ContentAlignment.MiddleRight,
+                    Font = new Font("Segoe UI", 9F),
+                    Cursor = Cursors.Hand,
+                    AccessibleName = "Открыть Telegram-канал Sora"
+                };
+                telegramValue.LinkClicked += (sender, args) => OpenSoraCommunityLink("https://t.me/sora_client");
+                details.Controls.AddRange(new Control[] { licenseName, licenseValue, divider, sourceName, sourceValue, telegramDivider, telegramName, telegramValue });
+
+                var footer = new Label
+                {
+                    Location = new Point(32, 272),
+                    Size = new Size(436, 20),
+                    Text = "Независимый проект сообщества",
+                    Font = new Font("Segoe UI", 8.5F),
+                    ForeColor = HappMuted
+                };
+
+                dialog.Controls.AddRange(new Control[] { logo, title, version, description, details, footer, close });
+                dialog.CancelButton = close;
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private void OpenSoraCommunityLink(string address)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = address, UseShellExecute = true });
+            }
+            catch (Exception exception)
+            {
+                UI.ShowWarning("Не удалось открыть ссылку: " + exception.Message);
+            }
         }
     }
 }

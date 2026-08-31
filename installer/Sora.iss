@@ -1,5 +1,5 @@
 #define MyAppName "Sora"
-#define MyAppVersion "0.2.2"
+#define MyAppVersion "0.2.3"
 #define MyAppExeName "Sora.exe"
 
 #ifndef StageDir
@@ -19,11 +19,11 @@
 AppId={{8D33A351-982B-4E71-8216-4B7E4B75EBA8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=Sora Contributors
+AppPublisher=Сообщество Sora
 AppPublisherURL=https://github.com/levvs-one/sora-client
 VersionInfoVersion={#MyAppVersion}.0
-VersionInfoCompany=Sora Contributors
-VersionInfoDescription=Неофициальный клиент для Windows 7 x86
+VersionInfoCompany=Сообщество Sora
+VersionInfoDescription=Sora — клиент подключений для Windows 7
 DefaultDirName={localappdata}\Programs\Sora
 DefaultGroupName=Sora
 DisableProgramGroupPage=yes
@@ -31,7 +31,7 @@ PrivilegesRequired=lowest
 MinVersion=6.1sp1
 ArchitecturesAllowed=x86compatible
 OutputDir={#BuildOutputDir}
-OutputBaseFilename=Sora-{#MyAppVersion}-Win7-x86-Setup
+OutputBaseFilename=Sora-{#MyAppVersion}-Windows-7-x86
 SetupIconFile={#StageDir}\sora.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2

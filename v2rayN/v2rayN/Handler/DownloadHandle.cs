@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -37,6 +38,14 @@ namespace v2rayN.Handler
         public event EventHandler<ResultEventArgs> UpdateCompleted;
 
         public event ErrorEventHandler Error;
+
+        public string LastProfileTitle { get; private set; }
+
+        public string LastProfileUpdateInterval { get; private set; }
+
+        public string LastSubscriptionUserinfo { get; private set; }
+
+        public string LastSubscriptionAnnouncement { get; private set; }
 
 
         public class ResultEventArgs : EventArgs
@@ -184,7 +193,18 @@ namespace v2rayN.Handler
                         }
 
                         timeout.CancelAfter(TimeSpan.FromSeconds(30));
-                        return await HttpClientHelper.GetInstance().GetAsync(client, url, timeout.Token);
+                        using (HttpResponseMessage response = await client.GetAsync(url, timeout.Token))
+                        {
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                throw new Exception(string.Format("The request returned with HTTP status code {0}", response.StatusCode));
+                            }
+                            LastProfileTitle = GetResponseHeader(response, "Profile-Title");
+                            LastProfileUpdateInterval = GetResponseHeader(response, "Profile-Update-Interval");
+                            LastSubscriptionUserinfo = GetResponseHeader(response, "Subscription-Userinfo");
+                            LastSubscriptionAnnouncement = GetResponseHeader(response, "Announce");
+                            return await response.Content.ReadAsStringAsync();
+                        }
                     }
                 }, CancellationToken.None);
             }
@@ -197,6 +217,13 @@ namespace v2rayN.Handler
                     Error?.Invoke(this, new ErrorEventArgs(ex.InnerException));
                 }
             }
+            return null;
+        }
+
+        private static string GetResponseHeader(HttpResponseMessage response, string name)
+        {
+            if (!response.Headers.TryGetValues(name, out IEnumerable<string> values)) return null;
+            foreach (string value in values) return value;
             return null;
         }
 
@@ -249,7 +276,7 @@ namespace v2rayN.Handler
                     msg = myHttpWebResponse.StatusDescription;
                 }
                 timer.Stop();
-                responseTime = timer.Elapsed.Milliseconds;
+                responseTime = Math.Max(1, (int)Math.Round(timer.Elapsed.TotalMilliseconds));
 
                 myHttpWebResponse.Close();
             }

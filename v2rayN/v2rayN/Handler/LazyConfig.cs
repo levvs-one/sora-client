@@ -123,7 +123,7 @@ namespace v2rayN.Handler
             {
                 coreType = ECoreType.Xray,
                 coreExes = new List<string> { "xray" },
-                arguments = "",
+                arguments = "run -c config.json",
                 coreUrl = Global.xrayCoreUrl,
                 coreReleaseApiUrl = Global.xrayCoreUrl.Replace(@"https://github.com", @"https://api.github.com/repos"),
                 coreDownloadUrl32 = Global.xrayCoreUrl + "/download/{0}/Xray-windows-{1}.zip",

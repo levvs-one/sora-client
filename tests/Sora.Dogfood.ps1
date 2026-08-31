@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)][string]$StagePath,
     [string]$SubscriptionUrl = '',
     [string]$SubscriptionPayloadPath = '',
@@ -90,8 +90,10 @@ try {
         return $false
     } "Sora did not persist $ExpectedProfiles profiles from the subscription"
 
-    $pingButton = Wait-Until { Find-Element $process.Id 'Тест пинга' } 'Ping button was not found after import'
+    $pingButton = Wait-Until { Find-Element $process.Id 'Измерить задержку' } 'Latency button was not found after import'
     Invoke-Element $pingButton
+    $fullRoutePing = Wait-Until { Find-Element $process.Id 'Через прокси — полный маршрут' } 'Full-route latency method was not found'
+    Invoke-Element $fullRoutePing
     $pingResult = Wait-Until {
         $processCondition = New-Object Windows.Automation.PropertyCondition(
             [Windows.Automation.AutomationElement]::ProcessIdProperty,
@@ -103,14 +105,30 @@ try {
         )
         foreach ($element in $elements) {
             $name = $element.Current.Name
-            if ($name -match '(?<!\d)(\d+)\s*ms(?!\w)') { return $matches[0] }
+            if ($name -match '(?<!\d)(\d+)\s*(?:ms|мс)(?!\w)') { return $matches[0] }
         }
         return $false
     } 'No numeric TCP ping appeared in the Sora UI'
 
-    $process.CloseMainWindow() | Out-Null
-    Wait-Until { $process.Refresh(); $process.HasExited } 'Sora did not close after the dogfood run' 15 | Out-Null
-    Write-Output "Sora dogfood: PASS (imported=$importedCount, ping=$pingResult, persisted=yes)"
+    $duplicateResult = 'not-applicable'
+    if (-not [string]::IsNullOrWhiteSpace($SubscriptionUrl)) {
+        Invoke-Element (Wait-Until { Find-Element $process.Id 'Добавить конфигурацию' } 'Add configuration button was not exposed for duplicate check')
+        $duplicateField = Wait-Until { Find-Element $process.Id 'RichEdit Control' } 'Import field was not exposed for duplicate check'
+        $duplicateField.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($SubscriptionUrl)
+        $duplicateButton = Wait-Until { Find-Element $process.Id 'Добавить распознанную конфигурацию' } 'Import button was not exposed for duplicate check'
+        Invoke-Element $duplicateButton
+
+        Wait-Until { Find-Element $process.Id 'Эта подписка уже добавлена.' } 'Duplicate subscription warning did not appear' | Out-Null
+        Invoke-Element (Wait-Until { Find-Element $process.Id 'ОК' } 'Duplicate subscription warning could not be closed')
+        Start-Sleep -Milliseconds 750
+        if (Find-Element $process.Id 'Sora не нашла ни одной рабочей конфигурации. Проверьте ссылку или содержимое подписки.') {
+            throw 'Duplicate subscription triggered a second invalid-configuration warning'
+        }
+        [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+        $duplicateResult = 'single-warning'
+    }
+
+    Write-Output "Sora dogfood: PASS (imported=$importedCount, ping=$pingResult, duplicate=$duplicateResult, persisted=yes)"
 }
 finally {
     if (-not $process.HasExited) {

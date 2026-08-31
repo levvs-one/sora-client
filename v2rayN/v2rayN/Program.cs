@@ -41,9 +41,9 @@ namespace v2rayN
             Utils.SaveLog($"Sora start up | {Utils.GetVersion()}");
                 Logging.ClearLogs();
 
-                //设置语言环境
-                string lang = Utils.RegReadValue(Global.MyRegPath, Global.MyRegKeyLanguage, "en");
-                Thread.CurrentThread.CurrentUICulture = new System.Globalization.CultureInfo(lang);
+                var culture = SoraText.CurrentCulture;
+                Thread.CurrentThread.CurrentCulture = culture;
+                Thread.CurrentThread.CurrentUICulture = culture;
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);

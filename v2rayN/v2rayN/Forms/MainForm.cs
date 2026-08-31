@@ -61,6 +61,13 @@ namespace v2rayN.Forms
             }
 
             ConfigHandler.InitBuiltinRouting(ref config);
+            SetHappConnectionMode(config.soraUseTun);
+            if (!config.soraTrafficStatisticsConfigured)
+            {
+                config.enableStatistics = true;
+                config.soraTrafficStatisticsConfigured = true;
+                ConfigHandler.SaveConfig(ref config, false);
+            }
             MainFormHandler.Instance.BackupGuiNConfig(config, true);
             v2rayHandler = new V2rayHandler();
             v2rayHandler.ProcessEvent += v2rayHandler_ProcessEvent;
@@ -68,6 +75,7 @@ namespace v2rayN.Forms
             if (config.enableStatistics)
             {
                 statistics = new StatisticsHandler(config, UpdateStatisticsHandler);
+                statistics.UpdateUI = Visible;
             }
         }
 
@@ -108,10 +116,25 @@ namespace v2rayN.Forms
             MainFormHandler.Instance.UpdateTask(config, UpdateTaskHandler);
             MainFormHandler.Instance.RegisterGlobalHotkey(config, OnHotkeyHandler, UpdateTaskHandler);
 
-            await LoadV2ray();
-            if (_startTun)
+            if (_startTun || config.soraReconnectOnStart)
             {
-                await StartCommunityTunAsync();
+                if (_startTun || config.soraUseTun)
+                {
+                    await StartCommunityTunAsync();
+                }
+                else
+                {
+                    await StartCommunityProxyAsync();
+                }
+            }
+            else if (config.sysProxyType == ESysProxyType.ForcedChange)
+            {
+                SetHappConnectionMode(false);
+                await StartCommunityProxyAsync();
+            }
+            else
+            {
+                await LoadV2ray();
             }
 
             if (!Utils.CheckForDotNetVersion())
@@ -254,6 +277,7 @@ namespace v2rayN.Forms
         {
             lstVmess = config.vmess
                 .Where(it => Utils.IsNullOrEmpty(_groupId) || it.groupId == _groupId)
+                .Where(it => Utils.IsNullOrEmpty(_soraExpandedSubscriptionId) || it.subid == _soraExpandedSubscriptionId)
                 .Where(it => Utils.IsNullOrEmpty(serverFilter) || it.remarks.Contains(serverFilter))
                 .OrderBy(it => it.sort)
                 .ToList();
@@ -827,8 +851,17 @@ namespace v2rayN.Forms
         private void Speedtest(ESpeedActionType actionType)
         {
             if (GetLvSelectedIndex() < 0) return;
-            ClearTestResult();
-            SpeedtestHandler statistics = new SpeedtestHandler(config, v2rayHandler, lstSelecteds, actionType, UpdateSpeedtestHandler);
+            Speedtest(actionType, lstSelecteds.ToList());
+        }
+        private void Speedtest(ESpeedActionType actionType, IEnumerable<VmessItem> servers)
+        {
+            List<VmessItem> targets = servers?.Where(item => item != null).ToList() ?? new List<VmessItem>();
+            if (targets.Count == 0) return;
+            foreach (VmessItem target in targets)
+            {
+                SetTestResult(target.indexId, string.Empty);
+            }
+            SpeedtestHandler statistics = new SpeedtestHandler(config, v2rayHandler, targets, actionType, UpdateSpeedtestHandler);
         }
         private void menuSortServerResult_Click(object sender, EventArgs e)
         {
@@ -1235,25 +1268,11 @@ namespace v2rayN.Forms
             {
                 lstVmess[k].testResult = txt;
                 lvServers.Items[k].SubItems["testResult"].Text = txt;
+                lvServers.RedrawItems(k, k, false);
             }
             else
             {
                 AppendText(false, txt);
-            }
-        }
-        private void SetTestResult(int k, string txt)
-        {
-            if (k < lvServers.Items.Count)
-            {
-                lstVmess[k].testResult = txt;
-                lvServers.Items[k].SubItems["testResult"].Text = txt;
-            }
-        }
-        private void ClearTestResult()
-        {
-            foreach (var it in lstSelecteds)
-            {
-                SetTestResult(it.indexId, "");
             }
         }
         private void UpdateSpeedtestHandler(string indexId, string msg)

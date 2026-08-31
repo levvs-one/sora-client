@@ -185,7 +185,7 @@ namespace v2rayN.Handler
             {
                 if (ret == 0)
                 {
-                    UI.Show("Резервная копия сохранена без системного окна:\r\n" + fileName);
+                    UI.Show("Резервная копия сохранена:\r\n" + fileName);
                 }
                 else
                 {
@@ -237,6 +237,8 @@ namespace v2rayN.Handler
             config = resConfig;
             LazyConfig.Instance.SetConfig(ref config);
 
+            UI.Show("Настройки восстановлены.");
+
             return true;
         }
 
@@ -266,7 +268,6 @@ namespace v2rayN.Handler
 
         private void UpdateTaskRun(Config config, Action<bool, string> update)
         {
-            var autoUpdateSubTime = DateTime.Now;
             var autoUpdateGeoTime = DateTime.Now;
 
             Thread.Sleep(60000);
@@ -276,21 +277,6 @@ namespace v2rayN.Handler
             while (true)
             {
                 var dtNow = DateTime.Now;
-
-                if (config.autoUpdateSubInterval > 0)
-                {
-                    if ((dtNow - autoUpdateSubTime).Hours % config.autoUpdateSubInterval == 0)
-                    {
-                        updateHandle.UpdateSubscriptionProcess(config, "", true, (bool success, string msg) =>
-                        {
-                            update(success, msg);
-                            if (success)
-                                Utils.SaveLog("subscription" + msg);
-                        });
-                        autoUpdateSubTime = dtNow;
-                    }
-                    Thread.Sleep(60000);
-                }
 
                 if (config.autoUpdateInterval > 0)
                 {

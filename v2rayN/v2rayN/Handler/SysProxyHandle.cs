@@ -166,9 +166,9 @@ namespace v2rayN.Handler
             {
                 UserSettingsRecorded = true,
                 Flags = values[0].Trim(),
-                ProxyServer = values[1],
-                BypassList = values[2],
-                PacUrl = values[3]
+                ProxyServer = NormalizeQueryValue(values[1]),
+                BypassList = NormalizeQueryValue(values[2]),
+                PacUrl = NormalizeQueryValue(values[3])
             };
             if (Utils.ToJsonFile(settings, backupPath) != 0)
             {
@@ -187,7 +187,17 @@ namespace v2rayN.Handler
             {
                 throw new InvalidDataException("Резервная копия параметров системного прокси повреждена.");
             }
+            settings.ProxyServer = NormalizeQueryValue(settings.ProxyServer);
+            settings.BypassList = NormalizeQueryValue(settings.BypassList);
+            settings.PacUrl = NormalizeQueryValue(settings.PacUrl);
             return settings;
+        }
+
+        private static string NormalizeQueryValue(string value)
+        {
+            return string.Equals(value?.Trim(), "(null)", StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : value ?? string.Empty;
         }
 
         private static string QuoteArgument(string value)

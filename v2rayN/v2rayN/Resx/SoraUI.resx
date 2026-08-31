@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Серверы" xml:space="preserve"><value>Серверы</value></data>
+  <data name="Настройки" xml:space="preserve"><value>Настройки</value></data>
+  <data name="Журнал" xml:space="preserve"><value>Журнал</value></data>
+  <data name="Маршрутизация" xml:space="preserve"><value>Маршрутизация</value></data>
+  <data name="Локальный прокси" xml:space="preserve"><value>Локальный прокси</value></data>
+  <data name="Подключение" xml:space="preserve"><value>Подключение</value></data>
+  <data name="Интерфейс" xml:space="preserve"><value>Интерфейс</value></data>
+  <data name="Язык" xml:space="preserve"><value>Язык</value></data>
+  <data name="О приложении" xml:space="preserve"><value>О приложении</value></data>
+  <data name="О Sora" xml:space="preserve"><value>О Sora</value></data>
+  <data name="Резервные копии" xml:space="preserve"><value>Резервные копии</value></data>
+  <data name="Только этот компьютер" xml:space="preserve"><value>Только этот компьютер</value></data>
+  <data name="Доступ из локальной сети" xml:space="preserve"><value>Доступ из локальной сети</value></data>
+  <data name="Прокси" xml:space="preserve"><value>Прокси</value></data>
+  <data name="Для приложений" xml:space="preserve"><value>Для приложений</value></data>
+  <data name="Для всей системы (TUN)" xml:space="preserve"><value>Для всей системы (TUN)</value></data>
+  <data name="Проверить задержку" xml:space="preserve"><value>Проверить задержку</value></data>
+  <data name="Сервер не выбран" xml:space="preserve"><value>Сервер не выбран</value></data>
+  <data name="Введите текст для поиска" xml:space="preserve"><value>Введите текст для поиска</value></data>
+  <data name="Добавить" xml:space="preserve"><value>Добавить</value></data>
+  <data name="Настройки подписки" xml:space="preserve"><value>Настройки подписки</value></data>
+  <data name="Название" xml:space="preserve"><value>Название</value></data>
+  <data name="Адрес подписки" xml:space="preserve"><value>Адрес подписки</value></data>
+  <data name="Период обновления" xml:space="preserve"><value>Период обновления</value></data>
+  <data name="Автообновление" xml:space="preserve"><value>Автообновление</value></data>
+  <data name="Обновить сейчас" xml:space="preserve"><value>Обновить сейчас</value></data>
+  <data name="Удалить" xml:space="preserve"><value>Удалить</value></data>
+  <data name="Сохранить" xml:space="preserve"><value>Сохранить</value></data>
+  <data name="События" xml:space="preserve"><value>События</value></data>
+  <data name="Ядро" xml:space="preserve"><value>Ядро</value></data>
+  <data name="Подписки" xml:space="preserve"><value>Подписки</value></data>
+  <data name="Статистика" xml:space="preserve"><value>Статистика</value></data>
+  <data name="ПОДКЛЮЧЕНО" xml:space="preserve"><value>ПОДКЛЮЧЕНО</value></data>
+  <data name="ПОДКЛЮЧЕНИЕ" xml:space="preserve"><value>ПОДКЛЮЧЕНИЕ</value></data>
+  <data name="ОТКЛЮЧЕНИЕ" xml:space="preserve"><value>ОТКЛЮЧЕНИЕ</value></data>
+  <data name="ОШИБКА" xml:space="preserve"><value>ОШИБКА</value></data>
+  <data name="ОТКЛЮЧЕНО" xml:space="preserve"><value>ОТКЛЮЧЕНО</value></data>
+  <data name="Готово" xml:space="preserve"><value>Готово</value></data>
+  <data name="Обратите внимание" xml:space="preserve"><value>Обратите внимание</value></data>
+  <data name="Не удалось выполнить действие" xml:space="preserve"><value>Не удалось выполнить действие</value></data>
+  <data name="Подтвердите действие" xml:space="preserve"><value>Подтвердите действие</value></data>
+  <data name="Нет" xml:space="preserve"><value>Нет</value></data>
+  <data name="Да" xml:space="preserve"><value>Да</value></data>
+  <data name="ОК" xml:space="preserve"><value>ОК</value></data>
+  <data name="Свернуть" xml:space="preserve"><value>Свернуть</value></data>
+  <data name="Развернуть или восстановить" xml:space="preserve"><value>Развернуть или восстановить</value></data>
+  <data name="Закрыть" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="Добавить конфигурацию" xml:space="preserve"><value>Добавить конфигурацию</value></data>
+  <data name="Логи" xml:space="preserve"><value>Логи</value></data>
+  <data name="О программе" xml:space="preserve"><value>О программе</value></data>
+  <data name="Поиск серверов" xml:space="preserve"><value>Поиск серверов</value></data>
+  <data name="Проверить все серверы" xml:space="preserve"><value>Проверить все серверы</value></data>
+  <data name="Настройки сервера" xml:space="preserve"><value>Настройки сервера</value></data>
+  <data name="Копировать ссылку" xml:space="preserve"><value>Копировать ссылку</value></data>
+  <data name="Ctrl+S — сохранить    Ctrl+R — создать архив диагностики" xml:space="preserve"><value>Ctrl+S — сохранить    Ctrl+R — создать архив диагностики</value></data>
+  <data name="Сохранить текущую вкладку (.txt)" xml:space="preserve"><value>Сохранить текущую вкладку (.txt)</value></data>
+  <data name="Скопировать текущую вкладку" xml:space="preserve"><value>Скопировать текущую вкладку</value></data>
+  <data name="Создать архив диагностики" xml:space="preserve"><value>Создать архив диагностики</value></data>
+  <data name="Очистить журнал" xml:space="preserve"><value>Очистить журнал</value></data>
+  <data name="Сеанс" xml:space="preserve"><value>Сеанс</value></data>
+  <data name="Sora запущена" xml:space="preserve"><value>Sora запущена</value></data>
+  <data name="Подключение установлено" xml:space="preserve"><value>Подключение установлено</value></data>
+  <data name="Текущая скорость" xml:space="preserve"><value>Текущая скорость</value></data>
+  <data name="Загрузка" xml:space="preserve"><value>Загрузка</value></data>
+  <data name="Выгрузка" xml:space="preserve"><value>Выгрузка</value></data>
+  <data name="Передано через сервер" xml:space="preserve"><value>Передано через сервер</value></data>
+  <data name="Нет данных" xml:space="preserve"><value>Нет данных</value></data>
+  <data name="Сегодня" xml:space="preserve"><value>Сегодня</value></data><data name="Режим подключения: " xml:space="preserve"><value>Режим подключения: </value></data><data name="Отключиться" xml:space="preserve"><value>Отключиться</value></data><data name="Подключение выполняется" xml:space="preserve"><value>Подключение выполняется</value></data><data name="Отключение выполняется" xml:space="preserve"><value>Отключение выполняется</value></data><data name="Подключиться" xml:space="preserve"><value>Подключиться</value></data><data name="Открыть Sora" xml:space="preserve"><value>Открыть Sora</value></data><data name="Подключить" xml:space="preserve"><value>Подключить</value></data><data name="Отключить" xml:space="preserve"><value>Отключить</value></data><data name="Подключить через TUN" xml:space="preserve"><value>Подключить через TUN</value></data><data name="Подключить для приложений" xml:space="preserve"><value>Подключить для приложений</value></data><data name="Обновить подписки" xml:space="preserve"><value>Обновить подписки</value></data><data name="Выйти" xml:space="preserve"><value>Выйти</value></data>
+  <data name="Добавить подписку" xml:space="preserve"><value>Добавить подписку</value></data><data name="Вставьте ссылку — формат определится автоматически" xml:space="preserve"><value>Вставьте ссылку — формат определится автоматически</value></data><data name="Описание появится после первого обновления подписки." xml:space="preserve"><value>Описание появится после первого обновления подписки.</value></data><data name="Описание подписки" xml:space="preserve"><value>Описание подписки</value></data><data name="Текст описания подписки" xml:space="preserve"><value>Текст описания подписки</value></data><data name="Описание не добавлено." xml:space="preserve"><value>Описание не добавлено.</value></data><data name="Добавьте прокси-сервер или подписку,&#xD;&#xA;чтобы они появились в списке" xml:space="preserve"><value>Добавьте прокси-сервер или подписку,&#xD;&#xA;чтобы они появились в списке</value></data><data name="Сервер без названия" xml:space="preserve"><value>Сервер без названия</value></data>
+</root>

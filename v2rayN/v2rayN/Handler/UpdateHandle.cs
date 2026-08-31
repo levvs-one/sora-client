@@ -17,8 +17,85 @@ namespace v2rayN.Handler
 {
     class UpdateHandle
     {
+        private const int MaximumSubscriptionAnnouncementLength = 8192;
+        private static readonly SemaphoreSlim SubscriptionUpdateLock = new SemaphoreSlim(1, 1);
         Action<bool, string> _updateFunc;
         private Config _config;
+
+        public sealed class SubscriptionUpdateResult
+        {
+            public string SubscriptionId { get; set; }
+            public bool Success { get; set; }
+            public int ServerCount { get; set; }
+            public DateTime AttemptedAtUtc { get; set; }
+            public DateTime CompletedAtUtc { get; set; }
+            public string Error { get; set; }
+        }
+
+        internal static string DecodeSoraProfileTitle(string header)
+        {
+            string title = header?.Trim();
+            if (string.IsNullOrWhiteSpace(title)) return null;
+            try
+            {
+                title = title.StartsWith("base64:", StringComparison.OrdinalIgnoreCase)
+                    ? Encoding.UTF8.GetString(Convert.FromBase64String(title.Substring(7)))
+                    : Uri.UnescapeDataString(title);
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+            title = title.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return title.Length > 80 ? title.Substring(0, 80) : title;
+        }
+
+        internal static string DecodeSoraAnnouncement(string header)
+        {
+            string text = header?.Trim();
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            try
+            {
+                text = text.StartsWith("base64:", StringComparison.OrdinalIgnoreCase)
+                    ? Encoding.UTF8.GetString(Convert.FromBase64String(text.Substring(7)))
+                    : Uri.UnescapeDataString(text);
+            }
+            catch (FormatException)
+            {
+                return string.Empty;
+            }
+            text = text.Replace("\r\n", "\n").Replace('\r', '\n').Trim('\n');
+            if (text.Length <= MaximumSubscriptionAnnouncementLength) return text;
+            int length = MaximumSubscriptionAnnouncementLength;
+            if (char.IsHighSurrogate(text[length - 1])) length--;
+            return text.Substring(0, length) + "\n\n…";
+        }
+
+        internal static bool ShouldApplySoraProfileTitle(SubItem item)
+        {
+            if (!item.nameCustomized) return true;
+            if (!Uri.TryCreate(item.url, UriKind.Absolute, out Uri uri)) return false;
+            string host = uri.Host.ToLowerInvariant();
+            string[] labels = host.Split('.');
+            if (labels.Length > 2 && (labels[0] == "s" || labels[0] == "sub" || labels[0] == "subscribe" || labels[0] == "www"))
+            {
+                host = string.Join(".", labels.Skip(1));
+            }
+            return string.Equals(item.remarks?.Trim(), host, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static void ParseSoraSubscriptionUserinfo(SubItem item, string header)
+        {
+            foreach (Match match in Regex.Matches(header ?? string.Empty, @"(?:^|;)\s*(upload|download|total|expire)\s*=\s*(\d+)", RegexOptions.IgnoreCase))
+            {
+                if (!long.TryParse(match.Groups[2].Value, out long value)) continue;
+                string key = match.Groups[1].Value.ToLowerInvariant();
+                if (key == "upload") item.subscriptionUploadBytes = value;
+                else if (key == "download") item.subscriptionDownloadBytes = value;
+                else if (key == "total") item.subscriptionTotalBytes = value;
+                else if (key == "expire") item.subscriptionExpireUnixSeconds = value;
+            }
+        }
 
         public event EventHandler<ResultEventArgs> AbsoluteCompleted;
 
@@ -97,101 +174,173 @@ namespace v2rayN.Handler
 
         public void UpdateSubscriptionProcess(Config config, string groupId, bool blProxy, Action<bool, string> update)
         {
+            IEnumerable<string> subscriptionIds = null;
+            bool includeDisabled = false;
+            if (!Utils.IsNullOrEmpty(groupId))
+            {
+                subscriptionIds = config.subItem?
+                    .Where(item => item.id == groupId || item.groupId == groupId)
+                    .Select(item => item.id)
+                    .ToArray();
+                includeDisabled = config.subItem?.Any(item => item.id == groupId) == true;
+            }
+            _ = UpdateSubscriptionsAsync(config, subscriptionIds, blProxy, includeDisabled, update);
+        }
+
+        public async Task<List<SubscriptionUpdateResult>> UpdateSubscriptionsAsync(
+            Config config,
+            IEnumerable<string> subscriptionIds,
+            bool blProxy,
+            bool includeDisabled,
+            Action<bool, string> update)
+        {
             _config = config;
-            _updateFunc = update;
+            _updateFunc = update ?? ((success, message) => { });
+            var requestedIds = subscriptionIds == null
+                ? null
+                : new HashSet<string>(subscriptionIds.Where(id => !Utils.IsNullOrEmpty(id)));
+            SubItem[] subscriptions = config.subItem?
+                .Where(item => requestedIds == null || requestedIds.Contains(item.id))
+                .Where(item => includeDisabled || item.enabled)
+                .ToArray() ?? Array.Empty<SubItem>();
+            var results = new List<SubscriptionUpdateResult>();
 
             _updateFunc(false, ResUI.MsgUpdateSubscriptionStart);
-
-            if (config.subItem == null || config.subItem.Count <= 0)
+            if (subscriptions.Length == 0)
             {
                 _updateFunc(false, ResUI.MsgNoValidSubscription);
-                return;
+                _updateFunc(false, ResUI.MsgUpdateSubscriptionEnd);
+                return results;
             }
 
-            Task.Run(async () =>
+            await SubscriptionUpdateLock.WaitAsync();
+            bool restoreSystemProxy = false;
+            try
             {
-                //Turn off system proxy
-                bool bSysProxyType = false;
                 if (!blProxy && config.sysProxyType == ESysProxyType.ForcedChange)
                 {
-                    bSysProxyType = true;
+                    restoreSystemProxy = true;
                     config.sysProxyType = ESysProxyType.ForcedClear;
                     SysProxyHandle.UpdateSysProxy(config, false);
-                    Thread.Sleep(3000);
+                    await Task.Delay(3000);
                 }
 
-                foreach (var item in config.subItem)
+                foreach (SubItem item in subscriptions)
                 {
-                    if (item.enabled == false)
-                    {
-                        continue;
-                    }
-                    if (!Utils.IsNullOrEmpty(groupId) && item.groupId != groupId && item.id != groupId)
-                    {
-                        continue;
-                    }
-
+                    DateTime attemptedAtUtc = DateTime.UtcNow;
+                    item.lastUpdateAttemptUtcTicks = attemptedAtUtc.Ticks;
                     string id = item.id.TrimEx();
                     string url = item.url.TrimEx();
                     string userAgent = item.userAgent.TrimEx();
-                    //string groupId = item.groupId.TrimEx();
-                    string hashCode = $"{item.remarks}->";
-                    if (Utils.IsNullOrEmpty(id) || Utils.IsNullOrEmpty(url))
+                    string prefix = $"{item.remarks}->";
+                    var itemResult = new SubscriptionUpdateResult
                     {
-                        //_updateFunc(false, $"{hashCode}{ResUI.MsgNoValidSubscription}");
-                        continue;
-                    }
-                    if (!Uri.TryCreate(url, UriKind.Absolute, out Uri subscriptionUri) || subscriptionUri.Scheme != Uri.UriSchemeHttps)
-                    {
-                        _updateFunc(false, $"{hashCode}Подписка отклонена: требуется HTTPS.");
-                        continue;
-                    }
-
-                    var downloadHandle = new DownloadHandle();
-                    downloadHandle.Error += (sender2, args) =>
-                    {
-                        _updateFunc(false, $"{hashCode}{args.GetException().Message}");
+                        SubscriptionId = id,
+                        AttemptedAtUtc = attemptedAtUtc,
+                        Error = string.Empty
                     };
 
-                    _updateFunc(false, $"{hashCode}{ResUI.MsgStartGettingSubscriptions}");
-                    var result = await downloadHandle.DownloadStringAsync(url, blProxy, userAgent);
-                    if (blProxy && Utils.IsNullOrEmpty(result))
+                    try
                     {
-                        result = await downloadHandle.DownloadStringAsync(url, false, userAgent);
+                        if (Utils.IsNullOrEmpty(id) || Utils.IsNullOrEmpty(url))
+                        {
+                            itemResult.Error = "Не заполнен адрес подписки.";
+                        }
+                        else if (!Uri.TryCreate(url, UriKind.Absolute, out Uri subscriptionUri) || subscriptionUri.Scheme != Uri.UriSchemeHttps)
+                        {
+                            itemResult.Error = "Требуется защищённый адрес HTTPS.";
+                        }
+                        else
+                        {
+                            string downloadError = string.Empty;
+                            var downloadHandle = new DownloadHandle();
+                            downloadHandle.Error += (sender2, args) => downloadError = args.GetException().Message;
+                            _updateFunc(false, $"{prefix}{ResUI.MsgStartGettingSubscriptions}");
+                            string content = await downloadHandle.DownloadStringAsync(url, blProxy, userAgent);
+                            if (blProxy && Utils.IsNullOrEmpty(content))
+                            {
+                                content = await downloadHandle.DownloadStringAsync(url, false, userAgent);
+                            }
+
+                            string profileTitle = DecodeSoraProfileTitle(downloadHandle.LastProfileTitle);
+                            if (ShouldApplySoraProfileTitle(item) && !Utils.IsNullOrEmpty(profileTitle))
+                            {
+                                item.remarks = profileTitle;
+                                item.nameCustomized = false;
+                                prefix = $"{item.remarks}->";
+                            }
+                            if (int.TryParse(downloadHandle.LastProfileUpdateInterval, out int updateHours) && updateHours > 0 && updateHours <= 720)
+                            {
+                                item.updateIntervalMinutes = updateHours * 60;
+                            }
+                            ParseSoraSubscriptionUserinfo(item, downloadHandle.LastSubscriptionUserinfo);
+                            item.subscriptionAnnouncement = DecodeSoraAnnouncement(downloadHandle.LastSubscriptionAnnouncement);
+
+                            if (Utils.IsNullOrEmpty(content))
+                            {
+                                itemResult.Error = Utils.IsNullOrEmpty(downloadError)
+                                    ? "Сервер подписки не вернул данные."
+                                    : downloadError;
+                            }
+                            else
+                            {
+                                _updateFunc(false, $"{prefix}{ResUI.MsgGetSubscriptionSuccessfully}");
+                                int imported = ConfigHandler.AddBatchServers(ref config, content, id, item.groupId.TrimEx());
+                                if (imported > 0)
+                                {
+                                    if (item.allowInsecure)
+                                    {
+                                        foreach (VmessItem server in config.vmess.Where(server => server.subid == id))
+                                        {
+                                            server.allowInsecure = "true";
+                                        }
+                                        ConfigHandler.SaveConfig(ref config, false);
+                                    }
+                                    itemResult.Success = true;
+                                    itemResult.ServerCount = config.vmess.Count(server => server.subid == id);
+                                    item.lastUpdateSuccessUtcTicks = DateTime.UtcNow.Ticks;
+                                    item.lastServerCount = itemResult.ServerCount;
+                                    item.lastUpdateError = string.Empty;
+                                }
+                                else
+                                {
+                                    itemResult.Error = "В ответе нет поддерживаемых серверов.";
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        itemResult.Error = exception.Message;
+                        Utils.SaveLog("Subscription update failed", exception);
                     }
 
-                    if (Utils.IsNullOrEmpty(result))
+                    itemResult.CompletedAtUtc = DateTime.UtcNow;
+                    if (!itemResult.Success)
                     {
-                        _updateFunc(false, $"{hashCode}{ResUI.MsgSubscriptionDecodingFailed}");
+                        item.lastUpdateError = itemResult.Error;
                     }
-                    else
-                    {
-                        _updateFunc(false, $"{hashCode}{ResUI.MsgGetSubscriptionSuccessfully}");
-                        int ret = ConfigHandler.AddBatchServers(ref config, result, id, item.groupId.TrimEx());
-                        if (ret > 0 && item.allowInsecure)
-                        {
-                            foreach (var server in config.vmess.Where(server => server.subid == id))
-                            {
-                                server.allowInsecure = "true";
-                            }
-                            ConfigHandler.SaveConfig(ref config, false);
-                        }
-                        _updateFunc(false,
-                            ret > 0
-                                ? $"{hashCode}{ResUI.MsgUpdateSubscriptionEnd}"
-                                : $"{hashCode}{ResUI.MsgFailedImportSubscription}");
-                    }
+                    ConfigHandler.SaveSubItem(ref config);
+                    results.Add(itemResult);
+                    _updateFunc(false, itemResult.Success
+                        ? $"{prefix}{itemResult.ServerCount} серверов, обновлено"
+                        : $"{prefix}{itemResult.Error}");
                     _updateFunc(false, "-------------------------------------------------------");
                 }
-                //restore system proxy
-                if (bSysProxyType)
+            }
+            finally
+            {
+                if (restoreSystemProxy)
                 {
                     config.sysProxyType = ESysProxyType.ForcedChange;
                     SysProxyHandle.UpdateSysProxy(config, false);
                 }
-                _updateFunc(true, $"{ResUI.MsgUpdateSubscriptionEnd}");
+                SubscriptionUpdateLock.Release();
+            }
 
-            });
+            bool anySuccess = results.Any(result => result.Success);
+            _updateFunc(anySuccess, ResUI.MsgUpdateSubscriptionEnd);
+            return results;
         }
 
 

@@ -2,11 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Newtonsoft.Json.Linq;
 using v2rayN.Handler;
 using v2rayN.Mode;
+using v2rayN.Tool;
 
 namespace v2rayN.Forms
 {
@@ -19,8 +23,12 @@ namespace v2rayN.Forms
         private static readonly Color HappSurface = Color.FromArgb(51, 51, 54);
         private static readonly Color HappCanvas = Color.FromArgb(20, 20, 22);
         private static readonly Color HappText = Color.FromArgb(247, 247, 248);
-        private static readonly Color HappMuted = Color.FromArgb(196, 196, 201);
+        private static readonly Color HappMuted = Color.FromArgb(214, 214, 218);
         private static readonly Color HappLine = Color.FromArgb(128, 128, 132);
+        private static readonly Color HappControlBorder = Color.FromArgb(76, 76, 81);
+        private static readonly Color HappListBorder = Color.FromArgb(45, 45, 49);
+        private static readonly Color HappDivider = Color.FromArgb(49, 49, 53);
+        private static readonly Color HappServerSurface = Color.FromArgb(29, 29, 32);
 
         private Panel _happPageHost;
         private Control _happServerPage;
@@ -29,9 +37,30 @@ namespace v2rayN.Forms
         private readonly DateTime _happStartedAt = DateTime.Now;
         private long _happUploadRate;
         private long _happDownloadRate;
+        private FlowLayoutPanel _soraSubscriptionSectionsHost;
+        private Panel _soraServerListHost;
+        private string _soraExpandedSubscriptionId;
+        private bool _soraSubscriptionExpansionInitialized;
+        private readonly Dictionary<string, SoraSubscriptionSectionControls> _soraSubscriptionSections = new Dictionary<string, SoraSubscriptionSectionControls>();
+        private Timer _soraSubscriptionAnimationTimer;
+        private Panel _soraSubscriptionAnimatingPanel;
+        private int _soraSubscriptionAnimationTarget;
+        private int _soraSubscriptionAnimationFrame;
+        private Timer _soraSubscriptionSummaryTimer;
+        private Label _soraTrafficSummary;
+        private Timer _soraTrafficTimer;
         private bool _happUseTun;
         private Button _happModeButton;
+        private ToolTip _happModeNotice;
         private bool _happReportShortcutWired;
+        private int _happHoveredServerIndex = -1;
+        private HappListScrollRail _happServerScroll;
+        private bool _happHidingServerScrollbars;
+        private Timer _soraPingAnimationTimer;
+        private int _soraPingAnimationFrame;
+        private readonly Dictionary<string, SoraProtocolDisplay> _soraProtocolDisplayCache = new Dictionary<string, SoraProtocolDisplay>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Image> _soraCountryFlagCache = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
+        private Image _soraDefaultCountryIcon;
 
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
@@ -61,6 +90,7 @@ namespace v2rayN.Forms
             NormalizeSoraVisibleConfiguration();
             KeyPreview = true;
             KeyDown += HandleHappShortcut;
+            FormClosed += DisposeSoraCountryImages;
 
             tsMain.Visible = false;
             panel1.Visible = false;
@@ -84,6 +114,7 @@ namespace v2rayN.Forms
             Controls.Add(root);
             _happServerPage = BuildHappServerPage();
             ShowHappPage(_happServerPage);
+            SoraText.Apply(root);
             ResumeLayout(true);
 
             Shown += (sender, args) =>
@@ -107,6 +138,8 @@ namespace v2rayN.Forms
                     UpdateCommunityConnectionState(config == null ? ESysProxyType.ForcedClear : config.sysProxyType);
                 }
                 UpdateCommunityEmptyState();
+                RefreshSoraSubscriptionCard();
+                StartSoraSubscriptionScheduler();
             };
         }
 
@@ -142,33 +175,39 @@ namespace v2rayN.Forms
 
         private Control BuildHappNavigation()
         {
-            var nav = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = HappNav, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8, 10, 8, 8) };
+            var nav = new Panel { Dock = DockStyle.Fill, BackColor = HappNav };
+            var primary = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 298, BackColor = HappNav, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(8, 10, 8, 0) };
             _happSelectableNavButtons = new List<Button>();
-            nav.Controls.Add(CreateHappNavButton("arrow-right", () => HideForm(), false, false));
-            nav.Controls.Add(CreateHappNavButton("plus-square", ShowHappAddConfiguration, false, false));
-            nav.Controls.Add(CreateHappNavButton("globe", () => ShowHappPage(_happServerPage), true));
-            nav.Controls.Add(CreateHappNavButton("gear", () => ShowHappPage(BuildHappSettingsPage())));
-            nav.Controls.Add(CreateHappNavButton("chart-line-up", () => ShowHappPage(BuildHappStatisticsPage())));
-            nav.Controls.Add(CreateHappNavButton("terminal-window", () => ShowHappPage(BuildHappLogsPage())));
-            var spacer = new Panel { Width = 52, Height = 250, Margin = Padding.Empty };
-            nav.Controls.Add(spacer);
-            nav.Controls.Add(CreateHappNavButton("info", ShowCommunityAbout, false, false));
+            primary.Controls.Add(CreateHappNavButton("plus-square", ShowHappAddConfiguration, false, false));
+            primary.Controls.Add(CreateHappNavButton("globe", () => ShowHappPage(_happServerPage), true));
+            primary.Controls.Add(CreateHappNavButton("gear", () => ShowHappPage(BuildHappSettingsPage())));
+            primary.Controls.Add(CreateHappNavButton("chart-line-up", () => ShowHappPage(BuildHappStatisticsPage())));
+            primary.Controls.Add(CreateHappNavButton("terminal-window", () => ShowHappPage(BuildHappLogsPage())));
+
+            var infoHost = new Panel { Dock = DockStyle.Bottom, Height = 60, BackColor = HappNav, Padding = new Padding(8) };
+            var info = CreateHappNavButton("info", ShowCommunityAbout, false, false);
+            info.Dock = DockStyle.Left;
+            info.Margin = Padding.Empty;
+            infoHost.Controls.Add(info);
+
+            nav.Controls.Add(primary);
+            nav.Controls.Add(infoHost);
             return nav;
         }
 
         private Button CreateHappNavButton(string icon, Action action, bool selected = false, bool selectable = true)
         {
-            string accessibleName = icon == "arrow-right" ? "Скрыть Sora"
-                : icon == "plus-square" ? "Добавить конфигурацию"
+            string accessibleName = icon == "plus-square" ? "Добавить конфигурацию"
                 : icon == "globe" ? "Серверы"
                 : icon == "gear" ? "Настройки"
                 : icon == "chart-line-up" ? "Статистика"
                 : icon == "terminal-window" ? "Логи"
                 : icon == "info" ? "О программе"
                 : "Раздел";
-            var button = new Button { Size = new Size(52, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = icon != "arrow-right", AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
+            var button = new Button { Size = new Size(48, 44), Margin = new Padding(0, 0, 0, 4), FlatStyle = FlatStyle.Flat, BackColor = selected ? Color.Black : HappNav, Image = HappIconLoader.Load(icon, Color.FromArgb(225, 225, 229)), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton, UseVisualStyleBackColor = false };
             button.FlatAppearance.BorderSize = 0;
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(45, 45, 48);
+            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(58, 58, 62);
             button.Paint += (sender, args) =>
             {
                 if (button.BackColor == Color.Black)
@@ -179,6 +218,7 @@ namespace v2rayN.Forms
             if (selectable) _happSelectableNavButtons.Add(button);
             button.Click += (sender, args) =>
             {
+                ActiveControl = null;
                 action();
                 if (selectable)
                 {
@@ -187,7 +227,6 @@ namespace v2rayN.Forms
                         item.BackColor = item == button ? Color.Black : HappNav;
                         item.Invalidate();
                     }
-                    ActiveControl = null;
                 }
             };
             ApplyRoundedCorners(button, 5);
@@ -217,24 +256,52 @@ namespace v2rayN.Forms
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(12, 9, 42, 5) };
-            ApplyRoundedSurface(searchBox, 5, Color.FromArgb(100, 100, 105));
-            _communitySearch = new TextBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = "Введите текст для поиска", TabStop = true, AccessibleName = "Поиск серверов" };
+            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappControlBorder, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(1) };
+            ApplyRoundedCorners(searchBox, 6);
+            var searchContent = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = Padding.Empty, Padding = Padding.Empty };
+            ApplyRoundedCorners(searchContent, 5);
+            _communitySearch = new TextBox { BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = SoraText.Translate("Введите текст для поиска"), TabStop = true, AccessibleName = "Поиск серверов" };
             _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
-            searchBox.Controls.Add(_communitySearch);
-            var searchIcon = new PictureBox { Dock = DockStyle.Right, Width = 30, Image = HappIconLoader.Load("magnifying-glass", HappMuted), SizeMode = PictureBoxSizeMode.CenterImage, BackColor = HappNav };
-            searchBox.Controls.Add(searchIcon);
+            var searchButton = CreateHappSmallButton("magnifying-glass", () =>
+            {
+                _communitySearch.Focus();
+                _communitySearch.SelectAll();
+            });
+            searchButton.Dock = DockStyle.Right;
+            searchButton.Width = 42;
+            searchButton.Margin = Padding.Empty;
+            searchButton.BackColor = HappNav;
+            searchButton.UseVisualStyleBackColor = false;
+            searchButton.TabStop = false;
+            searchContent.Controls.Add(_communitySearch);
+            searchContent.Controls.Add(searchButton);
+            Action positionSearch = () =>
+            {
+                int textHeight = _communitySearch.PreferredHeight;
+                int textTop = Math.Max(0, (searchContent.ClientSize.Height - textHeight) / 2);
+                _communitySearch.SetBounds(12, textTop, Math.Max(80, searchContent.ClientSize.Width - searchButton.Width - 20), textHeight);
+            };
+            searchContent.Resize += (sender, args) => positionSearch();
+            _communitySearch.Enter += (sender, args) => searchBox.BackColor = Color.FromArgb(112, 112, 118);
+            _communitySearch.Leave += (sender, args) => searchBox.BackColor = HappControlBorder;
+            searchBox.Controls.Add(searchContent);
+            positionSearch();
+            searchButton.BringToFront();
             searchRow.Controls.Add(searchBox, 0, 0);
-            searchRow.Controls.Add(CreateHappSmallButton("gauge", TestAllCommunityServers), 1, 0);
+            searchRow.Controls.Add(CreateHappSmallButton("gauge", ShowSoraPingMenu), 1, 0);
             searchRow.Controls.Add(CreateHappSmallButton("dots-three", ShowHappServerMenu), 2, 0);
             pane.Controls.Add(searchRow, 0, 1);
 
-            var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappPane, Margin = Padding.Empty };
-            lvServers.Parent = listHost;
+            var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappListBorder, Margin = Padding.Empty, Padding = new Padding(1) };
+            ApplyRoundedCorners(listHost, 6);
+            var listSurface = new Panel { Dock = DockStyle.Fill, BackColor = HappServerSurface, Margin = Padding.Empty };
+            ApplyRoundedCorners(listSurface, 5);
+            listHost.Controls.Add(listSurface);
+            lvServers.Parent = listSurface;
             lvServers.Dock = DockStyle.Fill;
             lvServers.BorderStyle = BorderStyle.None;
-            lvServers.BackColor = HappPane;
+            lvServers.BackColor = HappServerSurface;
             lvServers.ForeColor = HappText;
             lvServers.Font = new Font("Segoe UI", 9F);
             lvServers.HeaderStyle = ColumnHeaderStyle.None;
@@ -243,6 +310,9 @@ namespace v2rayN.Forms
             lvServers.DrawSubItem += DrawHappServerSubItem;
             lvServers.ContextMenuStrip = null;
             lvServers.MouseUp += SoraServersMouseUp;
+            lvServers.MouseClick += ActivateSoraClickedServer;
+            lvServers.MouseMove += SoraServersMouseMove;
+            lvServers.MouseLeave += SoraServersMouseLeave;
             lvServers.HandleCreated += (sender, args) => HideSoraServerScrollbars();
             lvServers.Layout += (sender, args) => HideSoraServerScrollbars();
             lvServers.DoubleClick -= lvServers_DoubleClick;
@@ -252,25 +322,309 @@ namespace v2rayN.Forms
             lvServers.Resize += (sender, args) => ConfigureSoraServerList();
             _communityRowHeight = new ImageList(components) { ImageSize = new Size(1, 58), ColorDepth = ColorDepth.Depth32Bit };
             lvServers.SmallImageList = _communityRowHeight;
+            _happServerScroll = new HappListScrollRail(lvServers, HappServerSurface, Color.FromArgb(96, 96, 102))
+            {
+                Anchor = AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom,
+                Width = 18
+            };
+            listSurface.Controls.Add(_happServerScroll);
+            Action positionServerScroll = () => _happServerScroll.SetBounds(Math.Max(0, listSurface.ClientSize.Width - 18), 0, 18, listSurface.ClientSize.Height);
+            listSurface.Resize += (sender, args) => positionServerScroll();
+            positionServerScroll();
+            _happServerScroll.BringToFront();
             _communityEmptyState = BuildHappEmptyState();
-            listHost.Controls.Add(_communityEmptyState);
+            _communityEmptyState.BackColor = HappServerSurface;
+            listSurface.Controls.Add(_communityEmptyState);
             _communityEmptyState.BringToFront();
-            pane.Controls.Add(listHost, 0, 2);
+            _soraServerListHost = listHost;
+            pane.Controls.Add(BuildSoraSubscriptionAccordion(), 0, 2);
             return pane;
+        }
+
+        private Control BuildSoraSubscriptionAccordion()
+        {
+            _soraSubscriptionSectionsHost = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = HappPane,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            _soraSubscriptionSectionsHost.Resize += (sender, args) => LayoutSoraSubscriptionSections();
+            StartSoraSubscriptionSummary();
+            RebuildSoraSubscriptionSections();
+            return _soraSubscriptionSectionsHost;
+        }
+
+        private void RebuildSoraSubscriptionSections(bool animateExpansion = false)
+        {
+            if (_soraSubscriptionSectionsHost == null || _soraServerListHost == null || config?.subItem == null)
+            {
+                return;
+            }
+
+            SubItem[] subscriptions = config.subItem.ToArray();
+            if (!_soraSubscriptionExpansionInitialized)
+            {
+                string activeSubscriptionId = config.GetVmessItem(config.indexId)?.subid;
+                _soraExpandedSubscriptionId = subscriptions.Any(item => item.id == activeSubscriptionId)
+                    ? activeSubscriptionId
+                    : subscriptions.FirstOrDefault()?.id;
+                _soraSubscriptionExpansionInitialized = true;
+            }
+            else if (!string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId) && subscriptions.All(item => item.id != _soraExpandedSubscriptionId))
+            {
+                _soraExpandedSubscriptionId = subscriptions.FirstOrDefault()?.id;
+            }
+
+            _soraSubscriptionAnimationTimer?.Stop();
+            _soraServerListHost.Parent = null;
+            _soraSubscriptionSectionsHost.SuspendLayout();
+            foreach (SoraSubscriptionSectionControls controls in _soraSubscriptionSections.Values)
+            {
+                controls.Section.Dispose();
+            }
+            _soraSubscriptionSections.Clear();
+            _soraSubscriptionSectionsHost.Controls.Clear();
+
+            if (subscriptions.Length == 0)
+            {
+                var empty = new Panel { Height = 72, BackColor = Color.FromArgb(35, 35, 38), Margin = Padding.Empty };
+                ApplyRoundedCorners(empty, 7);
+                var add = CreateHappButton("Добавить подписку", ShowHappAddConfiguration, true);
+                add.Size = new Size(176, 34);
+                add.Location = new Point(16, 19);
+                empty.Controls.Add(add);
+                _soraSubscriptionSectionsHost.Controls.Add(empty);
+                _soraServerListHost.Visible = false;
+            }
+            else
+            {
+                foreach (SubItem subscription in subscriptions)
+                {
+                    SoraSubscriptionSectionControls controls = BuildSoraSubscriptionSection(subscription);
+                    _soraSubscriptionSections[subscription.id] = controls;
+                    _soraSubscriptionSectionsHost.Controls.Add(controls.Section);
+                    if (controls.Expanded)
+                    {
+                        _soraServerListHost.Parent = controls.Section;
+                        _soraServerListHost.Visible = true;
+                        _soraServerListHost.BringToFront();
+                    }
+                }
+            }
+            _soraSubscriptionSectionsHost.ResumeLayout(true);
+            LayoutSoraSubscriptionSections();
+            RefreshSoraSubscriptionCard();
+
+            if (animateExpansion && !string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId) && _soraSubscriptionSections.TryGetValue(_soraExpandedSubscriptionId, out SoraSubscriptionSectionControls expanded))
+            {
+                StartSoraSubscriptionExpansion(expanded.Section);
+            }
+        }
+
+        private SoraSubscriptionSectionControls BuildSoraSubscriptionSection(SubItem subscription)
+        {
+            const int expandedHeaderHeight = 154;
+            bool expanded = string.Equals(subscription.id, _soraExpandedSubscriptionId, StringComparison.Ordinal);
+            Color cardBackground = Color.FromArgb(35, 35, 38);
+            var section = new Panel { Height = expanded ? 360 : 76, BackColor = HappPane, Margin = new Padding(0, 0, 0, 8), AccessibleName = "Подписка " + GetSoraSubscriptionTitle(subscription) };
+            var card = new Panel { Dock = DockStyle.Top, Height = expanded ? expandedHeaderHeight : 76, BackColor = cardBackground, Cursor = Cursors.Hand };
+            ApplyRoundedCorners(card, 7);
+
+            Image chevronImage = HappIconLoader.Load("caret-right", HappText);
+            if (expanded) chevronImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
+            var chevron = CreateHappSmallButton("caret-right", () => ToggleSoraSubscriptionSection(subscription.id));
+            chevron.Image?.Dispose();
+            chevron.Image = chevronImage;
+            chevron.SetBounds(8, 7, 28, 28);
+            chevron.BackColor = cardBackground;
+            chevron.AccessibleName = expanded ? "Свернуть подписку" : "Развернуть подписку";
+
+            var title = new Label { Location = new Point(42, 7), Size = new Size(250, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var detail = new Label { Location = new Point(42, 31), Size = new Size(360, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var schedule = new Label { Location = new Point(42, 50), Size = new Size(360, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand, Visible = expanded };
+            var quotaTrack = new Panel { Location = new Point(16, 72), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84), Visible = expanded };
+            var quotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
+            quotaTrack.Controls.Add(quotaFill);
+            var quota = new Label { Location = new Point(16, 78), Size = new Size(238, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, Visible = expanded };
+            var expiry = new Label { Location = new Point(266, 78), Size = new Size(140, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Visible = expanded };
+            var announcement = new SoraMarkdownView { Location = new Point(12, 99), Size = new Size(398, 47), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки", Visible = expanded };
+
+            bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
+            var refresh = CreateHappSmallButton("arrows-clockwise", () => StartSoraSubscriptionUpdate(subscription.id));
+            var ping = CreateHappSmallButton("gauge", () => TestSoraSubscriptionServers(subscription));
+            var actions = CreateHappSmallButton("dots-three", () => ShowSoraSubscriptionCardMenu(subscription));
+            Button[] buttons = { refresh, ping, actions };
+            for (int index = 0; index < buttons.Length; index++)
+            {
+                buttons[index].Dock = DockStyle.None;
+                buttons[index].Size = new Size(28, 28);
+                buttons[index].BackColor = cardBackground;
+                buttons[index].UseVisualStyleBackColor = false;
+                buttons[index].FlatAppearance.MouseOverBackColor = Color.FromArgb(55, 55, 60);
+                buttons[index].FlatAppearance.MouseDownBackColor = Color.FromArgb(70, 70, 76);
+                ApplyRoundedCorners(buttons[index], 5);
+                card.Controls.Add(buttons[index]);
+            }
+            refresh.Visible = remote;
+
+            Action toggle = () => ToggleSoraSubscriptionSection(subscription.id);
+            title.Click += (sender, args) => toggle();
+            detail.Click += (sender, args) => toggle();
+            schedule.Click += (sender, args) => toggle();
+            card.DoubleClick += (sender, args) => ShowSoraSubscriptionEditor(subscription);
+            announcement.DoubleClick += (sender, args) => ShowSoraSubscriptionAnnouncement(subscription);
+            card.Resize += (sender, args) =>
+            {
+                int width = card.ClientSize.Width;
+                title.Width = Math.Max(100, width - 150);
+                detail.Width = Math.Max(100, width - 58);
+                schedule.Width = Math.Max(100, width - 58);
+                for (int index = 0; index < buttons.Length; index++) buttons[index].Left = width - 96 + index * 30;
+                quotaTrack.Width = Math.Max(80, width - 32);
+                int expiryWidth = Math.Max(108, quotaTrack.Width / 2);
+                quota.Width = Math.Max(80, quotaTrack.Width - expiryWidth - 12);
+                expiry.SetBounds(16 + quotaTrack.Width - expiryWidth, 78, expiryWidth, 18);
+                announcement.Width = Math.Max(80, width - 24);
+            };
+
+            card.Controls.AddRange(new Control[] { announcement, expiry, quota, quotaTrack, schedule, detail, title, chevron });
+            section.Controls.Add(card);
+            return new SoraSubscriptionSectionControls
+            {
+                Subscription = subscription,
+                Section = section,
+                Card = card,
+                Title = title,
+                Detail = detail,
+                Schedule = schedule,
+                QuotaTrack = quotaTrack,
+                QuotaFill = quotaFill,
+                Quota = quota,
+                Expiry = expiry,
+                Announcement = announcement,
+                Refresh = refresh,
+                Ping = ping,
+                Expanded = expanded
+            };
+        }
+
+        private void ToggleSoraSubscriptionSection(string subscriptionId)
+        {
+            _soraExpandedSubscriptionId = string.Equals(_soraExpandedSubscriptionId, subscriptionId, StringComparison.Ordinal)
+                ? null
+                : subscriptionId;
+            RefreshServers();
+            RebuildSoraSubscriptionSections(!string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId));
+        }
+
+        private void LayoutSoraSubscriptionSections()
+        {
+            if (_soraSubscriptionSectionsHost == null) return;
+            int width = Math.Max(160, _soraSubscriptionSectionsHost.ClientSize.Width - (_soraSubscriptionSectionsHost.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0));
+            int collapsedHeight = _soraSubscriptionSections.Values.Where(item => !item.Expanded).Sum(item => item.Section.Height + item.Section.Margin.Vertical);
+            int expandedHeight = Math.Max(280, _soraSubscriptionSectionsHost.ClientSize.Height - collapsedHeight - 8);
+            foreach (SoraSubscriptionSectionControls controls in _soraSubscriptionSections.Values)
+            {
+                controls.Section.Width = width;
+                if (controls.Expanded)
+                {
+                    controls.Section.Height = expandedHeight;
+                    _soraServerListHost?.SetBounds(0, 154, width, Math.Max(120, expandedHeight - 154));
+                }
+                else
+                {
+                    controls.Section.Height = 76;
+                }
+            }
+            foreach (Control control in _soraSubscriptionSectionsHost.Controls)
+            {
+                control.Width = width;
+            }
+        }
+
+        private void StartSoraSubscriptionExpansion(Panel section)
+        {
+            _soraSubscriptionAnimatingPanel = section;
+            _soraSubscriptionAnimationTarget = section.Height;
+            _soraSubscriptionAnimationFrame = 0;
+            section.Height = 76;
+            _soraServerListHost.Visible = false;
+            if (_soraSubscriptionAnimationTimer == null)
+            {
+                _soraSubscriptionAnimationTimer = new Timer(components) { Interval = 16 };
+                _soraSubscriptionAnimationTimer.Tick += (sender, args) =>
+                {
+                    if (_soraSubscriptionAnimatingPanel == null || _soraSubscriptionAnimatingPanel.IsDisposed)
+                    {
+                        _soraSubscriptionAnimationTimer.Stop();
+                        return;
+                    }
+                    _soraSubscriptionAnimationFrame++;
+                    double progress = Math.Min(1D, _soraSubscriptionAnimationFrame / 9D);
+                    double eased = 1D - Math.Pow(1D - progress, 3D);
+                    _soraSubscriptionAnimatingPanel.Height = 76 + (int)Math.Round((_soraSubscriptionAnimationTarget - 76) * eased);
+                    if (progress >= 1D)
+                    {
+                        _soraSubscriptionAnimationTimer.Stop();
+                        _soraServerListHost.Visible = true;
+                        _soraServerListHost.BringToFront();
+                    }
+                };
+            }
+            _soraSubscriptionAnimationTimer.Start();
         }
 
         private void HideSoraServerScrollbars()
         {
-            if (!lvServers.IsHandleCreated)
+            if (!lvServers.IsHandleCreated || _happHidingServerScrollbars)
             {
                 return;
             }
-            ShowScrollBar(lvServers.Handle, 0, false);
+            _happHidingServerScrollbars = true;
+            try
+            {
+                ShowScrollBar(lvServers.Handle, 3, false);
+            }
+            finally
+            {
+                _happHidingServerScrollbars = false;
+            }
+            _happServerScroll?.RefreshState();
+        }
+
+        private void SoraServersMouseMove(object sender, MouseEventArgs args)
+        {
+            ListViewItem item = lvServers.GetItemAt(args.X, args.Y);
+            int hovered = item?.Index ?? -1;
+            if (_happHoveredServerIndex == hovered)
+            {
+                return;
+            }
+            int previous = _happHoveredServerIndex;
+            _happHoveredServerIndex = hovered;
+            if (previous >= 0 && previous < lvServers.Items.Count) lvServers.RedrawItems(previous, previous, false);
+            if (hovered >= 0 && hovered < lvServers.Items.Count) lvServers.RedrawItems(hovered, hovered, false);
+        }
+
+        private void SoraServersMouseLeave(object sender, EventArgs args)
+        {
+            if (_happHoveredServerIndex < 0)
+            {
+                return;
+            }
+            int previous = _happHoveredServerIndex;
+            _happHoveredServerIndex = -1;
+            if (previous < lvServers.Items.Count) lvServers.RedrawItems(previous, previous, false);
         }
 
         private void WireHappSearch()
         {
-            const string placeholder = "Введите текст для поиска";
+            string placeholder = SoraText.Translate("Введите текст для поиска");
             _communitySearch.Enter += (sender, args) => { if (_communitySearch.Text == placeholder) { _communitySearch.Clear(); _communitySearch.ForeColor = HappText; } };
             _communitySearch.Leave += (sender, args) => { if (string.IsNullOrWhiteSpace(_communitySearch.Text)) { _communitySearch.Text = placeholder; _communitySearch.ForeColor = HappMuted; } };
             _communitySearchTimer = new Timer(components) { Interval = 250 };
@@ -304,17 +658,27 @@ namespace v2rayN.Forms
             _happModeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _happModeButton.Size = new Size(120, 32);
             _happModeButton.Location = new Point(410, 18);
+            _happModeNotice = new ToolTip(components)
+            {
+                BackColor = Color.FromArgb(48, 48, 52),
+                ForeColor = HappText,
+                IsBalloon = false,
+                ShowAlways = true
+            };
             pane.Resize += (sender, args) => _happModeButton.Left = pane.ClientSize.Width - _happModeButton.Width - 20;
             _happConnection = new HappConnectionControl { Anchor = AnchorStyles.None, Location = new Point(150, 72) };
             _happConnection.PowerClick += async (sender, args) =>
             {
-                bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange) || (_tunModeController != null && _tunModeController.IsRunning);
+                bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange && v2rayHandler != null && v2rayHandler.IsRunning)
+                    || (_tunModeController != null && _tunModeController.IsRunning);
                 if (active)
                 {
+                    _happConnection.State = SoraConnectionState.Disconnecting;
                     DisconnectCommunity();
                 }
                 else if (_happUseTun)
                 {
+                    _happConnection.State = SoraConnectionState.Connecting;
                     await StartCommunityTunAsync();
                 }
                 else if (config == null || config.GetVmessItem(config.indexId) == null)
@@ -323,16 +687,53 @@ namespace v2rayN.Forms
                 }
                 else
                 {
-                    SetListenerType(ESysProxyType.ForcedChange);
+                    await StartCommunityProxyAsync();
                 }
             };
             pane.Resize += (sender, args) => { _happConnection.Left = (pane.ClientSize.Width - _happConnection.Width) / 2; _happConnection.Top = 72; };
             _communityActiveServer = new Label { Anchor = AnchorStyles.Bottom, AutoEllipsis = true, Size = new Size(320, 24), Location = new Point(125, 500), Text = "Сервер не выбран", ForeColor = HappText, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 10F) };
-            var ping = CreateHappButton("Тест пинга", TestAllCommunityServers, true);
+            _soraTrafficSummary = new Label { Anchor = AnchorStyles.Top, Location = new Point(126, 300), Size = new Size(320, 42), BackColor = Color.Transparent, ForeColor = HappMuted, Font = new Font("Segoe UI", 8.5F), Text = "↓ 0 B/s     ↑ 0 B/s\r\nСегодня 0 B", TextAlign = ContentAlignment.TopCenter, AccessibleName = "Счётчик трафика" };
+            StartSoraTrafficCounter();
+            var ping = CreateHappButton("Измерить задержку", ShowSoraPingMenu, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
-            pane.Resize += (sender, args) => { _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
-            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            pane.Resize += (sender, args) => { _soraTrafficSummary.Left = (pane.ClientSize.Width - _soraTrafficSummary.Width) / 2; _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
+            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_soraTrafficSummary); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            _soraTrafficSummary.BringToFront();
             return pane;
+        }
+
+        private void StartSoraTrafficCounter()
+        {
+            if (_soraTrafficTimer != null) return;
+            _soraTrafficTimer = new Timer(components) { Interval = 500 };
+            _soraTrafficTimer.Tick += (sender, args) =>
+            {
+                if (_soraTrafficSummary == null) return;
+                ulong down = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happDownloadRate));
+                ulong up = (ulong)Math.Max(0L, System.Threading.Interlocked.Read(ref _happUploadRate));
+                ulong today = 0;
+                try
+                {
+                    if (statistics != null && statistics.Enable)
+                    {
+                        foreach (ServerStatItem item in statistics.Statistic.ToArray()) today += item.todayDown + item.todayUp;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    today = 0;
+                }
+                _soraTrafficSummary.Text = "↓ " + Utils.HumanFy(down) + "/s     ↑ " + Utils.HumanFy(up) + "/s\r\n" + SoraText.Translate("Сегодня") + " " + Utils.HumanFy(today);
+            };
+            _soraTrafficTimer.Start();
+        }
+
+        private void StartSoraSubscriptionSummary()
+        {
+            if (_soraSubscriptionSummaryTimer != null) return;
+            _soraSubscriptionSummaryTimer = new Timer(components) { Interval = 500 };
+            _soraSubscriptionSummaryTimer.Tick += (sender, args) => RefreshSoraSubscriptionCard();
+            _soraSubscriptionSummaryTimer.Start();
         }
 
         private void DrawHappConnectionBackground(object sender, PaintEventArgs args)
@@ -349,7 +750,7 @@ namespace v2rayN.Forms
 
         private Button CreateHappSmallButton(string icon, Action action)
         {
-            string accessibleName = icon == "gauge" ? "Проверить пинг всех серверов" : icon == "dots-three" ? "Дополнительные действия" : "Действие";
+            string accessibleName = icon == "gauge" ? "Измерить задержку" : icon == "arrows-clockwise" ? "Обновить подписку" : icon == "dots-three" ? "Действия с подпиской" : icon == "magnifying-glass" ? "Поиск серверов" : "Действие";
             var button = new Button { Dock = DockStyle.Fill, Margin = new Padding(2, 3, 2, 5), FlatStyle = FlatStyle.Flat, BackColor = HappPane, Image = HappIconLoader.Load(icon, HappMuted), Cursor = Cursors.Hand, TabStop = true, AccessibleName = accessibleName, AccessibleRole = AccessibleRole.PushButton };
             button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = HappSurface; button.Click += (sender, args) => action(); return button;
         }
@@ -357,64 +758,321 @@ namespace v2rayN.Forms
         private Button CreateHappButton(string text, Action action, bool accent)
         {
             var button = new Button { Text = text, FlatStyle = FlatStyle.Flat, BackColor = accent ? HappAccent : HappSurface, ForeColor = accent ? HappTitle : HappText, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseVisualStyleBackColor = false, TabStop = true, AccessibleName = text, AccessibleRole = AccessibleRole.PushButton };
-            button.FlatAppearance.BorderSize = 0; button.FlatAppearance.MouseOverBackColor = accent ? Color.FromArgb(218, 218, 221) : Color.FromArgb(70, 70, 74); button.Click += (sender, args) => action(); ApplyRoundedCorners(button, 5); return button;
+            button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = accent ? Color.FromArgb(218, 218, 221) : Color.FromArgb(70, 70, 74);
+            if (action != null) button.Click += (sender, args) => action();
+            ApplyRoundedCorners(button, 5);
+            return button;
         }
 
         private void DrawHappServerSubItem(object sender, DrawListViewSubItemEventArgs args)
         {
             bool selected = args.Item.Selected;
-            Color background = selected ? Color.FromArgb(55, 55, 58) : args.ItemIndex % 2 == 0 ? HappPane : Color.FromArgb(29, 29, 31);
+            bool hovered = args.ItemIndex == _happHoveredServerIndex;
+            Color background = selected ? Color.FromArgb(52, 52, 56) : hovered ? Color.FromArgb(37, 37, 41) : HappServerSurface;
             using (var fill = new SolidBrush(background)) args.Graphics.FillRectangle(fill, args.Bounds);
             VmessItem item = args.ItemIndex >= 0 && args.ItemIndex < lstVmess.Count ? lstVmess[args.ItemIndex] : null;
             if (args.ColumnIndex == 0)
             {
                 if (item != null && config.IsActiveNode(item))
                 {
-                    using (var marker = new SolidBrush(HappAccent)) args.Graphics.FillRectangle(marker, args.Bounds.Left, args.Bounds.Top + 10, 3, args.Bounds.Height - 20);
+                    Rectangle markerBounds = new Rectangle(args.Bounds.Left, args.Bounds.Top + 4, 3, args.Bounds.Height - 8);
+                    SmoothingMode previous = args.Graphics.SmoothingMode;
+                    args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (GraphicsPath markerPath = CreateRoundedPath(markerBounds, 2))
+                    using (var marker = new SolidBrush(Color.FromArgb(178, 178, 184)))
+                    {
+                        args.Graphics.FillPath(marker, markerPath);
+                    }
+                    args.Graphics.SmoothingMode = previous;
                 }
-                string country = GetSoraCountryCode(item?.remarks);
-                if (!string.IsNullOrWhiteSpace(country))
-                {
-                    using (var badge = new SolidBrush(Color.FromArgb(61, 61, 65))) args.Graphics.FillRectangle(badge, args.Bounds.Left + 7, args.Bounds.Top + 19, 22, 18);
-                    using (var badgeFont = new Font("Segoe UI Semibold", 7F)) TextRenderer.DrawText(args.Graphics, country, badgeFont, new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 19, 22, 18), HappText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                }
-                else if (item != null && config.IsActiveNode(item))
-                {
-                    using (Image check = HappIconLoader.Load("check", HappText)) args.Graphics.DrawImage(check, new Rectangle(args.Bounds.Left + 8, args.Bounds.Top + 18, 18, 18));
-                }
+                DrawSoraCountryMark(args.Graphics, new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 20, 22, 17), item?.remarks);
             }
             else if (args.ColumnIndex == (int)EServerColName.remarks && item != null)
             {
-                string name = string.IsNullOrWhiteSpace(item.remarks) ? "Сервер без названия" : item.remarks;
-                string details = GetSoraProtocolName(item);
-                if (!string.IsNullOrWhiteSpace(item.network)) details += "  ·  " + item.network.ToUpperInvariant();
-                if (!string.IsNullOrWhiteSpace(item.streamSecurity)) details += "  ·  " + item.streamSecurity.ToUpperInvariant();
-                using (var titleFont = new Font("Segoe UI Semibold", 9.5F))
-                using (var detailFont = new Font("Segoe UI", 7.5F))
+                string name = GetSoraDisplayName(item.remarks);
+                string[] protocols = GetSoraProtocolDisplay(item);
+                using (var titleFont = new Font("Segoe UI Semibold", 10F))
+                using (var protocolFont = new Font("Segoe UI Semibold", 8.25F))
+                using (var detailFont = new Font("Segoe UI", 8.25F))
                 {
-                    TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 8, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                    TextRenderer.DrawText(args.Graphics, details, detailFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 31, Math.Max(0, args.Bounds.Width - 18), 17), HappMuted, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    TextRenderer.DrawText(args.Graphics, name, titleFont, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 7, Math.Max(0, args.Bounds.Width - 18), 22), HappText, TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    DrawSoraProtocolLine(args.Graphics, new Rectangle(args.Bounds.X + 10, args.Bounds.Y + 32, Math.Max(0, args.Bounds.Width - 18), 16), protocols, protocolFont, detailFont);
                 }
             }
             else if (args.ColumnIndex == (int)EServerColName.testResult)
             {
-                string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? "—" : args.SubItem.Text;
-                TextRenderer.DrawText(args.Graphics, result, lvServers.Font, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), selected ? HappText : HappMuted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                string result = string.IsNullOrWhiteSpace(args.SubItem.Text) ? string.Empty : args.SubItem.Text;
+                if (string.Equals(result, "Проверка…", StringComparison.Ordinal))
+                {
+                    EnsureSoraPingAnimation();
+                    DrawSoraPingAnimation(args.Graphics, args.Bounds);
+                }
+                else
+                {
+                    bool measured = result.Any(char.IsDigit);
+                    Color resultColor = measured || selected ? HappText : HappMuted;
+                    using (var resultFont = new Font("Segoe UI Semibold", 8.5F))
+                    {
+                        TextRenderer.DrawText(args.Graphics, result, resultFont, new Rectangle(args.Bounds.X, args.Bounds.Y, Math.Max(0, args.Bounds.Width - 10), args.Bounds.Height), resultColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    }
+                }
             }
-            using (var line = new Pen(Color.FromArgb(47, 47, 50))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+            using (var line = new Pen(HappDivider)) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+        }
+
+        private void EnsureSoraPingAnimation()
+        {
+            if (_soraPingAnimationTimer == null)
+            {
+                _soraPingAnimationTimer = new Timer(components) { Interval = 120 };
+                _soraPingAnimationTimer.Tick += (sender, args) =>
+                {
+                    if (lstVmess == null || !lstVmess.Any(item => string.Equals(item.testResult, "Проверка…", StringComparison.Ordinal)))
+                    {
+                        _soraPingAnimationTimer.Stop();
+                        _soraPingAnimationFrame = 0;
+                        return;
+                    }
+                    _soraPingAnimationFrame = (_soraPingAnimationFrame + 1) % 6;
+                    for (int index = 0; index < lstVmess.Count && index < lvServers.Items.Count; index++)
+                    {
+                        if (string.Equals(lstVmess[index].testResult, "Проверка…", StringComparison.Ordinal))
+                        {
+                            lvServers.RedrawItems(index, index, false);
+                        }
+                    }
+                };
+            }
+            if (!_soraPingAnimationTimer.Enabled)
+            {
+                _soraPingAnimationTimer.Start();
+            }
+        }
+
+        private void DrawSoraPingAnimation(Graphics graphics, Rectangle bounds)
+        {
+            const int diameter = 3;
+            const int spacing = 5;
+            int left = bounds.Left + (bounds.Width - diameter * 3 - spacing * 2) / 2;
+            int baseline = bounds.Top + bounds.Height / 2;
+            int activeDot = _soraPingAnimationFrame / 2;
+            int lift = _soraPingAnimationFrame % 2 == 0 ? 2 : 1;
+            SmoothingMode previous = graphics.SmoothingMode;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            for (int index = 0; index < 3; index++)
+            {
+                int y = baseline - diameter / 2 - (index == activeDot ? lift : 0);
+                using (var brush = new SolidBrush(index == activeDot ? HappText : HappMuted))
+                {
+                    graphics.FillEllipse(brush, left + index * (diameter + spacing), y, diameter, diameter);
+                }
+            }
+            graphics.SmoothingMode = previous;
+        }
+
+        private static string GetSoraDisplayName(string remarks)
+        {
+            string name = string.IsNullOrWhiteSpace(remarks) ? "Сервер без названия" : remarks.Trim();
+            return Regex.Replace(name, @"^[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]\s*", string.Empty);
+        }
+
+        private void DrawSoraCountryMark(Graphics graphics, Rectangle bounds, string remarks)
+        {
+            string countryCode = GetSoraVisualCountryCode(remarks);
+            Image flag = LoadSoraCountryFlag(countryCode);
+            if (flag == null)
+            {
+                if (_soraDefaultCountryIcon == null)
+                {
+                    _soraDefaultCountryIcon = HappIconLoader.Load("globe", HappMuted);
+                }
+                using (GraphicsPath placeholder = CreateRoundedPath(new Rectangle(bounds.Left, bounds.Top, bounds.Width, bounds.Height), 4))
+                using (var fill = new SolidBrush(Color.FromArgb(38, 38, 42)))
+                using (var border = new Pen(Color.FromArgb(72, 72, 78)))
+                {
+                    graphics.FillPath(fill, placeholder);
+                    graphics.DrawPath(border, placeholder);
+                }
+                graphics.DrawImage(_soraDefaultCountryIcon, new Rectangle(bounds.Left + 3, bounds.Top + 1, 15, 15));
+                return;
+            }
+
+            Rectangle flagBounds = new Rectangle(bounds.Left, bounds.Top + 1, bounds.Width - 1, bounds.Height - 3);
+            InterpolationMode previousInterpolation = graphics.InterpolationMode;
+            PixelOffsetMode previousPixelOffset = graphics.PixelOffsetMode;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            using (GraphicsPath clip = CreateRoundedPath(flagBounds, 3))
+            {
+                GraphicsState state = graphics.Save();
+                graphics.SetClip(clip);
+                graphics.DrawImage(flag, flagBounds);
+                graphics.Restore(state);
+                using (var border = new Pen(Color.FromArgb(92, 92, 97)))
+                {
+                    graphics.DrawPath(border, clip);
+                }
+            }
+            graphics.InterpolationMode = previousInterpolation;
+            graphics.PixelOffsetMode = previousPixelOffset;
+        }
+
+        private Image LoadSoraCountryFlag(string countryCode)
+        {
+            if (string.IsNullOrWhiteSpace(countryCode))
+            {
+                return null;
+            }
+            if (_soraCountryFlagCache.TryGetValue(countryCode, out Image cached))
+            {
+                return cached;
+            }
+
+            Image flag = null;
+            string path = Path.Combine(Application.StartupPath, "Assets", "Flags", "png100px", countryCode.ToLowerInvariant() + ".png");
+            if (File.Exists(path))
+            {
+                try
+                {
+                    using (Image source = Image.FromFile(path))
+                    {
+                        flag = new Bitmap(source);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Utils.SaveLog("Не удалось загрузить изображение флага " + countryCode + ".", exception);
+                }
+            }
+            _soraCountryFlagCache[countryCode] = flag;
+            return flag;
+        }
+
+        private static string GetSoraVisualCountryCode(string remarks)
+        {
+            Match flag = Regex.Match(remarks ?? string.Empty, @"^\s*\uD83C(?<first>[\uDDE6-\uDDFF])\uD83C(?<second>[\uDDE6-\uDDFF])");
+            if (flag.Success)
+            {
+                char first = (char)('A' + flag.Groups["first"].Value[0] - '\uDDE6');
+                char second = (char)('A' + flag.Groups["second"].Value[0] - '\uDDE6');
+                return new string(new[] { first, second });
+            }
+            return GetSoraCountryCode(remarks);
+        }
+
+        private void DisposeSoraCountryImages(object sender, FormClosedEventArgs args)
+        {
+            foreach (Image flag in _soraCountryFlagCache.Values.Where(value => value != null))
+            {
+                flag.Dispose();
+            }
+            _soraCountryFlagCache.Clear();
+            _soraDefaultCountryIcon?.Dispose();
+            _soraDefaultCountryIcon = null;
+        }
+
+        private string[] GetSoraProtocolDisplay(VmessItem item)
+        {
+            if (item.configType != EConfigType.Custom)
+            {
+                return BuildSoraProtocolDisplay(GetSoraProtocolName(item), item.network, item.streamSecurity);
+            }
+
+            string path = File.Exists(item.address) ? item.address : Utils.GetConfigPath(item.address);
+            long stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks : 0L;
+            if (_soraProtocolDisplayCache.TryGetValue(path, out SoraProtocolDisplay cached) && cached.Stamp == stamp)
+            {
+                return cached.Values;
+            }
+
+            string[] values = new[] { "XRAY", "JSON" };
+            try
+            {
+                JObject document = JObject.Parse(File.ReadAllText(path));
+                JObject outbound = (document["outbounds"] as JArray)?.OfType<JObject>().FirstOrDefault(candidate =>
+                {
+                    string protocol = (string)candidate["protocol"];
+                    return !string.Equals(protocol, "freedom", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(protocol, "blackhole", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(protocol, "dns", StringComparison.OrdinalIgnoreCase);
+                });
+                JObject stream = outbound?["streamSettings"] as JObject;
+                values = BuildSoraProtocolDisplay((string)outbound?["protocol"], (string)stream?["network"], (string)stream?["security"], "JSON");
+            }
+            catch (Exception exception)
+            {
+                Utils.SaveLog("Не удалось прочитать протокол импортированной конфигурации.", exception);
+            }
+            _soraProtocolDisplayCache[path] = new SoraProtocolDisplay { Stamp = stamp, Values = values };
+            return values;
+        }
+
+        private static string[] BuildSoraProtocolDisplay(params string[] values)
+        {
+            return values
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private static void DrawSoraProtocolLine(Graphics graphics, Rectangle bounds, string[] values, Font primaryFont, Font secondaryFont)
+        {
+            int x = bounds.Left;
+            for (int index = 0; index < values.Length && x < bounds.Right; index++)
+            {
+                Font font = index == 0 ? primaryFont : secondaryFont;
+                Color color = index == 0 ? Color.FromArgb(224, 224, 228) : HappMuted;
+                Size size = TextRenderer.MeasureText(graphics, values[index], font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+                int available = bounds.Right - x;
+                TextRenderer.DrawText(graphics, values[index], font, new Rectangle(x, bounds.Top, available, bounds.Height), color, TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter);
+                x += Math.Min(size.Width, available);
+                if (index < values.Length - 1 && x + 14 < bounds.Right)
+                {
+                    TextRenderer.DrawText(graphics, "/", secondaryFont, new Rectangle(x + 4, bounds.Top, 10, bounds.Height), Color.FromArgb(174, 174, 180), TextFormatFlags.NoPadding | TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    x += 17;
+                }
+            }
+        }
+
+        private sealed class SoraProtocolDisplay
+        {
+            internal long Stamp { get; set; }
+            internal string[] Values { get; set; }
+        }
+
+        private sealed class SoraSubscriptionSectionControls
+        {
+            internal SubItem Subscription { get; set; }
+            internal Panel Section { get; set; }
+            internal Panel Card { get; set; }
+            internal Label Title { get; set; }
+            internal Label Detail { get; set; }
+            internal Label Schedule { get; set; }
+            internal Panel QuotaTrack { get; set; }
+            internal Panel QuotaFill { get; set; }
+            internal Label Quota { get; set; }
+            internal Label Expiry { get; set; }
+            internal SoraMarkdownView Announcement { get; set; }
+            internal Button Refresh { get; set; }
+            internal Button Ping { get; set; }
+            internal bool Expanded { get; set; }
         }
 
         private void ShowHappServerMenu()
         {
             var menu = BuildHappMenu();
             menu.Items.Add("Добавить", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
-            menu.Items.Add("Пинг всех", HappIconLoader.Load("gauge", HappText), (sender, args) => TestAllCommunityServers());
+            var latency = new ToolStripMenuItem("Измерить задержку", HappIconLoader.Load("gauge", HappText));
+            AddSoraPingMethods(latency.DropDownItems);
+            menu.Items.Add(latency);
             if (GetLvSelectedIndex(false) >= 0)
             {
                 menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Настройки сервера", null, (sender, args) => ShowSoraServerEditor());
                 menu.Items.Add("Копировать ссылку", HappIconLoader.Load("copy", HappText), (sender, args) => menuExport2ShareUrl_Click(null, null));
-                menu.Items.Add("Удалить", HappIconLoader.Load("trash", Color.FromArgb(238, 178, 178)), (sender, args) => DeleteSelectedSoraServers());
+                menu.Items.Add("Удалить", HappIconLoader.Load("trash", HappText), (sender, args) => DeleteSelectedSoraServers());
             }
             menu.Show(Cursor.Position);
         }
@@ -422,35 +1080,84 @@ namespace v2rayN.Forms
         private void ShowHappModeMenu()
         {
             var menu = BuildHappMenu();
-            var proxy = (ToolStripMenuItem)menu.Items.Add("Прокси", null, (sender, args) => SetHappConnectionMode(false));
+            var proxy = (ToolStripMenuItem)menu.Items.Add("Для приложений", null, (sender, args) => SetHappConnectionMode(false));
             proxy.Checked = !_happUseTun;
-            menu.Items.Add("TUN", null).Enabled = false;
-            menu.Items.Add("Sing-box", null).Enabled = false;
-            menu.Items.Add("Happ TUN", null).Enabled = false;
-            menu.Items.Add("Xray TUN", null).Enabled = false;
-            var tun = (ToolStripMenuItem)menu.Items.Add("tun2proxy", null, (sender, args) => SetHappConnectionMode(true));
+            var tun = (ToolStripMenuItem)menu.Items.Add("Для всей системы (TUN)", null, (sender, args) => SetHappConnectionMode(true));
             tun.Checked = _happUseTun;
             menu.Show(Cursor.Position);
         }
 
+        private void ShowSoraPingMenu()
+        {
+            var menu = BuildHappMenu();
+            AddSoraPingMethods(menu.Items);
+            menu.Show(Cursor.Position);
+        }
+
+        private void AddSoraPingMethods(ToolStripItemCollection items)
+        {
+            items.Add("Через прокси — полный маршрут", HappIconLoader.Load("gauge", HappText), (sender, args) => TestAllCommunityServers(ESpeedActionType.Realping));
+            items.Add("TCP — доступность порта", null, (sender, args) => TestAllCommunityServers(ESpeedActionType.Tcping));
+            items.Add("ICMP — доступность адреса", null, (sender, args) => TestAllCommunityServers(ESpeedActionType.Ping));
+        }
+
+        private void ActivateSoraClickedServer(object sender, MouseEventArgs args)
+        {
+            if (args.Button != MouseButtons.Left || config == null || lstVmess == null)
+            {
+                return;
+            }
+            ListViewItem clicked = lvServers.GetItemAt(args.X, args.Y);
+            if (clicked == null || clicked.Index < 0 || clicked.Index >= lstVmess.Count)
+            {
+                return;
+            }
+            VmessItem selected = lstVmess[clicked.Index];
+            if (!config.IsActiveNode(selected))
+            {
+                SetDefaultServer(clicked.Index);
+            }
+            UpdateCommunityActiveServer();
+            lvServers.Invalidate();
+        }
+
         private void SetHappConnectionMode(bool useTun)
         {
+            bool changed = _happUseTun != useTun;
+            bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange && v2rayHandler != null && v2rayHandler.IsRunning)
+                || (_tunModeController != null && _tunModeController.IsRunning);
             _happUseTun = useTun;
+            if (config != null)
+            {
+                config.soraUseTun = useTun;
+                ConfigHandler.SaveConfig(ref config, false);
+            }
             if (_happModeButton == null)
             {
                 return;
             }
-            _happModeButton.Text = useTun ? "TUN" : "Прокси";
-            _happModeButton.AccessibleName = "Режим подключения: " + _happModeButton.Text;
+            _happModeButton.Text = useTun ? "TUN" : SoraText.Translate("Прокси");
+            _happModeButton.AccessibleName = SoraText.Translate("Режим подключения: ") + _happModeButton.Text;
+            if (changed && active)
+            {
+                _happModeNotice?.Show(
+                    SoraText.Translate("Режим сохранён. Отключитесь и подключитесь снова, чтобы применить его."),
+                    _happModeButton,
+                    new Point(0, _happModeButton.Height + 4),
+                    4500);
+            }
         }
 
         private ContextMenuStrip BuildHappMenu()
         {
-            return new ContextMenuStrip(components) { BackColor = Color.FromArgb(64, 64, 64), ForeColor = HappText, Font = new Font("Segoe UI", 9F), ShowImageMargin = true, Renderer = new ToolStripProfessionalRenderer(new HappMenuColors()) };
+            var menu = new ContextMenuStrip(components) { BackColor = Color.FromArgb(64, 64, 64), ForeColor = HappText, Font = new Font("Segoe UI", 9F), ShowImageMargin = true, Renderer = new ToolStripProfessionalRenderer(new HappMenuColors()) };
+            menu.Opening += (sender, args) => SoraText.Apply(menu.Items);
+            return menu;
         }
 
         private void ShowHappPage(Control page)
         {
+            SoraText.Apply(page);
             if (page.Parent != _happPageHost) { page.Dock = DockStyle.Fill; _happPageHost.Controls.Add(page); }
             page.BringToFront(); page.Visible = true;
             foreach (Control sibling in _happPageHost.Controls) if (sibling != page) sibling.Visible = false;

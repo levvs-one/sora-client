@@ -5,9 +5,19 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using v2rayN.Tool;
 
 namespace v2rayN.Forms
 {
+    internal enum SoraConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+        Disconnecting,
+        Error
+    }
+
     internal static class HappIconLoader
     {
         internal static Image LoadSoraLogo()
@@ -50,40 +60,58 @@ namespace v2rayN.Forms
         private readonly Font _stateFont;
         private readonly Font _timeFont;
         private float _phase;
-        private bool _connected;
+        private SoraConnectionState _state;
         private DateTime _connectedAt;
 
         internal event EventHandler PowerClick;
 
-        internal DateTime? ConnectedAt => _connected ? _connectedAt : (DateTime?)null;
+        internal DateTime? ConnectedAt => _state == SoraConnectionState.Connected ? _connectedAt : (DateTime?)null;
 
-        internal bool Connected
+        internal SoraConnectionState State
         {
-            get => _connected;
+            get => _state;
             set
             {
-                if (_connected == value)
+                if (_state == value)
                 {
                     return;
                 }
-                _connected = value;
-                if (value)
+                bool becameConnected = value == SoraConnectionState.Connected && _state != SoraConnectionState.Connected;
+                _state = value;
+                if (becameConnected)
                 {
                     _connectedAt = DateTime.Now;
                 }
+                AccessibleName = SoraText.Translate(value == SoraConnectionState.Connected ? "Отключиться" :
+                    value == SoraConnectionState.Connecting ? "Подключение выполняется" :
+                    value == SoraConnectionState.Disconnecting ? "Отключение выполняется" : "Подключиться");
                 Invalidate();
+                AccessibilityNotifyClients(AccessibleEvents.NameChange, -1);
+            }
+        }
+
+        internal bool Connected
+        {
+            get => _state == SoraConnectionState.Connected;
+            set
+            {
+                State = value ? SoraConnectionState.Connected : SoraConnectionState.Disconnected;
             }
         }
 
         internal HappConnectionControl()
         {
-            SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
+            SetStyle(ControlStyles.StandardClick | ControlStyles.StandardDoubleClick, false);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
             BackColor = Color.Transparent;
             Size = new Size(270, 270);
+            TabStop = true;
+            AccessibleRole = AccessibleRole.PushButton;
+            AccessibleName = SoraText.Translate("Подключиться");
             _powerImage = HappIconLoader.Load("power", MainForm.HappAccent);
-            _stateFont = new Font("Segoe UI", 8F);
+            _stateFont = new Font("Segoe UI Semibold", 8.5F);
             _timeFont = new Font("Segoe UI Semibold", 9F);
             _animation = new Timer { Interval = 33 };
             _animation.Tick += (sender, args) =>
@@ -97,7 +125,37 @@ namespace v2rayN.Forms
         protected override void OnClick(EventArgs e)
         {
             base.OnClick(e);
+            if (_state == SoraConnectionState.Connecting || _state == SoraConnectionState.Disconnecting)
+            {
+                return;
+            }
             PowerClick?.Invoke(this, EventArgs.Empty);
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
+            {
+                OnClick(EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            const int leftButtonUp = 0x0202;
+            if (message.Msg == leftButtonUp)
+            {
+                int packed = message.LParam.ToInt32();
+                var point = new Point((short)(packed & 0xFFFF), (short)((packed >> 16) & 0xFFFF));
+                if (ClientRectangle.Contains(point))
+                {
+                    OnClick(EventArgs.Empty);
+                }
+            }
+            base.WndProc(ref message);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -108,22 +166,32 @@ namespace v2rayN.Forms
             float pulse = (float)((Math.Sin(_phase) + 1D) * 0.5D);
             int diameter = 154 + (int)Math.Round(pulse * 4F);
             var button = new Rectangle((Width - diameter) / 2, Height / 2 - diameter / 2 - 17, diameter, diameter);
-            using (var fill = new LinearGradientBrush(
-                button,
-                Color.FromArgb(74 + (int)(pulse * 14F), 82, 82, 86),
-                Color.FromArgb(255, 31, 31, 34),
-                LinearGradientMode.Vertical))
-            using (var border = new Pen(Color.FromArgb(_connected ? 170 : 105, accent), 2F))
+            bool connected = _state == SoraConnectionState.Connected;
+            bool transitioning = _state == SoraConnectionState.Connecting || _state == SoraConnectionState.Disconnecting;
+            using (var fill = new SolidBrush(Color.FromArgb(37 + (int)(pulse * 8F), 37 + (int)(pulse * 8F), 40 + (int)(pulse * 8F))))
+            using (var border = new Pen(Color.FromArgb(connected ? 190 : transitioning ? 155 : 112, accent), 2F))
             {
                 e.Graphics.FillEllipse(fill, button);
                 e.Graphics.DrawEllipse(border, button);
             }
 
+            if (Focused && ShowFocusCues)
+            {
+                using (var focus = new Pen(Color.FromArgb(220, accent)) { DashStyle = DashStyle.Dot })
+                {
+                    e.Graphics.DrawEllipse(focus, Rectangle.Inflate(button, 5, 5));
+                }
+            }
+
             e.Graphics.DrawImage(_powerImage, new Rectangle(Width / 2 - 14, Height / 2 - 49, 28, 28));
 
-            string state = _connected ? "ПОДКЛЮЧЕНО" : "ОТКЛЮЧЕНО";
-            TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(172, 176, 190), TextFormatFlags.HorizontalCenter);
-            if (_connected)
+            string state = _state == SoraConnectionState.Connected ? "ОТКЛЮЧИТЬСЯ" :
+                _state == SoraConnectionState.Connecting ? "ПОДКЛЮЧЕНИЕ" :
+                _state == SoraConnectionState.Disconnecting ? "ОТКЛЮЧЕНИЕ" :
+                _state == SoraConnectionState.Error ? "ПОВТОРИТЬ" : "ПОДКЛЮЧИТЬСЯ";
+            state = SoraText.Translate(state);
+            TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(210, 212, 220), TextFormatFlags.HorizontalCenter);
+            if (connected)
             {
                 string elapsed = (DateTime.Now - _connectedAt).ToString(@"hh\:mm\:ss");
                 TextRenderer.DrawText(e.Graphics, elapsed, _timeFont, new Rectangle(0, Height / 2 + 12, Width, 20), Color.White, TextFormatFlags.HorizontalCenter);
@@ -168,9 +236,12 @@ namespace v2rayN.Forms
 
         internal HappToggle()
         {
+            SetStyle(ControlStyles.Selectable, true);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
             Size = new Size(42, 22);
+            TabStop = true;
+            AccessibleRole = AccessibleRole.CheckButton;
             _animation = new Timer { Interval = 16 };
             _animation.Tick += (sender, args) =>
             {
@@ -191,6 +262,17 @@ namespace v2rayN.Forms
             base.OnClick(e);
         }
 
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Space)
+            {
+                OnClick(EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            base.OnKeyDown(e);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -200,6 +282,10 @@ namespace v2rayN.Forms
             {
                 e.Graphics.FillPath(brush, track);
                 e.Graphics.DrawPath(border, track);
+            }
+            if (Focused && ShowFocusCues)
+            {
+                ControlPaint.DrawFocusRectangle(e.Graphics, ClientRectangle, Color.White, Color.Transparent);
             }
             float x = 3F + _position * (Width - 20F);
             using (var knob = new SolidBrush(!Enabled ? Color.FromArgb(77, 77, 82) : _checked ? Color.FromArgb(18, 18, 19) : Color.White)) e.Graphics.FillEllipse(knob, x, 4F, 14F, 14F);
@@ -388,6 +474,244 @@ namespace v2rayN.Forms
         private static GraphicsPath Rounded(Rectangle bounds, int radius)
         {
             int diameter = radius * 2;
+            var path = new GraphicsPath();
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
+    internal sealed class HappListScrollRail : Control
+    {
+        private const int LvmGetCountPerPage = 0x1028;
+        private readonly ListView _target;
+        private readonly Color _thumbColor;
+        private readonly Timer _animation;
+        private bool _dragging;
+        private bool _hovered;
+        private int _dragOffset;
+        private float _presence;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
+
+        internal HappListScrollRail(ListView target, Color background, Color thumbColor)
+        {
+            _target = target;
+            _thumbColor = thumbColor;
+            BackColor = background;
+            TabStop = false;
+            AccessibleRole = AccessibleRole.ScrollBar;
+            AccessibleName = "Прокрутка списка серверов";
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            _animation = new Timer { Interval = 16 };
+            _animation.Tick += AnimatePresence;
+            _target.HandleCreated += (sender, args) => BeginRefresh();
+            _target.Layout += (sender, args) => BeginRefresh();
+            _target.Resize += (sender, args) => BeginRefresh();
+            _target.MouseWheel += (sender, args) => BeginRefresh();
+            _target.KeyUp += (sender, args) => BeginRefresh();
+            _target.SelectedIndexChanged += (sender, args) => BeginRefresh();
+        }
+
+        internal void RefreshState()
+        {
+            if (IsDisposed || _target.IsDisposed)
+            {
+                return;
+            }
+            bool canScroll = GetMaximumTopIndex() > 0;
+            if (Visible != canScroll)
+            {
+                Visible = canScroll;
+            }
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Rectangle thumb = GetThumbBounds();
+            if (thumb.IsEmpty)
+            {
+                return;
+            }
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            int alpha = 150 + (int)Math.Round(52F * _presence);
+            using (GraphicsPath path = Rounded(thumb, thumb.Width / 2))
+            using (var brush = new SolidBrush(Color.FromArgb(alpha, _thumbColor)))
+            {
+                e.Graphics.FillPath(brush, path);
+            }
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            _hovered = true;
+            _animation.Start();
+            base.OnMouseEnter(e);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            _hovered = false;
+            if (!_dragging)
+            {
+                _animation.Start();
+            }
+            base.OnMouseLeave(e);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+            Rectangle thumb = GetThumbBounds();
+            if (thumb.IsEmpty)
+            {
+                return;
+            }
+            if (thumb.Contains(e.Location))
+            {
+                _dragging = true;
+                _dragOffset = e.Y - thumb.Top;
+                Capture = true;
+                _animation.Start();
+            }
+            else
+            {
+                int page = Math.Max(1, GetVisibleItemCount() - 1);
+                SetTopIndex(GetCurrentTopIndex() + (e.Y < thumb.Top ? -page : page));
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            if (_dragging)
+            {
+                SetScrollFromThumbTop(e.Y - _dragOffset, GetThumbBounds().Height);
+            }
+            base.OnMouseMove(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            _dragging = false;
+            Capture = false;
+            _animation.Start();
+            base.OnMouseUp(e);
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            int rows = Math.Max(1, SystemInformation.MouseWheelScrollLines);
+            SetTopIndex(GetCurrentTopIndex() - Math.Sign(e.Delta) * rows);
+            base.OnMouseWheel(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _animation.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private void BeginRefresh()
+        {
+            if (IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke(new Action(RefreshState));
+            }
+        }
+
+        private void AnimatePresence(object sender, EventArgs args)
+        {
+            float target = _hovered || _dragging ? 1F : 0F;
+            _presence += (target - _presence) * 0.34F;
+            if (Math.Abs(target - _presence) < 0.03F)
+            {
+                _presence = target;
+                _animation.Stop();
+            }
+            Invalidate();
+        }
+
+        private Rectangle GetThumbBounds()
+        {
+            int maximum = GetMaximumTopIndex();
+            if (maximum < 1 || Height < 64)
+            {
+                return Rectangle.Empty;
+            }
+            int total = Math.Max(1, _target.Items.Count);
+            int visible = Math.Max(1, GetVisibleItemCount());
+            int trackHeight = Height - 12;
+            int thumbHeight = Math.Max(42, (int)Math.Round(trackHeight * Math.Min(1D, (double)visible / total)));
+            int travel = Math.Max(1, trackHeight - thumbHeight);
+            int top = 6 + (int)Math.Round(travel * (double)GetCurrentTopIndex() / maximum);
+            int width = 5 + (int)Math.Round(3F * _presence);
+            return new Rectangle((Width - width) / 2, top, width, thumbHeight);
+        }
+
+        private void SetScrollFromThumbTop(int top, int thumbHeight)
+        {
+            int maximum = GetMaximumTopIndex();
+            int travel = Math.Max(1, Height - 12 - thumbHeight);
+            int clamped = Math.Max(6, Math.Min(6 + travel, top));
+            SetTopIndex((int)Math.Round(maximum * (double)(clamped - 6) / travel));
+        }
+
+        private int GetVisibleItemCount()
+        {
+            if (!_target.IsHandleCreated)
+            {
+                return 1;
+            }
+            return Math.Max(1, SendMessage(_target.Handle, LvmGetCountPerPage, IntPtr.Zero, IntPtr.Zero).ToInt32());
+        }
+
+        private int GetMaximumTopIndex()
+        {
+            return Math.Max(0, _target.Items.Count - GetVisibleItemCount());
+        }
+
+        private int GetCurrentTopIndex()
+        {
+            try
+            {
+                return _target.TopItem?.Index ?? 0;
+            }
+            catch (InvalidOperationException)
+            {
+                return 0;
+            }
+        }
+
+        private void SetTopIndex(int index)
+        {
+            int maximum = GetMaximumTopIndex();
+            int clamped = Math.Max(0, Math.Min(maximum, index));
+            if (_target.Items.Count == 0)
+            {
+                return;
+            }
+            _target.TopItem = _target.Items[clamped];
+            _target.Invalidate();
+            Invalidate();
+            AccessibilityNotifyClients(AccessibleEvents.ValueChange, -1);
+        }
+
+        private static GraphicsPath Rounded(Rectangle bounds, int radius)
+        {
+            int diameter = Math.Max(2, radius * 2);
             var path = new GraphicsPath();
             path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
             path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);

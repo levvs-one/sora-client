@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
+using Newtonsoft.Json.Linq;
 using v2rayN.Mode;
 using v2rayN.Resx;
 
@@ -27,6 +29,8 @@ namespace v2rayN.Handler
         public event ProcessDelegate ProcessEvent;
         private int processId = 0;
         private Process _process;
+
+        public bool IsRunning => _process != null && !_process.HasExited;
 
         public V2rayHandler()
         {
@@ -58,6 +62,10 @@ namespace v2rayN.Handler
                 }
                 else
                 {
+                    if (item.configType == EConfigType.Custom && coreInfo.coreType == ECoreType.Xray)
+                    {
+                        NormalizeCustomXrayInbounds(config, fileName);
+                    }
                     ShowMsg(false, msg);
                     ShowMsg(true, $"[{config.GetGroupRemarks(item.groupId)}] {item.GetSummary()}");
                     V2rayRestart();
@@ -100,6 +108,99 @@ namespace v2rayN.Handler
                 // start with -config
             }
             return pid;
+        }
+
+        public int LoadCustomSpeedtestConfig(VmessItem item, int localPort)
+        {
+            try
+            {
+                string path = File.Exists(item.address) ? item.address : Utils.GetConfigPath(item.address);
+                if (!File.Exists(path))
+                {
+                    return -1;
+                }
+                JObject custom = JObject.Parse(File.ReadAllText(path));
+                JArray outbounds = custom["outbounds"] as JArray;
+                if (outbounds == null || outbounds.Count == 0)
+                {
+                    return -1;
+                }
+
+                JObject httpInbound = null;
+                JArray inbounds = custom["inbounds"] as JArray;
+                if (inbounds != null)
+                {
+                    foreach (JToken token in inbounds)
+                    {
+                        JObject inbound = token as JObject;
+                        if (inbound == null)
+                        {
+                            continue;
+                        }
+                        if (string.Equals((string)inbound["protocol"], Global.InboundHttp, StringComparison.OrdinalIgnoreCase))
+                        {
+                            httpInbound = (JObject)inbound.DeepClone();
+                            break;
+                        }
+                    }
+                }
+                if (httpInbound == null)
+                {
+                    httpInbound = new JObject
+                    {
+                        ["protocol"] = Global.InboundHttp,
+                        ["tag"] = Global.InboundHttp
+                    };
+                }
+                httpInbound["listen"] = Global.Loopback;
+                httpInbound["port"] = localPort;
+                httpInbound["settings"] = new JObject();
+                custom["inbounds"] = new JArray(httpInbound);
+                return V2rayStartNew(custom.ToString(Newtonsoft.Json.Formatting.None));
+            }
+            catch (Exception exception)
+            {
+                Utils.SaveLog(exception.Message, exception);
+                return -1;
+            }
+        }
+
+        private static void NormalizeCustomXrayInbounds(Config config, string fileName)
+        {
+            JObject document = JObject.Parse(File.ReadAllText(fileName));
+            JArray inbounds = document["inbounds"] as JArray ?? new JArray();
+            string listen = config.inbound[0].allowLANConn ? "0.0.0.0" : Global.Loopback;
+            SetCustomXrayInbound(inbounds, Global.InboundSocks, config.GetLocalPort(Global.InboundSocks), listen, true);
+            SetCustomXrayInbound(inbounds, Global.InboundHttp, config.GetLocalPort(Global.InboundHttp), listen, false);
+            document["inbounds"] = inbounds;
+            File.WriteAllText(fileName, document.ToString(Newtonsoft.Json.Formatting.None), new UTF8Encoding(false));
+        }
+
+        private static void SetCustomXrayInbound(JArray inbounds, string protocol, int port, string listen, bool socks)
+        {
+            JObject inbound = null;
+            foreach (JObject candidate in inbounds.OfType<JObject>())
+            {
+                if (string.Equals((string)candidate["protocol"], protocol, StringComparison.OrdinalIgnoreCase))
+                {
+                    inbound = candidate;
+                    break;
+                }
+            }
+            if (inbound == null)
+            {
+                inbound = new JObject
+                {
+                    ["tag"] = protocol,
+                    ["protocol"] = protocol,
+                    ["settings"] = socks
+                        ? new JObject { ["auth"] = "noauth", ["udp"] = true }
+                        : new JObject { ["allowTransparent"] = false }
+                };
+                inbounds.Add(inbound);
+            }
+            inbound["listen"] = listen;
+            inbound["port"] = port;
         }
 
         /// <summary>
@@ -235,6 +336,8 @@ namespace v2rayN.Handler
                         StandardErrorEncoding = coreInfo.redirectInfo ? Encoding.UTF8 : null,
                     }
                 };
+                var startupErrors = new StringBuilder();
+                var startupErrorSync = new object();
                 if (coreInfo.redirectInfo)
                 {
                     p.OutputDataReceived += (sender, e) =>
@@ -245,17 +348,31 @@ namespace v2rayN.Handler
                             ShowMsg(false, msg);
                         }
                     };
+                    p.ErrorDataReceived += (sender, e) =>
+                    {
+                        if (!String.IsNullOrEmpty(e.Data))
+                        {
+                            lock (startupErrorSync) startupErrors.AppendLine(e.Data);
+                            ShowMsg(false, e.Data + Environment.NewLine);
+                        }
+                    };
                 }
                 p.Start();
                 if (coreInfo.redirectInfo)
                 {
                     p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
                 }
                 _process = p;
 
                 if (p.WaitForExit(1000))
                 {
-                    throw new Exception(coreInfo.redirectInfo ? p.StandardError.ReadToEnd() : "启动进程失败并退出 (Failed to start the process and exited)");
+                    p.WaitForExit();
+                    string error;
+                    lock (startupErrorSync) error = startupErrors.ToString();
+                    throw new Exception(string.IsNullOrWhiteSpace(error)
+                        ? $"Ядро завершилось сразу после запуска (код {p.ExitCode}). Проверьте вкладку «Ядро»."
+                        : error.Trim());
                 }
 
                 Global.processJob.AddProcess(p.Handle);
@@ -284,7 +401,7 @@ namespace v2rayN.Handler
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = fileName,
-                        Arguments = "-config stdin:",
+                        Arguments = "run -c stdin:",
                         WorkingDirectory = Utils.StartupPath(),
                         UseShellExecute = false,
                         RedirectStandardInput = true,
@@ -295,6 +412,8 @@ namespace v2rayN.Handler
                         StandardErrorEncoding = Encoding.UTF8
                     }
                 };
+                var startupErrors = new StringBuilder();
+                var startupErrorSync = new object();
                 p.OutputDataReceived += (sender, e) =>
                 {
                     if (!String.IsNullOrEmpty(e.Data))
@@ -303,15 +422,29 @@ namespace v2rayN.Handler
                         ShowMsg(false, msg);
                     }
                 };
+                p.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!String.IsNullOrEmpty(e.Data))
+                    {
+                        lock (startupErrorSync) startupErrors.AppendLine(e.Data);
+                        ShowMsg(false, e.Data + Environment.NewLine);
+                    }
+                };
                 p.Start();
                 p.BeginOutputReadLine();
+                p.BeginErrorReadLine();
 
                 p.StandardInput.Write(configStr);
                 p.StandardInput.Close();
 
                 if (p.WaitForExit(1000))
                 {
-                    throw new Exception(p.StandardError.ReadToEnd());
+                    p.WaitForExit();
+                    string error;
+                    lock (startupErrorSync) error = startupErrors.ToString();
+                    throw new Exception(string.IsNullOrWhiteSpace(error)
+                        ? $"Ядро проверки завершилось сразу после запуска (код {p.ExitCode})."
+                        : error.Trim());
                 }
 
                 Global.processJob.AddProcess(p.Handle);
@@ -333,7 +466,13 @@ namespace v2rayN.Handler
         /// <param name="msg">输出到日志框</param>
         private void ShowMsg(bool updateToTrayTooltip, string msg)
         {
-            ProcessEvent?.Invoke(updateToTrayTooltip, msg);
+            string text = msg ?? string.Empty;
+            string tagged = text.StartsWith("[CORE]", StringComparison.Ordinal) ? text : "[CORE] " + text;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                Utils.SaveLog(tagged.TrimEnd());
+            }
+            ProcessEvent?.Invoke(updateToTrayTooltip, tagged);
         }
 
         private void KillProcess(Process p)

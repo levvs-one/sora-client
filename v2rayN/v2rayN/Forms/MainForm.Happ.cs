@@ -323,7 +323,7 @@ namespace v2rayN.Forms
             lvServers.Resize += (sender, args) => ConfigureSoraServerList();
             _communityRowHeight = new ImageList(components) { ImageSize = new Size(1, 58), ColorDepth = ColorDepth.Depth32Bit };
             lvServers.SmallImageList = _communityRowHeight;
-            _happServerScroll = new HappListScrollRail(lvServers, HappServerSurface, Color.FromArgb(124, 124, 130))
+            _happServerScroll = new HappListScrollRail(lvServers, HappServerSurface, Color.FromArgb(96, 96, 102))
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom,
                 Width = 18

@@ -5,7 +5,19 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$assembly = [System.Reflection.Assembly]::LoadFrom((Resolve-Path -LiteralPath $AssemblyPath))
+$resolvedAssemblyPath = (Resolve-Path -LiteralPath $AssemblyPath).Path
+$assemblyDirectory = Split-Path -Parent $resolvedAssemblyPath
+$dependencyResolver = [System.ResolveEventHandler]({
+    param($sender, $eventArgs)
+    $dependencyName = ([System.Reflection.AssemblyName]::new($eventArgs.Name)).Name + '.dll'
+    $dependencyPath = Join-Path $assemblyDirectory $dependencyName
+    if (Test-Path -LiteralPath $dependencyPath) {
+        return [System.Reflection.Assembly]::LoadFrom($dependencyPath)
+    }
+    return $null
+}.GetNewClosure())
+[AppDomain]::CurrentDomain.add_AssemblyResolve($dependencyResolver)
+$assembly = [System.Reflection.Assembly]::LoadFrom($resolvedAssemblyPath)
 $handler = $assembly.GetType('v2rayN.Handler.ConfigHandler', $true)
 $binding = [System.Reflection.BindingFlags]'Public, NonPublic, Static'
 $methods = $handler.GetMethods($binding)

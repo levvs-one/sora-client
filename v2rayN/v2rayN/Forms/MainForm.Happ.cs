@@ -245,7 +245,7 @@ namespace v2rayN.Forms
             var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 4, Padding = new Padding(28, 16, 18, 18) };
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 204F));
+            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 166F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
@@ -344,14 +344,14 @@ namespace v2rayN.Forms
             Color cardBackground = Color.FromArgb(35, 35, 38);
             var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = cardBackground, AccessibleName = "Подписка" };
             ApplyRoundedCorners(card, 7);
-            _soraSubscriptionTitle = new Label { Location = new Point(16, 10), Size = new Size(280, 24), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionDetail = new Label { Location = new Point(16, 38), Size = new Size(390, 20), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionSchedule = new Label { Location = new Point(16, 62), Size = new Size(390, 20), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(16, 90), Size = new Size(390, 4), BackColor = Color.FromArgb(78, 78, 84) };
+            _soraSubscriptionTitle = new Label { Location = new Point(16, 7), Size = new Size(280, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            _soraSubscriptionDetail = new Label { Location = new Point(16, 31), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            _soraSubscriptionSchedule = new Label { Location = new Point(16, 50), Size = new Size(390, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(16, 72), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84) };
             _soraSubscriptionQuotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
             _soraSubscriptionQuotaTrack.Controls.Add(_soraSubscriptionQuotaFill);
-            _soraSubscriptionQuota = new Label { Location = new Point(16, 99), Size = new Size(390, 20), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
-            _soraSubscriptionAnnouncement = new SoraMarkdownView { Location = new Point(12, 126), Size = new Size(398, 58), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки" };
+            _soraSubscriptionQuota = new Label { Location = new Point(16, 78), Size = new Size(390, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+            _soraSubscriptionAnnouncement = new SoraMarkdownView { Location = new Point(12, 99), Size = new Size(398, 52), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки" };
             _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
             _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
             Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
@@ -382,7 +382,7 @@ namespace v2rayN.Forms
                 _soraSubscriptionQuota.Width = _soraSubscriptionQuotaTrack.Width;
                 _soraSubscriptionSchedule.Width = _soraSubscriptionQuotaTrack.Width;
                 _soraSubscriptionAnnouncement.Width = Math.Max(80, card.ClientSize.Width - 24);
-                _soraSubscriptionAnnouncement.Height = Math.Max(48, card.ClientSize.Height - 136);
+                _soraSubscriptionAnnouncement.Height = Math.Max(44, card.ClientSize.Height - 106);
                 RefreshSoraSubscriptionCard();
             };
             card.Controls.Add(_soraSubscriptionAnnouncement);

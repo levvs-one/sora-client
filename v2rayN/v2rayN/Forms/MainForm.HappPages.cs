@@ -49,6 +49,8 @@ namespace v2rayN.Forms
             {
                 return;
             }
+            bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri subscriptionUri)
+                && subscriptionUri.Scheme == Uri.UriSchemeHttps;
             using (var dialog = CreateSoraDialog(new Size(760, 548)))
             {
                 dialog.Name = "sora.subscription.edit.dialog";
@@ -61,11 +63,12 @@ namespace v2rayN.Forms
                 TextBox name = CreateSoraTextField(dialog, "Название", 32, 78, 696, GetSoraSubscriptionTitle(subscription));
                 name.Name = "sora.subscription.name";
                 name.AccessibleName = "Название подписки";
-                TextBox url = CreateSoraTextField(dialog, "Адрес подписки", 32, 154, 696, subscription.url);
+                TextBox url = CreateSoraTextField(dialog, remote ? "Адрес подписки" : "Источник", 32, 154, 696, remote ? subscription.url : "Локальная конфигурация");
                 url.Name = "sora.subscription.url";
                 url.AccessibleName = "Адрес подписки";
-                Button interval = CreateSoraIntervalSelector(dialog, 32, 230, 696, subscription.updateIntervalMinutes);
-                interval.Name = "sora.subscription.interval";
+                url.ReadOnly = !remote;
+                Button interval = remote ? CreateSoraIntervalSelector(dialog, 32, 230, 696, subscription.updateIntervalMinutes) : null;
+                if (interval != null) interval.Name = "sora.subscription.interval";
 
                 var autoPanel = new Panel { Location = new Point(32, 306), Size = new Size(696, 48), BackColor = Color.FromArgb(44, 44, 47) };
                 ApplyRoundedCorners(autoPanel, 5);
@@ -73,15 +76,18 @@ namespace v2rayN.Forms
                 var autoUpdate = new HappToggle { Checked = subscription.enabled, Location = new Point(640, 13), AccessibleName = "Автообновление «" + GetSoraSubscriptionTitle(subscription) + "»" };
                 autoUpdate.Name = "sora.subscription.autoUpdate";
                 autoPanel.Controls.Add(autoUpdate);
+                autoPanel.Visible = remote;
 
                 int serverCount = config.vmess.Count(server => server.subid == subscription.id);
                 string last = subscription.lastUpdateSuccessUtcTicks > 0 ? FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks) : "Ещё не обновлялась";
                 string next = GetSoraNextUpdateDisplay(subscription);
                 var state = new Label
                 {
-                    Location = new Point(44, 374),
+                    Location = new Point(44, remote ? 374 : 244),
                     Size = new Size(672, 62),
-                    Text = serverCount + " серверов\r\nПоследнее обновление: " + last + "\r\nСледующее обновление: " + next + (string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? string.Empty : "\r\n" + subscription.lastUpdateError),
+                    Text = remote
+                        ? serverCount + " серверов\r\nПоследнее обновление: " + last + "\r\nСледующее обновление: " + next + (string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? string.Empty : "\r\n" + subscription.lastUpdateError)
+                        : FormatSoraServerCount(serverCount) + "\r\nДобавлено вручную. Удаление подписки удалит только входящие в неё серверы.",
                     ForeColor = HappMuted,
                     Font = new Font("Segoe UI", 8.5F),
                     AutoEllipsis = true
@@ -90,18 +96,18 @@ namespace v2rayN.Forms
                 Action save = () =>
                 {
                     string trimmedName = name.Text.Trim();
-                    string trimmedUrl = url.Text.Trim();
+                    string trimmedUrl = remote ? url.Text.Trim() : string.Empty;
                     if (trimmedName.Length == 0)
                     {
                         UI.ShowWarning("Введите название подписки.");
                         return;
                     }
-                    if (!Uri.TryCreate(trimmedUrl, UriKind.Absolute, out Uri parsed) || parsed.Scheme != Uri.UriSchemeHttps)
+                    if (remote && (!Uri.TryCreate(trimmedUrl, UriKind.Absolute, out Uri parsed) || parsed.Scheme != Uri.UriSchemeHttps))
                     {
                         UI.ShowWarning("Адрес подписки должен начинаться с HTTPS.");
                         return;
                     }
-                    if (config.subItem.Any(item => item.id != subscription.id && string.Equals(item.url, trimmedUrl, StringComparison.OrdinalIgnoreCase)))
+                    if (remote && config.subItem.Any(item => item.id != subscription.id && string.Equals(item.url, trimmedUrl, StringComparison.OrdinalIgnoreCase)))
                     {
                         UI.ShowWarning("Подписка с таким адресом уже добавлена.");
                         return;
@@ -109,12 +115,12 @@ namespace v2rayN.Forms
                     subscription.remarks = trimmedName.Substring(0, Math.Min(80, trimmedName.Length));
                     subscription.nameCustomized = true;
                     subscription.url = trimmedUrl;
-                    subscription.enabled = autoUpdate.Checked;
-                    subscription.updateIntervalMinutes = (int)interval.Tag;
+                    subscription.enabled = remote && autoUpdate.Checked;
+                    subscription.updateIntervalMinutes = remote ? (int)interval.Tag : 0;
                     ConfigHandler.SaveSubItem(ref config);
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
-                    RefreshSoraSubscriptionCard();
+                    RebuildSoraSubscriptionSections();
                 };
 
                 var updateNow = CreateHappButton("Обновить сейчас", () =>
@@ -128,6 +134,7 @@ namespace v2rayN.Forms
                 updateNow.Name = "sora.subscription.updateNow";
                 updateNow.Size = new Size(154, 36);
                 updateNow.Location = new Point(32, 476);
+                updateNow.Visible = remote;
                 var delete = CreateHappButton("Удалить", () =>
                 {
                     if (_soraSubscriptionUpdates.Contains(subscription.id))
@@ -141,14 +148,18 @@ namespace v2rayN.Forms
                     }
                     ConfigHandler.RemoveSubscription(ref config, subscription.id);
                     _soraSubscriptionStatuses.Remove(subscription.id);
+                    if (string.Equals(_soraExpandedSubscriptionId, subscription.id, StringComparison.Ordinal))
+                    {
+                        _soraExpandedSubscriptionId = null;
+                    }
                     dialog.DialogResult = DialogResult.OK;
                     dialog.Close();
                     RefreshServers();
-                    ShowHappPage(_happServerPage);
+                    RebuildSoraSubscriptionSections();
                 }, false);
                 delete.Name = "sora.subscription.delete";
                 delete.Size = new Size(112, 36);
-                delete.Location = new Point(198, 476);
+                delete.Location = new Point(remote ? 198 : 32, 476);
                 var saveButton = CreateHappButton("Сохранить", save, true);
                 saveButton.Size = new Size(128, 36);
                 saveButton.Location = new Point(600, 476);
@@ -393,6 +404,24 @@ namespace v2rayN.Forms
                 foreach (var server in config.vmess.Where(server => string.Equals(server.remarks, "v2ray_custom", StringComparison.OrdinalIgnoreCase)))
                 {
                     server.remarks = "Конфигурация Xray";
+                    serversChanged = true;
+                }
+
+                List<VmessItem> ungroupedServers = config.vmess
+                    .Where(server => string.IsNullOrWhiteSpace(server.subid))
+                    .ToList();
+                if (ungroupedServers.Count > 0)
+                {
+                    string title = ungroupedServers.Count == 1
+                        ? GetSoraDisplayName(ungroupedServers[0].remarks)
+                        : "Локальные конфигурации";
+                    SubItem localSubscription = AddSoraImportContainer(config, title, "Локальные конфигурации");
+                    localSubscription.lastServerCount = ungroupedServers.Count;
+                    foreach (VmessItem server in ungroupedServers)
+                    {
+                        server.subid = localSubscription.id;
+                    }
+                    ConfigHandler.SaveSubItem(ref config);
                     serversChanged = true;
                 }
             }
@@ -770,28 +799,8 @@ namespace v2rayN.Forms
             _soraSubscriptionScheduleTimer.Start();
         }
 
-        private SubItem GetSoraPrimarySubscription()
+        private void ShowSoraSubscriptionAnnouncement(SubItem subscription)
         {
-            if (config?.subItem == null || config.subItem.Count == 0) return null;
-            VmessItem active = config.GetVmessItem(config.indexId);
-            if (active != null && !string.IsNullOrWhiteSpace(active.subid))
-            {
-                SubItem matched = config.subItem.FirstOrDefault(item => item.id == active.subid);
-                if (matched != null) return matched;
-            }
-            return config.subItem[0];
-        }
-
-        private void OpenSoraPrimarySubscription()
-        {
-            SubItem subscription = GetSoraPrimarySubscription();
-            if (subscription == null) ShowHappAddConfiguration();
-            else ShowSoraSubscriptionEditor(subscription);
-        }
-
-        private void ShowSoraPrimarySubscriptionAnnouncement()
-        {
-            SubItem subscription = GetSoraPrimarySubscription();
             if (subscription == null) return;
             using (var dialog = CreateSoraDialog(new Size(760, 548)))
             {
@@ -826,22 +835,14 @@ namespace v2rayN.Forms
             }
         }
 
-        private void UpdateSoraPrimarySubscription()
+        private void TestSoraSubscriptionServers(SubItem subscription)
         {
-            SubItem subscription = GetSoraPrimarySubscription();
-            if (subscription == null) ShowHappAddConfiguration();
-            else StartSoraSubscriptionUpdate(subscription.id);
-        }
-
-        private void TestSoraPrimarySubscriptionServers()
-        {
-            SubItem subscription = GetSoraPrimarySubscription();
             if (subscription == null)
             {
                 UI.ShowWarning("Сначала добавьте подписку.");
                 return;
             }
-            List<VmessItem> targets = lstVmess.Where(item => item.subid == subscription.id).ToList();
+            List<VmessItem> targets = config.vmess.Where(item => item.subid == subscription.id).ToList();
             if (targets.Count == 0)
             {
                 UI.ShowWarning("В этой подписке пока нет серверов.");
@@ -850,30 +851,21 @@ namespace v2rayN.Forms
             Speedtest(ESpeedActionType.Realping, targets);
         }
 
-        private void ShowSoraSubscriptionCardMenu()
+        private void ShowSoraSubscriptionCardMenu(SubItem subscription)
         {
             var menu = BuildHappMenu();
-            SubItem primary = GetSoraPrimarySubscription();
-            if (primary == null)
+            if (subscription == null)
             {
                 menu.Items.Add("Добавить подписку", HappIconLoader.Load("plus-square", HappText), (sender, args) => ShowHappAddConfiguration());
             }
             else
             {
-                menu.Items.Add("Описание подписки", HappIconLoader.Load("info", HappText), (sender, args) => ShowSoraPrimarySubscriptionAnnouncement());
+                menu.Items.Add("Описание подписки", HappIconLoader.Load("info", HappText), (sender, args) => ShowSoraSubscriptionAnnouncement(subscription));
                 menu.Items.Add(new ToolStripSeparator());
-                menu.Items.Add("Настройки", HappIconLoader.Load("gear", HappText), (sender, args) => ShowSoraSubscriptionEditor(primary));
-                menu.Items.Add("Обновить", HappIconLoader.Load("arrows-clockwise", HappText), (sender, args) => StartSoraSubscriptionUpdate(primary.id));
-                if (config.subItem.Count > 1)
+                menu.Items.Add("Настройки", HappIconLoader.Load("gear", HappText), (sender, args) => ShowSoraSubscriptionEditor(subscription));
+                if (Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps)
                 {
-                    menu.Items.Add("Обновить все", null, (sender, args) => StartSoraAllSubscriptionUpdates());
-                    var subscriptions = new ToolStripMenuItem("Другие подписки");
-                    foreach (SubItem subscription in config.subItem.Where(item => item.id != primary.id).ToArray())
-                    {
-                        SubItem selected = subscription;
-                        subscriptions.DropDownItems.Add(GetSoraSubscriptionTitle(selected), null, (sender, args) => ShowSoraSubscriptionEditor(selected));
-                    }
-                    menu.Items.Add(subscriptions);
+                    menu.Items.Add("Обновить", HappIconLoader.Load("arrows-clockwise", HappText), (sender, args) => StartSoraSubscriptionUpdate(subscription.id));
                 }
             }
             menu.Show(Cursor.Position);
@@ -881,50 +873,47 @@ namespace v2rayN.Forms
 
         private void RefreshSoraSubscriptionCard()
         {
-            if (_soraSubscriptionTitle == null || _soraSubscriptionDetail == null) return;
-            SubItem subscription = GetSoraPrimarySubscription();
-            if (subscription == null)
+            if (_soraSubscriptionSectionsHost == null || config?.subItem == null) return;
+            string[] ids = config.subItem.Select(item => item.id).ToArray();
+            if (ids.Length != _soraSubscriptionSections.Count || ids.Any(id => !_soraSubscriptionSections.ContainsKey(id)))
             {
-                _soraSubscriptionTitle.Text = SoraText.Translate("Добавить подписку");
-                _soraSubscriptionDetail.Text = SoraText.Translate("Вставьте ссылку — формат определится автоматически");
-                _soraSubscriptionSchedule.Text = string.Empty;
-                _soraSubscriptionAnnouncement.MarkdownText = SoraText.Translate("Описание появится после первого обновления подписки.");
-                _soraSubscriptionRefresh.Enabled = false;
-                _soraSubscriptionPing.Enabled = false;
-                _soraSubscriptionQuotaTrack.Visible = false;
-                _soraSubscriptionQuota.Text = string.Empty;
-                _soraSubscriptionExpiry.Text = string.Empty;
+                RebuildSoraSubscriptionSections();
                 return;
             }
 
-            int subscriptionCount = config.subItem.Count;
-            int serverCount = config.vmess.Count(server => server.subid == subscription.id);
-            bool updating = _soraSubscriptionUpdates.Contains(subscription.id);
-            string state = updating ? "Обновление выполняется"
-                : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? "Ошибка обновления"
-                : subscription.lastUpdateSuccessUtcTicks > 0 ? "Обновлено " + FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
-                : "Ещё не обновлялась";
-            string schedule = subscription.enabled ? FormatSoraSchedule(subscription.updateIntervalMinutes) : "автообновление выключено";
-            _soraSubscriptionTitle.Text = GetSoraSubscriptionTitle(subscription) + (subscriptionCount > 1 ? "  +" + (subscriptionCount - 1) : string.Empty);
-            _soraSubscriptionDetail.Text = FormatSoraServerCount(serverCount) + " — " + state;
-            _soraSubscriptionSchedule.Text = subscription.enabled ? "Автообновление: " + schedule : "Автообновление выключено";
-            ulong used = (ulong)Math.Max(0L, subscription.subscriptionUploadBytes) + (ulong)Math.Max(0L, subscription.subscriptionDownloadBytes);
-            ulong total = (ulong)Math.Max(0L, subscription.subscriptionTotalBytes);
-            bool hasQuota = total > 0;
-            _soraSubscriptionQuotaTrack.Visible = hasQuota;
-            _soraSubscriptionQuotaFill.Width = hasQuota
-                ? (int)Math.Round(_soraSubscriptionQuotaTrack.ClientSize.Width * Math.Min(1D, used / (double)total))
-                : 0;
-            string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
-            _soraSubscriptionQuota.Text = hasQuota
-                ? Utils.HumanFy(used) + " из " + Utils.HumanFy(total)
-                : "Источник: " + GetSoraSubscriptionHost(subscription.url);
-            _soraSubscriptionExpiry.Text = string.IsNullOrWhiteSpace(expiry) ? string.Empty : "До " + expiry;
-            _soraSubscriptionAnnouncement.MarkdownText = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
-                ? "_" + SoraText.Translate("Описание не добавлено.") + "_"
-                : subscription.subscriptionAnnouncement;
-            _soraSubscriptionRefresh.Enabled = !updating;
-            _soraSubscriptionPing.Enabled = serverCount > 0 && !updating;
+            foreach (SubItem subscription in config.subItem)
+            {
+                SoraSubscriptionSectionControls controls = _soraSubscriptionSections[subscription.id];
+                int serverCount = config.vmess.Count(server => server.subid == subscription.id);
+                bool updating = _soraSubscriptionUpdates.Contains(subscription.id);
+                bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
+                string state = updating ? "Обновление выполняется"
+                    : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? "Ошибка обновления"
+                    : subscription.lastUpdateSuccessUtcTicks > 0 ? "Обновлено " + FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
+                    : remote ? "Ещё не обновлялась" : "Локальный импорт";
+                controls.Title.Text = GetSoraSubscriptionTitle(subscription);
+                controls.Detail.Text = FormatSoraServerCount(serverCount) + " — " + state;
+                controls.Schedule.Text = remote
+                    ? subscription.enabled ? "Автообновление: " + FormatSoraSchedule(subscription.updateIntervalMinutes) : "Автообновление выключено"
+                    : "Сохранено в Sora без удалённого обновления";
+                ulong used = (ulong)Math.Max(0L, subscription.subscriptionUploadBytes) + (ulong)Math.Max(0L, subscription.subscriptionDownloadBytes);
+                ulong total = (ulong)Math.Max(0L, subscription.subscriptionTotalBytes);
+                bool hasQuota = total > 0;
+                controls.QuotaTrack.Visible = controls.Expanded && hasQuota;
+                controls.QuotaFill.Width = hasQuota
+                    ? (int)Math.Round(controls.QuotaTrack.ClientSize.Width * Math.Min(1D, used / (double)total))
+                    : 0;
+                string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
+                controls.Quota.Text = hasQuota
+                    ? Utils.HumanFy(used) + " из " + Utils.HumanFy(total)
+                    : remote ? "Источник: " + GetSoraSubscriptionHost(subscription.url) : "Локальная конфигурация";
+                controls.Expiry.Text = string.IsNullOrWhiteSpace(expiry) ? string.Empty : "До " + expiry;
+                controls.Announcement.MarkdownText = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
+                    ? "_" + SoraText.Translate("Описание не добавлено.") + "_"
+                    : subscription.subscriptionAnnouncement;
+                controls.Refresh.Enabled = remote && !updating;
+                controls.Ping.Enabled = serverCount > 0 && !updating;
+            }
         }
 
         private void SaveAndReloadHapp()

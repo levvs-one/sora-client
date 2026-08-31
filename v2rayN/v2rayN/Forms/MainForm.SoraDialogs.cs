@@ -349,17 +349,23 @@ namespace v2rayN.Forms
                     item.enabled = true;
                 }
                 ConfigHandler.SaveSubItem(ref config);
+                _soraExpandedSubscriptionId = item?.id;
                 StartSoraSubscriptionUpdate(item?.id);
                 imported = 1;
                 return SoraImportOutcome.Imported;
             }
 
+            SubItem localSubscription = AddSoraImportContainer(config, subscriptionName, analysis.Title);
+            ConfigHandler.SaveSubItem(ref config);
+            string localSubscriptionId = localSubscription.id;
             var previousIds = new HashSet<string>(config.vmess.Select(server => server.indexId));
             if (analysis.Kind == SoraImportKind.ShareLinks || analysis.Kind == SoraImportKind.EncodedShareLinks)
             {
                 string source = input;
                 if (analysis.Kind == SoraImportKind.EncodedShareLinks && !TryDecodeSoraBase64(input, out source))
                 {
+                    config.subItem.Remove(localSubscription);
+                    ConfigHandler.SaveSubItem(ref config);
                     return SoraImportOutcome.Failed;
                 }
                 string[] candidates = source.Split(new[] { '\r', '\n', '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -367,7 +373,7 @@ namespace v2rayN.Forms
                 {
                     try
                     {
-                        imported += ConfigHandler.AddBatchServers(ref config, candidate, string.Empty, _groupId);
+                        imported += ConfigHandler.AddBatchServers(ref config, candidate, localSubscriptionId, _groupId);
                     }
                     catch (Exception exception)
                     {
@@ -377,20 +383,22 @@ namespace v2rayN.Forms
             }
             else
             {
-                imported = ConfigHandler.AddBatchServers(ref config, input, string.Empty, _groupId);
+                imported = ConfigHandler.AddBatchServers(ref config, input, localSubscriptionId, _groupId);
             }
             if (imported > 0)
             {
                 List<VmessItem> addedServers = config.vmess.Where(server => !previousIds.Contains(server.indexId)).ToList();
-                if (!string.IsNullOrWhiteSpace(subscriptionName))
+                if (string.IsNullOrWhiteSpace(subscriptionName))
                 {
-                    for (int index = 0; index < addedServers.Count; index++)
+                    string importedName = addedServers.Count == 1
+                        ? GetSoraDisplayName(addedServers[0].remarks)
+                        : analysis.Title;
+                    if (!string.IsNullOrWhiteSpace(importedName))
                     {
-                        addedServers[index].remarks = addedServers.Count == 1
-                            ? subscriptionName
-                            : subscriptionName + " " + (index + 1);
+                        localSubscription.remarks = importedName;
                     }
                 }
+                localSubscription.lastServerCount = addedServers.Count;
                 if (analysis.Kind == SoraImportKind.XrayJson)
                 {
                     foreach (var server in addedServers.Where(server => string.Equals(server.remarks, "v2ray_custom", StringComparison.OrdinalIgnoreCase)))
@@ -398,12 +406,35 @@ namespace v2rayN.Forms
                         server.remarks = "Конфигурация Xray";
                     }
                 }
+                _soraExpandedSubscriptionId = localSubscriptionId;
+                ConfigHandler.SaveSubItem(ref config);
                 ConfigHandler.SaveConfig(ref config);
                 RefreshServers();
                 Global.reloadV2ray = true;
                 _ = LoadV2ray();
             }
+            else
+            {
+                config.subItem.Remove(localSubscription);
+                ConfigHandler.SaveSubItem(ref config);
+            }
             return imported > 0 ? SoraImportOutcome.Imported : SoraImportOutcome.Failed;
+        }
+
+        private static SubItem AddSoraImportContainer(Config target, string requestedName, string fallbackName)
+        {
+            string title = string.IsNullOrWhiteSpace(requestedName) ? fallbackName : requestedName.Trim();
+            var subscription = new SubItem
+            {
+                id = Utils.GetGUID(false),
+                remarks = string.IsNullOrWhiteSpace(title) ? "Локальная конфигурация" : title,
+                url = string.Empty,
+                enabled = false,
+                updateIntervalMinutes = 0,
+                nameCustomized = true
+            };
+            target.subItem.Add(subscription);
+            return subscription;
         }
 
         private static bool IsSoraShareLink(string value)

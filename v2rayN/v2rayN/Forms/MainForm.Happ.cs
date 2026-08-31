@@ -37,16 +37,15 @@ namespace v2rayN.Forms
         private readonly DateTime _happStartedAt = DateTime.Now;
         private long _happUploadRate;
         private long _happDownloadRate;
-        private Label _soraSubscriptionTitle;
-        private Label _soraSubscriptionDetail;
-        private Button _soraSubscriptionRefresh;
-        private Button _soraSubscriptionPing;
-        private Panel _soraSubscriptionQuotaTrack;
-        private Panel _soraSubscriptionQuotaFill;
-        private Label _soraSubscriptionQuota;
-        private Label _soraSubscriptionExpiry;
-        private Label _soraSubscriptionSchedule;
-        private SoraMarkdownView _soraSubscriptionAnnouncement;
+        private FlowLayoutPanel _soraSubscriptionSectionsHost;
+        private Panel _soraServerListHost;
+        private string _soraExpandedSubscriptionId;
+        private bool _soraSubscriptionExpansionInitialized;
+        private readonly Dictionary<string, SoraSubscriptionSectionControls> _soraSubscriptionSections = new Dictionary<string, SoraSubscriptionSectionControls>();
+        private Timer _soraSubscriptionAnimationTimer;
+        private Panel _soraSubscriptionAnimatingPanel;
+        private int _soraSubscriptionAnimationTarget;
+        private int _soraSubscriptionAnimationFrame;
         private Timer _soraSubscriptionSummaryTimer;
         private Label _soraTrafficSummary;
         private Timer _soraTrafficTimer;
@@ -246,10 +245,9 @@ namespace v2rayN.Forms
 
         private Control BuildHappServerPane()
         {
-            var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 4, Padding = new Padding(28, 16, 18, 18) };
+            var pane = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = HappPane, ColumnCount = 1, RowCount = 3, Padding = new Padding(28, 16, 18, 18) };
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            pane.RowStyles.Add(new RowStyle(SizeType.Absolute, 166F));
             pane.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pane.Controls.Add(new Label { Dock = DockStyle.Fill, Text = "Серверы", Font = new Font("Segoe UI Semibold", 15F), ForeColor = HappText, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
 
@@ -295,8 +293,6 @@ namespace v2rayN.Forms
             searchRow.Controls.Add(CreateHappSmallButton("dots-three", ShowHappServerMenu), 2, 0);
             pane.Controls.Add(searchRow, 0, 1);
 
-            pane.Controls.Add(BuildSoraInlineSubscriptionCard(), 0, 2);
-
             var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappListBorder, Margin = Padding.Empty, Padding = new Padding(1) };
             ApplyRoundedCorners(listHost, 6);
             var listSurface = new Panel { Dock = DockStyle.Fill, BackColor = HappServerSurface, Margin = Padding.Empty };
@@ -340,33 +336,133 @@ namespace v2rayN.Forms
             _communityEmptyState.BackColor = HappServerSurface;
             listSurface.Controls.Add(_communityEmptyState);
             _communityEmptyState.BringToFront();
-            pane.Controls.Add(listHost, 0, 3);
+            _soraServerListHost = listHost;
+            pane.Controls.Add(BuildSoraSubscriptionAccordion(), 0, 2);
             return pane;
         }
 
-        private Control BuildSoraInlineSubscriptionCard()
+        private Control BuildSoraSubscriptionAccordion()
         {
+            _soraSubscriptionSectionsHost = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = HappPane,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            _soraSubscriptionSectionsHost.Resize += (sender, args) => LayoutSoraSubscriptionSections();
+            StartSoraSubscriptionSummary();
+            RebuildSoraSubscriptionSections();
+            return _soraSubscriptionSectionsHost;
+        }
+
+        private void RebuildSoraSubscriptionSections(bool animateExpansion = false)
+        {
+            if (_soraSubscriptionSectionsHost == null || _soraServerListHost == null || config?.subItem == null)
+            {
+                return;
+            }
+
+            SubItem[] subscriptions = config.subItem.ToArray();
+            if (!_soraSubscriptionExpansionInitialized)
+            {
+                string activeSubscriptionId = config.GetVmessItem(config.indexId)?.subid;
+                _soraExpandedSubscriptionId = subscriptions.Any(item => item.id == activeSubscriptionId)
+                    ? activeSubscriptionId
+                    : subscriptions.FirstOrDefault()?.id;
+                _soraSubscriptionExpansionInitialized = true;
+            }
+            else if (!string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId) && subscriptions.All(item => item.id != _soraExpandedSubscriptionId))
+            {
+                _soraExpandedSubscriptionId = subscriptions.FirstOrDefault()?.id;
+            }
+
+            _soraSubscriptionAnimationTimer?.Stop();
+            _soraServerListHost.Parent = null;
+            _soraSubscriptionSectionsHost.SuspendLayout();
+            foreach (SoraSubscriptionSectionControls controls in _soraSubscriptionSections.Values)
+            {
+                controls.Section.Dispose();
+            }
+            _soraSubscriptionSections.Clear();
+            _soraSubscriptionSectionsHost.Controls.Clear();
+
+            if (subscriptions.Length == 0)
+            {
+                var empty = new Panel { Height = 72, BackColor = Color.FromArgb(35, 35, 38), Margin = Padding.Empty };
+                ApplyRoundedCorners(empty, 7);
+                var add = CreateHappButton("Добавить подписку", ShowHappAddConfiguration, true);
+                add.Size = new Size(176, 34);
+                add.Location = new Point(16, 19);
+                empty.Controls.Add(add);
+                _soraSubscriptionSectionsHost.Controls.Add(empty);
+                _soraServerListHost.Visible = false;
+            }
+            else
+            {
+                foreach (SubItem subscription in subscriptions)
+                {
+                    SoraSubscriptionSectionControls controls = BuildSoraSubscriptionSection(subscription);
+                    _soraSubscriptionSections[subscription.id] = controls;
+                    _soraSubscriptionSectionsHost.Controls.Add(controls.Section);
+                    if (controls.Expanded)
+                    {
+                        _soraServerListHost.Parent = controls.Section;
+                        _soraServerListHost.Visible = true;
+                        _soraServerListHost.BringToFront();
+                    }
+                }
+            }
+            _soraSubscriptionSectionsHost.ResumeLayout(true);
+            LayoutSoraSubscriptionSections();
+            RefreshSoraSubscriptionCard();
+
+            if (animateExpansion && !string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId) && _soraSubscriptionSections.TryGetValue(_soraExpandedSubscriptionId, out SoraSubscriptionSectionControls expanded))
+            {
+                StartSoraSubscriptionExpansion(expanded.Section);
+            }
+        }
+
+        private SoraSubscriptionSectionControls BuildSoraSubscriptionSection(SubItem subscription)
+        {
+            const int expandedHeaderHeight = 154;
+            bool expanded = string.Equals(subscription.id, _soraExpandedSubscriptionId, StringComparison.Ordinal);
             Color cardBackground = Color.FromArgb(35, 35, 38);
-            var card = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = cardBackground, AccessibleName = "Подписка" };
+            var section = new Panel { Height = expanded ? 360 : 76, BackColor = HappPane, Margin = new Padding(0, 0, 0, 8), AccessibleName = "Подписка " + GetSoraSubscriptionTitle(subscription) };
+            var card = new Panel { Dock = DockStyle.Top, Height = expanded ? expandedHeaderHeight : 76, BackColor = cardBackground, Cursor = Cursors.Hand };
             ApplyRoundedCorners(card, 7);
-            _soraSubscriptionTitle = new Label { Location = new Point(16, 7), Size = new Size(280, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionDetail = new Label { Location = new Point(16, 31), Size = new Size(390, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionSchedule = new Label { Location = new Point(16, 50), Size = new Size(390, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            _soraSubscriptionQuotaTrack = new Panel { Location = new Point(16, 72), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84) };
-            _soraSubscriptionQuotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
-            _soraSubscriptionQuotaTrack.Controls.Add(_soraSubscriptionQuotaFill);
-            _soraSubscriptionQuota = new Label { Location = new Point(16, 78), Size = new Size(238, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
-            _soraSubscriptionExpiry = new Label { Location = new Point(266, 78), Size = new Size(140, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true };
-            _soraSubscriptionAnnouncement = new SoraMarkdownView { Location = new Point(12, 99), Size = new Size(398, 52), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки" };
-            _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
-            _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
-            Button actions = CreateHappSmallButton("dots-three", ShowSoraSubscriptionCardMenu);
-            Button[] buttons = { _soraSubscriptionRefresh, _soraSubscriptionPing, actions };
+
+            Image chevronImage = HappIconLoader.Load("caret-right", HappText);
+            if (expanded) chevronImage.RotateFlip(RotateFlipType.Rotate90FlipNone);
+            var chevron = CreateHappSmallButton("caret-right", () => ToggleSoraSubscriptionSection(subscription.id));
+            chevron.Image?.Dispose();
+            chevron.Image = chevronImage;
+            chevron.SetBounds(8, 7, 28, 28);
+            chevron.BackColor = cardBackground;
+            chevron.AccessibleName = expanded ? "Свернуть подписку" : "Развернуть подписку";
+
+            var title = new Label { Location = new Point(42, 7), Size = new Size(250, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var detail = new Label { Location = new Point(42, 31), Size = new Size(360, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var schedule = new Label { Location = new Point(42, 50), Size = new Size(360, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand, Visible = expanded };
+            var quotaTrack = new Panel { Location = new Point(16, 72), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84), Visible = expanded };
+            var quotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
+            quotaTrack.Controls.Add(quotaFill);
+            var quota = new Label { Location = new Point(16, 78), Size = new Size(238, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, Visible = expanded };
+            var expiry = new Label { Location = new Point(266, 78), Size = new Size(140, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Visible = expanded };
+            var announcement = new SoraMarkdownView { Location = new Point(12, 99), Size = new Size(398, 47), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки", Visible = expanded };
+
+            bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
+            var refresh = CreateHappSmallButton("arrows-clockwise", () => StartSoraSubscriptionUpdate(subscription.id));
+            var ping = CreateHappSmallButton("gauge", () => TestSoraSubscriptionServers(subscription));
+            var actions = CreateHappSmallButton("dots-three", () => ShowSoraSubscriptionCardMenu(subscription));
+            Button[] buttons = { refresh, ping, actions };
             for (int index = 0; index < buttons.Length; index++)
             {
                 buttons[index].Dock = DockStyle.None;
                 buttons[index].Size = new Size(28, 28);
-                buttons[index].Location = new Point(card.Width - 100 + index * 30, 7);
                 buttons[index].BackColor = cardBackground;
                 buttons[index].UseVisualStyleBackColor = false;
                 buttons[index].FlatAppearance.MouseOverBackColor = Color.FromArgb(55, 55, 60);
@@ -374,34 +470,113 @@ namespace v2rayN.Forms
                 ApplyRoundedCorners(buttons[index], 5);
                 card.Controls.Add(buttons[index]);
             }
-            Action open = OpenSoraPrimarySubscription;
-            _soraSubscriptionTitle.Click += (sender, args) => open();
-            _soraSubscriptionDetail.Click += (sender, args) => open();
-            _soraSubscriptionSchedule.Click += (sender, args) => open();
-            _soraSubscriptionAnnouncement.DoubleClick += (sender, args) => ShowSoraPrimarySubscriptionAnnouncement();
+            refresh.Visible = remote;
+
+            Action toggle = () => ToggleSoraSubscriptionSection(subscription.id);
+            title.Click += (sender, args) => toggle();
+            detail.Click += (sender, args) => toggle();
+            schedule.Click += (sender, args) => toggle();
+            card.DoubleClick += (sender, args) => ShowSoraSubscriptionEditor(subscription);
+            announcement.DoubleClick += (sender, args) => ShowSoraSubscriptionAnnouncement(subscription);
             card.Resize += (sender, args) =>
             {
-                _soraSubscriptionTitle.Width = Math.Max(120, card.ClientSize.Width - 116);
-                for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 100 + index * 30;
-                _soraSubscriptionQuotaTrack.Width = Math.Max(80, card.ClientSize.Width - 32);
-                _soraSubscriptionDetail.Width = _soraSubscriptionQuotaTrack.Width;
-                int expiryWidth = Math.Max(108, _soraSubscriptionQuotaTrack.Width / 2);
-                _soraSubscriptionQuota.Width = Math.Max(80, _soraSubscriptionQuotaTrack.Width - expiryWidth - 12);
-                _soraSubscriptionExpiry.SetBounds(16 + _soraSubscriptionQuotaTrack.Width - expiryWidth, 78, expiryWidth, 18);
-                _soraSubscriptionSchedule.Width = _soraSubscriptionQuotaTrack.Width;
-                _soraSubscriptionAnnouncement.Width = Math.Max(80, card.ClientSize.Width - 24);
-                _soraSubscriptionAnnouncement.Height = Math.Max(44, card.ClientSize.Height - 106);
-                RefreshSoraSubscriptionCard();
+                int width = card.ClientSize.Width;
+                title.Width = Math.Max(100, width - 150);
+                detail.Width = Math.Max(100, width - 58);
+                schedule.Width = Math.Max(100, width - 58);
+                for (int index = 0; index < buttons.Length; index++) buttons[index].Left = width - 96 + index * 30;
+                quotaTrack.Width = Math.Max(80, width - 32);
+                int expiryWidth = Math.Max(108, quotaTrack.Width / 2);
+                quota.Width = Math.Max(80, quotaTrack.Width - expiryWidth - 12);
+                expiry.SetBounds(16 + quotaTrack.Width - expiryWidth, 78, expiryWidth, 18);
+                announcement.Width = Math.Max(80, width - 24);
             };
-            card.Controls.Add(_soraSubscriptionAnnouncement);
-            card.Controls.Add(_soraSubscriptionExpiry);
-            card.Controls.Add(_soraSubscriptionQuota);
-            card.Controls.Add(_soraSubscriptionQuotaTrack);
-            card.Controls.Add(_soraSubscriptionSchedule);
-            card.Controls.Add(_soraSubscriptionDetail);
-            card.Controls.Add(_soraSubscriptionTitle);
-            StartSoraSubscriptionSummary();
-            return card;
+
+            card.Controls.AddRange(new Control[] { announcement, expiry, quota, quotaTrack, schedule, detail, title, chevron });
+            section.Controls.Add(card);
+            return new SoraSubscriptionSectionControls
+            {
+                Subscription = subscription,
+                Section = section,
+                Card = card,
+                Title = title,
+                Detail = detail,
+                Schedule = schedule,
+                QuotaTrack = quotaTrack,
+                QuotaFill = quotaFill,
+                Quota = quota,
+                Expiry = expiry,
+                Announcement = announcement,
+                Refresh = refresh,
+                Ping = ping,
+                Expanded = expanded
+            };
+        }
+
+        private void ToggleSoraSubscriptionSection(string subscriptionId)
+        {
+            _soraExpandedSubscriptionId = string.Equals(_soraExpandedSubscriptionId, subscriptionId, StringComparison.Ordinal)
+                ? null
+                : subscriptionId;
+            RefreshServers();
+            RebuildSoraSubscriptionSections(!string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId));
+        }
+
+        private void LayoutSoraSubscriptionSections()
+        {
+            if (_soraSubscriptionSectionsHost == null) return;
+            int width = Math.Max(160, _soraSubscriptionSectionsHost.ClientSize.Width - (_soraSubscriptionSectionsHost.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0));
+            int collapsedHeight = _soraSubscriptionSections.Values.Where(item => !item.Expanded).Sum(item => item.Section.Height + item.Section.Margin.Vertical);
+            int expandedHeight = Math.Max(280, _soraSubscriptionSectionsHost.ClientSize.Height - collapsedHeight - 8);
+            foreach (SoraSubscriptionSectionControls controls in _soraSubscriptionSections.Values)
+            {
+                controls.Section.Width = width;
+                if (controls.Expanded)
+                {
+                    controls.Section.Height = expandedHeight;
+                    _soraServerListHost?.SetBounds(0, 154, width, Math.Max(120, expandedHeight - 154));
+                }
+                else
+                {
+                    controls.Section.Height = 76;
+                }
+            }
+            foreach (Control control in _soraSubscriptionSectionsHost.Controls)
+            {
+                control.Width = width;
+            }
+        }
+
+        private void StartSoraSubscriptionExpansion(Panel section)
+        {
+            _soraSubscriptionAnimatingPanel = section;
+            _soraSubscriptionAnimationTarget = section.Height;
+            _soraSubscriptionAnimationFrame = 0;
+            section.Height = 76;
+            _soraServerListHost.Visible = false;
+            if (_soraSubscriptionAnimationTimer == null)
+            {
+                _soraSubscriptionAnimationTimer = new Timer(components) { Interval = 16 };
+                _soraSubscriptionAnimationTimer.Tick += (sender, args) =>
+                {
+                    if (_soraSubscriptionAnimatingPanel == null || _soraSubscriptionAnimatingPanel.IsDisposed)
+                    {
+                        _soraSubscriptionAnimationTimer.Stop();
+                        return;
+                    }
+                    _soraSubscriptionAnimationFrame++;
+                    double progress = Math.Min(1D, _soraSubscriptionAnimationFrame / 9D);
+                    double eased = 1D - Math.Pow(1D - progress, 3D);
+                    _soraSubscriptionAnimatingPanel.Height = 76 + (int)Math.Round((_soraSubscriptionAnimationTarget - 76) * eased);
+                    if (progress >= 1D)
+                    {
+                        _soraSubscriptionAnimationTimer.Stop();
+                        _soraServerListHost.Visible = true;
+                        _soraServerListHost.BringToFront();
+                    }
+                };
+            }
+            _soraSubscriptionAnimationTimer.Start();
         }
 
         private void HideSoraServerScrollbars()
@@ -865,6 +1040,24 @@ namespace v2rayN.Forms
         {
             internal long Stamp { get; set; }
             internal string[] Values { get; set; }
+        }
+
+        private sealed class SoraSubscriptionSectionControls
+        {
+            internal SubItem Subscription { get; set; }
+            internal Panel Section { get; set; }
+            internal Panel Card { get; set; }
+            internal Label Title { get; set; }
+            internal Label Detail { get; set; }
+            internal Label Schedule { get; set; }
+            internal Panel QuotaTrack { get; set; }
+            internal Panel QuotaFill { get; set; }
+            internal Label Quota { get; set; }
+            internal Label Expiry { get; set; }
+            internal SoraMarkdownView Announcement { get; set; }
+            internal Button Refresh { get; set; }
+            internal Button Ping { get; set; }
+            internal bool Expanded { get; set; }
         }
 
         private void ShowHappServerMenu()

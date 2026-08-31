@@ -102,8 +102,30 @@ $instanceBinding = [System.Reflection.BindingFlags]'NonPublic, Instance'
 if ($null -ne $mainFormType.GetMethod('BuildHappSubscriptionsPage', $instanceBinding)) {
     throw 'The detached subscriptions page must not return'
 }
-if ($null -eq $mainFormType.GetMethod('BuildSoraInlineSubscriptionCard', $instanceBinding)) {
-    throw 'The inline subscriptions card is missing from the servers screen'
+if ($null -ne $mainFormType.GetMethod('BuildSoraInlineSubscriptionCard', $instanceBinding)) {
+    throw 'The single flat subscription card must not return'
+}
+if ($null -eq $mainFormType.GetMethod('BuildSoraSubscriptionAccordion', $instanceBinding)) {
+    throw 'Separate collapsible subscription sections are missing from the servers screen'
+}
+if ($null -eq $mainFormType.GetField('_soraExpandedSubscriptionId', $instanceBinding)) {
+    throw 'Subscription expansion state is missing'
+}
+$staticBinding = [System.Reflection.BindingFlags]'NonPublic, Static'
+$addImportContainer = $mainFormType.GetMethod('AddSoraImportContainer', $staticBinding)
+if ($null -eq $addImportContainer) {
+    throw 'Local imports cannot be assigned to their own subscription container'
+}
+$importConfig = [Activator]::CreateInstance($assembly.GetType('v2rayN.Mode.Config', $true))
+$subItemListType = [System.Collections.Generic.List``1].MakeGenericType($subItemType)
+$subItemList = [Activator]::CreateInstance($subItemListType)
+$importConfig.GetType().GetProperty('subItem').SetValue($importConfig, $subItemList)
+$localContainer = $addImportContainer.Invoke($null, @($importConfig, '', 'Imported VLESS'))
+if ([string]::IsNullOrWhiteSpace($subItemType.GetProperty('id').GetValue($localContainer)) -or
+    $subItemType.GetProperty('remarks').GetValue($localContainer) -ne 'Imported VLESS' -or
+    $subItemType.GetProperty('url').GetValue($localContainer) -ne '' -or
+    $subItemList.Count -ne 1) {
+    throw 'A direct import was not isolated in a named local subscription'
 }
 if ($null -eq $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
     throw 'The compact traffic summary is missing below the connection button'
@@ -189,4 +211,4 @@ if (-not [string]::IsNullOrWhiteSpace($SubscriptionPath)) {
     Write-Output "Supplied subscription: PASS ($realCount Xray-compatible profiles)"
 }
 
-Write-Output 'Sora regression: PASS (subscription, local Xray ports, localization, Markdown, inline management)'
+Write-Output 'Sora regression: PASS (separate subscriptions, local Xray ports, localization, Markdown, inline management)'

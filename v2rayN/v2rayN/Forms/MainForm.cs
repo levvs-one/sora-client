@@ -277,6 +277,7 @@ namespace v2rayN.Forms
         {
             lstVmess = config.vmess
                 .Where(it => Utils.IsNullOrEmpty(_groupId) || it.groupId == _groupId)
+                .Where(it => Utils.IsNullOrEmpty(_soraExpandedSubscriptionId) || it.subid == _soraExpandedSubscriptionId)
                 .Where(it => Utils.IsNullOrEmpty(serverFilter) || it.remarks.Contains(serverFilter))
                 .OrderBy(it => it.sort)
                 .ToList();

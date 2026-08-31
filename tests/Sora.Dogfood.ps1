@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)][string]$StagePath,
     [string]$SubscriptionUrl = '',
     [string]$SubscriptionPayloadPath = '',

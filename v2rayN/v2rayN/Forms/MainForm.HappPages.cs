@@ -897,6 +897,7 @@ namespace v2rayN.Forms
                 _soraSubscriptionPing.Enabled = false;
                 _soraSubscriptionQuotaTrack.Visible = false;
                 _soraSubscriptionQuota.Text = string.Empty;
+                _soraSubscriptionExpiry.Text = string.Empty;
                 return;
             }
 
@@ -920,8 +921,9 @@ namespace v2rayN.Forms
                 : 0;
             string expiry = FormatSoraSubscriptionExpiry(subscription.subscriptionExpireUnixSeconds);
             _soraSubscriptionQuota.Text = hasQuota
-                ? Utils.HumanFy(used) + " из " + Utils.HumanFy(total) + (string.IsNullOrWhiteSpace(expiry) ? string.Empty : "   до " + expiry)
+                ? Utils.HumanFy(used) + " из " + Utils.HumanFy(total)
                 : "Источник: " + GetSoraSubscriptionHost(subscription.url);
+            _soraSubscriptionExpiry.Text = string.IsNullOrWhiteSpace(expiry) ? string.Empty : "До " + expiry;
             _soraSubscriptionAnnouncement.MarkdownText = string.IsNullOrWhiteSpace(subscription.subscriptionAnnouncement)
                 ? "_" + SoraText.Translate("Описание не добавлено.") + "_"
                 : subscription.subscriptionAnnouncement;

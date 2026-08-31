@@ -62,6 +62,10 @@ namespace v2rayN.Mode
 
         public bool soraTrafficStatisticsConfigured { get; set; }
 
+        public bool soraUseTun { get; set; }
+
+        public bool soraReconnectOnStart { get; set; }
+
         /// <summary>
         /// 去重时优先保留较旧（顶部）节点
         /// </summary>

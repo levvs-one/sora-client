@@ -44,6 +44,7 @@ namespace v2rayN.Forms
         private Panel _soraSubscriptionQuotaTrack;
         private Panel _soraSubscriptionQuotaFill;
         private Label _soraSubscriptionQuota;
+        private Label _soraSubscriptionExpiry;
         private Label _soraSubscriptionSchedule;
         private SoraMarkdownView _soraSubscriptionAnnouncement;
         private Timer _soraSubscriptionSummaryTimer;
@@ -51,6 +52,7 @@ namespace v2rayN.Forms
         private Timer _soraTrafficTimer;
         private bool _happUseTun;
         private Button _happModeButton;
+        private ToolTip _happModeNotice;
         private bool _happReportShortcutWired;
         private int _happHoveredServerIndex = -1;
         private HappListScrollRail _happServerScroll;
@@ -353,7 +355,8 @@ namespace v2rayN.Forms
             _soraSubscriptionQuotaTrack = new Panel { Location = new Point(16, 72), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84) };
             _soraSubscriptionQuotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
             _soraSubscriptionQuotaTrack.Controls.Add(_soraSubscriptionQuotaFill);
-            _soraSubscriptionQuota = new Label { Location = new Point(16, 78), Size = new Size(390, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+            _soraSubscriptionQuota = new Label { Location = new Point(16, 78), Size = new Size(238, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
+            _soraSubscriptionExpiry = new Label { Location = new Point(266, 78), Size = new Size(140, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true };
             _soraSubscriptionAnnouncement = new SoraMarkdownView { Location = new Point(12, 99), Size = new Size(398, 52), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки" };
             _soraSubscriptionRefresh = CreateHappSmallButton("arrows-clockwise", UpdateSoraPrimarySubscription);
             _soraSubscriptionPing = CreateHappSmallButton("gauge", TestSoraPrimarySubscriptionServers);
@@ -382,13 +385,16 @@ namespace v2rayN.Forms
                 for (int index = 0; index < buttons.Length; index++) buttons[index].Left = card.ClientSize.Width - 100 + index * 30;
                 _soraSubscriptionQuotaTrack.Width = Math.Max(80, card.ClientSize.Width - 32);
                 _soraSubscriptionDetail.Width = _soraSubscriptionQuotaTrack.Width;
-                _soraSubscriptionQuota.Width = _soraSubscriptionQuotaTrack.Width;
+                int expiryWidth = Math.Max(108, _soraSubscriptionQuotaTrack.Width / 2);
+                _soraSubscriptionQuota.Width = Math.Max(80, _soraSubscriptionQuotaTrack.Width - expiryWidth - 12);
+                _soraSubscriptionExpiry.SetBounds(16 + _soraSubscriptionQuotaTrack.Width - expiryWidth, 78, expiryWidth, 18);
                 _soraSubscriptionSchedule.Width = _soraSubscriptionQuotaTrack.Width;
                 _soraSubscriptionAnnouncement.Width = Math.Max(80, card.ClientSize.Width - 24);
                 _soraSubscriptionAnnouncement.Height = Math.Max(44, card.ClientSize.Height - 106);
                 RefreshSoraSubscriptionCard();
             };
             card.Controls.Add(_soraSubscriptionAnnouncement);
+            card.Controls.Add(_soraSubscriptionExpiry);
             card.Controls.Add(_soraSubscriptionQuota);
             card.Controls.Add(_soraSubscriptionQuotaTrack);
             card.Controls.Add(_soraSubscriptionSchedule);
@@ -474,6 +480,13 @@ namespace v2rayN.Forms
             _happModeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _happModeButton.Size = new Size(120, 32);
             _happModeButton.Location = new Point(410, 18);
+            _happModeNotice = new ToolTip(components)
+            {
+                BackColor = Color.FromArgb(48, 48, 52),
+                ForeColor = HappText,
+                IsBalloon = false,
+                ShowAlways = true
+            };
             pane.Resize += (sender, args) => _happModeButton.Left = pane.ClientSize.Width - _happModeButton.Width - 20;
             _happConnection = new HappConnectionControl { Anchor = AnchorStyles.None, Location = new Point(150, 72) };
             _happConnection.PowerClick += async (sender, args) =>
@@ -908,13 +921,29 @@ namespace v2rayN.Forms
 
         private void SetHappConnectionMode(bool useTun)
         {
+            bool changed = _happUseTun != useTun;
+            bool active = (config != null && config.sysProxyType == ESysProxyType.ForcedChange && v2rayHandler != null && v2rayHandler.IsRunning)
+                || (_tunModeController != null && _tunModeController.IsRunning);
             _happUseTun = useTun;
+            if (config != null)
+            {
+                config.soraUseTun = useTun;
+                ConfigHandler.SaveConfig(ref config, false);
+            }
             if (_happModeButton == null)
             {
                 return;
             }
             _happModeButton.Text = useTun ? "TUN" : SoraText.Translate("Прокси");
             _happModeButton.AccessibleName = SoraText.Translate("Режим подключения: ") + _happModeButton.Text;
+            if (changed && active)
+            {
+                _happModeNotice?.Show(
+                    SoraText.Translate("Режим сохранён. Отключитесь и подключитесь снова, чтобы применить его."),
+                    _happModeButton,
+                    new Point(0, _happModeButton.Height + 4),
+                    4500);
+            }
         }
 
         private ContextMenuStrip BuildHappMenu()

@@ -61,6 +61,7 @@ namespace v2rayN.Forms
             }
 
             ConfigHandler.InitBuiltinRouting(ref config);
+            SetHappConnectionMode(config.soraUseTun);
             if (!config.soraTrafficStatisticsConfigured)
             {
                 config.enableStatistics = true;
@@ -115,10 +116,25 @@ namespace v2rayN.Forms
             MainFormHandler.Instance.UpdateTask(config, UpdateTaskHandler);
             MainFormHandler.Instance.RegisterGlobalHotkey(config, OnHotkeyHandler, UpdateTaskHandler);
 
-            await LoadV2ray();
-            if (_startTun)
+            if (_startTun || config.soraReconnectOnStart)
             {
-                await StartCommunityTunAsync();
+                if (_startTun || config.soraUseTun)
+                {
+                    await StartCommunityTunAsync();
+                }
+                else
+                {
+                    await StartCommunityProxyAsync();
+                }
+            }
+            else if (config.sysProxyType == ESysProxyType.ForcedChange)
+            {
+                SetHappConnectionMode(false);
+                await StartCommunityProxyAsync();
+            }
+            else
+            {
+                await LoadV2ray();
             }
 
             if (!Utils.CheckForDotNetVersion())

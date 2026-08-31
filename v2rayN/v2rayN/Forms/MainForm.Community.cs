@@ -669,6 +669,10 @@ namespace v2rayN.Forms
             }
 
             SetListenerType(ESysProxyType.ForcedChange);
+            config.soraUseTun = false;
+            config.soraReconnectOnStart = true;
+            ConfigHandler.SaveConfig(ref config, false);
+            Utils.SetAutoRun(true);
         }
 
         private async Task<bool> EnsureCommunityCoreAsync(bool forceReload)
@@ -779,6 +783,10 @@ namespace v2rayN.Forms
             }
             if (!Utils.IsAdministrator())
             {
+                config.soraUseTun = true;
+                config.soraReconnectOnStart = true;
+                ConfigHandler.SaveConfig(ref config, false);
+                Utils.SetAutoRun(true);
                 RestartCommunityAsAdministrator();
                 return;
             }
@@ -850,6 +858,10 @@ namespace v2rayN.Forms
                 UI.ShowWarning("TUN завершился при запуске. Подробности находятся в журнале подключения.");
                 return;
             }
+            config.soraUseTun = true;
+            config.soraReconnectOnStart = true;
+            ConfigHandler.SaveConfig(ref config, false);
+            Utils.SetAutoRun(true);
             UpdateCommunityConnectionState(config.sysProxyType);
         }
 
@@ -869,10 +881,14 @@ namespace v2rayN.Forms
             }
             catch (Win32Exception exception) when (exception.NativeErrorCode == 1223)
             {
+                config.soraReconnectOnStart = false;
+                ConfigHandler.SaveConfig(ref config, false);
                 UI.ShowWarning("TUN не включён: запрос прав администратора отменён.");
             }
             catch (Exception exception)
             {
+                config.soraReconnectOnStart = false;
+                ConfigHandler.SaveConfig(ref config, false);
                 UI.ShowWarning("Не удалось перезапустить приложение с правами администратора: " + exception.Message);
             }
         }
@@ -919,6 +935,7 @@ namespace v2rayN.Forms
                 _happConnection.State = SoraConnectionState.Disconnecting;
             }
             StopCommunityTun();
+            config.soraReconnectOnStart = false;
             SetListenerType(ESysProxyType.ForcedClear);
         }
 

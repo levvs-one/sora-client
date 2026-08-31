@@ -25,7 +25,9 @@ namespace v2rayN.Forms
         private static readonly Color HappText = Color.FromArgb(247, 247, 248);
         private static readonly Color HappMuted = Color.FromArgb(214, 214, 218);
         private static readonly Color HappLine = Color.FromArgb(128, 128, 132);
-        private static readonly Color HappBorder = Color.FromArgb(55, 55, 59);
+        private static readonly Color HappControlBorder = Color.FromArgb(76, 76, 81);
+        private static readonly Color HappListBorder = Color.FromArgb(45, 45, 49);
+        private static readonly Color HappDivider = Color.FromArgb(49, 49, 53);
         private static readonly Color HappServerSurface = Color.FromArgb(29, 29, 32);
 
         private Panel _happPageHost;
@@ -254,10 +256,10 @@ namespace v2rayN.Forms
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappBorder, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(1) };
-            ApplyRoundedCorners(searchBox, 7);
+            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappControlBorder, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(1) };
+            ApplyRoundedCorners(searchBox, 6);
             var searchContent = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = Padding.Empty, Padding = Padding.Empty };
-            ApplyRoundedCorners(searchContent, 6);
+            ApplyRoundedCorners(searchContent, 5);
             _communitySearch = new TextBox { BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = SoraText.Translate("Введите текст для поиска"), TabStop = true, AccessibleName = "Поиск серверов" };
             _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
@@ -281,8 +283,8 @@ namespace v2rayN.Forms
                 _communitySearch.SetBounds(12, textTop, Math.Max(80, searchContent.ClientSize.Width - searchButton.Width - 20), textHeight);
             };
             searchContent.Resize += (sender, args) => positionSearch();
-            _communitySearch.Enter += (sender, args) => searchBox.BackColor = Color.FromArgb(78, 78, 83);
-            _communitySearch.Leave += (sender, args) => searchBox.BackColor = HappBorder;
+            _communitySearch.Enter += (sender, args) => searchBox.BackColor = Color.FromArgb(112, 112, 118);
+            _communitySearch.Leave += (sender, args) => searchBox.BackColor = HappControlBorder;
             searchBox.Controls.Add(searchContent);
             positionSearch();
             searchButton.BringToFront();
@@ -293,10 +295,10 @@ namespace v2rayN.Forms
 
             pane.Controls.Add(BuildSoraInlineSubscriptionCard(), 0, 2);
 
-            var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappBorder, Margin = Padding.Empty, Padding = new Padding(1) };
-            ApplyRoundedCorners(listHost, 8);
+            var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappListBorder, Margin = Padding.Empty, Padding = new Padding(1) };
+            ApplyRoundedCorners(listHost, 6);
             var listSurface = new Panel { Dock = DockStyle.Fill, BackColor = HappServerSurface, Margin = Padding.Empty };
-            ApplyRoundedCorners(listSurface, 7);
+            ApplyRoundedCorners(listSurface, 5);
             listHost.Controls.Add(listSurface);
             lvServers.Parent = listSurface;
             lvServers.Dock = DockStyle.Fill;
@@ -625,7 +627,7 @@ namespace v2rayN.Forms
                     }
                 }
             }
-            using (var line = new Pen(HappBorder)) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+            using (var line = new Pen(HappDivider)) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
         }
 
         private void EnsureSoraPingAnimation()

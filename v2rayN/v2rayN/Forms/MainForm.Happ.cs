@@ -583,7 +583,15 @@ namespace v2rayN.Forms
             {
                 if (item != null && config.IsActiveNode(item))
                 {
-                    using (var marker = new SolidBrush(HappAccent)) args.Graphics.FillRectangle(marker, args.Bounds.Left, args.Bounds.Top + 10, 3, args.Bounds.Height - 20);
+                    Rectangle markerBounds = new Rectangle(args.Bounds.Left + 3, args.Bounds.Top + 15, 4, args.Bounds.Height - 30);
+                    SmoothingMode previous = args.Graphics.SmoothingMode;
+                    args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (GraphicsPath markerPath = CreateRoundedPath(markerBounds, 2))
+                    using (var marker = new SolidBrush(Color.FromArgb(142, 142, 149)))
+                    {
+                        args.Graphics.FillPath(marker, markerPath);
+                    }
+                    args.Graphics.SmoothingMode = previous;
                 }
                 DrawSoraCountryMark(args.Graphics, new Rectangle(args.Bounds.Left + 7, args.Bounds.Top + 20, 22, 17), item?.remarks);
             }

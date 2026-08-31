@@ -25,6 +25,8 @@ namespace v2rayN.Forms
         private static readonly Color HappText = Color.FromArgb(247, 247, 248);
         private static readonly Color HappMuted = Color.FromArgb(214, 214, 218);
         private static readonly Color HappLine = Color.FromArgb(128, 128, 132);
+        private static readonly Color HappBorder = Color.FromArgb(55, 55, 59);
+        private static readonly Color HappServerSurface = Color.FromArgb(29, 29, 32);
 
         private Panel _happPageHost;
         private Control _happServerPage;
@@ -252,8 +254,10 @@ namespace v2rayN.Forms
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             searchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = new Padding(0, 2, 8, 4), Padding = Padding.Empty };
-            ApplyRoundedSurface(searchBox, 5, Color.FromArgb(100, 100, 105));
+            var searchBox = new Panel { Dock = DockStyle.Fill, BackColor = HappBorder, Margin = new Padding(0, 2, 8, 4), Padding = new Padding(1) };
+            ApplyRoundedCorners(searchBox, 7);
+            var searchContent = new Panel { Dock = DockStyle.Fill, BackColor = HappNav, Margin = Padding.Empty, Padding = Padding.Empty };
+            ApplyRoundedCorners(searchContent, 6);
             _communitySearch = new TextBox { BorderStyle = BorderStyle.None, BackColor = HappNav, ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), Text = SoraText.Translate("Введите текст для поиска"), TabStop = true, AccessibleName = "Поиск серверов" };
             _communitySearch.ContextMenuStrip = CreateSoraTextContextMenu(_communitySearch);
             WireHappSearch();
@@ -267,15 +271,19 @@ namespace v2rayN.Forms
             searchButton.Margin = Padding.Empty;
             searchButton.BackColor = HappNav;
             searchButton.UseVisualStyleBackColor = false;
-            searchBox.Controls.Add(_communitySearch);
-            searchBox.Controls.Add(searchButton);
+            searchButton.TabStop = false;
+            searchContent.Controls.Add(_communitySearch);
+            searchContent.Controls.Add(searchButton);
             Action positionSearch = () =>
             {
                 int textHeight = _communitySearch.PreferredHeight;
-                int textTop = Math.Max(0, (searchBox.ClientSize.Height - textHeight) / 2);
-                _communitySearch.SetBounds(12, textTop, Math.Max(80, searchBox.ClientSize.Width - searchButton.Width - 20), textHeight);
+                int textTop = Math.Max(0, (searchContent.ClientSize.Height - textHeight) / 2);
+                _communitySearch.SetBounds(12, textTop, Math.Max(80, searchContent.ClientSize.Width - searchButton.Width - 20), textHeight);
             };
-            searchBox.Resize += (sender, args) => positionSearch();
+            searchContent.Resize += (sender, args) => positionSearch();
+            _communitySearch.Enter += (sender, args) => searchBox.BackColor = Color.FromArgb(78, 78, 83);
+            _communitySearch.Leave += (sender, args) => searchBox.BackColor = HappBorder;
+            searchBox.Controls.Add(searchContent);
             positionSearch();
             searchButton.BringToFront();
             searchRow.Controls.Add(searchBox, 0, 0);
@@ -285,11 +293,15 @@ namespace v2rayN.Forms
 
             pane.Controls.Add(BuildSoraInlineSubscriptionCard(), 0, 2);
 
-            var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappPane, Margin = Padding.Empty };
-            lvServers.Parent = listHost;
+            var listHost = new Panel { Dock = DockStyle.Fill, BackColor = HappBorder, Margin = Padding.Empty, Padding = new Padding(1) };
+            ApplyRoundedCorners(listHost, 8);
+            var listSurface = new Panel { Dock = DockStyle.Fill, BackColor = HappServerSurface, Margin = Padding.Empty };
+            ApplyRoundedCorners(listSurface, 7);
+            listHost.Controls.Add(listSurface);
+            lvServers.Parent = listSurface;
             lvServers.Dock = DockStyle.Fill;
             lvServers.BorderStyle = BorderStyle.None;
-            lvServers.BackColor = HappPane;
+            lvServers.BackColor = HappServerSurface;
             lvServers.ForeColor = HappText;
             lvServers.Font = new Font("Segoe UI", 9F);
             lvServers.HeaderStyle = ColumnHeaderStyle.None;
@@ -309,18 +321,19 @@ namespace v2rayN.Forms
             lvServers.Resize += (sender, args) => ConfigureSoraServerList();
             _communityRowHeight = new ImageList(components) { ImageSize = new Size(1, 58), ColorDepth = ColorDepth.Depth32Bit };
             lvServers.SmallImageList = _communityRowHeight;
-            _happServerScroll = new HappListScrollRail(lvServers, HappPane, Color.FromArgb(124, 124, 130))
+            _happServerScroll = new HappListScrollRail(lvServers, HappServerSurface, Color.FromArgb(124, 124, 130))
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom,
                 Width = 18
             };
-            listHost.Controls.Add(_happServerScroll);
-            Action positionServerScroll = () => _happServerScroll.SetBounds(Math.Max(0, listHost.ClientSize.Width - 18), 0, 18, listHost.ClientSize.Height);
-            listHost.Resize += (sender, args) => positionServerScroll();
+            listSurface.Controls.Add(_happServerScroll);
+            Action positionServerScroll = () => _happServerScroll.SetBounds(Math.Max(0, listSurface.ClientSize.Width - 18), 0, 18, listSurface.ClientSize.Height);
+            listSurface.Resize += (sender, args) => positionServerScroll();
             positionServerScroll();
             _happServerScroll.BringToFront();
             _communityEmptyState = BuildHappEmptyState();
-            listHost.Controls.Add(_communityEmptyState);
+            _communityEmptyState.BackColor = HappServerSurface;
+            listSurface.Controls.Add(_communityEmptyState);
             _communityEmptyState.BringToFront();
             pane.Controls.Add(listHost, 0, 3);
             return pane;
@@ -563,7 +576,7 @@ namespace v2rayN.Forms
         {
             bool selected = args.Item.Selected;
             bool hovered = args.ItemIndex == _happHoveredServerIndex;
-            Color background = selected ? Color.FromArgb(52, 52, 56) : hovered ? Color.FromArgb(37, 37, 41) : Color.FromArgb(29, 29, 32);
+            Color background = selected ? Color.FromArgb(52, 52, 56) : hovered ? Color.FromArgb(37, 37, 41) : HappServerSurface;
             using (var fill = new SolidBrush(background)) args.Graphics.FillRectangle(fill, args.Bounds);
             VmessItem item = args.ItemIndex >= 0 && args.ItemIndex < lstVmess.Count ? lstVmess[args.ItemIndex] : null;
             if (args.ColumnIndex == 0)
@@ -604,7 +617,7 @@ namespace v2rayN.Forms
                     }
                 }
             }
-            using (var line = new Pen(Color.FromArgb(48, 48, 52))) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
+            using (var line = new Pen(HappBorder)) args.Graphics.DrawLine(line, args.Bounds.Left, args.Bounds.Bottom - 1, args.Bounds.Right, args.Bounds.Bottom - 1);
         }
 
         private void EnsureSoraPingAnimation()

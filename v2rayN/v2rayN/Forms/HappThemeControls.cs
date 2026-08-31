@@ -185,10 +185,10 @@ namespace v2rayN.Forms
 
             e.Graphics.DrawImage(_powerImage, new Rectangle(Width / 2 - 14, Height / 2 - 49, 28, 28));
 
-            string state = _state == SoraConnectionState.Connected ? "ПОДКЛЮЧЕНО" :
+            string state = _state == SoraConnectionState.Connected ? "ОТКЛЮЧИТЬСЯ" :
                 _state == SoraConnectionState.Connecting ? "ПОДКЛЮЧЕНИЕ" :
                 _state == SoraConnectionState.Disconnecting ? "ОТКЛЮЧЕНИЕ" :
-                _state == SoraConnectionState.Error ? "ОШИБКА" : "ОТКЛЮЧЕНО";
+                _state == SoraConnectionState.Error ? "ПОВТОРИТЬ" : "ПОДКЛЮЧИТЬСЯ";
             state = SoraText.Translate(state);
             TextRenderer.DrawText(e.Graphics, state, _stateFont, new Rectangle(0, Height / 2 - 6, Width, 18), Color.FromArgb(210, 212, 220), TextFormatFlags.HorizontalCenter);
             if (connected)

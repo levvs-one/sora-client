@@ -358,16 +358,7 @@ namespace v2rayN.Forms
             _communityTun.Click += async (sender, args) => await StartCommunityTunAsync();
 
             _communityConnect = CreateHeaderButton("Подключить", CommunityAccent, Color.White, CommunityAccent);
-            _communityConnect.Click += (sender, args) =>
-            {
-                if (config == null || config.vmess == null || config.vmess.Count == 0)
-                {
-                    UI.ShowWarning("Сначала добавьте сервер или подписку.");
-                    return;
-                }
-                StopCommunityTun();
-                SetListenerType(ESysProxyType.ForcedChange);
-            };
+            _communityConnect.Click += async (sender, args) => await StartCommunityProxyAsync();
 
             var connectionActions = new FlowLayoutPanel
             {
@@ -649,6 +640,136 @@ namespace v2rayN.Forms
             UpdateCommunityActiveServer();
         }
 
+        private async Task StartCommunityProxyAsync()
+        {
+            if (config == null || config.vmess == null || config.vmess.Count == 0)
+            {
+                UI.ShowWarning("Сначала добавьте сервер или подписку.");
+                return;
+            }
+            if (config.GetVmessItem(config.indexId) == null)
+            {
+                UI.ShowWarning("Выберите сервер.");
+                return;
+            }
+
+            StopCommunityTun();
+            if (_happConnection != null)
+            {
+                _happConnection.State = SoraConnectionState.Connecting;
+            }
+            if (!await EnsureCommunityCoreAsync(false))
+            {
+                if (_happConnection != null)
+                {
+                    _happConnection.State = SoraConnectionState.Error;
+                }
+                UI.ShowWarning("Sora не смогла запустить Xray. Подробности сохранены в журнале подключения.");
+                return;
+            }
+
+            SetListenerType(ESysProxyType.ForcedChange);
+        }
+
+        private async Task<bool> EnsureCommunityCoreAsync(bool forceReload)
+        {
+            if (config == null || v2rayHandler == null)
+            {
+                return false;
+            }
+
+            int currentPort = config.GetLocalPort(Global.InboundSocks);
+            bool running = v2rayHandler.IsRunning;
+            if (!forceReload && running && await WaitForCommunitySocksAsync(currentPort, 1200))
+            {
+                return true;
+            }
+            if (running && !forceReload)
+            {
+                v2rayHandler.V2rayStop();
+                running = false;
+            }
+
+            if (!running)
+            {
+                int availablePort = FindCommunityLocalPortBlock(currentPort);
+                if (availablePort < 1)
+                {
+                    Utils.SaveLog("[CORE] Не найден свободный блок локальных портов для Sora.");
+                    return false;
+                }
+                if (availablePort != currentPort)
+                {
+                    var inbound = config.inbound.FirstOrDefault(item => item.protocol == Global.InboundSocks);
+                    if (inbound == null)
+                    {
+                        Utils.SaveLog("[CORE] В настройках Sora отсутствует локальный SOCKS-вход.");
+                        return false;
+                    }
+                    inbound.localPort = availablePort;
+                    ConfigHandler.SaveConfig(ref config, false);
+                    Utils.SaveLog($"[CORE] Порты {currentPort}–{currentPort + 3} заняты. Sora выбрала {availablePort}–{availablePort + 3}.");
+                }
+            }
+
+            Global.reloadV2ray = true;
+            await LoadV2ray();
+            int socksPort = config.GetLocalPort(Global.InboundSocks);
+            return v2rayHandler.IsRunning && await WaitForCommunitySocksAsync(socksPort, 12000);
+        }
+
+        private static int FindCommunityLocalPortBlock(int preferredPort)
+        {
+            int start = preferredPort >= 1024 && preferredPort <= 65000 ? preferredPort : 10808;
+            for (int candidate = start; candidate <= 65000; candidate += 4)
+            {
+                if (IsCommunityLocalPortBlockAvailable(candidate))
+                {
+                    return candidate;
+                }
+            }
+            for (int candidate = 10808; candidate < start; candidate += 4)
+            {
+                if (IsCommunityLocalPortBlockAvailable(candidate))
+                {
+                    return candidate;
+                }
+            }
+            return -1;
+        }
+
+        private static bool IsCommunityLocalPortBlockAvailable(int basePort)
+        {
+            var tcp = new TcpListener[4];
+            var udp = new UdpClient[4];
+            try
+            {
+                for (int offset = 0; offset < 4; offset++)
+                {
+                    int port = basePort + offset;
+                    tcp[offset] = new TcpListener(IPAddress.Loopback, port);
+                    tcp[offset].Server.ExclusiveAddressUse = true;
+                    tcp[offset].Start();
+                    udp[offset] = new UdpClient(AddressFamily.InterNetwork);
+                    udp[offset].Client.ExclusiveAddressUse = true;
+                    udp[offset].Client.Bind(new IPEndPoint(IPAddress.Loopback, port));
+                }
+                return true;
+            }
+            catch (SocketException)
+            {
+                return false;
+            }
+            finally
+            {
+                for (int index = 0; index < 4; index++)
+                {
+                    tcp[index]?.Stop();
+                    udp[index]?.Dispose();
+                }
+            }
+        }
+
         private async Task StartCommunityTunAsync()
         {
             if (config == null || config.vmess == null || config.vmess.Count == 0)
@@ -670,6 +791,15 @@ namespace v2rayN.Forms
             }
 
             SetListenerType(ESysProxyType.ForcedClear);
+            if (!await EnsureCommunityCoreAsync(false))
+            {
+                if (_happConnection != null)
+                {
+                    _happConnection.State = SoraConnectionState.Error;
+                }
+                UI.ShowWarning("Sora не смогла запустить Xray. Подробности сохранены в журнале подключения.");
+                return;
+            }
             int socksPort = config.GetLocalPort(Global.InboundSocks);
             if (_communityConnectionStatus != null)
             {
@@ -794,7 +924,14 @@ namespace v2rayN.Forms
 
         private async Task ReloadCommunityCoreAsync(bool resumeTun)
         {
-            await LoadV2ray();
+            if (!await EnsureCommunityCoreAsync(true))
+            {
+                if (_happConnection != null)
+                {
+                    _happConnection.State = SoraConnectionState.Error;
+                }
+                return;
+            }
             if (resumeTun)
             {
                 await StartCommunityTunAsync();
@@ -828,13 +965,35 @@ namespace v2rayN.Forms
 
         private void TestAllCommunityServers()
         {
+            TestAllCommunityServers(ESpeedActionType.Realping);
+        }
+
+        private void TestAllCommunityServers(ESpeedActionType method)
+        {
             if (lvServers.Items.Count == 0)
             {
                 UI.ShowWarning("Нет серверов для проверки.");
                 return;
             }
             menuSelectAll_Click(this, EventArgs.Empty);
-            Speedtest(ESpeedActionType.Realping);
+            Speedtest(method);
+            RestoreActiveServerSelection();
+        }
+
+        private void RestoreActiveServerSelection()
+        {
+            lvServers.SelectedIndices.Clear();
+            if (config == null || lstVmess == null)
+            {
+                return;
+            }
+            int activeIndex = lstVmess.FindIndex(item => config.IsActiveNode(item));
+            if (activeIndex >= 0 && activeIndex < lvServers.Items.Count)
+            {
+                lvServers.Items[activeIndex].Selected = true;
+                lvServers.Items[activeIndex].Focused = true;
+                lvServers.EnsureVisible(activeIndex);
+            }
         }
 
         private void SelectBestMeasuredServer()

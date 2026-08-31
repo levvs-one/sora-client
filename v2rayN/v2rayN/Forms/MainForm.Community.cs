@@ -946,7 +946,7 @@ namespace v2rayN.Forms
             }
             var active = config.GetVmessItem(config.indexId);
             _communityActiveServer.Text = active == null ? SoraText.Translate("Сервер не выбран") :
-                string.IsNullOrWhiteSpace(active.remarks) ? SoraText.Translate("Сервер без названия") : active.remarks;
+                string.IsNullOrWhiteSpace(active.remarks) ? SoraText.Translate("Сервер без названия") : GetSoraDisplayName(active.remarks);
         }
 
         private void UpdateCommunityEmptyState()

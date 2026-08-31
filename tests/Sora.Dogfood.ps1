@@ -90,8 +90,10 @@ try {
         return $false
     } "Sora did not persist $ExpectedProfiles profiles from the subscription"
 
-    $pingButton = Wait-Until { Find-Element $process.Id 'Проверить задержку' } 'Latency button was not found after import'
+    $pingButton = Wait-Until { Find-Element $process.Id 'Измерить задержку' } 'Latency button was not found after import'
     Invoke-Element $pingButton
+    $fullRoutePing = Wait-Until { Find-Element $process.Id 'Через прокси — полный маршрут' } 'Full-route latency method was not found'
+    Invoke-Element $fullRoutePing
     $pingResult = Wait-Until {
         $processCondition = New-Object Windows.Automation.PropertyCondition(
             [Windows.Automation.AutomationElement]::ProcessIdProperty,

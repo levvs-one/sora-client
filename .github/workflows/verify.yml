@@ -27,7 +27,12 @@ jobs:
         shell: powershell
         run: |
           $powershell = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
-          foreach ($script in @('tests\Sora.LocalVpnPlumbing.ps1', 'tests\Sora.RealLatencyQa.ps1')) {
+          foreach ($script in @(
+            'tests\Sora.Dogfood.ps1',
+            'tests\Sora.LiveSubscriptionQa.ps1',
+            'tests\Sora.LocalVpnPlumbing.ps1',
+            'tests\Sora.RealLatencyQa.ps1'
+          )) {
             $env:SORA_QA_SCRIPT = (Resolve-Path $script).Path
             & $powershell -NoProfile -Command '$parseErrors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:SORA_QA_SCRIPT, [ref]$null, [ref]$parseErrors) | Out-Null; if ($parseErrors.Count) { $parseErrors | Out-String | Write-Error; exit 1 }'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -125,7 +125,8 @@ try {
 
     Invoke-Element (Wait-Until { Find-Element $process.Id 'Серверы' } 'Servers navigation button not found')
     $baselineWrite = (Get-Item -LiteralPath $configPath).LastWriteTimeUtc
-    Invoke-Element (Wait-Until { Find-Element $process.Id 'Проверить задержку' } 'Latency button not found')
+    Invoke-Element (Wait-Until { Find-Element $process.Id 'Измерить задержку' } 'Latency button not found')
+    Invoke-Element (Wait-Until { Find-Element $process.Id 'Через прокси — полный маршрут' } 'Full-route latency method not found')
 
     $results = Wait-Until {
         try {

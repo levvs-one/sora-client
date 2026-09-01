@@ -12,7 +12,8 @@ plugins {
 val nativeArchive = layout.buildDirectory.file("downloads/libxray-linux-x64-v26.7.28.zip")
 val nativeLibrary = layout.buildDirectory.file("generated/resources/native/linux-x64/libXray.so")
 val prepareLibXray = tasks.register("prepareLibXray") {
-    inputs.property("url", "https://github.com/XTLS/libXray/releases/download/v26.7.28/libXray-v26.7.28-linux-x64.zip")
+    notCompatibleWithConfigurationCache("Сетевая загрузка и распаковка закреплённого release asset")
+    inputs.property("url", "https://github.com/XTLS/libXray/releases/download/v26.7.28/libxray-linux-x64.zip")
     outputs.file(nativeLibrary)
     doLast {
         val archive = nativeArchive.get().asFile

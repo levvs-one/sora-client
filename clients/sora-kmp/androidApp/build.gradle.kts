@@ -11,7 +11,8 @@ plugins {
 val libXrayArchive = layout.buildDirectory.file("downloads/libxray-android-v26.7.28.zip")
 val libXrayAar = layout.buildDirectory.file("generated/libxray/libXray.aar")
 val prepareLibXray = tasks.register("prepareLibXray") {
-    inputs.property("url", "https://github.com/XTLS/libXray/releases/download/v26.7.28/libXray-v26.7.28-android.zip")
+    notCompatibleWithConfigurationCache("Сетевая загрузка и распаковка закреплённого release asset")
+    inputs.property("url", "https://github.com/XTLS/libXray/releases/download/v26.7.28/libxray-android.zip")
     outputs.file(libXrayAar)
     doLast {
         val archive = libXrayArchive.get().asFile

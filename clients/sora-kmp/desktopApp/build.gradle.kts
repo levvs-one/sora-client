@@ -51,8 +51,9 @@ compose.desktop {
             packageName = "sora-client"
             packageVersion = "0.3.0"
             description = "Sora subscription client for Linux"
-            vendor = "Sora community"
+            vendor = "Sora"
             linux {
+                debMaintainer = "levvs-one@users.noreply.github.com"
                 shortcut = true
                 menuGroup = "Network"
             }

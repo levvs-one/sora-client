@@ -28,10 +28,13 @@
 AppId={{8D33A351-982B-4E71-8216-4B7E4B75EBA8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher=levvs-one
+AppCopyright=Copyright (C) 2026 levvs-one
 AppPublisherURL=https://github.com/levvs-one/sora-client
 AppSupportURL=https://github.com/levvs-one/sora-client/issues
 AppUpdatesURL=https://github.com/levvs-one/sora-client/releases/latest
+AppComments=Sora — клиент VPN и proxy с открытым исходным кодом
 VersionInfoVersion={#MyAppVersion}.0
 VersionInfoCompany=levvs-one
 VersionInfoDescription=Sora — клиент подключений для {#WindowsDisplayName}
@@ -45,9 +48,19 @@ OutputDir={#BuildOutputDir}
 OutputBaseFilename=Sora-{#MyAppVersion}-{#WindowsTarget}-Setup
 SetupIconFile={#StageDir}\sora.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
+DefaultDialogFontName=Segoe UI
+WizardStyle=modern dark includetitlebar hidebevels
+WizardSizePercent=110,108
+WizardImageFile=assets\sora-wizard.png
+WizardImageBackColor=#111113
+WizardSmallImageFile=..\v2rayN\v2rayN\Assets\Sora\sora-logo-white.png
+WizardSmallImageBackColor=#111113
+DisableWelcomePage=no
+DisableReadyPage=no
+DisableReadyMemo=no
+ShowTasksTreeLines=no
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
@@ -57,9 +70,67 @@ LicenseFile={#StageDir}\LICENSE
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Messages]
+russian.WelcomeLabel1=Установить Sora
+russian.WelcomeLabel2=Версия {#MyAppVersion} для {#WindowsDisplayName}.%n%nОдин клиент для VPN и proxy: добавьте подписку, выберите сервер и подключитесь.
+russian.WizardLicense=Лицензия GPL-3.0
+russian.LicenseLabel=Открытый исходный код и прозрачные условия использования.
+russian.LicenseLabel3=Для продолжения примите условия GNU GPL-3.0.
+russian.WizardSelectDir=Папка Sora
+russian.SelectDirDesc=Куда установить Sora?
+russian.SelectDirLabel3=Sora хранит программу и её компоненты в одной папке. Данные пользователя остаются локально.
+russian.WizardSelectTasks=Быстрые настройки
+russian.SelectTasksDesc=Что включить сразу?
+russian.SelectTasksLabel2=Выберите только нужные ярлыки и автозапуск. Позже это можно изменить в настройках Sora.
+russian.WizardReady=Всё готово
+russian.ReadyLabel1=Sora готова к установке.
+russian.ReadyLabel2a=Проверьте выбранные параметры и нажмите «Установить».
+russian.ReadyLabel2b=Нажмите «Установить», чтобы продолжить.
+russian.WizardInstalling=Установка Sora
+russian.InstallingLabel=Sora устанавливается. Не закрывайте это окно.
+russian.FinishedHeadingLabel=Sora установлена
+russian.FinishedLabelNoIcons=Установка завершена. Откройте Sora и добавьте подписку.
+russian.FinishedLabel=Установка завершена. Sora доступна через созданные ярлыки.
+russian.ClickFinish=Нажмите «Готово», чтобы закрыть установщик.
+russian.ButtonFinish=&Готово
+english.WelcomeLabel1=Install Sora
+english.WelcomeLabel2=Version {#MyAppVersion} for {#WindowsDisplayName}.%n%nOne client for VPN and proxy: add a subscription, choose a server, and connect.
+english.WizardLicense=GPL-3.0 License
+english.LicenseLabel=Open source with transparent terms of use.
+english.LicenseLabel3=Accept the GNU GPL-3.0 terms to continue.
+english.WizardSelectDir=Sora folder
+english.SelectDirDesc=Where should Sora be installed?
+english.SelectDirLabel3=Sora keeps the application and its components in one folder. User data stays local.
+english.WizardSelectTasks=Quick setup
+english.SelectTasksDesc=What should be enabled now?
+english.SelectTasksLabel2=Choose only the shortcuts and startup option you need. You can change them later in Sora.
+english.WizardReady=Ready
+english.ReadyLabel1=Sora is ready to install.
+english.ReadyLabel2a=Review the selected options and click Install.
+english.ReadyLabel2b=Click Install to continue.
+english.WizardInstalling=Installing Sora
+english.InstallingLabel=Sora is being installed. Keep this window open.
+english.FinishedHeadingLabel=Sora is installed
+english.FinishedLabelNoIcons=Installation is complete. Open Sora and add a subscription.
+english.FinishedLabel=Installation is complete. Sora is available from the shortcuts you selected.
+english.ClickFinish=Click Done to close Setup.
+english.ButtonFinish=&Done
+
+[CustomMessages]
+russian.SoraShortcutGroup=Ярлыки
+russian.SoraDesktopTask=Создать ярлык на рабочем столе
+russian.SoraStartupGroup=Автозапуск
+russian.SoraStartupTask=Запускать Sora в фоне при входе в Windows
+russian.SoraLaunch=Запустить Sora
+english.SoraShortcutGroup=Shortcuts
+english.SoraDesktopTask=Create a desktop shortcut
+english.SoraStartupGroup=Startup
+english.SoraStartupTask=Start Sora in the background when Windows starts
+english.SoraLaunch=Launch Sora
+
 [Tasks]
-Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"; GroupDescription: "Ярлыки:"; Flags: unchecked
-Name: "autorun"; Description: "Запускать в фоне при входе в Windows"; GroupDescription: "Автозапуск:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:SoraDesktopTask}"; GroupDescription: "{cm:SoraShortcutGroup}:"; Flags: unchecked
+Name: "autorun"; Description: "{cm:SoraStartupTask}"; GroupDescription: "{cm:SoraStartupGroup}:"; Flags: unchecked
 
 [Files]
 Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -72,7 +143,7 @@ Name: "{autodesktop}\Sora"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app
 Name: "{userstartup}\Sora"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--silent"; WorkingDir: "{app}"; Tasks: autorun
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "Запустить Sora"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Check: not WizardNoIcons
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:SoraLaunch}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Check: not WizardNoIcons
 
 [UninstallRun]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--restore-proxy"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "RestoreSystemProxy"

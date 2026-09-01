@@ -1131,9 +1131,9 @@ namespace v2rayN.Forms
 
                 var footer = new Label
                 {
-                    Location = new Point(32, 272),
-                    Size = new Size(436, 20),
-                    Text = "Независимый проект сообщества",
+                    Location = new Point(32, 266),
+                    Size = new Size(436, 36),
+                    Text = "Создатель — levvs-one\r\nНезависимый проект сообщества",
                     Font = new Font("Segoe UI", 8.5F),
                     ForeColor = HappMuted
                 };

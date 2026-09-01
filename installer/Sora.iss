@@ -28,10 +28,12 @@
 AppId={{8D33A351-982B-4E71-8216-4B7E4B75EBA8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=Сообщество Sora
+AppPublisher=levvs-one
 AppPublisherURL=https://github.com/levvs-one/sora-client
+AppSupportURL=https://github.com/levvs-one/sora-client/issues
+AppUpdatesURL=https://github.com/levvs-one/sora-client/releases/latest
 VersionInfoVersion={#MyAppVersion}.0
-VersionInfoCompany=Сообщество Sora
+VersionInfoCompany=levvs-one
 VersionInfoDescription=Sora — клиент подключений для {#WindowsDisplayName}
 DefaultDirName={localappdata}\Programs\Sora
 DefaultGroupName=Sora

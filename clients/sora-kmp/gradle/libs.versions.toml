@@ -10,7 +10,7 @@ kotlin = "2.4.10"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 ktor = "3.5.1"
-markdown-renderer = "0.45.0"
+markdown-renderer = "0.41.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }

@@ -346,25 +346,58 @@ namespace v2rayN.Forms
 
         private static string GetSoraLanguageDisplayName(string language)
         {
-            if (language == SoraText.PreReformRussian) return "Русский дореформенный";
+            if (language == SoraText.PreReformRussian) return "Русскій дореформенный";
             if (language == SoraText.English) return "English";
             if (language == SoraText.Chinese) return "简体中文";
+            if (language == SoraText.TraditionalChinese) return "繁體中文";
             return "Русский";
+        }
+
+        private static string GetSoraLanguageCode(string language)
+        {
+            if (language == SoraText.PreReformRussian) return "Ѣ";
+            if (language == SoraText.English) return "EN";
+            if (language == SoraText.Chinese) return "简";
+            if (language == SoraText.TraditionalChinese) return "繁";
+            return "RU";
+        }
+
+        private static string GetSoraLanguageCountryCode(string language)
+        {
+            if (language == SoraText.English) return "GB";
+            if (language == SoraText.Chinese) return "CN";
+            if (language == SoraText.TraditionalChinese) return "TW";
+            return "RU";
         }
 
         private void ShowSoraLanguageMenu()
         {
-            var menu = BuildHappMenu();
-            AddSoraLanguageItem(menu, "Русский", SoraText.Russian);
-            AddSoraLanguageItem(menu, "Русский дореформенный", SoraText.PreReformRussian);
-            AddSoraLanguageItem(menu, "English", SoraText.English);
-            AddSoraLanguageItem(menu, "简体中文", SoraText.Chinese);
-            menu.Show(Cursor.Position);
+            ShowSoraLanguageMenu(null);
         }
 
-        private static void AddSoraLanguageItem(ContextMenuStrip menu, string title, string language)
+        private void ShowSoraLanguageMenu(Control anchor)
         {
-            var item = (ToolStripMenuItem)menu.Items.Add(title);
+            var menu = BuildHappMenu();
+            AddSoraLanguageItem(menu, "Русский", SoraText.Russian, "RU");
+            AddSoraLanguageItem(menu, "Русскій дореформенный", SoraText.PreReformRussian, "RU");
+            AddSoraLanguageItem(menu, "English", SoraText.English, "GB");
+            AddSoraLanguageItem(menu, "简体中文", SoraText.Chinese, "CN");
+            AddSoraLanguageItem(menu, "繁體中文", SoraText.TraditionalChinese, "TW");
+            if (anchor == null)
+            {
+                menu.Show(Cursor.Position);
+            }
+            else
+            {
+                menu.Show(anchor, new Point(Math.Max(0, anchor.Width - menu.PreferredSize.Width), anchor.Height + 4));
+            }
+        }
+
+        private void AddSoraLanguageItem(ContextMenuStrip menu, string title, string language, string countryCode)
+        {
+            Image source = LoadSoraCountryFlag(countryCode);
+            Image flag = source == null ? null : new Bitmap(source, new Size(20, 14));
+            var item = (ToolStripMenuItem)menu.Items.Add(title, flag);
             item.Checked = SoraText.CurrentLanguage == language;
             item.Click += (sender, args) => SoraText.Select(language);
         }

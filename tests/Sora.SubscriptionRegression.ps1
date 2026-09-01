@@ -142,6 +142,11 @@ if ([string]::IsNullOrWhiteSpace($subItemType.GetProperty('id').GetValue($localC
 if ($null -eq $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
     throw 'The compact traffic summary is missing below the connection button'
 }
+if ($null -eq $mainFormType.GetField('_happLanguageButton', $instanceBinding) -or
+    $null -eq $mainFormType.GetMethod('GetSoraLanguageCode', [System.Reflection.BindingFlags]'NonPublic, Static') -or
+    $null -eq $mainFormType.GetMethod('GetSoraLanguageCountryCode', [System.Reflection.BindingFlags]'NonPublic, Static')) {
+    throw 'The compact language selector is missing from the connection pane'
+}
 foreach ($timer in @{
     SoraTrafficRefreshIntervalMilliseconds = 1000
     SoraSubscriptionRefreshIntervalMilliseconds = 30000
@@ -241,6 +246,7 @@ $resourceManager = $resourceField.GetValue($null)
 $preReformManager = $preReformField.GetValue($null)
 $settingsKey = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0J3QsNGB0YLRgNC+0LnQutC4'))
 $chineseSettings = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('6K6+572u'))
+$traditionalChineseSettings = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('6Kit5a6a'))
 $logKey = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0JbRg9GA0L3QsNC7'))
 $preReformLog = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0JbRg9GA0L3QsNC70Yo='))
 if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('en-US')) -ne 'Settings') {
@@ -248,6 +254,9 @@ if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCul
 }
 if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('zh-Hans')) -ne $chineseSettings) {
     throw 'Chinese Sora resources are missing'
+}
+if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('zh-Hant')) -ne $traditionalChineseSettings) {
+    throw 'Traditional Chinese Sora resources are missing'
 }
 if ($preReformManager.GetString($logKey, [Globalization.CultureInfo]::GetCultureInfo('ru-RU')) -ne $preReformLog) {
     throw 'Pre-reform Russian Sora resources are missing'

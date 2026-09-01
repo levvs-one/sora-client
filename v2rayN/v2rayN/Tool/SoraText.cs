@@ -11,6 +11,7 @@ namespace v2rayN.Tool
         internal const string PreReformRussian = "ru-pre1918";
         internal const string English = "en-US";
         internal const string Chinese = "zh-Hans";
+        internal const string TraditionalChinese = "zh-Hant";
 
         private static readonly ResourceManager Standard = new ResourceManager("v2rayN.Resx.SoraUI", typeof(SoraText).Assembly);
         private static readonly ResourceManager PreReform = new ResourceManager("v2rayN.Resx.SoraUI_PreReform", typeof(SoraText).Assembly);
@@ -75,9 +76,11 @@ namespace v2rayN.Tool
             if (string.Equals(language, "en", StringComparison.OrdinalIgnoreCase)) return English;
             if (string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase)) return Russian;
             if (string.Equals(language, "zh", StringComparison.OrdinalIgnoreCase) || string.Equals(language, "zh-CN", StringComparison.OrdinalIgnoreCase)) return Chinese;
+            if (string.Equals(language, "zh-TW", StringComparison.OrdinalIgnoreCase) || string.Equals(language, "zh-HK", StringComparison.OrdinalIgnoreCase)) return TraditionalChinese;
             if (string.Equals(language, PreReformRussian, StringComparison.OrdinalIgnoreCase)) return PreReformRussian;
             if (string.Equals(language, English, StringComparison.OrdinalIgnoreCase)) return English;
             if (string.Equals(language, Chinese, StringComparison.OrdinalIgnoreCase)) return Chinese;
+            if (string.Equals(language, TraditionalChinese, StringComparison.OrdinalIgnoreCase)) return TraditionalChinese;
             return Russian;
         }
     }

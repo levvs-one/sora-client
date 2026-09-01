@@ -53,6 +53,7 @@ namespace v2rayN.Forms
         private Timer _soraTrafficTimer;
         private bool _happUseTun;
         private Button _happModeButton;
+        private Button _happLanguageButton;
         private ToolTip _happModeNotice;
         private bool _happReportShortcutWired;
         private int _happHoveredServerIndex = -1;
@@ -663,7 +664,22 @@ namespace v2rayN.Forms
             _happModeButton.AccessibleName = "Режим подключения: Прокси";
             _happModeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _happModeButton.Size = new Size(120, 32);
-            _happModeButton.Location = new Point(410, 18);
+            _happModeButton.Location = new Point(282, 18);
+            _happLanguageButton = CreateHappButton(GetSoraLanguageCode(SoraText.CurrentLanguage), null, false);
+            Image languageFlag = LoadSoraCountryFlag(GetSoraLanguageCountryCode(SoraText.CurrentLanguage));
+            if (languageFlag != null)
+            {
+                _happLanguageButton.Image = new Bitmap(languageFlag, new Size(20, 14));
+            }
+            _happLanguageButton.ImageAlign = ContentAlignment.MiddleLeft;
+            _happLanguageButton.TextAlign = ContentAlignment.MiddleRight;
+            _happLanguageButton.Padding = new Padding(9, 0, 9, 0);
+            _happLanguageButton.Name = "happLanguage";
+            _happLanguageButton.AccessibleName = SoraText.Translate("Язык") + ": " + GetSoraLanguageDisplayName(SoraText.CurrentLanguage);
+            _happLanguageButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            _happLanguageButton.Size = new Size(82, 32);
+            _happLanguageButton.Location = new Point(410, 18);
+            _happLanguageButton.Click += (sender, args) => ShowSoraLanguageMenu(_happLanguageButton);
             _happModeNotice = new ToolTip(components)
             {
                 BackColor = Color.FromArgb(48, 48, 52),
@@ -671,7 +687,11 @@ namespace v2rayN.Forms
                 IsBalloon = false,
                 ShowAlways = true
             };
-            pane.Resize += (sender, args) => _happModeButton.Left = pane.ClientSize.Width - _happModeButton.Width - 20;
+            pane.Resize += (sender, args) =>
+            {
+                _happLanguageButton.Left = pane.ClientSize.Width - _happLanguageButton.Width - 20;
+                _happModeButton.Left = _happLanguageButton.Left - _happModeButton.Width - 8;
+            };
             _happConnection = new HappConnectionControl { Anchor = AnchorStyles.None, Location = new Point(150, 72) };
             _happConnection.PowerClick += async (sender, args) =>
             {
@@ -703,7 +723,7 @@ namespace v2rayN.Forms
             var ping = CreateHappButton("Измерить задержку", ShowSoraPingMenu, true);
             ping.Anchor = AnchorStyles.Bottom; ping.Size = new Size(192, 34); ping.Location = new Point(190, 548);
             pane.Resize += (sender, args) => { _soraTrafficSummary.Left = (pane.ClientSize.Width - _soraTrafficSummary.Width) / 2; _communityActiveServer.Left = (pane.ClientSize.Width - _communityActiveServer.Width) / 2; _communityActiveServer.Top = pane.ClientSize.Height - 90; ping.Left = (pane.ClientSize.Width - ping.Width) / 2; ping.Top = pane.ClientSize.Height - 54; };
-            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_soraTrafficSummary); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
+            pane.Controls.Add(_happModeButton); pane.Controls.Add(_happLanguageButton); pane.Controls.Add(_happConnection); pane.Controls.Add(_soraTrafficSummary); pane.Controls.Add(_communityActiveServer); pane.Controls.Add(ping);
             _soraTrafficSummary.BringToFront();
             return pane;
         }

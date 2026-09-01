@@ -37,4 +37,4 @@
 /clients/sora-kmp/.gradle/
 /clients/sora-kmp/**/build/
 /clients/sora-kmp/local.properties
-/clients/sora-kmp/hs_err_pid*.log
+/clients/sora-kmp/**/hs_err_pid*.log

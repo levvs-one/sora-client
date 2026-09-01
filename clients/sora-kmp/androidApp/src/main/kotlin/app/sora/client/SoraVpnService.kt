@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import libXray.DialerController
 import libXray.LibXray
@@ -122,7 +126,8 @@ class SoraVpnService : VpnService() {
             put("payload", buildJsonObject { if (xrayJson != null) put("xrayJson", xrayJson) })
         }
         val response = LibXray.invoke(request.toString())
-        if (!response.contains("\"success\":true")) throw IllegalStateException("Ядро не выполнило $method")
+        val success = runCatching { Json.parseToJsonElement(response).jsonObject["success"]?.jsonPrimitive?.booleanOrNull }.getOrNull()
+        if (success != true) throw IllegalStateException("Ядро не выполнило $method")
         return response
     }
 
@@ -130,7 +135,7 @@ class SoraVpnService : VpnService() {
         val disconnect = Intent(this, SoraVpnService::class.java).setAction(ACTION_DISCONNECT)
         val pending = PendingIntent.getService(this, 1, disconnect, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setSmallIcon(R.drawable.sora_logo)
             .setContentTitle("Sora — $status")
             .setContentText(if (mode == ConnectionMode.Tun) "Режим TUN" else "Локальный прокси")
             .setOngoing(true)

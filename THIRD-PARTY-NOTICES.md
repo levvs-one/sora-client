@@ -19,6 +19,6 @@
 | Compose Multiplatform | 1.11.1 | Apache-2.0 | https://github.com/JetBrains/compose-multiplatform | Общий интерфейс Android и Linux |
 | JNA | 5.17.0 | Apache-2.0 или LGPL-2.1-or-later | https://github.com/java-native-access/jna/releases/tag/5.17.0 | Вызов C API libXray в Linux |
 | Inter | Variable | OFL-1.1 | https://github.com/rsms/inter | Шрифт общего интерфейса; текст лицензии в `licenses/fonts` |
-| multiplatform-markdown-renderer | 0.45.0 | Apache-2.0 | https://github.com/mikepenz/multiplatform-markdown-renderer/releases/tag/v0.45.0 | Безопасный разбор и отображение описаний подписок в общем интерфейсе |
+| multiplatform-markdown-renderer | 0.41.0 | Apache-2.0 | https://github.com/mikepenz/multiplatform-markdown-renderer/releases/tag/v0.41.0 | Разбор и отображение описаний подписок; последняя версия, совместимая с Android SDK 36 |
 
 Тексты лицензий Xray, sing-box, tun2proxy, Wintun, Phosphor Icons и распространяемых NuGet-зависимостей устанавливаются в каталог `licenses`. Уведомление об источнике флагов распространяется вместе с ресурсами в `Assets/Flags/NOTICE.txt`. Точное соответствие NuGet-пакетов лицензиям находится в `licenses/nuget/ATTRIBUTIONS.md`.

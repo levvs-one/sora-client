@@ -25,7 +25,7 @@ Android требует установленный Android SDK 36. Linux `deb` с
 ./gradlew :shared:jvmTest :androidApp:assembleDebug :desktopApp:packageDeb
 ```
 
-Сборка загружает закреплённые артефакты libXray v26.7.28 и проверяет их SHA-256 до распаковки. GitHub Actions сохраняет APK и `deb` только как временные тестовые артефакты — тег и GitHub Release не создаются.
+Сборка загружает закреплённые артефакты libXray v26.7.28 и проверяет их SHA-256 до распаковки. GitHub Actions проверяет подпись APK и сохраняет `sora_android.apk` и `sora_linux_amd64.deb` только как временные тестовые артефакты — тег и GitHub Release не создаются.
 
 ## Хранение и сеть
 

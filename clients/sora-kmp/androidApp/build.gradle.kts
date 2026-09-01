@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
     implementation(libs.compose.foundation)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.kotlinx.serialization.json)
     implementation(files(libXrayAar).builtBy(prepareLibXray))
     debugImplementation(libs.compose.uiTooling)
 }

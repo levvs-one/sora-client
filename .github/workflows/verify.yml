@@ -2,6 +2,7 @@ name: Verify Sora
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:

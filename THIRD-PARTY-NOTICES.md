@@ -15,5 +15,10 @@
 | Phosphor Icons | Core, Bold | MIT | https://github.com/phosphor-icons/core | PNG-ресурсы в `Assets/Phosphor` |
 | Country Flags | svg-country-flags 1.2.10 | Public Domain | https://github.com/hampusborgos/country-flags | PNG-ресурсы в `Assets/Flags`; архив `2576650B4568C8EE1A2A6DDAA45C0246BE16735F229BB40B1A0A6F40424E5213` |
 | Markdig | 1.3.2 | BSD-2-Clause | https://github.com/xoofx/markdig/releases/tag/1.3.2 | NuGet-зависимость для безопасного разбора Markdown |
+| libXray | 26.7.28 | MIT | https://github.com/XTLS/libXray/releases/tag/v26.7.28 | Android AAR и Linux x64 SO загружаются сборкой с проверкой SHA-256 |
+| Compose Multiplatform | 1.11.1 | Apache-2.0 | https://github.com/JetBrains/compose-multiplatform | Общий интерфейс Android и Linux |
+| JNA | 5.17.0 | Apache-2.0 или LGPL-2.1-or-later | https://github.com/java-native-access/jna/releases/tag/5.17.0 | Вызов C API libXray в Linux |
+| Inter | Variable | OFL-1.1 | https://github.com/rsms/inter | Шрифт общего интерфейса; текст лицензии в `licenses/fonts` |
+| multiplatform-markdown-renderer | 0.45.0 | Apache-2.0 | https://github.com/mikepenz/multiplatform-markdown-renderer/releases/tag/v0.45.0 | Безопасный разбор и отображение описаний подписок в общем интерфейсе |
 
 Тексты лицензий Xray, sing-box, tun2proxy, Wintun, Phosphor Icons и распространяемых NuGet-зависимостей устанавливаются в каталог `licenses`. Уведомление об источнике флагов распространяется вместе с ресурсами в `Assets/Flags/NOTICE.txt`. Точное соответствие NuGet-пакетов лицензиям находится в `licenses/nuget/ATTRIBUTIONS.md`.

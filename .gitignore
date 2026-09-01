@@ -32,3 +32,9 @@
 /**/statistics.json
 /**/user-wininet.json
 *.pdb
+
+# Kotlin/Compose local build state
+/clients/sora-kmp/.gradle/
+/clients/sora-kmp/**/build/
+/clients/sora-kmp/local.properties
+/clients/sora-kmp/hs_err_pid*.log

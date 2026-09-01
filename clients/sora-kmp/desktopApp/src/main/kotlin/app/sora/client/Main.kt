@@ -11,6 +11,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,10 +44,13 @@ class XdgStateStore : SoraStateStore {
 
     override suspend fun write(value: String) {
         Files.createDirectories(stateFile.parent)
+        runCatching { Files.setPosixFilePermissions(stateFile.parent, PosixFilePermissions.fromString("rwx------")) }
         val temporary = stateFile.resolveSibling("state.json.tmp")
         Files.writeString(temporary, value, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+        runCatching { Files.setPosixFilePermissions(temporary, PosixFilePermissions.fromString("rw-------")) }
         runCatching { Files.move(temporary, stateFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING) }
             .getOrElse { Files.move(temporary, stateFile, StandardCopyOption.REPLACE_EXISTING) }
+        runCatching { Files.setPosixFilePermissions(stateFile, PosixFilePermissions.fromString("rw-------")) }
     }
 }
 

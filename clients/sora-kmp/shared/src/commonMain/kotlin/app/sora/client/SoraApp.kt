@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.SpanStyle
@@ -453,6 +454,7 @@ private fun LogsScreen(state: SoraUiState, controller: SoraController) {
 @Composable
 private fun SettingsScreen(state: SoraUiState, controller: SoraController) {
     val colors = LocalSoraColors.current
+    val uriHandler = LocalUriHandler.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp)) {
         SoraText("Настройки", style = LocalSoraTypography.current.title)
         Spacer(Modifier.height(24.dp))
@@ -461,8 +463,12 @@ private fun SettingsScreen(state: SoraUiState, controller: SoraController) {
         Spacer(Modifier.height(24.dp))
         SectionTitle("О приложении")
         SettingsRow("Sora", "Клиент подписок для Android и Linux")
-        SettingsRow("Исходный код", "github.com/levvs-one/sora-client")
-        SettingsRow("Telegram", "t.me/sora_client")
+        SettingsRow("Исходный код", "github.com/levvs-one/sora-client") {
+            uriHandler.openUri("https://github.com/levvs-one/sora-client")
+        }
+        SettingsRow("Telegram", "t.me/sora_client") {
+            uriHandler.openUri("https://t.me/sora_client")
+        }
         Spacer(Modifier.height(16.dp))
         SoraText("Sora — независимый проект с открытым исходным кодом.", color = colors.textSecondary, style = LocalSoraTypography.current.caption)
     }
@@ -474,12 +480,19 @@ private fun SectionTitle(value: String) {
 }
 
 @Composable
-private fun SettingsRow(name: String, value: String) {
+private fun SettingsRow(name: String, value: String, onClick: (() -> Unit)? = null) {
     val colors = LocalSoraColors.current
-    Row(Modifier.fillMaxWidth().background(colors.surface).border(1.dp, colors.line).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().background(colors.surface).border(1.dp, colors.line).clickable(enabled = onClick != null) { onClick?.invoke() }.padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         SoraText(name, style = LocalSoraTypography.current.body)
         Spacer(Modifier.weight(1f))
-        SoraText(value, color = colors.textSecondary, style = LocalSoraTypography.current.body, textAlign = TextAlign.End)
+        SoraText(value, color = if (onClick == null) colors.textSecondary else colors.text, style = LocalSoraTypography.current.body, textAlign = TextAlign.End)
+        if (onClick != null) {
+            Spacer(Modifier.width(8.dp))
+            Icon(Res.drawable.icon_caret, "Открыть", Modifier.size(16.dp), colors.textSecondary)
+        }
     }
 }
 

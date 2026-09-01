@@ -1,8 +1,8 @@
 [versions]
 agp = "9.1.0"
-android-compileSdk = "37"
+android-compileSdk = "36"
 android-minSdk = "24"
-android-targetSdk = "37"
+android-targetSdk = "36"
 androidx-activity = "1.13.0"
 compose-multiplatform = "1.11.1"
 jna = "5.17.0"

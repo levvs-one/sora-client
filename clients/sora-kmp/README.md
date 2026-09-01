@@ -19,7 +19,7 @@
 gradlew.bat :shared:jvmTest :desktopApp:compileKotlin
 ```
 
-Android требует установленный Android SDK 37. Linux `deb` собирается только в Linux:
+Android требует установленный Android SDK 36. Linux `deb` собирается только в Linux:
 
 ```sh
 ./gradlew :shared:jvmTest :androidApp:assembleDebug :desktopApp:packageDeb

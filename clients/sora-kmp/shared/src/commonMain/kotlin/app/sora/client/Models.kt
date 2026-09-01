@@ -9,6 +9,15 @@ enum class ConnectionMode {
 }
 
 @Serializable
+enum class SoraLanguage(val localeTag: String, val code: String, val flag: String, val nativeName: String) {
+    Russian("ru", "RU", "🇷🇺", "Русский"),
+    English("en", "EN", "🇬🇧", "English"),
+    ChineseSimplified("zh-CN", "简", "🇨🇳", "简体中文"),
+    ChineseTraditional("zh-TW", "繁", "🇹🇼", "繁體中文"),
+    RussianPreReform("chu", "Ѣ", "🇷🇺", "Русскій дореформенный"),
+}
+
+@Serializable
 data class SoraSubscription(
     val id: String,
     val url: String,
@@ -36,6 +45,7 @@ data class SoraStoredState(
     val subscriptions: List<SoraSubscription> = emptyList(),
     val selectedNodeKey: String = "",
     val mode: ConnectionMode = ConnectionMode.Proxy,
+    val language: SoraLanguage = SoraLanguage.Russian,
 )
 
 data class SoraNode(
@@ -72,6 +82,7 @@ data class SoraUiState(
     val nodes: List<SoraNode> = emptyList(),
     val selectedNodeKey: String = "",
     val mode: ConnectionMode = ConnectionMode.Proxy,
+    val language: SoraLanguage = SoraLanguage.Russian,
     val tunSupported: Boolean = false,
     val connection: PlatformConnectionState = PlatformConnectionState(),
     val latencies: Map<String, Long> = emptyMap(),

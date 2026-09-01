@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_add">添加</string>
+    <string name="nav_servers">服务器</string>
+    <string name="nav_logs">日志</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_about">关于 Sora</string>
+    <string name="servers_title">服务器</string>
+    <string name="add_subscription">添加订阅</string>
+    <string name="search_servers">搜索服务器</string>
+    <string name="measure_latency">测量延迟</string>
+    <string name="loading_subscriptions">正在加载订阅</string>
+    <plurals name="server_count"><item quantity="other">%1$d 个服务器</item></plurals>
+    <string name="collapse">收起</string>
+    <string name="expand">展开</string>
+    <string name="update">更新</string>
+    <string name="subscription_settings">订阅设置</string>
+    <string name="usage_of">已使用 %1$s，共 %2$s</string>
+    <string name="expires_expired">已过期</string>
+    <plurals name="expires_days"><item quantity="other">剩余 %1$d 天</item></plurals>
+    <string name="power">连接</string>
+    <string name="mode_proxy">代理</string>
+    <string name="mode_tun">TUN</string>
+    <string name="traffic_download">↓ %1$s</string>
+    <string name="traffic_upload">↑ %1$s</string>
+    <string name="no_server_selected">未选择服务器</string>
+    <string name="latency_ms">%1$d 毫秒</string>
+    <string name="logs_title">日志</string>
+    <string name="logs_empty">暂无记录</string>
+    <string name="settings_title">设置</string>
+    <string name="connection_section">连接</string>
+    <string name="mode">模式</string>
+    <string name="about_section">关于应用</string>
+    <string name="app_description">VPN 和代理订阅客户端</string>
+    <string name="source_code">源代码</string>
+    <string name="telegram">Telegram</string>
+    <string name="community_project">Sora 是由 levvs-one 为社区创建的独立开源项目。</string>
+    <string name="open">打开</string>
+    <string name="import_title">添加订阅</string>
+    <string name="import_description">粘贴 HTTPS 链接，Sora 将自动识别名称、服务器和设置。</string>
+    <string name="subscription_url">订阅链接</string>
+    <string name="url_placeholder">https://…</string>
+    <string name="optional_name">名称（可选）</string>
+    <string name="name_from_subscription">使用订阅标题</string>
+    <string name="cancel">取消</string>
+    <string name="adding">正在添加</string>
+    <string name="add">添加</string>
+    <string name="subscription_name">名称</string>
+    <string name="update_interval_minutes">更新间隔（分钟）</string>
+    <string name="delete">删除</string>
+    <string name="save">保存</string>
+    <string name="error_title">操作失败</string>
+    <string name="close">关闭</string>
+    <string name="empty_title">添加第一个订阅</string>
+    <string name="empty_description">粘贴链接，Sora 将自动识别格式、名称和服务器。</string>
+    <string name="start">开始</string>
+    <string name="search">搜索</string>
+    <string name="language">语言</string>
+    <string name="connect">连接</string>
+    <string name="connecting">正在连接</string>
+    <string name="disconnect">断开连接</string>
+    <string name="disconnecting">正在断开</string>
+</resources>

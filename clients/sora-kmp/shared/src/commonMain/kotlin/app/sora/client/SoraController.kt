@@ -168,6 +168,11 @@ class SoraController(
         persist()
     }
 
+    suspend fun setLanguage(language: SoraLanguage) = mutation.withLock {
+        stored = stored.copy(language = language)
+        persist()
+    }
+
     suspend fun pingAll() {
         val subscriptions = stored.subscriptions.filter(SoraSubscription::enabled)
         val allNodes = mutableState.value.nodes
@@ -246,6 +251,7 @@ class SoraController(
             nodes = nodes,
             selectedNodeKey = selected,
             mode = stored.mode,
+            language = stored.language,
             tunSupported = gateway.supportsTun,
             currentEpochMillis = now(),
             loading = loading,

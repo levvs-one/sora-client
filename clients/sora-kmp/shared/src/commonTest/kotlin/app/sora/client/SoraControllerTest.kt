@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
@@ -78,6 +79,25 @@ class SoraControllerTest {
         assertFailsWith<IllegalStateException> { controller.setMode(ConnectionMode.Tun) }
         background.cancel()
         Unit
+    }
+
+    @Test
+    fun languagePersistsAcrossControllerRestart() = runBlocking {
+        val store = MemoryStore()
+        val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val first = SoraController(firstScope, HttpClient(MockEngine { error("unused") }), store, FakeGateway(), { 1L })
+        first.start()
+        first.state.first { !it.loading }
+        first.setLanguage(SoraLanguage.ChineseTraditional)
+        assertEquals(SoraLanguage.ChineseTraditional, first.state.value.language)
+        firstScope.cancel()
+
+        val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val second = SoraController(secondScope, HttpClient(MockEngine { error("unused") }), store, FakeGateway(), { 2L })
+        second.start()
+        second.state.first { !it.loading }
+        assertEquals(SoraLanguage.ChineseTraditional, second.state.value.language)
+        secondScope.cancel()
     }
 
     private class MemoryStore : SoraStateStore {

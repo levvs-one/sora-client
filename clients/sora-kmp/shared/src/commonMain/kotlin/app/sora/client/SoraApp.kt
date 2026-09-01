@@ -50,29 +50,23 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.unit.dp
-import app.sora.client.resources.Res
-import app.sora.client.resources.icon_add
-import app.sora.client.resources.icon_caret
-import app.sora.client.resources.icon_close
-import app.sora.client.resources.icon_globe
-import app.sora.client.resources.icon_info
-import app.sora.client.resources.icon_logs
-import app.sora.client.resources.icon_more
-import app.sora.client.resources.icon_power
-import app.sora.client.resources.icon_refresh
-import app.sora.client.resources.icon_search
-import app.sora.client.resources.icon_settings
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import app.sora.client.resources.*
 import kotlinx.coroutines.launch
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.model.DefaultMarkdownColors
 import com.mikepenz.markdown.model.DefaultMarkdownTypography
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 private enum class Screen { Servers, Logs, Settings }
 
@@ -85,46 +79,48 @@ fun SoraApp(controller: SoraController) {
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(controller) { controller.start() }
-    SoraTheme {
-        val colors = LocalSoraColors.current
-        BoxWithConstraints(Modifier.fillMaxSize().background(colors.canvas)) {
-            val compact = maxWidth < 720.dp
-            if (compact) {
-                Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f)) {
-                        ScreenContent(screen, state, controller, onImport = { importOpen = true }, onSubscriptionSettings = { subscriptionSettings = it })
+    SoraLocaleEnvironment(state.language) {
+        SoraTheme {
+            val colors = LocalSoraColors.current
+            BoxWithConstraints(Modifier.fillMaxSize().background(colors.canvas)) {
+                val compact = maxWidth < 720.dp
+                if (compact) {
+                    Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f)) {
+                            ScreenContent(screen, state, controller, onImport = { importOpen = true }, onSubscriptionSettings = { subscriptionSettings = it })
+                        }
+                        MobileNavigation(screen, onSelect = { screen = it })
                     }
-                    MobileNavigation(screen, onSelect = { screen = it })
-                }
-            } else {
-                Row(Modifier.fillMaxSize()) {
-                    SideNavigation(screen, onSelect = { screen = it })
-                    Box(Modifier.weight(1f)) {
-                        ScreenContent(screen, state, controller, onImport = { importOpen = true }, onSubscriptionSettings = { subscriptionSettings = it })
-                    }
-                }
-            }
-        }
-        if (importOpen) {
-            ImportDialog(
-                busy = state.operation.isNotBlank(),
-                onClose = { importOpen = false },
-                onImport = { url, title ->
-                    scope.launch {
-                        runCatching { controller.importSubscription(url, title) }.getOrNull()?.let { result ->
-                            if (result is ImportResult.Added) importOpen = false
+                } else {
+                    Row(Modifier.fillMaxSize()) {
+                        SideNavigation(screen, onImport = { importOpen = true }, onSelect = { screen = it })
+                        Box(Modifier.weight(1f)) {
+                            ScreenContent(screen, state, controller, onImport = { importOpen = true }, onSubscriptionSettings = { subscriptionSettings = it })
                         }
                     }
-                },
-            )
-        }
-        subscriptionSettings?.let { id ->
-            state.subscriptions.firstOrNull { it.id == id }?.let { subscription ->
-                SubscriptionDialog(subscription, onClose = { subscriptionSettings = null }, controller = controller)
+                }
             }
-        }
-        if (state.error.isNotBlank()) {
-            NoticeDialog(state.error, onClose = controller::clearError)
+            if (importOpen) {
+                ImportDialog(
+                    busy = state.operation.isNotBlank(),
+                    onClose = { importOpen = false },
+                    onImport = { url, title ->
+                        scope.launch {
+                            runCatching { controller.importSubscription(url, title) }.getOrNull()?.let { result ->
+                                if (result is ImportResult.Added) importOpen = false
+                            }
+                        }
+                    },
+                )
+            }
+            subscriptionSettings?.let { id ->
+                state.subscriptions.firstOrNull { it.id == id }?.let { subscription ->
+                    SubscriptionDialog(subscription, onClose = { subscriptionSettings = null }, controller = controller)
+                }
+            }
+            if (state.error.isNotBlank()) {
+                NoticeDialog(state.error, onClose = controller::clearError)
+            }
         }
     }
 }
@@ -145,22 +141,22 @@ private fun ScreenContent(
 }
 
 @Composable
-private fun SideNavigation(selected: Screen, onSelect: (Screen) -> Unit) {
+private fun SideNavigation(selected: Screen, onImport: () -> Unit, onSelect: (Screen) -> Unit) {
     val colors = LocalSoraColors.current
     Column(
         Modifier.width(72.dp).fillMaxHeight().background(colors.navigation).border(width = 1.dp, color = colors.surface, shape = RoundedCornerShape(0.dp)),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(18.dp))
-        NavigationButton(Res.drawable.icon_add, "Добавить", false) { onSelect(Screen.Servers) }
+        NavigationButton(Res.drawable.icon_add, stringResource(Res.string.nav_add), false, onImport)
         Spacer(Modifier.height(12.dp))
-        NavigationButton(Res.drawable.icon_globe, "Серверы", selected == Screen.Servers) { onSelect(Screen.Servers) }
+        NavigationButton(Res.drawable.icon_globe, stringResource(Res.string.nav_servers), selected == Screen.Servers) { onSelect(Screen.Servers) }
         Spacer(Modifier.height(12.dp))
-        NavigationButton(Res.drawable.icon_logs, "Журнал", selected == Screen.Logs) { onSelect(Screen.Logs) }
+        NavigationButton(Res.drawable.icon_logs, stringResource(Res.string.nav_logs), selected == Screen.Logs) { onSelect(Screen.Logs) }
         Spacer(Modifier.height(12.dp))
-        NavigationButton(Res.drawable.icon_settings, "Настройки", selected == Screen.Settings) { onSelect(Screen.Settings) }
+        NavigationButton(Res.drawable.icon_settings, stringResource(Res.string.nav_settings), selected == Screen.Settings) { onSelect(Screen.Settings) }
         Spacer(Modifier.weight(1f))
-        NavigationButton(Res.drawable.icon_info, "О Sora", selected == Screen.Settings) { onSelect(Screen.Settings) }
+        NavigationButton(Res.drawable.icon_info, stringResource(Res.string.nav_about), selected == Screen.Settings) { onSelect(Screen.Settings) }
         Spacer(Modifier.height(18.dp))
     }
 }
@@ -173,9 +169,9 @@ private fun MobileNavigation(selected: Screen, onSelect: (Screen) -> Unit) {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavigationButton(Res.drawable.icon_globe, "Серверы", selected == Screen.Servers) { onSelect(Screen.Servers) }
-        NavigationButton(Res.drawable.icon_logs, "Журнал", selected == Screen.Logs) { onSelect(Screen.Logs) }
-        NavigationButton(Res.drawable.icon_settings, "Настройки", selected == Screen.Settings) { onSelect(Screen.Settings) }
+        NavigationButton(Res.drawable.icon_globe, stringResource(Res.string.nav_servers), selected == Screen.Servers) { onSelect(Screen.Servers) }
+        NavigationButton(Res.drawable.icon_logs, stringResource(Res.string.nav_logs), selected == Screen.Logs) { onSelect(Screen.Logs) }
+        NavigationButton(Res.drawable.icon_settings, stringResource(Res.string.nav_settings), selected == Screen.Settings) { onSelect(Screen.Settings) }
     }
 }
 
@@ -219,19 +215,19 @@ private fun ServerList(
     val scope = rememberCoroutineScope()
     Column(modifier.padding(top = 28.dp, bottom = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SoraText("Серверы", style = LocalSoraTypography.current.title)
+            SoraText(stringResource(Res.string.servers_title), style = LocalSoraTypography.current.title)
             Spacer(Modifier.weight(1f))
-            IconButton(Res.drawable.icon_add, "Добавить подписку", onImport)
+            IconButton(Res.drawable.icon_add, stringResource(Res.string.add_subscription), onImport)
         }
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             SearchField(query, { query = it }, Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
-            IconButton(Res.drawable.icon_refresh, "Измерить задержку") { scope.launch { controller.pingAll() } }
+            IconButton(Res.drawable.icon_refresh, stringResource(Res.string.measure_latency)) { scope.launch { controller.pingAll() } }
         }
         Spacer(Modifier.height(16.dp))
         if (state.loading) {
-            CenterMessage("Загружаем подписки", Modifier.weight(1f))
+            CenterMessage(stringResource(Res.string.loading_subscriptions), Modifier.weight(1f))
         } else if (state.subscriptions.isEmpty()) {
             EmptySubscriptions(Modifier.weight(1f), onImport)
         } else {
@@ -262,16 +258,21 @@ private fun SubscriptionCard(
             Modifier.fillMaxWidth().clickable { scope.launch { controller.setSubscriptionExpanded(subscription.id, !subscription.expanded) } }.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Res.drawable.icon_caret, if (subscription.expanded) "Свернуть" else "Развернуть", Modifier.size(18.dp).rotate(if (subscription.expanded) 90f else 0f), colors.textSecondary)
+            Icon(
+                Res.drawable.icon_caret,
+                stringResource(if (subscription.expanded) Res.string.collapse else Res.string.expand),
+                Modifier.size(18.dp).rotate(if (subscription.expanded) 90f else 0f),
+                colors.textSecondary,
+            )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 SoraText(subscription.title, style = LocalSoraTypography.current.heading, maxLines = 1)
                 Spacer(Modifier.height(2.dp))
-                SoraText("${nodes.size} ${serverWord(nodes.size)}", color = colors.textSecondary, style = LocalSoraTypography.current.caption)
+                SoraText(pluralStringResource(Res.plurals.server_count, nodes.size, nodes.size), color = colors.textSecondary, style = LocalSoraTypography.current.caption)
             }
-            IconButton(Res.drawable.icon_refresh, "Обновить") { scope.launch { controller.updateSubscription(subscription.id) } }
+            IconButton(Res.drawable.icon_refresh, stringResource(Res.string.update)) { scope.launch { controller.updateSubscription(subscription.id) } }
             Spacer(Modifier.width(2.dp))
-            IconButton(Res.drawable.icon_more, "Настройки") { onSettings(subscription.id) }
+            IconButton(Res.drawable.icon_more, stringResource(Res.string.subscription_settings)) { onSettings(subscription.id) }
         }
         UsageLine(subscription.usage, state.currentEpochMillis)
         if (subscription.description.isNotBlank()) {
@@ -334,7 +335,11 @@ private fun UsageLine(usage: SubscriptionUsage, currentEpochMillis: Long) {
     val colors = LocalSoraColors.current
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         val used = (usage.uploadBytes ?: 0L) + (usage.downloadBytes ?: 0L)
-        SoraText(if (usage.totalBytes != null) "${formatBytes(used)} из ${formatBytes(usage.totalBytes)}" else formatBytes(used), color = colors.textSecondary, style = LocalSoraTypography.current.caption)
+        SoraText(
+            if (usage.totalBytes != null) stringResource(Res.string.usage_of, formatBytes(used), formatBytes(usage.totalBytes)) else formatBytes(used),
+            color = colors.textSecondary,
+            style = LocalSoraTypography.current.caption,
+        )
         Spacer(Modifier.weight(1f))
         usage.expiresAtEpochSeconds?.let { SoraText(formatExpiry(it, currentEpochMillis), color = colors.textSecondary, style = LocalSoraTypography.current.caption) }
     }
@@ -358,7 +363,7 @@ private fun NodeRow(node: SoraNode, selected: Boolean, latency: Long?, pending: 
         Spacer(Modifier.width(8.dp))
         when {
             pending -> BouncingDots()
-            latency != null -> SoraText("$latency мс", style = LocalSoraTypography.current.label)
+            latency != null -> SoraText(stringResource(Res.string.latency_ms, latency), style = LocalSoraTypography.current.label)
         }
     }
 }
@@ -370,8 +375,10 @@ private fun ConnectionPanel(modifier: Modifier, state: SoraUiState, controller: 
     val selected = state.nodes.firstOrNull { it.key == state.selectedNodeKey }
     val connected = state.connection.phase == ConnectionPhase.Connected
     Column(modifier.background(colors.surface.copy(alpha = 0.35f)).padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             ModeSelector(state.mode, state.tunSupported, controller)
+            Spacer(Modifier.weight(1f))
+            LanguageSelector(state.language) { language -> scope.launch { controller.setLanguage(language) } }
         }
         Spacer(Modifier.weight(1f))
         val alpha by animateFloatAsState(if (state.connection.phase == ConnectionPhase.Connecting) 0.58f else 1f, tween(160))
@@ -380,7 +387,7 @@ private fun ConnectionPanel(modifier: Modifier, state: SoraUiState, controller: 
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Res.drawable.icon_power, "Питание", Modifier.size(28.dp), if (connected) colors.inverse else colors.text)
+                Icon(Res.drawable.icon_power, stringResource(Res.string.power), Modifier.size(28.dp), if (connected) colors.inverse else colors.text)
                 Spacer(Modifier.height(10.dp))
                 SoraText(connectionLabel(state.connection.phase), color = if (connected) colors.inverse else colors.text, style = LocalSoraTypography.current.label)
             }
@@ -390,14 +397,14 @@ private fun ConnectionPanel(modifier: Modifier, state: SoraUiState, controller: 
             subscription?.usage?.takeIf { it.uploadBytes != null || it.downloadBytes != null }?.let { usage ->
                 Spacer(Modifier.height(18.dp))
                 Row(Modifier.clip(RoundedCornerShape(8.dp)).background(colors.surface).padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    SoraText("↓ ${formatBytes(usage.downloadBytes ?: 0)}", color = colors.textSecondary, style = LocalSoraTypography.current.caption)
+                    SoraText(stringResource(Res.string.traffic_download, formatBytes(usage.downloadBytes ?: 0)), color = colors.textSecondary, style = LocalSoraTypography.current.caption)
                     Spacer(Modifier.width(18.dp))
-                    SoraText("↑ ${formatBytes(usage.uploadBytes ?: 0)}", color = colors.textSecondary, style = LocalSoraTypography.current.caption)
+                    SoraText(stringResource(Res.string.traffic_upload, formatBytes(usage.uploadBytes ?: 0)), color = colors.textSecondary, style = LocalSoraTypography.current.caption)
                 }
             }
         }
         Spacer(Modifier.height(24.dp))
-        SoraText(selected?.name ?: "Сервер не выбран", style = LocalSoraTypography.current.heading, maxLines = 1)
+        SoraText(selected?.name ?: stringResource(Res.string.no_server_selected), style = LocalSoraTypography.current.heading, maxLines = 1)
         if (selected != null) {
             Spacer(Modifier.height(4.dp))
             SoraText(listOf(selected.protocol, selected.detail).filter(String::isNotBlank).joinToString("  /  "), color = colors.textSecondary, style = LocalSoraTypography.current.caption, maxLines = 1)
@@ -414,7 +421,7 @@ private fun ConnectionPanel(modifier: Modifier, state: SoraUiState, controller: 
 private fun ModeSelector(mode: ConnectionMode, tunSupported: Boolean, controller: SoraController) {
     val scope = rememberCoroutineScope()
     Row(Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, LocalSoraColors.current.line, RoundedCornerShape(8.dp))) {
-        listOf(ConnectionMode.Proxy to "Прокси", ConnectionMode.Tun to "TUN").forEach { (value, title) ->
+        listOf(ConnectionMode.Proxy to stringResource(Res.string.mode_proxy), ConnectionMode.Tun to stringResource(Res.string.mode_tun)).forEach { (value, title) ->
             val enabled = value != ConnectionMode.Tun || tunSupported
             SoraText(
                 title,
@@ -431,16 +438,77 @@ private fun ModeSelector(mode: ConnectionMode, tunSupported: Boolean, controller
 }
 
 @Composable
+private fun LanguageSelector(language: SoraLanguage, onSelect: (SoraLanguage) -> Unit) {
+    val colors = LocalSoraColors.current
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier.height(38.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(colors.surface)
+                .border(1.dp, colors.line, RoundedCornerShape(8.dp))
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SoraText(language.flag, style = LocalSoraTypography.current.body)
+            Spacer(Modifier.width(7.dp))
+            SoraText(language.code, style = LocalSoraTypography.current.label)
+            Spacer(Modifier.width(7.dp))
+            Icon(
+                Res.drawable.icon_caret,
+                stringResource(Res.string.language),
+                Modifier.size(14.dp).rotate(if (expanded) 270f else 90f),
+                colors.textSecondary,
+            )
+        }
+        if (expanded) {
+            Popup(
+                alignment = Alignment.TopEnd,
+                offset = IntOffset(0, 44),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Column(
+                    Modifier.width(252.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.surfaceRaised)
+                        .border(1.dp, colors.line, RoundedCornerShape(10.dp))
+                        .padding(vertical = 6.dp),
+                ) {
+                    SoraLanguage.entries.forEach { option ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .background(if (option == language) colors.surface else Color.Transparent)
+                                .clickable {
+                                    expanded = false
+                                    onSelect(option)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SoraText(option.flag, Modifier.width(26.dp), style = LocalSoraTypography.current.body)
+                            SoraText(option.nativeName, Modifier.weight(1f), style = LocalSoraTypography.current.body)
+                            SoraText(option.code, color = colors.textSecondary, style = LocalSoraTypography.current.label)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LogsScreen(state: SoraUiState, controller: SoraController) {
     var query by remember { mutableStateOf("") }
     val colors = LocalSoraColors.current
     Column(Modifier.fillMaxSize().padding(28.dp)) {
-        SoraText("Журнал", style = LocalSoraTypography.current.title)
+        SoraText(stringResource(Res.string.logs_title), style = LocalSoraTypography.current.title)
         Spacer(Modifier.height(16.dp))
         SearchField(query, { query = it }, Modifier.fillMaxWidth())
         Spacer(Modifier.height(14.dp))
         val entries = state.logs.filter { query.isBlank() || it.message.contains(query, true) || it.source.contains(query, true) }
-        if (entries.isEmpty()) CenterMessage("Записей пока нет", Modifier.weight(1f)) else LazyColumn(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(colors.surface)) {
+        if (entries.isEmpty()) CenterMessage(stringResource(Res.string.logs_empty), Modifier.weight(1f)) else LazyColumn(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(colors.surface)) {
             items(entries.reversed()) { entry ->
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
                     SoraText(entry.source, Modifier.width(110.dp), color = colors.textSecondary, style = LocalSoraTypography.current.caption)
@@ -456,21 +524,21 @@ private fun SettingsScreen(state: SoraUiState, controller: SoraController) {
     val colors = LocalSoraColors.current
     val uriHandler = LocalUriHandler.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp)) {
-        SoraText("Настройки", style = LocalSoraTypography.current.title)
+        SoraText(stringResource(Res.string.settings_title), style = LocalSoraTypography.current.title)
         Spacer(Modifier.height(24.dp))
-        SectionTitle("Подключение")
-        SettingsRow("Режим", if (state.mode == ConnectionMode.Proxy) "Прокси" else "TUN")
+        SectionTitle(stringResource(Res.string.connection_section))
+        SettingsRow(stringResource(Res.string.mode), if (state.mode == ConnectionMode.Proxy) stringResource(Res.string.mode_proxy) else stringResource(Res.string.mode_tun))
         Spacer(Modifier.height(24.dp))
-        SectionTitle("О приложении")
-        SettingsRow("Sora", "Клиент подписок для Android и Linux")
-        SettingsRow("Исходный код", "github.com/levvs-one/sora-client") {
+        SectionTitle(stringResource(Res.string.about_section))
+        SettingsRow("Sora", stringResource(Res.string.app_description))
+        SettingsRow(stringResource(Res.string.source_code), "github.com/levvs-one/sora-client") {
             uriHandler.openUri("https://github.com/levvs-one/sora-client")
         }
-        SettingsRow("Telegram", "t.me/sora_client") {
+        SettingsRow(stringResource(Res.string.telegram), "t.me/sora_client") {
             uriHandler.openUri("https://t.me/sora_client")
         }
         Spacer(Modifier.height(16.dp))
-        SoraText("Sora — независимый проект с открытым исходным кодом.", color = colors.textSecondary, style = LocalSoraTypography.current.caption)
+        SoraText(stringResource(Res.string.community_project), color = colors.textSecondary, style = LocalSoraTypography.current.caption)
     }
 }
 
@@ -491,7 +559,7 @@ private fun SettingsRow(name: String, value: String, onClick: (() -> Unit)? = nu
         SoraText(value, color = if (onClick == null) colors.textSecondary else colors.text, style = LocalSoraTypography.current.body, textAlign = TextAlign.End)
         if (onClick != null) {
             Spacer(Modifier.width(8.dp))
-            Icon(Res.drawable.icon_caret, "Открыть", Modifier.size(16.dp), colors.textSecondary)
+            Icon(Res.drawable.icon_caret, stringResource(Res.string.open), Modifier.size(16.dp), colors.textSecondary)
         }
     }
 }
@@ -501,20 +569,20 @@ private fun ImportDialog(busy: Boolean, onClose: () -> Unit, onImport: (String, 
     var url by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
     DialogSurface(onClose) {
-        SoraText("Добавить подписку", style = LocalSoraTypography.current.title)
+        SoraText(stringResource(Res.string.import_title), style = LocalSoraTypography.current.title)
         Spacer(Modifier.height(8.dp))
-        SoraText("Вставьте HTTPS-ссылку. Название и параметры Sora подхватит автоматически.", color = LocalSoraColors.current.textSecondary, style = LocalSoraTypography.current.body)
+        SoraText(stringResource(Res.string.import_description), color = LocalSoraColors.current.textSecondary, style = LocalSoraTypography.current.body)
         Spacer(Modifier.height(20.dp))
-        FieldLabel("Ссылка подписки")
-        SoraField(url, { url = it }, "https://…")
+        FieldLabel(stringResource(Res.string.subscription_url))
+        SoraField(url, { url = it }, stringResource(Res.string.url_placeholder))
         Spacer(Modifier.height(14.dp))
-        FieldLabel("Название — необязательно")
-        SoraField(title, { title = it }, "Из заголовка подписки")
+        FieldLabel(stringResource(Res.string.optional_name))
+        SoraField(title, { title = it }, stringResource(Res.string.name_from_subscription))
         Spacer(Modifier.height(24.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            SecondaryButton("Отмена", onClose)
+            SecondaryButton(stringResource(Res.string.cancel), onClose)
             Spacer(Modifier.width(10.dp))
-            PrimaryButton(if (busy) "Добавляем" else "Добавить", enabled = url.trim().startsWith("https://") && !busy) { onImport(url, title) }
+            PrimaryButton(if (busy) stringResource(Res.string.adding) else stringResource(Res.string.add), enabled = url.trim().startsWith("https://") && !busy) { onImport(url, title) }
         }
     }
 }
@@ -525,22 +593,22 @@ private fun SubscriptionDialog(subscription: SoraSubscription, onClose: () -> Un
     var interval by remember(subscription.id) { mutableStateOf(subscription.updateIntervalMinutes.toString()) }
     val scope = rememberCoroutineScope()
     DialogSurface(onClose) {
-        SoraText("Настройки подписки", style = LocalSoraTypography.current.title)
+        SoraText(stringResource(Res.string.subscription_settings), style = LocalSoraTypography.current.title)
         Spacer(Modifier.height(20.dp))
-        FieldLabel("Название")
-        SoraField(title, { title = it }, "Название")
+        FieldLabel(stringResource(Res.string.subscription_name))
+        SoraField(title, { title = it }, stringResource(Res.string.subscription_name))
         Spacer(Modifier.height(14.dp))
-        FieldLabel("Обновлять каждые, минут")
+        FieldLabel(stringResource(Res.string.update_interval_minutes))
         SoraField(interval, { interval = it.filter(Char::isDigit).take(5) }, "720")
         Spacer(Modifier.height(8.dp))
         SoraText(subscription.url.substringBefore('?'), color = LocalSoraColors.current.textMuted, style = LocalSoraTypography.current.caption, maxLines = 1)
         Spacer(Modifier.height(24.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            DangerButton("Удалить") { scope.launch { controller.deleteSubscription(subscription.id); onClose() } }
+            DangerButton(stringResource(Res.string.delete)) { scope.launch { controller.deleteSubscription(subscription.id); onClose() } }
             Spacer(Modifier.weight(1f))
-            SecondaryButton("Отмена", onClose)
+            SecondaryButton(stringResource(Res.string.cancel), onClose)
             Spacer(Modifier.width(10.dp))
-            PrimaryButton("Сохранить", enabled = title.isNotBlank() && (interval.toIntOrNull() ?: 0) >= 15) {
+            PrimaryButton(stringResource(Res.string.save), enabled = title.isNotBlank() && (interval.toIntOrNull() ?: 0) >= 15) {
                 scope.launch {
                     controller.renameSubscription(subscription.id, title)
                     controller.setUpdateInterval(subscription.id, interval.toInt())
@@ -554,11 +622,11 @@ private fun SubscriptionDialog(subscription: SoraSubscription, onClose: () -> Un
 @Composable
 private fun NoticeDialog(message: String, onClose: () -> Unit) {
     DialogSurface(onClose) {
-        SoraText("Не получилось", style = LocalSoraTypography.current.title)
+        SoraText(stringResource(Res.string.error_title), style = LocalSoraTypography.current.title)
         Spacer(Modifier.height(12.dp))
         SoraText(message, color = LocalSoraColors.current.textSecondary, style = LocalSoraTypography.current.body)
         Spacer(Modifier.height(22.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { PrimaryButton("Закрыть", onClick = onClose) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { PrimaryButton(stringResource(Res.string.close), onClick = onClose) }
     }
 }
 
@@ -579,12 +647,12 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, modifier
     Row(modifier.height(42.dp).clip(RoundedCornerShape(8.dp)).background(colors.surface).border(1.dp, colors.line, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicTextField(value, onValueChange, Modifier.weight(1f), textStyle = LocalSoraTypography.current.body.copy(color = colors.text), cursorBrush = SolidColor(colors.text), singleLine = true, decorationBox = { inner ->
             Box {
-                if (value.isBlank()) SoraText("Поиск по серверам", color = colors.textMuted, style = LocalSoraTypography.current.body)
+                if (value.isBlank()) SoraText(stringResource(Res.string.search_servers), color = colors.textMuted, style = LocalSoraTypography.current.body)
                 inner()
             }
         })
         Spacer(Modifier.width(8.dp))
-        Icon(Res.drawable.icon_search, "Поиск", Modifier.size(20.dp), colors.textSecondary)
+        Icon(Res.drawable.icon_search, stringResource(Res.string.search), Modifier.size(20.dp), colors.textSecondary)
     }
 }
 
@@ -655,11 +723,11 @@ private fun EmptySubscriptions(modifier: Modifier, onImport: () -> Unit) {
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(Res.drawable.icon_globe, "", Modifier.size(32.dp), LocalSoraColors.current.textSecondary)
         Spacer(Modifier.height(14.dp))
-        SoraText("Добавьте подписку", style = LocalSoraTypography.current.heading)
+        SoraText(stringResource(Res.string.empty_title), style = LocalSoraTypography.current.heading)
         Spacer(Modifier.height(6.dp))
-        SoraText("Sora распознает формат и разложит серверы по подпискам.", color = LocalSoraColors.current.textSecondary, style = LocalSoraTypography.current.body, textAlign = TextAlign.Center)
+        SoraText(stringResource(Res.string.empty_description), color = LocalSoraColors.current.textSecondary, style = LocalSoraTypography.current.body, textAlign = TextAlign.Center)
         Spacer(Modifier.height(18.dp))
-        PrimaryButton("Добавить", onClick = onImport)
+        PrimaryButton(stringResource(Res.string.start), onClick = onImport)
     }
 }
 
@@ -678,28 +746,30 @@ private fun BouncingDots() {
 @Composable
 private fun <T> kotlinx.coroutines.flow.StateFlow<T>.collectAsStateCompat(): androidx.compose.runtime.State<T> = collectAsState()
 
-private fun connectionLabel(phase: ConnectionPhase): String = when (phase) {
-    ConnectionPhase.Disconnected, ConnectionPhase.Failed -> "Подключиться"
-    ConnectionPhase.Connecting -> "Подключаем"
-    ConnectionPhase.Connected -> "Отключить"
-    ConnectionPhase.Disconnecting -> "Отключаем"
-}
-
-private fun serverWord(count: Int): String = when {
-    count % 10 == 1 && count % 100 != 11 -> "сервер"
-    count % 10 in 2..4 && count % 100 !in 12..14 -> "сервера"
-    else -> "серверов"
-}
+@Composable
+private fun connectionLabel(phase: ConnectionPhase): String = stringResource(
+    when (phase) {
+        ConnectionPhase.Disconnected, ConnectionPhase.Failed -> Res.string.connect
+        ConnectionPhase.Connecting -> Res.string.connecting
+        ConnectionPhase.Connected -> Res.string.disconnect
+        ConnectionPhase.Disconnecting -> Res.string.disconnecting
+    },
+)
 
 private fun formatBytes(bytes: Long): String {
-    val units = listOf("Б", "КБ", "МБ", "ГБ", "ТБ")
+    val units = listOf("B", "KB", "MB", "GB", "TB")
     var value = bytes.toDouble().coerceAtLeast(0.0)
     var unit = 0
     while (value >= 1024 && unit < units.lastIndex) { value /= 1024; unit++ }
     return if (unit == 0) "${value.toLong()} ${units[unit]}" else "${(value * 10).toLong() / 10.0} ${units[unit]}"
 }
 
+@Composable
 private fun formatExpiry(epochSeconds: Long, currentEpochMillis: Long): String {
     val remainingDays = ((epochSeconds * 1_000 - currentEpochMillis) / 86_400_000).coerceAtLeast(0)
-    return if (epochSeconds * 1_000 <= currentEpochMillis) "Срок истёк" else "Осталось $remainingDays дн."
+    return if (epochSeconds * 1_000 <= currentEpochMillis) {
+        stringResource(Res.string.expires_expired)
+    } else {
+        pluralStringResource(Res.plurals.expires_days, remainingDays.toInt(), remainingDays)
+    }
 }

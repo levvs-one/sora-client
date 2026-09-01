@@ -27,7 +27,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :shared:jvmTest :androidApp:assembleDebug --no-daemon
-          apksigner verify --verbose androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose androidApp/build/outputs/apk/debug/androidApp-debug.apk
           cp androidApp/build/outputs/apk/debug/androidApp-debug.apk androidApp/build/outputs/apk/debug/sora_android.apk
       - uses: actions/upload-artifact@v7
         with:

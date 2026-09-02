@@ -93,12 +93,21 @@ jobs:
             'tests\Sora.Dogfood.ps1',
             'tests\Sora.LiveSubscriptionQa.ps1',
             'tests\Sora.LocalVpnPlumbing.ps1',
-            'tests\Sora.RealLatencyQa.ps1'
+            'tests\Sora.RealLatencyQa.ps1',
+            'tests\Sora.InstallerRegression.ps1'
           )) {
             $env:SORA_QA_SCRIPT = (Resolve-Path $script).Path
             & $powershell -NoProfile -Command '$parseErrors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:SORA_QA_SCRIPT, [ref]$null, [ref]$parseErrors) | Out-Null; if ($parseErrors.Count) { $parseErrors | Out-String | Write-Error; exit 1 }'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Installer regression
+        if: matrix.target == 'win7'
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\Sora.InstallerRegression.ps1 `
+            -SoraExe "v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\${{ matrix.executable }}" `
+            -SoraIcon "v2rayN\v2rayN\Assets\Sora\sora.ico"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v6
         with:
           name: sora-${{ matrix.target }}-x86

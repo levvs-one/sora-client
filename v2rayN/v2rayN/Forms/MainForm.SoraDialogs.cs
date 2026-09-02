@@ -12,6 +12,8 @@ namespace v2rayN.Forms
 {
     public partial class MainForm
     {
+        private bool _soraConfiguringServerList;
+
         private enum SoraImportKind
         {
             Empty,
@@ -982,18 +984,34 @@ namespace v2rayN.Forms
 
         private void ConfigureSoraServerList()
         {
-            if (lvServers.Columns.Count < 10)
+            if (_soraConfiguringServerList || lvServers.Columns.Count < 10)
             {
                 return;
             }
-            int available = Math.Max(220, lvServers.ClientSize.Width - 108);
-            for (int index = 0; index < lvServers.Columns.Count; index++)
+
+            _soraConfiguringServerList = true;
+            try
             {
-                lvServers.Columns[index].Width = 0;
+                int nameWidth = Math.Max(220, lvServers.ClientSize.Width - 108);
+                for (int index = 0; index < lvServers.Columns.Count; index++)
+                {
+                    int width = index == 0
+                        ? 32
+                        : index == (int)EServerColName.remarks
+                            ? nameWidth
+                            : index == (int)EServerColName.testResult
+                                ? 74
+                                : 0;
+                    if (lvServers.Columns[index].Width != width)
+                    {
+                        lvServers.Columns[index].Width = width;
+                    }
+                }
             }
-            lvServers.Columns[0].Width = 32;
-            lvServers.Columns[(int)EServerColName.remarks].Width = available;
-            lvServers.Columns[(int)EServerColName.testResult].Width = 74;
+            finally
+            {
+                _soraConfiguringServerList = false;
+            }
         }
     }
 }

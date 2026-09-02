@@ -123,6 +123,9 @@ if ($null -eq $mainFormType.GetMethod('BuildSoraSubscriptionAccordion', $instanc
 if ($null -eq $mainFormType.GetField('_soraExpandedSubscriptionId', $instanceBinding)) {
     throw 'Subscription expansion state is missing'
 }
+if ($null -eq $mainFormType.GetField('_soraConfiguringServerList', $instanceBinding)) {
+    throw 'Server-list layout can re-enter and freeze the UI thread'
+}
 $staticBinding = [System.Reflection.BindingFlags]'NonPublic, Static'
 $addImportContainer = $mainFormType.GetMethod('AddSoraImportContainer', $staticBinding)
 if ($null -eq $addImportContainer) {

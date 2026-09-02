@@ -921,6 +921,7 @@ namespace v2rayN.Forms
                 bool updating = _soraSubscriptionUpdates.Contains(subscription.id);
                 bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
                 string state = updating ? "Обновление выполняется"
+                    : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) && subscription.lastUpdateError.IndexOf("NotFound", StringComparison.OrdinalIgnoreCase) >= 0 ? "Ссылка недоступна"
                     : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? "Ошибка обновления"
                     : subscription.lastUpdateSuccessUtcTicks > 0 ? "Обновлено " + FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
                     : remote ? "Ещё не обновлялась" : "Локальный импорт";

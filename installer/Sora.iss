@@ -53,16 +53,16 @@ WizardStyle=modern dark includetitlebar hidebevels
 WizardSizePercent=108,100
 WizardResizable=no
 WizardImageFile=
-WizardSmallImageFile=..\v2rayN\v2rayN\Assets\Sora\sora-logo-white.png
-WizardSmallImageBackColor=#111113
+WizardSmallImageFile=
+WizardBackColor=#111113
+WizardBackColorDynamicDark=#111113
 ShowLanguageDialog=auto
 UsePreviousLanguage=yes
 DisableStartupPrompt=yes
 DisableWelcomePage=yes
-DisableDirPage=auto
+DisableDirPage=yes
 DisableReadyPage=yes
 DisableReadyMemo=yes
-ShowTasksTreeLines=no
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
@@ -74,54 +74,42 @@ Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
-russian.WizardSelectDir=Папка установки
-russian.SelectDirDesc=Куда установить Sora
-russian.SelectDirLabel3=Файлы приложения и сетевые компоненты будут сохранены здесь.
-russian.SelectDirBrowseLabel=Можно оставить путь по умолчанию.
-russian.WizardSelectTasks=Быстрые настройки
-russian.SelectTasksDesc=Ярлык и автозапуск
-russian.SelectTasksLabel2=Выберите, что включить сразу. Всё можно изменить позже.
 russian.WizardInstalling=Установка Sora
-russian.InstallingLabel=Устанавливаем приложение и необходимые компоненты.
+russian.InstallingLabel=Устанавливаем Sora
 russian.FinishedHeadingLabel=Sora готова
 russian.FinishedLabelNoIcons=Добавьте подписку, выберите сервер и подключитесь.
 russian.FinishedLabel=Добавьте подписку, выберите сервер и подключитесь.
 russian.ClickFinish=Можно начинать.
-russian.ButtonNext=&Продолжить
 russian.ButtonInstall=&Установить
 russian.ButtonFinish=&Готово
-english.WizardSelectDir=Installation folder
-english.SelectDirDesc=Where to install Sora
-english.SelectDirLabel3=The application and its network components will be stored here.
-english.SelectDirBrowseLabel=You can keep the default path.
-english.WizardSelectTasks=Quick setup
-english.SelectTasksDesc=Shortcut and startup
-english.SelectTasksLabel2=Choose what to enable now. You can change everything later.
 english.WizardInstalling=Installing Sora
-english.InstallingLabel=Installing the application and required components.
+english.InstallingLabel=Installing Sora
 english.FinishedHeadingLabel=Sora is ready
 english.FinishedLabelNoIcons=Add a subscription, choose a server, and connect.
 english.FinishedLabel=Add a subscription, choose a server, and connect.
 english.ClickFinish=You can get started.
-english.ButtonNext=&Continue
 english.ButtonInstall=&Install
 english.ButtonFinish=&Done
 
 [CustomMessages]
-russian.SoraShortcutGroup=Ярлыки
+russian.SoraInstallTitle=Установить Sora
+russian.SoraInstallSubtitle=VPN и proxy-клиент без лишних экранов и сложной настройки.
+russian.SoraQuickSetup=БЫСТРЫЕ НАСТРОЙКИ
 russian.SoraDesktopTask=Создать ярлык на рабочем столе
-russian.SoraStartupGroup=Автозапуск
 russian.SoraStartupTask=Запускать Sora при входе в Windows
+russian.SoraInstallMeta={#WindowsDisplayName}  —  автономный комплект
+russian.SoraCancel=Отмена
+russian.SoraProgress=Подготавливаем файлы и сетевые компоненты
 russian.SoraLaunch=Запустить Sora
-english.SoraShortcutGroup=Shortcuts
+english.SoraInstallTitle=Install Sora
+english.SoraInstallSubtitle=A VPN and proxy client without unnecessary screens or complicated setup.
+english.SoraQuickSetup=QUICK SETUP
 english.SoraDesktopTask=Create a desktop shortcut
-english.SoraStartupGroup=Startup
 english.SoraStartupTask=Start Sora when Windows starts
+english.SoraInstallMeta={#WindowsDisplayName}  —  offline bundle
+english.SoraCancel=Cancel
+english.SoraProgress=Preparing files and network components
 english.SoraLaunch=Launch Sora
-
-[Tasks]
-Name: "desktopicon"; Description: "{cm:SoraDesktopTask}"; Flags: unchecked
-Name: "autorun"; Description: "{cm:SoraStartupTask}"; Flags: unchecked
 
 [Files]
 Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -130,8 +118,8 @@ Source: "{#KbInstaller}"; DestName: "Windows6.1-KB3033929-x86.msu"; Flags: dontc
 
 [Icons]
 Name: "{group}\Sora"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{autodesktop}\Sora"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{userstartup}\Sora"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--silent"; WorkingDir: "{app}"; Tasks: autorun
+Name: "{autodesktop}\Sora"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Check: DesktopShortcutEnabled
+Name: "{userstartup}\Sora"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--silent"; WorkingDir: "{app}"; Check: StartupEnabled
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:SoraLaunch}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Check: not WizardNoIcons
@@ -148,34 +136,172 @@ Type: filesandordirs; Name: "{app}\guiBackups"
 Type: filesandordirs; Name: "{app}\guiConfigs"
 
 [Code]
+const
+  SoraCanvas = $00131111;
+  SoraSurface = $001B1818;
+  SoraBorder = $002F2A2A;
+  SoraMuted = $00B0A9A9;
+  SoraText = $00F5F4F4;
+
+var
+  SoraPage: TWizardPage;
+  DesktopShortcutCheck: TNewCheckBox;
+  StartupCheck: TNewCheckBox;
+  InstallProgressTrack: TPanel;
+  InstallProgressFill: TPanel;
+  InstallProgressPercent: TNewStaticText;
+
 procedure InitializeWizard;
 var
   ButtonBottom: Integer;
+  HeaderBrand: TNewStaticText;
+  HeaderMeta: TNewStaticText;
+  HeaderDivider: TPanel;
+  PageAccent: TPanel;
+  PageTitle: TNewStaticText;
+  PageSubtitle: TNewStaticText;
+  PageDivider: TPanel;
+  OptionsTitle: TNewStaticText;
+  PageMeta: TNewStaticText;
+  InstallingTitle: TNewStaticText;
+  FinishAccent: TPanel;
 begin
-  WizardForm.PageNameLabel.Font.Name := 'Segoe UI';
-  WizardForm.PageNameLabel.Font.Size := 14;
-  WizardForm.PageNameLabel.Font.Style := [fsBold];
-  WizardForm.PageNameLabel.Top := ScaleY(10);
-  WizardForm.PageNameLabel.Height := ScaleY(24);
-  WizardForm.PageDescriptionLabel.Font.Name := 'Segoe UI';
-  WizardForm.PageDescriptionLabel.Font.Size := 9;
-  WizardForm.PageDescriptionLabel.Top := ScaleY(36);
-  WizardForm.PageDescriptionLabel.Height := ScaleY(18);
+  WizardForm.Color := SoraCanvas;
+  WizardForm.MainPanel.Color := SoraCanvas;
+  WizardForm.MainPanel.ParentBackground := False;
+  WizardForm.PageNameLabel.Visible := False;
+  WizardForm.PageDescriptionLabel.Visible := False;
   WizardForm.WizardSmallBitmapImage.Visible := False;
+  WizardForm.Bevel.Visible := False;
 
-  WizardForm.SelectDirBitmapImage.Visible := False;
-  WizardForm.SelectDirLabel.Left := 0;
-  WizardForm.SelectDirLabel.Width := WizardForm.SelectDirPage.Width;
-  WizardForm.SelectDirBrowseLabel.Left := 0;
-  WizardForm.SelectDirBrowseLabel.Width := WizardForm.SelectDirPage.Width;
-  WizardForm.DirEdit.Font.Name := 'Segoe UI';
-  WizardForm.DirEdit.Font.Size := 10;
+  HeaderBrand := TNewStaticText.Create(WizardForm);
+  HeaderBrand.Parent := WizardForm.MainPanel;
+  HeaderBrand.Left := ScaleX(36);
+  HeaderBrand.Top := ScaleY(21);
+  HeaderBrand.Width := ScaleX(160);
+  HeaderBrand.Height := ScaleY(22);
+  HeaderBrand.Caption := 'SORA';
+  HeaderBrand.Font.Name := 'Segoe UI';
+  HeaderBrand.Font.Size := 12;
+  HeaderBrand.Font.Style := [fsBold];
+  HeaderBrand.Font.Color := SoraText;
 
-  WizardForm.TasksList.BorderStyle := bsNone;
-  WizardForm.TasksList.Flat := True;
-  WizardForm.TasksList.ShowLines := False;
-  WizardForm.TasksList.MinItemHeight := ScaleY(34);
-  WizardForm.TasksList.Offset := ScaleX(8);
+  HeaderMeta := TNewStaticText.Create(WizardForm);
+  HeaderMeta.Parent := WizardForm.MainPanel;
+  HeaderMeta.Left := WizardForm.MainPanel.Width - ScaleX(236);
+  HeaderMeta.Top := ScaleY(23);
+  HeaderMeta.Width := ScaleX(200);
+  HeaderMeta.Height := ScaleY(18);
+  HeaderMeta.Alignment := taRightJustify;
+  HeaderMeta.Caption := '{#MyAppVersion}  /  {#WindowsDisplayName}';
+  HeaderMeta.Font.Name := 'Segoe UI';
+  HeaderMeta.Font.Size := 9;
+  HeaderMeta.Font.Color := SoraMuted;
+
+  HeaderDivider := TPanel.Create(WizardForm);
+  HeaderDivider.Parent := WizardForm.MainPanel;
+  HeaderDivider.Left := ScaleX(36);
+  HeaderDivider.Top := WizardForm.MainPanel.Height - ScaleY(1);
+  HeaderDivider.Width := WizardForm.MainPanel.Width - ScaleX(72);
+  HeaderDivider.Height := ScaleY(1);
+  HeaderDivider.BevelOuter := bvNone;
+  HeaderDivider.Color := SoraBorder;
+  HeaderDivider.ParentBackground := False;
+
+  SoraPage := CreateCustomPage(wpWelcome, '', '');
+  SoraPage.Surface.Color := SoraSurface;
+
+  PageAccent := TPanel.Create(SoraPage);
+  PageAccent.Parent := SoraPage.Surface;
+  PageAccent.Left := ScaleX(36);
+  PageAccent.Top := ScaleY(28);
+  PageAccent.Width := ScaleX(3);
+  PageAccent.Height := ScaleY(62);
+  PageAccent.BevelOuter := bvNone;
+  PageAccent.Color := SoraText;
+  PageAccent.ParentBackground := False;
+
+  PageTitle := TNewStaticText.Create(SoraPage);
+  PageTitle.Parent := SoraPage.Surface;
+  PageTitle.Left := ScaleX(56);
+  PageTitle.Top := ScaleY(24);
+  PageTitle.Width := SoraPage.SurfaceWidth - ScaleX(92);
+  PageTitle.Height := ScaleY(30);
+  PageTitle.Caption := CustomMessage('SoraInstallTitle');
+  PageTitle.Font.Name := 'Segoe UI';
+  PageTitle.Font.Size := 20;
+  PageTitle.Font.Style := [fsBold];
+  PageTitle.Font.Color := SoraText;
+
+  PageSubtitle := TNewStaticText.Create(SoraPage);
+  PageSubtitle.Parent := SoraPage.Surface;
+  PageSubtitle.Left := ScaleX(56);
+  PageSubtitle.Top := ScaleY(62);
+  PageSubtitle.Width := SoraPage.SurfaceWidth - ScaleX(92);
+  PageSubtitle.Height := ScaleY(34);
+  PageSubtitle.AutoSize := False;
+  PageSubtitle.WordWrap := True;
+  PageSubtitle.Caption := CustomMessage('SoraInstallSubtitle');
+  PageSubtitle.Font.Name := 'Segoe UI';
+  PageSubtitle.Font.Size := 10;
+  PageSubtitle.Font.Color := SoraMuted;
+
+  PageDivider := TPanel.Create(SoraPage);
+  PageDivider.Parent := SoraPage.Surface;
+  PageDivider.Left := ScaleX(36);
+  PageDivider.Top := ScaleY(108);
+  PageDivider.Width := SoraPage.SurfaceWidth - ScaleX(72);
+  PageDivider.Height := ScaleY(1);
+  PageDivider.BevelOuter := bvNone;
+  PageDivider.Color := SoraBorder;
+  PageDivider.ParentBackground := False;
+
+  OptionsTitle := TNewStaticText.Create(SoraPage);
+  OptionsTitle.Parent := SoraPage.Surface;
+  OptionsTitle.Left := ScaleX(36);
+  OptionsTitle.Top := ScaleY(126);
+  OptionsTitle.Width := ScaleX(220);
+  OptionsTitle.Height := ScaleY(16);
+  OptionsTitle.Caption := CustomMessage('SoraQuickSetup');
+  OptionsTitle.Font.Name := 'Segoe UI';
+  OptionsTitle.Font.Size := 8;
+  OptionsTitle.Font.Style := [fsBold];
+  OptionsTitle.Font.Color := SoraMuted;
+
+  DesktopShortcutCheck := TNewCheckBox.Create(SoraPage);
+  DesktopShortcutCheck.Parent := SoraPage.Surface;
+  DesktopShortcutCheck.Left := ScaleX(36);
+  DesktopShortcutCheck.Top := ScaleY(153);
+  DesktopShortcutCheck.Width := SoraPage.SurfaceWidth - ScaleX(72);
+  DesktopShortcutCheck.Height := ScaleY(24);
+  DesktopShortcutCheck.Caption := CustomMessage('SoraDesktopTask');
+  DesktopShortcutCheck.Checked := False;
+  DesktopShortcutCheck.Font.Name := 'Segoe UI';
+  DesktopShortcutCheck.Font.Size := 10;
+  DesktopShortcutCheck.Font.Color := SoraText;
+
+  StartupCheck := TNewCheckBox.Create(SoraPage);
+  StartupCheck.Parent := SoraPage.Surface;
+  StartupCheck.Left := ScaleX(36);
+  StartupCheck.Top := ScaleY(187);
+  StartupCheck.Width := SoraPage.SurfaceWidth - ScaleX(72);
+  StartupCheck.Height := ScaleY(24);
+  StartupCheck.Caption := CustomMessage('SoraStartupTask');
+  StartupCheck.Checked := False;
+  StartupCheck.Font.Name := 'Segoe UI';
+  StartupCheck.Font.Size := 10;
+  StartupCheck.Font.Color := SoraText;
+
+  PageMeta := TNewStaticText.Create(SoraPage);
+  PageMeta.Parent := SoraPage.Surface;
+  PageMeta.Left := ScaleX(36);
+  PageMeta.Top := SoraPage.SurfaceHeight - ScaleY(26);
+  PageMeta.Width := SoraPage.SurfaceWidth - ScaleX(72);
+  PageMeta.Height := ScaleY(16);
+  PageMeta.Caption := CustomMessage('SoraInstallMeta');
+  PageMeta.Font.Name := 'Segoe UI';
+  PageMeta.Font.Size := 8;
+  PageMeta.Font.Color := SoraMuted;
 
   ButtonBottom := WizardForm.NextButton.Top + WizardForm.NextButton.Height;
   WizardForm.NextButton.Width := ScaleX(116);
@@ -184,33 +310,127 @@ begin
   WizardForm.NextButton.Font.Name := 'Segoe UI';
   WizardForm.NextButton.Font.Style := [fsBold];
   WizardForm.NextButton.Default := False;
-  WizardForm.BackButton.Height := WizardForm.NextButton.Height;
-  WizardForm.BackButton.Top := WizardForm.NextButton.Top;
+  WizardForm.BackButton.Visible := False;
+  WizardForm.CancelButton.Caption := CustomMessage('SoraCancel');
+  WizardForm.CancelButton.Width := ScaleX(88);
   WizardForm.CancelButton.Height := WizardForm.NextButton.Height;
   WizardForm.CancelButton.Top := WizardForm.NextButton.Top;
+  WizardForm.CancelButton.Left := WizardForm.ClientWidth - ScaleX(24) - WizardForm.CancelButton.Width;
+  WizardForm.NextButton.Left := WizardForm.CancelButton.Left - ScaleX(12) - WizardForm.NextButton.Width;
+
+  WizardForm.InstallingPage.Color := SoraSurface;
+  InstallingTitle := TNewStaticText.Create(WizardForm);
+  InstallingTitle.Parent := WizardForm.InstallingPage;
+  InstallingTitle.Left := ScaleX(36);
+  InstallingTitle.Top := ScaleY(42);
+  InstallingTitle.Width := WizardForm.InstallingPage.Width - ScaleX(72);
+  InstallingTitle.Height := ScaleY(30);
+  InstallingTitle.Caption := SetupMessage(msgWizardInstalling);
+  InstallingTitle.Font.Name := 'Segoe UI';
+  InstallingTitle.Font.Size := 18;
+  InstallingTitle.Font.Style := [fsBold];
+  InstallingTitle.Font.Color := SoraText;
+  WizardForm.StatusLabel.Left := ScaleX(36);
+  WizardForm.StatusLabel.Top := ScaleY(82);
+  WizardForm.StatusLabel.Width := WizardForm.InstallingPage.Width - ScaleX(72);
+  WizardForm.StatusLabel.Font.Name := 'Segoe UI';
+  WizardForm.StatusLabel.Font.Size := 9;
+  WizardForm.StatusLabel.Font.Color := SoraMuted;
+  WizardForm.StatusLabel.Caption := CustomMessage('SoraProgress');
+  WizardForm.FilenameLabel.Visible := False;
+  WizardForm.ProgressGauge.Visible := False;
+
+  InstallProgressTrack := TPanel.Create(WizardForm);
+  InstallProgressTrack.Parent := WizardForm.InstallingPage;
+  InstallProgressTrack.Left := ScaleX(36);
+  InstallProgressTrack.Top := ScaleY(120);
+  InstallProgressTrack.Width := WizardForm.InstallingPage.Width - ScaleX(72);
+  InstallProgressTrack.Height := ScaleY(4);
+  InstallProgressTrack.BevelOuter := bvNone;
+  InstallProgressTrack.Color := SoraBorder;
+  InstallProgressTrack.ParentBackground := False;
+
+  InstallProgressFill := TPanel.Create(WizardForm);
+  InstallProgressFill.Parent := InstallProgressTrack;
+  InstallProgressFill.Left := 0;
+  InstallProgressFill.Top := 0;
+  InstallProgressFill.Width := 0;
+  InstallProgressFill.Height := InstallProgressTrack.Height;
+  InstallProgressFill.BevelOuter := bvNone;
+  InstallProgressFill.Color := SoraText;
+  InstallProgressFill.ParentBackground := False;
+
+  InstallProgressPercent := TNewStaticText.Create(WizardForm);
+  InstallProgressPercent.Parent := WizardForm.InstallingPage;
+  InstallProgressPercent.Left := ScaleX(36);
+  InstallProgressPercent.Top := ScaleY(136);
+  InstallProgressPercent.Width := WizardForm.InstallingPage.Width - ScaleX(72);
+  InstallProgressPercent.Height := ScaleY(18);
+  InstallProgressPercent.Alignment := taRightJustify;
+  InstallProgressPercent.Caption := '0%';
+  InstallProgressPercent.Font.Name := 'Segoe UI';
+  InstallProgressPercent.Font.Size := 9;
+  InstallProgressPercent.Font.Color := SoraMuted;
 
   WizardForm.WizardBitmapImage2.Visible := False;
-  WizardForm.FinishedHeadingLabel.Left := ScaleX(36);
-  WizardForm.FinishedHeadingLabel.Top := ScaleY(48);
-  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(72);
+  WizardForm.FinishedPage.Color := SoraSurface;
+  FinishAccent := TPanel.Create(WizardForm);
+  FinishAccent.Parent := WizardForm.FinishedPage;
+  FinishAccent.Left := ScaleX(36);
+  FinishAccent.Top := ScaleY(46);
+  FinishAccent.Width := ScaleX(3);
+  FinishAccent.Height := ScaleY(68);
+  FinishAccent.BevelOuter := bvNone;
+  FinishAccent.Color := SoraText;
+  FinishAccent.ParentBackground := False;
+  WizardForm.FinishedHeadingLabel.Left := ScaleX(56);
+  WizardForm.FinishedHeadingLabel.Top := ScaleY(42);
+  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(92);
   WizardForm.FinishedHeadingLabel.Font.Name := 'Segoe UI';
-  WizardForm.FinishedHeadingLabel.Font.Size := 17;
+  WizardForm.FinishedHeadingLabel.Font.Size := 20;
   WizardForm.FinishedHeadingLabel.Font.Style := [fsBold];
-  WizardForm.FinishedLabel.Left := ScaleX(36);
-  WizardForm.FinishedLabel.Top := ScaleY(86);
-  WizardForm.FinishedLabel.Width := WizardForm.FinishedPage.Width - ScaleX(72);
-  WizardForm.RunList.Left := ScaleX(36);
-  WizardForm.RunList.Width := WizardForm.FinishedPage.Width - ScaleX(72);
+  WizardForm.FinishedHeadingLabel.Font.Color := SoraText;
+  WizardForm.FinishedLabel.Left := ScaleX(56);
+  WizardForm.FinishedLabel.Top := ScaleY(82);
+  WizardForm.FinishedLabel.Width := WizardForm.FinishedPage.Width - ScaleX(92);
+  WizardForm.FinishedLabel.Font.Name := 'Segoe UI';
+  WizardForm.FinishedLabel.Font.Size := 10;
+  WizardForm.FinishedLabel.Font.Color := SoraMuted;
+  WizardForm.RunList.Left := ScaleX(56);
+  WizardForm.RunList.Top := ScaleY(142);
+  WizardForm.RunList.Width := WizardForm.FinishedPage.Width - ScaleX(92);
+  WizardForm.RunList.Color := SoraSurface;
+  WizardForm.RunList.BorderStyle := bsNone;
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if CurPageID = wpSelectTasks then
+  if CurPageID = SoraPage.ID then
     WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall)
   else if CurPageID = wpFinished then
     WizardForm.NextButton.Caption := SetupMessage(msgButtonFinish)
+end;
+
+procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
+var
+  Percent: Integer;
+begin
+  if MaxProgress > 0 then
+    Percent := (CurProgress * 100) div MaxProgress
   else
-    WizardForm.NextButton.Caption := SetupMessage(msgButtonNext);
+    Percent := 0;
+  InstallProgressFill.Width := (InstallProgressTrack.Width * Percent) div 100;
+  InstallProgressPercent.Caption := Format('%d%%', [Percent]);
+end;
+
+function DesktopShortcutEnabled: Boolean;
+begin
+  Result := DesktopShortcutCheck.Checked;
+end;
+
+function StartupEnabled: Boolean;
+begin
+  Result := StartupCheck.Checked;
 end;
 
 function IsWindows7: Boolean;

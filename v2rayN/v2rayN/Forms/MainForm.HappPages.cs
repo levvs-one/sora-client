@@ -925,7 +925,8 @@ namespace v2rayN.Forms
                     : subscription.lastUpdateSuccessUtcTicks > 0 ? "Обновлено " + FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
                     : remote ? "Ещё не обновлялась" : "Локальный импорт";
                 controls.Title.Text = GetSoraSubscriptionTitle(subscription);
-                controls.Detail.Text = FormatSoraServerCount(serverCount) + " — " + state;
+                controls.Detail.Text = FormatSoraServerCount(serverCount);
+                controls.Status.Text = state;
                 controls.Schedule.Text = remote
                     ? subscription.enabled ? "Автообновление: " + FormatSoraSchedule(subscription.updateIntervalMinutes) : "Автообновление выключено"
                     : "Сохранено в Sora без удалённого обновления";

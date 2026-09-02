@@ -44,10 +44,6 @@ namespace v2rayN.Forms
         private string _soraExpandedSubscriptionId;
         private bool _soraSubscriptionExpansionInitialized;
         private readonly Dictionary<string, SoraSubscriptionSectionControls> _soraSubscriptionSections = new Dictionary<string, SoraSubscriptionSectionControls>();
-        private Timer _soraSubscriptionAnimationTimer;
-        private Panel _soraSubscriptionAnimatingPanel;
-        private int _soraSubscriptionAnimationTarget;
-        private int _soraSubscriptionAnimationFrame;
         private Timer _soraSubscriptionSummaryTimer;
         private Label _soraTrafficSummary;
         private Timer _soraTrafficTimer;
@@ -366,7 +362,7 @@ namespace v2rayN.Forms
             return _soraSubscriptionSectionsHost;
         }
 
-        private void RebuildSoraSubscriptionSections(bool animateExpansion = false)
+        private void RebuildSoraSubscriptionSections()
         {
             if (_soraSubscriptionSectionsHost == null || _soraServerListHost == null || config?.subItem == null)
             {
@@ -387,7 +383,6 @@ namespace v2rayN.Forms
                 _soraExpandedSubscriptionId = subscriptions.FirstOrDefault()?.id;
             }
 
-            _soraSubscriptionAnimationTimer?.Stop();
             _soraServerListHost.Parent = null;
             _soraSubscriptionSectionsHost.SuspendLayout();
             foreach (SoraSubscriptionSectionControls controls in _soraSubscriptionSections.Values)
@@ -427,19 +422,16 @@ namespace v2rayN.Forms
             LayoutSoraSubscriptionSections();
             RefreshSoraSubscriptionCard();
 
-            if (animateExpansion && !string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId) && _soraSubscriptionSections.TryGetValue(_soraExpandedSubscriptionId, out SoraSubscriptionSectionControls expanded))
-            {
-                StartSoraSubscriptionExpansion(expanded.Section);
-            }
         }
 
         private SoraSubscriptionSectionControls BuildSoraSubscriptionSection(SubItem subscription)
         {
-            const int expandedHeaderHeight = 154;
+            const int collapsedHeaderHeight = 76;
+            const int expandedHeaderHeight = 164;
             bool expanded = string.Equals(subscription.id, _soraExpandedSubscriptionId, StringComparison.Ordinal);
             Color cardBackground = Color.FromArgb(35, 35, 38);
-            var section = new Panel { Height = expanded ? 360 : 76, BackColor = HappPane, Margin = new Padding(0, 0, 0, 8), AccessibleName = "Подписка " + GetSoraSubscriptionTitle(subscription) };
-            var card = new Panel { Dock = DockStyle.Top, Height = expanded ? expandedHeaderHeight : 76, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var section = new Panel { Height = expanded ? 370 : collapsedHeaderHeight, BackColor = HappPane, Margin = new Padding(0, 0, 0, 8), AccessibleName = "Подписка " + GetSoraSubscriptionTitle(subscription) };
+            var card = new Panel { Dock = DockStyle.Top, Height = expanded ? expandedHeaderHeight : collapsedHeaderHeight, BackColor = cardBackground, Cursor = Cursors.Hand };
             ApplyRoundedCorners(card, 7);
 
             Image chevronImage = HappIconLoader.Load("caret-right", HappText);
@@ -447,19 +439,22 @@ namespace v2rayN.Forms
             var chevron = CreateHappSmallButton("caret-right", () => ToggleSoraSubscriptionSection(subscription.id));
             chevron.Image?.Dispose();
             chevron.Image = chevronImage;
-            chevron.SetBounds(8, 7, 28, 28);
+            chevron.Dock = DockStyle.None;
+            chevron.Margin = Padding.Empty;
+            chevron.SetBounds(10, 8, 28, 28);
             chevron.BackColor = cardBackground;
             chevron.AccessibleName = expanded ? "Свернуть подписку" : "Развернуть подписку";
 
-            var title = new Label { Location = new Point(42, 7), Size = new Size(250, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10.5F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            var detail = new Label { Location = new Point(42, 31), Size = new Size(360, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 9F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
-            var schedule = new Label { Location = new Point(42, 50), Size = new Size(360, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand, Visible = expanded };
-            var quotaTrack = new Panel { Location = new Point(16, 72), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84), Visible = expanded };
+            var title = new Label { Location = new Point(46, 7), Size = new Size(250, 22), ForeColor = HappText, Font = new Font("Segoe UI Semibold", 10F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var detail = new Label { Location = new Point(46, 33), Size = new Size(112, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var status = new Label { Location = new Point(170, 33), Size = new Size(236, 18), ForeColor = HappMuted, Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand };
+            var schedule = new Label { Location = new Point(46, 53), Size = new Size(360, 18), ForeColor = Color.FromArgb(214, 214, 218), Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, BackColor = cardBackground, Cursor = Cursors.Hand, Visible = expanded };
+            var quotaTrack = new Panel { Location = new Point(16, 78), Size = new Size(390, 3), BackColor = Color.FromArgb(78, 78, 84), Visible = expanded };
             var quotaFill = new Panel { Location = Point.Empty, Size = new Size(0, 3), BackColor = Color.FromArgb(232, 232, 235) };
             quotaTrack.Controls.Add(quotaFill);
-            var quota = new Label { Location = new Point(16, 78), Size = new Size(238, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, Visible = expanded };
-            var expiry = new Label { Location = new Point(266, 78), Size = new Size(140, 18), ForeColor = Color.FromArgb(202, 202, 208), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Visible = expanded };
-            var announcement = new SoraMarkdownView { Location = new Point(12, 99), Size = new Size(398, 47), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки", Visible = expanded };
+            var quota = new Label { Location = new Point(16, 86), Size = new Size(238, 18), ForeColor = Color.FromArgb(214, 214, 218), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, Visible = expanded };
+            var expiry = new Label { Location = new Point(266, 86), Size = new Size(140, 18), ForeColor = Color.FromArgb(214, 214, 218), Font = new Font("Segoe UI", 8.75F), BackColor = cardBackground, TextAlign = ContentAlignment.MiddleRight, AutoEllipsis = true, Visible = expanded };
+            var announcement = new SoraMarkdownView { Location = new Point(16, 108), Size = new Size(390, 48), BackColor = cardBackground, Compact = true, ScrollBars = RichTextBoxScrollBars.None, TabStop = false, AccessibleName = "Описание подписки", Visible = expanded };
 
             bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
             var refresh = CreateHappSmallButton("arrows-clockwise", () => StartSoraSubscriptionUpdate(subscription.id));
@@ -470,6 +465,8 @@ namespace v2rayN.Forms
             {
                 buttons[index].Dock = DockStyle.None;
                 buttons[index].Size = new Size(28, 28);
+                buttons[index].Top = 8;
+                buttons[index].Margin = Padding.Empty;
                 buttons[index].BackColor = cardBackground;
                 buttons[index].UseVisualStyleBackColor = false;
                 buttons[index].FlatAppearance.MouseOverBackColor = Color.FromArgb(55, 55, 60);
@@ -482,6 +479,7 @@ namespace v2rayN.Forms
             Action toggle = () => ToggleSoraSubscriptionSection(subscription.id);
             title.Click += (sender, args) => toggle();
             detail.Click += (sender, args) => toggle();
+            status.Click += (sender, args) => toggle();
             schedule.Click += (sender, args) => toggle();
             card.DoubleClick += (sender, args) => ShowSoraSubscriptionEditor(subscription);
             announcement.DoubleClick += (sender, args) => ShowSoraSubscriptionAnnouncement(subscription);
@@ -489,17 +487,19 @@ namespace v2rayN.Forms
             {
                 int width = card.ClientSize.Width;
                 title.Width = Math.Max(100, width - 150);
-                detail.Width = Math.Max(100, width - 58);
-                schedule.Width = Math.Max(100, width - 58);
+                int metadataWidth = Math.Max(200, width - 62);
+                detail.Width = Math.Min(116, metadataWidth / 3);
+                status.SetBounds(46 + detail.Width + 8, 33, Math.Max(76, metadataWidth - detail.Width - 8), 18);
+                schedule.Width = metadataWidth;
                 for (int index = 0; index < buttons.Length; index++) buttons[index].Left = width - 96 + index * 30;
                 quotaTrack.Width = Math.Max(80, width - 32);
                 int expiryWidth = Math.Max(108, quotaTrack.Width / 2);
                 quota.Width = Math.Max(80, quotaTrack.Width - expiryWidth - 12);
-                expiry.SetBounds(16 + quotaTrack.Width - expiryWidth, 78, expiryWidth, 18);
-                announcement.Width = Math.Max(80, width - 24);
+                expiry.SetBounds(16 + quotaTrack.Width - expiryWidth, 86, expiryWidth, 18);
+                announcement.Width = Math.Max(80, width - 32);
             };
 
-            card.Controls.AddRange(new Control[] { announcement, expiry, quota, quotaTrack, schedule, detail, title, chevron });
+            card.Controls.AddRange(new Control[] { announcement, expiry, quota, quotaTrack, schedule, status, detail, title, chevron });
             section.Controls.Add(card);
             return new SoraSubscriptionSectionControls
             {
@@ -508,6 +508,7 @@ namespace v2rayN.Forms
                 Card = card,
                 Title = title,
                 Detail = detail,
+                Status = status,
                 Schedule = schedule,
                 QuotaTrack = quotaTrack,
                 QuotaFill = quotaFill,
@@ -526,7 +527,7 @@ namespace v2rayN.Forms
                 ? null
                 : subscriptionId;
             RefreshServers();
-            RebuildSoraSubscriptionSections(!string.IsNullOrWhiteSpace(_soraExpandedSubscriptionId));
+            RebuildSoraSubscriptionSections();
         }
 
         private void LayoutSoraSubscriptionSections()
@@ -541,7 +542,7 @@ namespace v2rayN.Forms
                 if (controls.Expanded)
                 {
                     controls.Section.Height = expandedHeight;
-                    _soraServerListHost?.SetBounds(0, 154, width, Math.Max(120, expandedHeight - 154));
+                    _soraServerListHost?.SetBounds(0, 164, width, Math.Max(120, expandedHeight - 164));
                 }
                 else
                 {
@@ -552,38 +553,6 @@ namespace v2rayN.Forms
             {
                 control.Width = width;
             }
-        }
-
-        private void StartSoraSubscriptionExpansion(Panel section)
-        {
-            _soraSubscriptionAnimatingPanel = section;
-            _soraSubscriptionAnimationTarget = section.Height;
-            _soraSubscriptionAnimationFrame = 0;
-            section.Height = 76;
-            _soraServerListHost.Visible = false;
-            if (_soraSubscriptionAnimationTimer == null)
-            {
-                _soraSubscriptionAnimationTimer = new Timer(components) { Interval = 16 };
-                _soraSubscriptionAnimationTimer.Tick += (sender, args) =>
-                {
-                    if (_soraSubscriptionAnimatingPanel == null || _soraSubscriptionAnimatingPanel.IsDisposed)
-                    {
-                        _soraSubscriptionAnimationTimer.Stop();
-                        return;
-                    }
-                    _soraSubscriptionAnimationFrame++;
-                    double progress = Math.Min(1D, _soraSubscriptionAnimationFrame / 9D);
-                    double eased = 1D - Math.Pow(1D - progress, 3D);
-                    _soraSubscriptionAnimatingPanel.Height = 76 + (int)Math.Round((_soraSubscriptionAnimationTarget - 76) * eased);
-                    if (progress >= 1D)
-                    {
-                        _soraSubscriptionAnimationTimer.Stop();
-                        _soraServerListHost.Visible = true;
-                        _soraServerListHost.BringToFront();
-                    }
-                };
-            }
-            _soraSubscriptionAnimationTimer.Start();
         }
 
         private void HideSoraServerScrollbars()
@@ -1075,6 +1044,7 @@ namespace v2rayN.Forms
             internal Panel Card { get; set; }
             internal Label Title { get; set; }
             internal Label Detail { get; set; }
+            internal Label Status { get; set; }
             internal Label Schedule { get; set; }
             internal Panel QuotaTrack { get; set; }
             internal Panel QuotaFill { get; set; }

@@ -74,14 +74,14 @@ Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
-russian.WizardSelectDir=Sora
-russian.SelectDirDesc=Папка установки
+russian.WizardSelectDir=Папка установки
+russian.SelectDirDesc=Куда установить Sora
 russian.SelectDirLabel3=Файлы приложения и сетевые компоненты будут сохранены здесь.
 russian.SelectDirBrowseLabel=Можно оставить путь по умолчанию.
-russian.WizardSelectTasks=Sora
-russian.SelectTasksDesc=Быстрые настройки
+russian.WizardSelectTasks=Быстрые настройки
+russian.SelectTasksDesc=Ярлык и автозапуск
 russian.SelectTasksLabel2=Выберите, что включить сразу. Всё можно изменить позже.
-russian.WizardInstalling=Sora
+russian.WizardInstalling=Установка Sora
 russian.InstallingLabel=Устанавливаем приложение и необходимые компоненты.
 russian.FinishedHeadingLabel=Sora готова
 russian.FinishedLabelNoIcons=Добавьте подписку, выберите сервер и подключитесь.
@@ -90,14 +90,14 @@ russian.ClickFinish=Можно начинать.
 russian.ButtonNext=&Продолжить
 russian.ButtonInstall=&Установить
 russian.ButtonFinish=&Готово
-english.WizardSelectDir=Sora
-english.SelectDirDesc=Installation folder
+english.WizardSelectDir=Installation folder
+english.SelectDirDesc=Where to install Sora
 english.SelectDirLabel3=The application and its network components will be stored here.
 english.SelectDirBrowseLabel=You can keep the default path.
-english.WizardSelectTasks=Sora
-english.SelectTasksDesc=Quick setup
+english.WizardSelectTasks=Quick setup
+english.SelectTasksDesc=Shortcut and startup
 english.SelectTasksLabel2=Choose what to enable now. You can change everything later.
-english.WizardInstalling=Sora
+english.WizardInstalling=Installing Sora
 english.InstallingLabel=Installing the application and required components.
 english.FinishedHeadingLabel=Sora is ready
 english.FinishedLabelNoIcons=Add a subscription, choose a server, and connect.
@@ -111,12 +111,12 @@ english.ButtonFinish=&Done
 russian.SoraShortcutGroup=Ярлыки
 russian.SoraDesktopTask=Создать ярлык на рабочем столе
 russian.SoraStartupGroup=Автозапуск
-russian.SoraStartupTask=Запускать Sora в фоне при входе в Windows
+russian.SoraStartupTask=Запускать Sora при входе в Windows
 russian.SoraLaunch=Запустить Sora
 english.SoraShortcutGroup=Shortcuts
 english.SoraDesktopTask=Create a desktop shortcut
 english.SoraStartupGroup=Startup
-english.SoraStartupTask=Start Sora in the background when Windows starts
+english.SoraStartupTask=Start Sora when Windows starts
 english.SoraLaunch=Launch Sora
 
 [Tasks]
@@ -148,25 +148,20 @@ Type: filesandordirs; Name: "{app}\guiBackups"
 Type: filesandordirs; Name: "{app}\guiConfigs"
 
 [Code]
-var
-  SoraFinishLogo: TBitmapImage;
-
 procedure InitializeWizard;
 var
   ButtonBottom: Integer;
 begin
   WizardForm.PageNameLabel.Font.Name := 'Segoe UI';
-  WizardForm.PageNameLabel.Font.Size := 16;
+  WizardForm.PageNameLabel.Font.Size := 14;
   WizardForm.PageNameLabel.Font.Style := [fsBold];
+  WizardForm.PageNameLabel.Top := ScaleY(10);
+  WizardForm.PageNameLabel.Height := ScaleY(24);
   WizardForm.PageDescriptionLabel.Font.Name := 'Segoe UI';
   WizardForm.PageDescriptionLabel.Font.Size := 9;
-
-  WizardForm.WizardSmallBitmapImage.Stretch := True;
-  WizardForm.WizardSmallBitmapImage.Center := True;
-  WizardForm.WizardSmallBitmapImage.Width := ScaleX(36);
-  WizardForm.WizardSmallBitmapImage.Height := ScaleY(36);
-  WizardForm.WizardSmallBitmapImage.Left := WizardForm.MainPanel.Width - ScaleX(56);
-  WizardForm.WizardSmallBitmapImage.Top := ScaleY(18);
+  WizardForm.PageDescriptionLabel.Top := ScaleY(36);
+  WizardForm.PageDescriptionLabel.Height := ScaleY(18);
+  WizardForm.WizardSmallBitmapImage.Visible := False;
 
   WizardForm.SelectDirBitmapImage.Visible := False;
   WizardForm.SelectDirLabel.Left := 0;
@@ -188,33 +183,24 @@ begin
   WizardForm.NextButton.Top := ButtonBottom - WizardForm.NextButton.Height;
   WizardForm.NextButton.Font.Name := 'Segoe UI';
   WizardForm.NextButton.Font.Style := [fsBold];
+  WizardForm.NextButton.Default := False;
   WizardForm.BackButton.Height := WizardForm.NextButton.Height;
   WizardForm.BackButton.Top := WizardForm.NextButton.Top;
   WizardForm.CancelButton.Height := WizardForm.NextButton.Height;
   WizardForm.CancelButton.Top := WizardForm.NextButton.Top;
 
   WizardForm.WizardBitmapImage2.Visible := False;
-  SoraFinishLogo := TBitmapImage.Create(WizardForm);
-  SoraFinishLogo.Parent := WizardForm.FinishedPage;
-  SoraFinishLogo.Bitmap.Assign(WizardForm.WizardSmallBitmapImage.Bitmap);
-  SoraFinishLogo.Left := ScaleX(36);
-  SoraFinishLogo.Top := ScaleY(50);
-  SoraFinishLogo.Width := ScaleX(48);
-  SoraFinishLogo.Height := ScaleY(48);
-  SoraFinishLogo.Stretch := True;
-  SoraFinishLogo.Center := True;
-
-  WizardForm.FinishedHeadingLabel.Left := ScaleX(108);
+  WizardForm.FinishedHeadingLabel.Left := ScaleX(36);
   WizardForm.FinishedHeadingLabel.Top := ScaleY(48);
-  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(144);
+  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(72);
   WizardForm.FinishedHeadingLabel.Font.Name := 'Segoe UI';
   WizardForm.FinishedHeadingLabel.Font.Size := 17;
   WizardForm.FinishedHeadingLabel.Font.Style := [fsBold];
-  WizardForm.FinishedLabel.Left := ScaleX(108);
+  WizardForm.FinishedLabel.Left := ScaleX(36);
   WizardForm.FinishedLabel.Top := ScaleY(86);
-  WizardForm.FinishedLabel.Width := WizardForm.FinishedPage.Width - ScaleX(144);
-  WizardForm.RunList.Left := ScaleX(108);
-  WizardForm.RunList.Width := WizardForm.FinishedPage.Width - ScaleX(144);
+  WizardForm.FinishedLabel.Width := WizardForm.FinishedPage.Width - ScaleX(72);
+  WizardForm.RunList.Left := ScaleX(36);
+  WizardForm.RunList.Width := WizardForm.FinishedPage.Width - ScaleX(72);
 end;
 
 procedure CurPageChanged(CurPageID: Integer);

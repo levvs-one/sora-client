@@ -50,70 +50,61 @@ SetupIconFile={#StageDir}\sora.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 DefaultDialogFontName=Segoe UI
 WizardStyle=modern dark includetitlebar hidebevels
-WizardSizePercent=110,108
-WizardImageFile=assets\sora-wizard.png
-WizardImageBackColor=#111113
+WizardSizePercent=108,100
+WizardResizable=no
+WizardImageFile=
 WizardSmallImageFile=..\v2rayN\v2rayN\Assets\Sora\sora-logo-white.png
 WizardSmallImageBackColor=#111113
-DisableWelcomePage=no
-DisableReadyPage=no
-DisableReadyMemo=no
+ShowLanguageDialog=auto
+UsePreviousLanguage=yes
+DisableStartupPrompt=yes
+DisableWelcomePage=yes
+DisableDirPage=auto
+DisableReadyPage=yes
+DisableReadyMemo=yes
 ShowTasksTreeLines=no
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
-LicenseFile={#StageDir}\LICENSE
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
-russian.WelcomeLabel1=Установить Sora
-russian.WelcomeLabel2=Версия {#MyAppVersion} для {#WindowsDisplayName}.%n%nОдин клиент для VPN и proxy: добавьте подписку, выберите сервер и подключитесь.
-russian.WizardLicense=Лицензия GPL-3.0
-russian.LicenseLabel=Открытый исходный код и прозрачные условия использования.
-russian.LicenseLabel3=Для продолжения примите условия GNU GPL-3.0.
-russian.WizardSelectDir=Папка Sora
-russian.SelectDirDesc=Куда установить Sora?
-russian.SelectDirLabel3=Sora хранит программу и её компоненты в одной папке. Данные пользователя остаются локально.
-russian.WizardSelectTasks=Быстрые настройки
-russian.SelectTasksDesc=Что включить сразу?
-russian.SelectTasksLabel2=Выберите только нужные ярлыки и автозапуск. Позже это можно изменить в настройках Sora.
-russian.WizardReady=Всё готово
-russian.ReadyLabel1=Sora готова к установке.
-russian.ReadyLabel2a=Проверьте выбранные параметры и нажмите «Установить».
-russian.ReadyLabel2b=Нажмите «Установить», чтобы продолжить.
-russian.WizardInstalling=Установка Sora
-russian.InstallingLabel=Sora устанавливается. Не закрывайте это окно.
-russian.FinishedHeadingLabel=Sora установлена
-russian.FinishedLabelNoIcons=Установка завершена. Откройте Sora и добавьте подписку.
-russian.FinishedLabel=Установка завершена. Sora доступна через созданные ярлыки.
-russian.ClickFinish=Нажмите «Готово», чтобы закрыть установщик.
+russian.WizardSelectDir=Sora
+russian.SelectDirDesc=Папка установки
+russian.SelectDirLabel3=Файлы приложения и сетевые компоненты будут сохранены здесь.
+russian.SelectDirBrowseLabel=Можно оставить путь по умолчанию.
+russian.WizardSelectTasks=Sora
+russian.SelectTasksDesc=Быстрые настройки
+russian.SelectTasksLabel2=Выберите, что включить сразу. Всё можно изменить позже.
+russian.WizardInstalling=Sora
+russian.InstallingLabel=Устанавливаем приложение и необходимые компоненты.
+russian.FinishedHeadingLabel=Sora готова
+russian.FinishedLabelNoIcons=Добавьте подписку, выберите сервер и подключитесь.
+russian.FinishedLabel=Добавьте подписку, выберите сервер и подключитесь.
+russian.ClickFinish=Можно начинать.
+russian.ButtonNext=&Продолжить
+russian.ButtonInstall=&Установить
 russian.ButtonFinish=&Готово
-english.WelcomeLabel1=Install Sora
-english.WelcomeLabel2=Version {#MyAppVersion} for {#WindowsDisplayName}.%n%nOne client for VPN and proxy: add a subscription, choose a server, and connect.
-english.WizardLicense=GPL-3.0 License
-english.LicenseLabel=Open source with transparent terms of use.
-english.LicenseLabel3=Accept the GNU GPL-3.0 terms to continue.
-english.WizardSelectDir=Sora folder
-english.SelectDirDesc=Where should Sora be installed?
-english.SelectDirLabel3=Sora keeps the application and its components in one folder. User data stays local.
-english.WizardSelectTasks=Quick setup
-english.SelectTasksDesc=What should be enabled now?
-english.SelectTasksLabel2=Choose only the shortcuts and startup option you need. You can change them later in Sora.
-english.WizardReady=Ready
-english.ReadyLabel1=Sora is ready to install.
-english.ReadyLabel2a=Review the selected options and click Install.
-english.ReadyLabel2b=Click Install to continue.
-english.WizardInstalling=Installing Sora
-english.InstallingLabel=Sora is being installed. Keep this window open.
-english.FinishedHeadingLabel=Sora is installed
-english.FinishedLabelNoIcons=Installation is complete. Open Sora and add a subscription.
-english.FinishedLabel=Installation is complete. Sora is available from the shortcuts you selected.
-english.ClickFinish=Click Done to close Setup.
+english.WizardSelectDir=Sora
+english.SelectDirDesc=Installation folder
+english.SelectDirLabel3=The application and its network components will be stored here.
+english.SelectDirBrowseLabel=You can keep the default path.
+english.WizardSelectTasks=Sora
+english.SelectTasksDesc=Quick setup
+english.SelectTasksLabel2=Choose what to enable now. You can change everything later.
+english.WizardInstalling=Sora
+english.InstallingLabel=Installing the application and required components.
+english.FinishedHeadingLabel=Sora is ready
+english.FinishedLabelNoIcons=Add a subscription, choose a server, and connect.
+english.FinishedLabel=Add a subscription, choose a server, and connect.
+english.ClickFinish=You can get started.
+english.ButtonNext=&Continue
+english.ButtonInstall=&Install
 english.ButtonFinish=&Done
 
 [CustomMessages]
@@ -129,8 +120,8 @@ english.SoraStartupTask=Start Sora in the background when Windows starts
 english.SoraLaunch=Launch Sora
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:SoraDesktopTask}"; GroupDescription: "{cm:SoraShortcutGroup}:"; Flags: unchecked
-Name: "autorun"; Description: "{cm:SoraStartupTask}"; GroupDescription: "{cm:SoraStartupGroup}:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:SoraDesktopTask}"; Flags: unchecked
+Name: "autorun"; Description: "{cm:SoraStartupTask}"; Flags: unchecked
 
 [Files]
 Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -157,6 +148,85 @@ Type: filesandordirs; Name: "{app}\guiBackups"
 Type: filesandordirs; Name: "{app}\guiConfigs"
 
 [Code]
+var
+  SoraFinishLogo: TBitmapImage;
+
+procedure InitializeWizard;
+var
+  ButtonBottom: Integer;
+begin
+  WizardForm.PageNameLabel.Font.Name := 'Segoe UI';
+  WizardForm.PageNameLabel.Font.Size := 16;
+  WizardForm.PageNameLabel.Font.Style := [fsBold];
+  WizardForm.PageDescriptionLabel.Font.Name := 'Segoe UI';
+  WizardForm.PageDescriptionLabel.Font.Size := 9;
+
+  WizardForm.WizardSmallBitmapImage.Stretch := True;
+  WizardForm.WizardSmallBitmapImage.Center := True;
+  WizardForm.WizardSmallBitmapImage.Width := ScaleX(36);
+  WizardForm.WizardSmallBitmapImage.Height := ScaleY(36);
+  WizardForm.WizardSmallBitmapImage.Left := WizardForm.MainPanel.Width - ScaleX(56);
+  WizardForm.WizardSmallBitmapImage.Top := ScaleY(18);
+
+  WizardForm.SelectDirBitmapImage.Visible := False;
+  WizardForm.SelectDirLabel.Left := 0;
+  WizardForm.SelectDirLabel.Width := WizardForm.SelectDirPage.Width;
+  WizardForm.SelectDirBrowseLabel.Left := 0;
+  WizardForm.SelectDirBrowseLabel.Width := WizardForm.SelectDirPage.Width;
+  WizardForm.DirEdit.Font.Name := 'Segoe UI';
+  WizardForm.DirEdit.Font.Size := 10;
+
+  WizardForm.TasksList.BorderStyle := bsNone;
+  WizardForm.TasksList.Flat := True;
+  WizardForm.TasksList.ShowLines := False;
+  WizardForm.TasksList.MinItemHeight := ScaleY(34);
+  WizardForm.TasksList.Offset := ScaleX(8);
+
+  ButtonBottom := WizardForm.NextButton.Top + WizardForm.NextButton.Height;
+  WizardForm.NextButton.Width := ScaleX(116);
+  WizardForm.NextButton.Height := ScaleY(34);
+  WizardForm.NextButton.Top := ButtonBottom - WizardForm.NextButton.Height;
+  WizardForm.NextButton.Font.Name := 'Segoe UI';
+  WizardForm.NextButton.Font.Style := [fsBold];
+  WizardForm.BackButton.Height := WizardForm.NextButton.Height;
+  WizardForm.BackButton.Top := WizardForm.NextButton.Top;
+  WizardForm.CancelButton.Height := WizardForm.NextButton.Height;
+  WizardForm.CancelButton.Top := WizardForm.NextButton.Top;
+
+  WizardForm.WizardBitmapImage2.Visible := False;
+  SoraFinishLogo := TBitmapImage.Create(WizardForm);
+  SoraFinishLogo.Parent := WizardForm.FinishedPage;
+  SoraFinishLogo.Bitmap.Assign(WizardForm.WizardSmallBitmapImage.Bitmap);
+  SoraFinishLogo.Left := ScaleX(36);
+  SoraFinishLogo.Top := ScaleY(50);
+  SoraFinishLogo.Width := ScaleX(48);
+  SoraFinishLogo.Height := ScaleY(48);
+  SoraFinishLogo.Stretch := True;
+  SoraFinishLogo.Center := True;
+
+  WizardForm.FinishedHeadingLabel.Left := ScaleX(108);
+  WizardForm.FinishedHeadingLabel.Top := ScaleY(48);
+  WizardForm.FinishedHeadingLabel.Width := WizardForm.FinishedPage.Width - ScaleX(144);
+  WizardForm.FinishedHeadingLabel.Font.Name := 'Segoe UI';
+  WizardForm.FinishedHeadingLabel.Font.Size := 17;
+  WizardForm.FinishedHeadingLabel.Font.Style := [fsBold];
+  WizardForm.FinishedLabel.Left := ScaleX(108);
+  WizardForm.FinishedLabel.Top := ScaleY(86);
+  WizardForm.FinishedLabel.Width := WizardForm.FinishedPage.Width - ScaleX(144);
+  WizardForm.RunList.Left := ScaleX(108);
+  WizardForm.RunList.Width := WizardForm.FinishedPage.Width - ScaleX(144);
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = wpSelectTasks then
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall)
+  else if CurPageID = wpFinished then
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonFinish)
+  else
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonNext);
+end;
+
 function IsWindows7: Boolean;
 var
   Version: TWindowsVersion;

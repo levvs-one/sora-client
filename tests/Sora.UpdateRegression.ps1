@@ -2,7 +2,7 @@ param([Parameter(Mandatory = $true)][string]$UpdaterExe)
 
 $ErrorActionPreference = 'Stop'
 $directory = Split-Path -Parent (Resolve-Path -LiteralPath $UpdaterExe).Path
-foreach ($dll in 'Chaos.NaCl.dll', 'NetSparkle.dll') { [void][Reflection.Assembly]::LoadFrom((Join-Path $directory $dll)) }
+foreach ($dll in 'Chaos.NaCl.dll', 'NetSparkle.dll', 'log4net.dll') { [void][Reflection.Assembly]::LoadFrom((Join-Path $directory $dll)) }
 $assembly = [Reflection.Assembly]::LoadFrom((Resolve-Path -LiteralPath $UpdaterExe).Path)
 $window = $assembly.GetType('Sora.Centers.UpdateWindow', $true)
 $policy = $window.GetMethod('IsAllowedDownload', [Reflection.BindingFlags]'Static, NonPublic')
@@ -48,4 +48,21 @@ try {
     [Array]::Clear($expanded, 0, $expanded.Length)
     if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
 }
-Write-Output 'PASS: official origin and target, scheme, hostname, credentials, port, query, fragment, missing key, missing signature, valid signature, tampering, chunked file verification.'
+$logDirectory = Join-Path ([IO.Path]::GetTempPath()) ('sora-update-log-qa-' + [guid]::NewGuid().ToString('N'))
+try {
+    $setup = $assembly.GetType('Sora.Centers.Program', $true).GetMethod('ConfigureLogging', [Reflection.BindingFlags]'Static, NonPublic')
+    [void]$setup.Invoke($null, [object[]]@([string]$logDirectory))
+    $message = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0J/RgNC+0LLQtdGA0LrQsCDQvtCx0L3QvtCy0LvQtdC90LjQuQ=='))
+    [log4net.LogManager]::GetLogger('EncodingTest').Warn($message)
+    [log4net.LogManager]::Shutdown()
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    $content = $strictUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $logDirectory 'updates.txt')))
+    if (-not $content.Contains($message) -or -not $content.Contains('[UPDATE]')) { throw 'Updater log lost Unicode or source information.' }
+} finally {
+    [log4net.LogManager]::Shutdown()
+    $resolved = [IO.Path]::GetFullPath($logDirectory)
+    $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+    if (-not $resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($resolved) -notlike 'sora-update-log-qa-*') { throw 'Unsafe log test cleanup path.' }
+    if (Test-Path -LiteralPath $resolved) { Remove-Item -LiteralPath $resolved -Recurse -Force }
+}
+Write-Output 'PASS: official origin and target, scheme, hostname, credentials, port, query, fragment, missing key, missing signature, valid signature, tampering, chunked file verification, UTF-8 log output.'

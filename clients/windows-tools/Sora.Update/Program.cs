@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using log4net;
@@ -28,15 +29,19 @@ namespace Sora.Centers
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            var layout = new PatternLayout("%date [%thread] %-5level %logger - [UPDATE] %message%newline");
-            layout.ActivateOptions();
-            var logs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sora", "Updates", "logs");
-            var appender = new RollingFileAppender { File = Path.Combine(logs, "updates.txt"), AppendToFile = true, MaximumFileSize = "4MB", MaxSizeRollBackups = 5, RollingStyle = RollingFileAppender.RollingMode.Size, Layout = layout };
-            appender.ActivateOptions();
-            BasicConfigurator.Configure(appender);
+            ConfigureLogging(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sora", "Updates", "logs"));
             try { Application.Run(new UpdateWindow(args)); }
             finally { LogManager.Shutdown(); }
             return 0;
+        }
+
+        internal static void ConfigureLogging(string logs)
+        {
+            var layout = new PatternLayout("%date [%thread] %-5level %logger - [UPDATE] %message%newline");
+            layout.ActivateOptions();
+            var appender = new RollingFileAppender { File = Path.Combine(logs, "updates.txt"), AppendToFile = true, Encoding = new UTF8Encoding(false), MaximumFileSize = "4MB", MaxSizeRollBackups = 5, RollingStyle = RollingFileAppender.RollingMode.Size, Layout = layout };
+            appender.ActivateOptions();
+            BasicConfigurator.Configure(appender);
         }
 
         internal static string ReadPublicKey()
@@ -95,7 +100,8 @@ namespace Sora.Centers
                 if (candidates.Length != 1) throw new InvalidOperationException("Откройте центр обновлений из установленной Sora. В каталоге должна быть одна Windows-версия клиента.");
                 _application = candidates[0];
                 _target = Path.GetFileNameWithoutExtension(_application).Substring(5);
-                _version.Text = "Установлена Sora " + FileVersionInfo.GetVersionInfo(_application).ProductVersion + Environment.NewLine + _target;
+                var installed = FileVersionInfo.GetVersionInfo(_application);
+                _version.Text = "Установлена Sora " + new Version(installed.FileMajorPart, installed.FileMinorPart, installed.FileBuildPart) + Environment.NewLine + "Windows " + _target.Substring(3);
                 _verifier = new Ed25519Checker(SecurityMode.Strict, Program.ReadPublicKey(), readFileBeingVerifiedInChunks: true, chunkSize: 1024 * 1024);
                 _updater = new SparkleUpdater("https://raw.githubusercontent.com/levvs-one/sora-client/main/updates/" + _target + ".xml", _verifier, _application)
                 {

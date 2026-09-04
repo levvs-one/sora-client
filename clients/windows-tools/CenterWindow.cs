@@ -54,6 +54,12 @@ namespace Sora.Centers
         {
             var button = new Button { Text = text, AutoSize = true, Height = 36, MinimumSize = new Size(104, 36), Padding = new Padding(12, 0, 12, 0), Margin = new Padding(0, 0, 8, 0), FlatStyle = FlatStyle.Flat, BackColor = primary ? Ink : Surface, ForeColor = primary ? Color.FromArgb(20, 20, 22) : Ink, Cursor = Cursors.Hand };
             button.FlatAppearance.BorderSize = 0;
+            button.Paint += (sender, args) =>
+            {
+                if (button.Enabled) return;
+                args.Graphics.Clear(Surface);
+                TextRenderer.DrawText(args.Graphics, button.Text, button.Font, button.ClientRectangle, Color.FromArgb(180, 180, 184), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            };
             button.Click += action;
             return button;
         }

@@ -54,6 +54,7 @@ namespace v2rayN.Forms
             {
                 Remember(text);
                 _pendingMessages.Enqueue(text);
+                while (_pendingMessages.Count > MaximumHistoryEntries) _pendingMessages.Dequeue();
             }
 
             ScheduleFlush();
@@ -228,7 +229,7 @@ namespace v2rayN.Forms
             }
             try
             {
-                return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             }
             catch (ArgumentException)
             {
@@ -238,7 +239,12 @@ namespace v2rayN.Forms
 
         private bool MatchesFilter(string message)
         {
-            return _filter == null || _filter.IsMatch(message ?? string.Empty);
+            try { return _filter == null || _filter.IsMatch(message ?? string.Empty); }
+            catch (RegexMatchTimeoutException)
+            {
+                _filter = null;
+                return true;
+            }
         }
 
         private void RenderHistory()

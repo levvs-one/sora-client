@@ -15,6 +15,8 @@
 | Phosphor Icons | Core, Bold | MIT | https://github.com/phosphor-icons/core | PNG-ресурсы в `Assets/Phosphor` |
 | Country Flags | svg-country-flags 1.2.10 | Public Domain | https://github.com/hampusborgos/country-flags | PNG-ресурсы в `Assets/Flags`; архив `2576650B4568C8EE1A2A6DDAA45C0246BE16735F229BB40B1A0A6F40424E5213` |
 | Markdig | 1.3.2 | BSD-2-Clause | https://github.com/xoofx/markdig/releases/tag/1.3.2 | NuGet-зависимость для безопасного разбора Markdown |
+| NetSparkle | 3.1.0 | MIT | https://github.com/NetSparkleUpdater/NetSparkle/tree/3.1.0 | Проверка подписанных обновлений в Sora Update |
+| NetSparkleUpdater.Chaos.NaCl | 0.9.4 | MIT, Public Domain | https://github.com/NetSparkleUpdater/Chaos.NaCl/tree/918eeb5ce31f1ac6cf041fbd4e6e83708bd461b1 | Проверка Ed25519; атрибуция в `licenses/nuget/Chaos.NaCl.txt` |
 | libXray | 26.7.28 | MIT | https://github.com/XTLS/libXray/releases/tag/v26.7.28 | Android AAR и Linux x64 SO загружаются сборкой с проверкой SHA-256 |
 | Compose Multiplatform | 1.11.1 | Apache-2.0 | https://github.com/JetBrains/compose-multiplatform | Общий интерфейс Android и Linux |
 | JNA | 5.17.0 | Apache-2.0 или LGPL-2.1-or-later | https://github.com/java-native-access/jna/releases/tag/5.17.0 | Вызов C API libXray в Linux |

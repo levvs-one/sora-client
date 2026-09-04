@@ -85,6 +85,16 @@ jobs:
         shell: powershell
         run: |
           & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File tests\Sora.SubscriptionRegression.ps1 -SoraExe "v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\${{ matrix.executable }}"
+      - name: Build and test Windows centers
+        shell: powershell
+        run: |
+          $output = 'v2rayN\v2rayN\bin\x86\Release\net48\win7-x86'
+          & build\Build-WindowsTools.ps1 -OutputRoot $output
+          $powershell = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+          & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.LogsRegression.ps1 -LogsExe "$output\tools\logs\sora_logs.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.UpdateRegression.ps1 -UpdaterExe "$output\tools\update\sora_update.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows 7 QA script compatibility
         shell: powershell
         run: |

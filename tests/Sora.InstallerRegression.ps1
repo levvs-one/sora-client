@@ -39,6 +39,10 @@ try {
     New-Item -ItemType Directory -Path $stage, $output | Out-Null
     Copy-Item -LiteralPath $SoraExe -Destination (Join-Path $stage 'sora_win7.exe')
     Copy-Item -LiteralPath $SoraIcon -Destination (Join-Path $stage 'sora.ico')
+    $sourceDirectory = Split-Path -Parent (Resolve-Path -LiteralPath $SoraExe).Path
+    foreach ($culture in 'en-US', 'zh-Hans', 'zh-Hant') {
+        Copy-Item -LiteralPath (Join-Path $sourceDirectory $culture) -Destination $stage -Recurse
+    }
 
     Invoke-WebRequest -UseBasicParsing -Uri $innoUrl -OutFile $innoSetup
     $downloadHash = (Get-FileHash -LiteralPath $innoSetup -Algorithm SHA256).Hash
@@ -72,6 +76,15 @@ try {
     Invoke-CheckedProcess $setup.FullName $silentArguments
     if (-not (Test-Path -LiteralPath (Join-Path $app 'sora_win7.exe') -PathType Leaf)) {
         throw 'Fresh installation did not install Sora.'
+    }
+    foreach ($culture in 'en-US', 'zh-Hans', 'zh-Hant') {
+        $relativeResource = "$culture\sora_win7.resources.dll"
+        $installedResource = Join-Path $app $relativeResource
+        if (-not (Test-Path -LiteralPath $installedResource -PathType Leaf) -or
+            (Get-FileHash -LiteralPath $installedResource).Hash -ne
+            (Get-FileHash -LiteralPath (Join-Path $stage $relativeResource)).Hash) {
+            throw "Installed translation is missing or damaged: $culture"
+        }
     }
 
     $configPath = Join-Path $app 'guiNConfig.json'

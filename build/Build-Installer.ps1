@@ -33,7 +33,12 @@ $resolvedOutput = [IO.Path]::GetFullPath($OutputPath)
 $expectedExecutable = Join-Path $resolvedStage "sora_$WindowsTarget.exe"
 $requiredFiles = @(
     $expectedExecutable,
+    (Join-Path $resolvedStage "en-US\sora_$WindowsTarget.resources.dll"),
+    (Join-Path $resolvedStage "zh-Hans\sora_$WindowsTarget.resources.dll"),
+    (Join-Path $resolvedStage "zh-Hant\sora_$WindowsTarget.resources.dll"),
     (Join-Path $resolvedStage 'sora.ico'),
+    (Join-Path $resolvedStage 'tools\logs\sora_logs.exe'),
+    (Join-Path $resolvedStage 'tools\update\sora_update.exe'),
     (Join-Path $resolvedStage 'Markdig.dll'),
     (Join-Path $resolvedStage 'xray.exe'),
     (Join-Path $resolvedStage 'sing-box.exe'),
@@ -49,6 +54,8 @@ $missing = $requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -Path
 if ($missing.Count -gt 0) {
     throw "Installer stage is incomplete: $($missing -join ', ')"
 }
+$keyCheck = Start-Process -FilePath (Join-Path $resolvedStage 'tools\update\sora_update.exe') -ArgumentList '--verify-release-key' -WindowStyle Hidden -Wait -PassThru
+if ($keyCheck.ExitCode -ne 0) { throw 'Installer release blocked: the updater signing key is missing or invalid.' }
 
 Assert-Sha256 $resolvedNdp '0A3A390C47E639D0F7FC65B21195FEE6B7F65B066F80F70C60FAB191D14B7E40'
 Assert-Sha256 $resolvedKb '246C300A6AE6DCA99453F6839745AC0015953528A7065BED1B015F91B80CF64D'

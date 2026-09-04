@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>sora_update</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x86</PlatformTarget>
+    <ApplicationIcon>..\..\..\v2rayN\v2rayN\Assets\Sora\sora.ico</ApplicationIcon>
+    <Version>0.2.4</Version>
+    <Product>Sora Update</Product>
+    <Company>levvs-one</Company>
+    <Authors>levvs-one</Authors>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\CenterWindow.cs" Link="CenterWindow.cs" />
+    <EmbeddedResource Include="$(SoraUpdatePublicKeyFile)" LogicalName="Sora.Update.PublicKey" Condition="'$(SoraUpdatePublicKeyFile)' != ''" />
+    <PackageReference Include="NetSparkleUpdater.SparkleUpdater" Version="3.1.0" />
+    <PackageReference Include="log4net" Version="3.4.0" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+</Project>

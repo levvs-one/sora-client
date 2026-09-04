@@ -110,6 +110,25 @@ if ([long]$subItemType.GetProperty('subscriptionDownloadBytes').GetValue($subIte
 }
 
 $mainFormType = $assembly.GetType('v2rayN.Forms.MainForm', $true)
+$tunAddressMethod = $mainFormType.GetMethod('GetSoraTunServerAddress', [Reflection.BindingFlags]'NonPublic, Static')
+if ($null -eq $tunAddressMethod) { throw 'TUN still resolves a configuration filename instead of its server' }
+$tunProfile = [Activator]::CreateInstance($assembly.GetType('v2rayN.Mode.VmessItem', $true))
+$tunProfile.configType = [Enum]::Parse($assembly.GetType('v2rayN.Mode.EConfigType', $true), 'Custom')
+$tunProfilePath = Join-Path ([IO.Path]::GetTempPath()) ('sora-tun-' + [Guid]::NewGuid().ToString('N') + '.json')
+try {
+    [IO.File]::WriteAllText($tunProfilePath, $singleProfile)
+    $tunProfile.address = $tunProfilePath
+    if ($tunAddressMethod.Invoke($null, @($tunProfile)) -ne 'example.com') {
+        throw 'TUN did not resolve the endpoint from the imported Xray configuration'
+    }
+}
+finally { Remove-Item -LiteralPath $tunProfilePath -Force }
+$toggleType = $assembly.GetType('v2rayN.Forms.HappToggle', $true)
+$toggle = [Activator]::CreateInstance($toggleType, $true)
+$toggleType.GetProperty('Checked', [Reflection.BindingFlags]'NonPublic, Instance').SetValue($toggle, $true)
+$toggleTimer = $toggleType.GetField('_animation', [Reflection.BindingFlags]'NonPublic, Instance').GetValue($toggle)
+$toggle.Dispose()
+if ($toggleTimer.Enabled) { throw 'Closing settings leaves a toggle animation timer running' }
 $instanceBinding = [System.Reflection.BindingFlags]'NonPublic, Instance'
 if ($null -ne $mainFormType.GetMethod('BuildHappSubscriptionsPage', $instanceBinding)) {
     throw 'The detached subscriptions page must not return'
@@ -216,6 +235,15 @@ try {
     if (-not [string]::IsNullOrEmpty([string]$getVisibleLog.Invoke($logControl, @()))) {
         throw 'Log clearing left buffered entries visible'
     }
+    foreach ($index in 1..5000) { $logControl.AppendText('bounded event') }
+    $pending = $logControlType.GetField('_pendingMessages', $instanceBinding).GetValue($logControl)
+    if ($pending.Count -gt 2000) { throw 'The pending log queue grows without a bound.' }
+    $logControl.ClearMsg()
+    $logControl.SetCommunityFilter('^(a+)+$')
+    $logControl.AppendText(('a' * 5000) + '!')
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    [void]$getVisibleLog.Invoke($logControl, @())
+    if ($watch.Elapsed.TotalSeconds -gt 2) { throw 'A pathological regex can freeze the log view.' }
 }
 finally {
     $logControl.Dispose()

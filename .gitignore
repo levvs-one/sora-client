@@ -38,3 +38,7 @@
 /clients/sora-kmp/**/build/
 /clients/sora-kmp/local.properties
 /clients/sora-kmp/**/hs_err_pid*.log
+
+# Windows companion build output
+/clients/windows-tools/**/bin/
+/clients/windows-tools/**/obj/

@@ -1,7 +1,8 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$OutputRoot = (Join-Path $PSScriptRoot '..\artifacts\windows')
+    [string]$OutputRoot = (Join-Path $PSScriptRoot '..\artifacts\windows'),
+    [string]$UpdatePublicKeyFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,6 +18,7 @@ foreach ($target in $targets) {
     New-Item -ItemType Directory -Path $targetOutput -Force | Out-Null
     & dotnet build $project --configuration $Configuration --runtime win7-x86 --no-restore --property:Platform=x86 --property:SoraWindowsTarget=$target --output $targetOutput
     if ($LASTEXITCODE -ne 0) { throw "Не удалось собрать профиль $target." }
+    & (Join-Path $PSScriptRoot 'Build-WindowsTools.ps1') -OutputRoot $targetOutput -Configuration $Configuration -UpdatePublicKeyFile $UpdatePublicKeyFile
     $executable = Join-Path $targetOutput "sora_$target.exe"
     if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw "Сборка не создала $executable." }
     Get-Item -LiteralPath $executable | Select-Object Name, Length, FullName

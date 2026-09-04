@@ -37,6 +37,8 @@ namespace v2rayN.Forms
                 CreateHappSettingRow("Локальный прокси", config != null && config.inbound[0].allowLANConn ? "Доступ из локальной сети" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
             AddHappSection(page, "Sora",
                 CreateHappSettingRow("Журнал", "", () => ShowHappPage(BuildHappLogsPage())),
+                CreateHappSettingRow("Центр логов", "Sora Logs", () => OpenSoraCenter("logs", "sora_logs.exe")),
+                CreateHappSettingRow("Обновления", "Sora Update", () => OpenSoraCenter("update", "sora_update.exe")),
                 CreateHappSettingRow("Резервные копии", "", ShowSoraBackupMenu));
             AddHappSection(page, "О приложении",
                 CreateHappSettingRow("О Sora", "", ShowCommunityAbout));
@@ -353,6 +355,18 @@ namespace v2rayN.Forms
             return "Русский";
         }
 
+        private void OpenSoraCenter(string folder, string executable)
+        {
+            try
+            {
+                string directory = AppDomain.CurrentDomain.BaseDirectory;
+                string path = Path.Combine(directory, "tools", folder, executable);
+                if (!File.Exists(path)) throw new FileNotFoundException("Компонент отсутствует. Переустановите полную сборку Sora.");
+                Process.Start(new ProcessStartInfo { FileName = path, WorkingDirectory = directory, Arguments = "--app-dir \"" + directory.TrimEnd(Path.DirectorySeparatorChar) + "\"", UseShellExecute = true });
+            }
+            catch (Exception error) { UI.ShowError("Не удалось открыть центр:\r\n" + error.Message); }
+        }
+
         private static string GetSoraLanguageCode(string language)
         {
             if (language == SoraText.PreReformRussian) return "Ѣ";
@@ -660,6 +674,7 @@ namespace v2rayN.Forms
             var actions = CreateHappSmallButton("dots-three", () =>
             {
                 var menu = BuildHappMenu();
+                menu.Items.Add("Открыть центр логов", null, (sender, args) => OpenSoraCenter("logs", "sora_logs.exe"));
                 menu.Items.Add("Сохранить текущую вкладку (.txt)", null, (sender, args) => ExportVisibleSoraLog());
                 menu.Items.Add("Скопировать текущую вкладку", null, (sender, args) => Utils.SetClipboardData(mainMsgControl.GetVisibleText()));
                 menu.Items.Add(new ToolStripSeparator());

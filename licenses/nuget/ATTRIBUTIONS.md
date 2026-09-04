@@ -9,10 +9,12 @@
 | log4net | 3.4.0 | Apache-2.0 | Apache Software Foundation |
 | Markdig | 1.3.2 | BSD-2-Clause | Copyright © Alexandre Mutel |
 | Newtonsoft.Json | 13.0.1 | MIT | Copyright © 2007 James Newton-King |
+| NetSparkleUpdater.SparkleUpdater | 3.1.0 | MIT | Copyright © 2026 Deadpikle; полный текст в NetSparkle.txt |
+| NetSparkleUpdater.Chaos.NaCl | 0.9.4 | MIT, Public Domain | Deadpikle, CodesInChaos, Bouncy Castle и другие; полный текст в Chaos.NaCl.txt |
 | NHotkey, NHotkey.WindowsForms | 2.1.0 | Apache-2.0 | Thomas Levesque and contributors |
 | Polly.Core | 8.7.0 | BSD-3-Clause | App vNext / Polly contributors |
 | ZXing.Net | 0.16.8 | Apache-2.0 | ZXing authors and contributors |
-| Microsoft.Bcl.AsyncInterfaces | 6.0.0 | MIT | .NET Foundation and contributors |
+| Microsoft.Bcl.AsyncInterfaces | 6.0.0; 10.0.7 в Sora Update | MIT | .NET Foundation and contributors |
 | Microsoft.Bcl.HashCode | 6.0.0 | MIT | .NET Foundation and contributors |
 | Microsoft.Bcl.TimeProvider | 8.0.0 | MIT | .NET Foundation and contributors |
 | System.Buffers | 4.6.1 | MIT | .NET Foundation and contributors |
@@ -20,11 +22,12 @@
 | System.ComponentModel.Annotations | 4.5.0 | MIT | .NET Foundation and contributors |
 | System.Formats.Nrbf | 10.0.11 | MIT | .NET Foundation and contributors |
 | System.Memory | 4.6.3 | MIT | .NET Foundation and contributors |
+| System.IO.Pipelines, System.Text.Json, System.Text.Encodings.Web | 10.0.7 | MIT | .NET Foundation and contributors |
 | System.Numerics.Vectors | 4.6.1 | MIT | .NET Foundation and contributors |
 | System.Reflection.Metadata | 10.0.11 | MIT | .NET Foundation and contributors |
 | System.Resources.Extensions | 10.0.11 | MIT | .NET Foundation and contributors |
 | System.Runtime.CompilerServices.Unsafe | 6.1.2 | MIT | .NET Foundation and contributors |
-| System.Threading.Tasks.Extensions | 4.5.4 | MIT | .NET Foundation and contributors |
+| System.Threading.Tasks.Extensions | 4.5.4; 4.6.3 в Sora Update | MIT | .NET Foundation and contributors |
 | System.ValueTuple | 4.6.2 | MIT | .NET Foundation and contributors |
 
 `Grpc.Tools` и пакеты reference assemblies используются только при сборке и не входят в бинарный дистрибутив.

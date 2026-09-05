@@ -71,10 +71,13 @@ namespace v2rayN.Handler
             coreInfos.Add(new CoreInfo
             {
                 coreType = ECoreType.v2rayN,
-                coreUrl = Global.NUrl,
-                coreReleaseApiUrl = Global.NUrl.Replace(@"https://github.com", @"https://api.github.com/repos"),
-                coreDownloadUrl32 = Global.NUrl + "/download/{0}/v2rayN.zip",
-                coreDownloadUrl64 = Global.NUrl + "/download/{0}/v2rayN.zip",
+                coreUrl = Global.SoraReleasesUrl,
+                coreReleaseApiUrl = Global.SoraReleaseApiUrl,
+                // Sora ships a per-Windows installer, not a drop-in archive, so the
+                // client never replaces itself in place. Leaving these empty keeps a
+                // future caller from reaching for someone else's build.
+                coreDownloadUrl32 = string.Empty,
+                coreDownloadUrl64 = string.Empty,
             });
 
             coreInfos.Add(new CoreInfo

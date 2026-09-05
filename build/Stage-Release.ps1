@@ -31,12 +31,19 @@ if ([string]::IsNullOrWhiteSpace($stageParent) -or $stageParent -eq [System.IO.P
     throw 'The staging directory cannot be placed at a drive root'
 }
 
+$resolvedBin = (Resolve-Path -LiteralPath $SourceBin).Path
+$toolsDirectory = Join-Path $resolvedBin 'tools'
+foreach ($center in 'logs\sora_logs.exe', 'update\sora_update.exe') {
+    if (-not (Test-Path -LiteralPath (Join-Path $toolsDirectory $center) -PathType Leaf)) { throw "Missing Windows center: $center. Run Build-WindowsTools.ps1 first." }
+}
+$keyCheck = Start-Process -FilePath (Join-Path $toolsDirectory 'update\sora_update.exe') -ArgumentList '--verify-release-key' -WindowStyle Hidden -Wait -PassThru
+if ($keyCheck.ExitCode -ne 0) { throw 'Release blocked: the updater has no valid embedded signing key. Test builds must not be published as production.' }
+
 if (Test-Path -LiteralPath $resolvedStage) {
     Remove-Item -LiteralPath $resolvedStage -Recurse -Force
 }
 New-Item -ItemType Directory -Path $resolvedStage | Out-Null
 
-$resolvedBin = (Resolve-Path -LiteralPath $SourceBin).Path
 Get-ChildItem -LiteralPath $resolvedBin -File |
     Where-Object { $_.Name -notin @('grpc_csharp_ext.x64.dll', 'guiNConfig.json') -and $_.Extension -ne '.pdb' } |
     Copy-Item -Destination $resolvedStage
@@ -46,6 +53,17 @@ if (-not (Test-Path -LiteralPath $assetsDirectory)) {
     throw 'The build output does not contain the Assets directory'
 }
 Copy-Item -LiteralPath $assetsDirectory -Destination $resolvedStage -Recurse
+
+Copy-Item -LiteralPath $toolsDirectory -Destination $resolvedStage -Recurse
+
+foreach ($culture in 'en-US', 'zh-Hans', 'zh-Hant') {
+    $resourceDirectory = Join-Path $resolvedBin $culture
+    $resourceAssembly = Join-Path $resourceDirectory "sora_$WindowsTarget.resources.dll"
+    if (-not (Test-Path -LiteralPath $resourceAssembly -PathType Leaf)) {
+        throw "The build output is missing the $culture translation: $resourceAssembly"
+    }
+    Copy-Item -LiteralPath $resourceDirectory -Destination $resolvedStage -Recurse
+}
 
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $icon = Join-Path $projectRoot 'v2rayN\v2rayN\Assets\Sora\sora.ico'

@@ -101,7 +101,7 @@ namespace v2rayN.Forms
 
         internal HappConnectionControl()
         {
-            SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
+            SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.Selectable, true);
             SetStyle(ControlStyles.StandardClick | ControlStyles.StandardDoubleClick, false);
             DoubleBuffered = true;
             Cursor = Cursors.Hand;
@@ -116,6 +116,7 @@ namespace v2rayN.Forms
             _animation = new Timer { Interval = 33 };
             _animation.Tick += (sender, args) =>
             {
+                if (!Visible || FindForm()?.WindowState == FormWindowState.Minimized) return;
                 _phase = (_phase + 0.105F) % ((float)Math.PI * 2F);
                 Invalidate();
             };
@@ -271,6 +272,12 @@ namespace v2rayN.Forms
                 e.SuppressKeyPress = true;
             }
             base.OnKeyDown(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _animation.Dispose();
+            base.Dispose(disposing);
         }
 
         protected override void OnPaint(PaintEventArgs e)

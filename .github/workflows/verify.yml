@@ -2,12 +2,61 @@ name: Verify Sora
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  android-debug:
+    name: Android debug build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: android-actions/setup-android@v4
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Test and build
+        working-directory: clients/sora-kmp
+        run: |
+          chmod +x gradlew
+          ./gradlew :shared:jvmTest :androidApp:assembleDebug --no-daemon
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          cp androidApp/build/outputs/apk/debug/androidApp-debug.apk androidApp/build/outputs/apk/debug/sora_android.apk
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sora-android-debug
+          path: clients/sora-kmp/androidApp/build/outputs/apk/debug/sora_android.apk
+          if-no-files-found: error
+
+  linux-deb:
+    name: Linux deb build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Test and package
+        working-directory: clients/sora-kmp
+        run: |
+          chmod +x gradlew
+          ./gradlew :shared:jvmTest :desktopApp:packageDeb --no-daemon
+          mv desktopApp/build/compose/binaries/main/deb/*.deb desktopApp/build/compose/binaries/main/deb/sora_linux_amd64.deb
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sora-linux-deb
+          path: clients/sora-kmp/desktopApp/build/compose/binaries/main/deb/sora_linux_amd64.deb
+          if-no-files-found: error
+
   windows-x86:
     name: ${{ matrix.executable }}
     runs-on: windows-latest
@@ -36,6 +85,18 @@ jobs:
         shell: powershell
         run: |
           & "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File tests\Sora.SubscriptionRegression.ps1 -SoraExe "v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\${{ matrix.executable }}"
+      - name: Build and test Windows centers
+        shell: powershell
+        run: |
+          $output = 'v2rayN\v2rayN\bin\x86\Release\net48\win7-x86'
+          & build\Build-WindowsTools.ps1 -OutputRoot $output
+          $powershell = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+          & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.LogsRegression.ps1 -LogsExe "$output\tools\logs\sora_logs.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.UpdateRegression.ps1 -UpdaterExe "$output\tools\update\sora_update.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.UpdateScenarios.ps1 -UpdaterExe "$output\tools\update\sora_update.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows 7 QA script compatibility
         shell: powershell
         run: |
@@ -44,12 +105,21 @@ jobs:
             'tests\Sora.Dogfood.ps1',
             'tests\Sora.LiveSubscriptionQa.ps1',
             'tests\Sora.LocalVpnPlumbing.ps1',
-            'tests\Sora.RealLatencyQa.ps1'
+            'tests\Sora.RealLatencyQa.ps1',
+            'tests\Sora.InstallerRegression.ps1'
           )) {
             $env:SORA_QA_SCRIPT = (Resolve-Path $script).Path
             & $powershell -NoProfile -Command '$parseErrors = $null; [System.Management.Automation.Language.Parser]::ParseFile($env:SORA_QA_SCRIPT, [ref]$null, [ref]$parseErrors) | Out-Null; if ($parseErrors.Count) { $parseErrors | Out-String | Write-Error; exit 1 }'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Installer regression
+        if: matrix.target == 'win7'
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests\Sora.InstallerRegression.ps1 `
+            -SoraExe "v2rayN\v2rayN\bin\x86\Release\net48\win7-x86\${{ matrix.executable }}" `
+            -SoraIcon "v2rayN\v2rayN\Assets\Sora\sora.ico"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v6
         with:
           name: sora-${{ matrix.target }}-x86

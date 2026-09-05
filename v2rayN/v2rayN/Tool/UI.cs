@@ -118,14 +118,20 @@ namespace v2rayN
                 };
                 close.FlatAppearance.BorderSize = 0;
                 close.FlatAppearance.MouseOverBackColor = Color.FromArgb(52, 52, 55);
-                var body = new Label
+                var body = new TextBox
                 {
                     Location = new Point(28, 70),
                     Size = new Size(width - 56, height - 132),
                     Text = message,
                     Font = new Font("Segoe UI", 9.5F),
                     ForeColor = dialog.ForeColor,
-                    TextAlign = ContentAlignment.TopLeft
+                    BackColor = dialog.BackColor,
+                    BorderStyle = BorderStyle.None,
+                    Multiline = true,
+                    ReadOnly = true,
+                    WordWrap = true,
+                    ScrollBars = textHeight > height - 132 ? ScrollBars.Vertical : ScrollBars.None,
+                    AccessibleName = titleText
                 };
                 dialog.Controls.AddRange(new Control[] { logo, title, close, body });
 

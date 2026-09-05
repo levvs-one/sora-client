@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -824,7 +825,7 @@ namespace v2rayN.Forms
             IPAddress[] addresses;
             try
             {
-                addresses = await System.Net.Dns.GetHostAddressesAsync(active.address);
+                addresses = await System.Net.Dns.GetHostAddressesAsync(GetSoraTunServerAddress(active));
             }
             catch (Exception exception)
             {
@@ -863,6 +864,20 @@ namespace v2rayN.Forms
             ConfigHandler.SaveConfig(ref config, false);
             Utils.SetAutoRun(true);
             UpdateCommunityConnectionState(config.sysProxyType);
+        }
+
+        private static string GetSoraTunServerAddress(VmessItem active)
+        {
+            if (active.configType != EConfigType.Custom)
+            {
+                return active.address;
+            }
+            string path = File.Exists(active.address) ? active.address : Utils.GetConfigPath(active.address);
+            if (!ConfigHandler.TryGetSoraXrayEndpoint(File.ReadAllText(path), out string address, out int port))
+            {
+                throw new InvalidOperationException("В конфигурации не найден адрес сервера для TUN.");
+            }
+            return address;
         }
 
         private void RestartCommunityAsAdministrator()
@@ -1131,9 +1146,9 @@ namespace v2rayN.Forms
 
                 var footer = new Label
                 {
-                    Location = new Point(32, 272),
-                    Size = new Size(436, 20),
-                    Text = "Независимый проект сообщества",
+                    Location = new Point(32, 266),
+                    Size = new Size(436, 36),
+                    Text = "Создатель — levvs-one\r\nНезависимый проект сообщества",
                     Font = new Font("Segoe UI", 8.5F),
                     ForeColor = HappMuted
                 };

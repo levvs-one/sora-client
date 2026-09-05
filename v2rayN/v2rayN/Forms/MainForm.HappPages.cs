@@ -37,6 +37,8 @@ namespace v2rayN.Forms
                 CreateHappSettingRow("Локальный прокси", config != null && config.inbound[0].allowLANConn ? "Доступ из локальной сети" : "Только этот компьютер", () => ShowHappPage(BuildHappInboundPage())));
             AddHappSection(page, "Sora",
                 CreateHappSettingRow("Журнал", "", () => ShowHappPage(BuildHappLogsPage())),
+                CreateHappSettingRow("Центр логов", "Sora Logs", () => OpenSoraCenter("logs", "sora_logs.exe")),
+                CreateHappSettingRow("Обновления", "Sora Update", () => OpenSoraCenter("update", "sora_update.exe")),
                 CreateHappSettingRow("Резервные копии", "", ShowSoraBackupMenu));
             AddHappSection(page, "О приложении",
                 CreateHappSettingRow("О Sora", "", ShowCommunityAbout));
@@ -346,25 +348,70 @@ namespace v2rayN.Forms
 
         private static string GetSoraLanguageDisplayName(string language)
         {
-            if (language == SoraText.PreReformRussian) return "Русский дореформенный";
+            if (language == SoraText.PreReformRussian) return "Русскій дореформенный";
             if (language == SoraText.English) return "English";
             if (language == SoraText.Chinese) return "简体中文";
+            if (language == SoraText.TraditionalChinese) return "繁體中文";
             return "Русский";
+        }
+
+        private void OpenSoraCenter(string folder, string executable)
+        {
+            try
+            {
+                string directory = AppDomain.CurrentDomain.BaseDirectory;
+                string path = Path.Combine(directory, "tools", folder, executable);
+                if (!File.Exists(path)) throw new FileNotFoundException("Компонент отсутствует. Переустановите полную сборку Sora.");
+                Process.Start(new ProcessStartInfo { FileName = path, WorkingDirectory = directory, Arguments = "--app-dir \"" + directory.TrimEnd(Path.DirectorySeparatorChar) + "\"", UseShellExecute = true });
+            }
+            catch (Exception error) { UI.ShowError("Не удалось открыть центр:\r\n" + error.Message); }
+        }
+
+        private static string GetSoraLanguageCode(string language)
+        {
+            if (language == SoraText.PreReformRussian) return "Ѣ";
+            if (language == SoraText.English) return "EN";
+            if (language == SoraText.Chinese) return "简";
+            if (language == SoraText.TraditionalChinese) return "繁";
+            return "RU";
+        }
+
+        private static string GetSoraLanguageCountryCode(string language)
+        {
+            if (language == SoraText.English) return "GB";
+            if (language == SoraText.Chinese) return "CN";
+            if (language == SoraText.TraditionalChinese) return "TW";
+            return "RU";
         }
 
         private void ShowSoraLanguageMenu()
         {
-            var menu = BuildHappMenu();
-            AddSoraLanguageItem(menu, "Русский", SoraText.Russian);
-            AddSoraLanguageItem(menu, "Русский дореформенный", SoraText.PreReformRussian);
-            AddSoraLanguageItem(menu, "English", SoraText.English);
-            AddSoraLanguageItem(menu, "简体中文", SoraText.Chinese);
-            menu.Show(Cursor.Position);
+            ShowSoraLanguageMenu(null);
         }
 
-        private static void AddSoraLanguageItem(ContextMenuStrip menu, string title, string language)
+        private void ShowSoraLanguageMenu(Control anchor)
         {
-            var item = (ToolStripMenuItem)menu.Items.Add(title);
+            var menu = BuildHappMenu();
+            AddSoraLanguageItem(menu, "Русский", SoraText.Russian, "RU");
+            AddSoraLanguageItem(menu, "Русскій дореформенный", SoraText.PreReformRussian, "RU");
+            AddSoraLanguageItem(menu, "English", SoraText.English, "GB");
+            AddSoraLanguageItem(menu, "简体中文", SoraText.Chinese, "CN");
+            AddSoraLanguageItem(menu, "繁體中文", SoraText.TraditionalChinese, "TW");
+            if (anchor == null)
+            {
+                menu.Show(Cursor.Position);
+            }
+            else
+            {
+                menu.Show(anchor, new Point(Math.Max(0, anchor.Width - menu.PreferredSize.Width), anchor.Height + 4));
+            }
+        }
+
+        private void AddSoraLanguageItem(ContextMenuStrip menu, string title, string language, string countryCode)
+        {
+            Image source = LoadSoraCountryFlag(countryCode);
+            Image flag = source == null ? null : new Bitmap(source, new Size(20, 14));
+            var item = (ToolStripMenuItem)menu.Items.Add(title, flag);
             item.Checked = SoraText.CurrentLanguage == language;
             item.Click += (sender, args) => SoraText.Select(language);
         }
@@ -627,6 +674,7 @@ namespace v2rayN.Forms
             var actions = CreateHappSmallButton("dots-three", () =>
             {
                 var menu = BuildHappMenu();
+                menu.Items.Add("Открыть центр логов", null, (sender, args) => OpenSoraCenter("logs", "sora_logs.exe"));
                 menu.Items.Add("Сохранить текущую вкладку (.txt)", null, (sender, args) => ExportVisibleSoraLog());
                 menu.Items.Add("Скопировать текущую вкладку", null, (sender, args) => Utils.SetClipboardData(mainMsgControl.GetVisibleText()));
                 menu.Items.Add(new ToolStripSeparator());
@@ -888,11 +936,13 @@ namespace v2rayN.Forms
                 bool updating = _soraSubscriptionUpdates.Contains(subscription.id);
                 bool remote = Uri.TryCreate(subscription.url, UriKind.Absolute, out Uri parsed) && parsed.Scheme == Uri.UriSchemeHttps;
                 string state = updating ? "Обновление выполняется"
+                    : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) && subscription.lastUpdateError.IndexOf("NotFound", StringComparison.OrdinalIgnoreCase) >= 0 ? "Ссылка недоступна"
                     : !string.IsNullOrWhiteSpace(subscription.lastUpdateError) ? "Ошибка обновления"
                     : subscription.lastUpdateSuccessUtcTicks > 0 ? "Обновлено " + FormatSoraRelativeTime(subscription.lastUpdateSuccessUtcTicks)
                     : remote ? "Ещё не обновлялась" : "Локальный импорт";
                 controls.Title.Text = GetSoraSubscriptionTitle(subscription);
-                controls.Detail.Text = FormatSoraServerCount(serverCount) + " — " + state;
+                controls.Detail.Text = FormatSoraServerCount(serverCount);
+                controls.Status.Text = state;
                 controls.Schedule.Text = remote
                     ? subscription.enabled ? "Автообновление: " + FormatSoraSchedule(subscription.updateIntervalMinutes) : "Автообновление выключено"
                     : "Сохранено в Sora без удалённого обновления";

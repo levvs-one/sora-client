@@ -110,6 +110,25 @@ if ([long]$subItemType.GetProperty('subscriptionDownloadBytes').GetValue($subIte
 }
 
 $mainFormType = $assembly.GetType('v2rayN.Forms.MainForm', $true)
+$tunAddressMethod = $mainFormType.GetMethod('GetSoraTunServerAddress', [Reflection.BindingFlags]'NonPublic, Static')
+if ($null -eq $tunAddressMethod) { throw 'TUN still resolves a configuration filename instead of its server' }
+$tunProfile = [Activator]::CreateInstance($assembly.GetType('v2rayN.Mode.VmessItem', $true))
+$tunProfile.configType = [Enum]::Parse($assembly.GetType('v2rayN.Mode.EConfigType', $true), 'Custom')
+$tunProfilePath = Join-Path ([IO.Path]::GetTempPath()) ('sora-tun-' + [Guid]::NewGuid().ToString('N') + '.json')
+try {
+    [IO.File]::WriteAllText($tunProfilePath, $singleProfile)
+    $tunProfile.address = $tunProfilePath
+    if ($tunAddressMethod.Invoke($null, @($tunProfile)) -ne 'example.com') {
+        throw 'TUN did not resolve the endpoint from the imported Xray configuration'
+    }
+}
+finally { Remove-Item -LiteralPath $tunProfilePath -Force }
+$toggleType = $assembly.GetType('v2rayN.Forms.HappToggle', $true)
+$toggle = [Activator]::CreateInstance($toggleType, $true)
+$toggleType.GetProperty('Checked', [Reflection.BindingFlags]'NonPublic, Instance').SetValue($toggle, $true)
+$toggleTimer = $toggleType.GetField('_animation', [Reflection.BindingFlags]'NonPublic, Instance').GetValue($toggle)
+$toggle.Dispose()
+if ($toggleTimer.Enabled) { throw 'Closing settings leaves a toggle animation timer running' }
 $instanceBinding = [System.Reflection.BindingFlags]'NonPublic, Instance'
 if ($null -ne $mainFormType.GetMethod('BuildHappSubscriptionsPage', $instanceBinding)) {
     throw 'The detached subscriptions page must not return'
@@ -122,6 +141,9 @@ if ($null -eq $mainFormType.GetMethod('BuildSoraSubscriptionAccordion', $instanc
 }
 if ($null -eq $mainFormType.GetField('_soraExpandedSubscriptionId', $instanceBinding)) {
     throw 'Subscription expansion state is missing'
+}
+if ($null -eq $mainFormType.GetField('_soraConfiguringServerList', $instanceBinding)) {
+    throw 'Server-list layout can re-enter and freeze the UI thread'
 }
 $staticBinding = [System.Reflection.BindingFlags]'NonPublic, Static'
 $addImportContainer = $mainFormType.GetMethod('AddSoraImportContainer', $staticBinding)
@@ -141,6 +163,11 @@ if ([string]::IsNullOrWhiteSpace($subItemType.GetProperty('id').GetValue($localC
 }
 if ($null -eq $mainFormType.GetField('_soraTrafficSummary', $instanceBinding)) {
     throw 'The compact traffic summary is missing below the connection button'
+}
+if ($null -eq $mainFormType.GetField('_happLanguageButton', $instanceBinding) -or
+    $null -eq $mainFormType.GetMethod('GetSoraLanguageCode', [System.Reflection.BindingFlags]'NonPublic, Static') -or
+    $null -eq $mainFormType.GetMethod('GetSoraLanguageCountryCode', [System.Reflection.BindingFlags]'NonPublic, Static')) {
+    throw 'The compact language selector is missing from the connection pane'
 }
 foreach ($timer in @{
     SoraTrafficRefreshIntervalMilliseconds = 1000
@@ -208,6 +235,15 @@ try {
     if (-not [string]::IsNullOrEmpty([string]$getVisibleLog.Invoke($logControl, @()))) {
         throw 'Log clearing left buffered entries visible'
     }
+    foreach ($index in 1..5000) { $logControl.AppendText('bounded event') }
+    $pending = $logControlType.GetField('_pendingMessages', $instanceBinding).GetValue($logControl)
+    if ($pending.Count -gt 2000) { throw 'The pending log queue grows without a bound.' }
+    $logControl.ClearMsg()
+    $logControl.SetCommunityFilter('^(a+)+$')
+    $logControl.AppendText(('a' * 5000) + '!')
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    [void]$getVisibleLog.Invoke($logControl, @())
+    if ($watch.Elapsed.TotalSeconds -gt 2) { throw 'A pathological regex can freeze the log view.' }
 }
 finally {
     $logControl.Dispose()
@@ -241,6 +277,7 @@ $resourceManager = $resourceField.GetValue($null)
 $preReformManager = $preReformField.GetValue($null)
 $settingsKey = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0J3QsNGB0YLRgNC+0LnQutC4'))
 $chineseSettings = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('6K6+572u'))
+$traditionalChineseSettings = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('6Kit5a6a'))
 $logKey = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0JbRg9GA0L3QsNC7'))
 $preReformLog = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('0JbRg9GA0L3QsNC70Yo='))
 if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('en-US')) -ne 'Settings') {
@@ -248,6 +285,9 @@ if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCul
 }
 if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('zh-Hans')) -ne $chineseSettings) {
     throw 'Chinese Sora resources are missing'
+}
+if ($resourceManager.GetString($settingsKey, [Globalization.CultureInfo]::GetCultureInfo('zh-Hant')) -ne $traditionalChineseSettings) {
+    throw 'Traditional Chinese Sora resources are missing'
 }
 if ($preReformManager.GetString($logKey, [Globalization.CultureInfo]::GetCultureInfo('ru-RU')) -ne $preReformLog) {
     throw 'Pre-reform Russian Sora resources are missing'

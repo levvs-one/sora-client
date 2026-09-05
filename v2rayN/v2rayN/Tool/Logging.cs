@@ -35,10 +35,6 @@ namespace v2rayN.Tool
             roller.ActivateOptions();
             hierarchy.Root.AddAppender(roller);
 
-            var memory = new MemoryAppender();
-            memory.ActivateOptions();
-            hierarchy.Root.AddAppender(memory);
-
             hierarchy.Root.Level = Level.Debug;
             hierarchy.Configured = true;
         }

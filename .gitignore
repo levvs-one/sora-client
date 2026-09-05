@@ -1,5 +1,5 @@
 ﻿################################################################################
-# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
+# Visual Studio-generated entries
 ################################################################################
 
 /v2rayN/.vs/
@@ -32,3 +32,13 @@
 /**/statistics.json
 /**/user-wininet.json
 *.pdb
+
+# Kotlin/Compose local build state
+/clients/sora-kmp/.gradle/
+/clients/sora-kmp/**/build/
+/clients/sora-kmp/local.properties
+/clients/sora-kmp/**/hs_err_pid*.log
+
+# Windows companion build output
+/clients/windows-tools/**/bin/
+/clients/windows-tools/**/obj/

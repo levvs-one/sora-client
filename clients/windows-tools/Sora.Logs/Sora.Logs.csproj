@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>sora_logs</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x86</PlatformTarget>
+    <ApplicationIcon>..\..\..\v2rayN\v2rayN\Assets\Sora\sora.ico</ApplicationIcon>
+    <Version>0.2.4</Version>
+    <Product>Sora Logs</Product>
+    <Company>levvs-one</Company>
+    <Authors>levvs-one</Authors>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\CenterWindow.cs" Link="CenterWindow.cs" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+</Project>

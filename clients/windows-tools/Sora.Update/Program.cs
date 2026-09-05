@@ -74,13 +74,20 @@ namespace Sora.Centers
         private string _verifiedPath;
         private string _application;
         private string _target;
+        private bool _cancelRequested;
+        private bool _downloadCompleted;
 
         internal UpdateWindow(string[] args) : base("Sora Update")
         {
             _check = Button("Проверить", async (sender, e) => await Check());
             _download = Button("Скачать", async (sender, e) => await Download(), true);
             _install = Button("Установить", async (sender, e) => await Install(), true);
-            _cancel = Button("Отменить загрузку", (sender, e) => _updater?.CancelFileDownload());
+            _cancel = Button("Отменить загрузку", (sender, e) =>
+            {
+                _cancelRequested = true;
+                _cancel.Enabled = false;
+                _updater?.UpdateDownloader.CancelDownload();
+            });
             _download.Enabled = _install.Enabled = _cancel.Enabled = false;
             Actions.Controls.AddRange(new Control[] { _check, _download, _install, _cancel });
             _version = new Label { Dock = DockStyle.Top, Height = 74, Text = "Обновления Sora", Font = new Font("Segoe UI Semibold", 14F) };
@@ -113,11 +120,11 @@ namespace Sora.Centers
                     ShouldKillParentProcessWhenStartingInstaller = false
                 };
                 _updater.DownloadMadeProgress += (sender, item, progress) => Report("Загрузка: " + progress.ProgressPercentage + "%");
-                _updater.DownloadFinished += (item, path) => Dispatch(() => { _verifiedPath = path; _cancel.Enabled = false; _check.Enabled = true; _install.Enabled = true; Event("Файл загружен. Подпись проверена. Перед установкой закройте Sora — соединение прервётся."); });
-                _updater.DownloadCanceled += (item, path) => Dispatch(() => Failed("Загрузка отменена. Установленная версия не изменена."));
-                _updater.DownloadHadError += (item, path, error) => Dispatch(() => Failed("Не удалось загрузить обновление: " + error.Message));
-                _updater.DownloadedFileIsCorrupt += (item, path) => Dispatch(() => Failed("Подпись файла не совпала. Установка заблокирована."));
-                _updater.DownloadedFileThrewWhileCheckingSignature += (item, path) => Dispatch(() => Failed("Не удалось проверить подпись. Установка заблокирована."));
+                _updater.DownloadFinished += (item, path) => Dispatch(() => FinishDownload(path, null));
+                _updater.DownloadCanceled += (item, path) => Dispatch(() => FinishDownload(null, "Загрузка отменена. Установленная версия не изменена."));
+                _updater.DownloadHadError += (item, path, error) => Dispatch(() => FinishDownload(null, "Не удалось загрузить обновление: " + error.Message));
+                _updater.DownloadedFileIsCorrupt += (item, path) => Dispatch(() => FinishDownload(null, "Подпись файла не совпала. Установка заблокирована."));
+                _updater.DownloadedFileThrewWhileCheckingSignature += (item, path) => Dispatch(() => FinishDownload(null, "Не удалось проверить подпись. Установка заблокирована."));
                 _updater.InstallUpdateFailed += (reason, path) => { Dispatch(() => Failed("Установка не запущена: " + reason)); return false; };
                 _updater.CloseApplication += () => Dispatch(Close);
                 Event("Проверка и скачивание не отключают VPN. Установка запускается только по вашей кнопке.");
@@ -161,13 +168,27 @@ namespace Sora.Centers
             _download.Enabled = _check.Enabled = _install.Enabled = false;
             _cancel.Enabled = true;
             _verifiedPath = null;
+            _cancelRequested = _downloadCompleted = false;
             try
             {
                 _updater.TmpDownloadFileNameWithExtension = "sora_" + _target + "_" + Guid.NewGuid().ToString("N") + ".exe";
                 Event("Скачиваем обновление…");
                 await _updater.InitAndBeginDownload(_available);
             }
-            catch (Exception error) { Failed("Загрузка не началась: " + error.Message); }
+            catch (Exception error) { FinishDownload(null, "Загрузка не началась: " + error.Message); }
+        }
+
+        private void FinishDownload(string path, string error)
+        {
+            // NetSparkle reports a corrupt file through both signature and general error events.
+            if (_downloadCompleted) return;
+            _downloadCompleted = true;
+            if (_cancelRequested) error = "Загрузка отменена. Установленная версия не изменена.";
+            if (error != null) { Failed(error); return; }
+            _verifiedPath = path;
+            _cancel.Enabled = false;
+            _check.Enabled = _install.Enabled = true;
+            Event("Файл загружен. Подпись проверена. Перед установкой закройте Sora — соединение прервётся.");
         }
 
         private async Task Install()

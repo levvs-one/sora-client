@@ -95,6 +95,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.UpdateRegression.ps1 -UpdaterExe "$output\tools\update\sora_update.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $powershell -NoProfile -ExecutionPolicy Bypass -File tests\Sora.UpdateScenarios.ps1 -UpdaterExe "$output\tools\update\sora_update.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows 7 QA script compatibility
         shell: powershell
         run: |

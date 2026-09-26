@@ -86,7 +86,7 @@ jobs:
           rm -rf /tmp/sora-platforms
           mkdir -p /tmp/sora-platforms
           flutter create --platforms=windows,linux,android --org one.levvs --project-name sora --no-pub /tmp/sora-platforms
-          mkdir -p app
+          mkdir -p app app/android.generated
           cp -R /tmp/sora-platforms/windows app/windows
           cp -R /tmp/sora-platforms/linux app/linux
           cp -R /tmp/sora-platforms/android/. app/android.generated/

@@ -1,0 +1,27 @@
+name: sora
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.7
+  grpc: ^4.0.1
+  protobuf: ^3.1.0
+  fixnum: ^1.1.0
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true

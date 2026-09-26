@@ -3,7 +3,7 @@ modules:
   - path: .
 lint:
   use:
-    - STANDARD
+    - MINIMAL
 breaking:
   use:
     - FILE

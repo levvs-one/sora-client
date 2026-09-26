@@ -3,6 +3,11 @@
 `core` is the Go module for Sora's privileged network core. The local control API
 is generated from `proto/sora/core/v1/core_control.proto`.
 
+Packages:
+
+- `control`: API version negotiation and control-plane contracts.
+- `soraerr`: typed error catalogue, classifier, stable unknown-error fingerprints, and mandatory secret redaction.
+
 From the repository root, generate the checked-in Go and Dart artifacts with:
 
 ```sh

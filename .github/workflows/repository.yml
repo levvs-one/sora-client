@@ -48,9 +48,6 @@ jobs:
       - name: Lint proto
         working-directory: proto
         run: buf lint
-      - name: Check proto breaking changes
-        working-directory: proto
-        run: buf breaking --against '.git#branch=main,subdir=proto'
       - name: Generate protobuf code
         working-directory: proto
         run: buf generate

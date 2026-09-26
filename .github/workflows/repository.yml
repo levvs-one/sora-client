@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  workflows:
+  workflow:
     name: Workflow lint
     runs-on: ubuntu-latest
     steps:
@@ -23,6 +23,27 @@ jobs:
       - name: Run actionlint
         run: ./actionlint -color
 
+  proto:
+    name: Proto
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install Buf
+        run: go install github.com/bufbuild/buf/cmd/buf@v1.50.0
+      - name: Lint proto
+        working-directory: proto
+        run: buf lint
+      - name: Check proto breaking changes
+        shell: bash
+        run: |
+          if git ls-tree -r --name-only origin/main | grep -q '^proto/'; then
+            buf breaking --against '.git#branch=main,subdir=proto' --path proto
+          else
+            echo 'No proto directory exists on main; skipping breaking check.'
+          fi
+
   go:
     name: Go core
     runs-on: ubuntu-latest
@@ -31,17 +52,27 @@ jobs:
         working-directory: core
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: core/go.mod
           cache: false
+      - name: Install Buf and Go generators
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@v1.50.0
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+        working-directory: .
+      - name: Generate protobuf code
+        working-directory: proto
+        run: buf generate
+      - name: Tidy modules
+        run: go mod tidy
       - name: Check formatting
         run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "$unformatted"
-            exit 1
-          fi
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "$unformatted"; exit 1; fi
       - name: Vet
         run: go vet ./...
       - name: Test

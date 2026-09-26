@@ -1,0 +1,58 @@
+name: Autofix generated code
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  autofix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache: false
+      - name: Install Buf and Go generators
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@v1.50.0
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+      - uses: dart-lang/setup-dart@v1
+      - name: Install Dart generator
+        run: |
+          dart pub global activate protoc_plugin 21.1.2
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+      - name: Generate protobuf code
+        if: hashFiles('proto/buf.gen.yaml') != ''
+        working-directory: proto
+        run: buf generate
+      - name: Tidy and format Go
+        working-directory: core
+        run: |
+          go mod tidy
+          gofmt -w .
+      - name: Format Flutter application
+        if: hashFiles('app/pubspec.yaml') != ''
+        working-directory: app
+        run: |
+          echo "Flutter setup is required when app/pubspec.yaml exists."
+          flutter pub get
+          dart format .
+      - name: Commit generated changes
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "chore: autofix generated code and modules"
+          git push

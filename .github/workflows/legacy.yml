@@ -1,16 +1,30 @@
-name: Verify Sora
+name: Sora Legacy
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'legacy/**'
+      - '.github/workflows/legacy.yml'
   pull_request:
+    paths:
+      - 'legacy/**'
+      - '.github/workflows/legacy.yml'
 
 permissions:
   contents: read
+
+concurrency:
+  group: legacy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows-x86:
     name: ${{ matrix.executable }}
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: legacy
     strategy:
       fail-fast: false
       matrix:
@@ -52,6 +66,6 @@ jobs:
           }
       - uses: actions/upload-artifact@v6
         with:
-          name: sora-${{ matrix.target }}-x86
-          path: v2rayN\v2rayN\bin\x86\Release\net48\win7-x86
+          name: sora-legacy-${{ matrix.target }}-x86
+          path: legacy\v2rayN\v2rayN\bin\x86\Release\net48\win7-x86
           if-no-files-found: error

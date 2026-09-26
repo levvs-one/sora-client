@@ -1,34 +1,59 @@
-﻿################################################################################
-# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
-################################################################################
-
-/v2rayN/.vs/
-/v2rayN/v2rayN/bin/Debug/app.publish
-/v2rayN/v2rayN/bin/Debug
-/v2rayN/v2rayN/bin/Release
-/v2rayN/v2rayN/bin/
-/v2rayN/v2rayN/obj/
-/v2rayN/.vs/v2rayN/DesignTimeBuild
-/v2rayN/packages
-.vs/ProjectSettings.json
-.vs/slnx.sqlite
-.vs/VSWorkspaceState.json
-/v2rayN/v2rayUpgrade/bin/Debug
-/v2rayN/v2rayUpgrade/bin/Release
-/v2rayN/v2rayUpgrade/bin/
-/v2rayN/v2rayUpgrade/obj/
+# Sora Legacy
+/legacy/v2rayN/.vs/
+/legacy/v2rayN/v2rayN/bin/
+/legacy/v2rayN/v2rayN/obj/
+/legacy/v2rayN/packages/
+/legacy/v2rayN/v2rayUpgrade/bin/
+/legacy/v2rayN/v2rayUpgrade/obj/
+/legacy/stage/
+/legacy/installer-output/
+/legacy/outputs/
+/legacy/artifacts/
+.vs/
 *.user
-
-# Local release artifacts and runtime state
-/stage/
-/installer-output/
-/outputs/
-/artifacts/
-/**/guiLogs/
-/**/guiTemps/
-/**/guiBackups/
-/**/guiConfigs/
-/**/guiNConfig.json
-/**/statistics.json
-/**/user-wininet.json
 *.pdb
+**/guiLogs/
+**/guiTemps/
+**/guiBackups/
+**/guiConfigs/
+**/guiNConfig.json
+**/statistics.json
+**/user-wininet.json
+
+# Go
+/core/bin/
+/core/dist/
+*.test
+*.out
+/core/coverage.*
+
+# Flutter and Dart
+/app/.dart_tool/
+/app/build/
+/app/.flutter-plugins
+/app/.flutter-plugins-dependencies
+/app/coverage/
+
+# Android and Gradle
+.gradle/
+local.properties
+/app/android/**/build/
+*.jks
+*.keystore
+key.properties
+
+# Build output
+/dist/
+/artifacts/
+
+# Secrets
+.env
+.env.*
+
+# Editors and operating systems
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db

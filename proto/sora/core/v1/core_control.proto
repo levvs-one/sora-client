@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package sora.core.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/levvs-one/sora-client/core/gen/sora/core/v1;corev1";
+
+// CoreControl is the local control-plane API for the Sora core service.
+service CoreControl {
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc WatchEvents(WatchEventsRequest) returns (stream CoreEvent);
+  rpc ParseImport(ParseImportRequest) returns (ParseImportResponse);
+  rpc FetchSubscription(FetchSubscriptionRequest) returns (FetchSubscriptionResponse);
+  rpc ProbeServers(ProbeServersRequest) returns (stream ProbeResult);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  rpc RunDiagnostics(RunDiagnosticsRequest) returns (RunDiagnosticsResponse);
+  rpc ExportDiagnostics(ExportDiagnosticsRequest) returns (ExportDiagnosticsResponse);
+  rpc SetKillSwitch(SetKillSwitchRequest) returns (SetKillSwitchResponse);
+  rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
+}
+
+message ApiVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+  uint32 min_supported_minor = 3;
+  repeated string capabilities = 4;
+}
+
+message ConnectRequest {
+  ApiVersion api_version = 1;
+  string request_id = 2;
+  string session_id = 3;
+  SessionPlan session_plan = 4;
+  bytes control_authenticator = 5;
+}
+message ConnectResponse { SessionStatus status = 1; SoraError error = 2; }
+message DisconnectRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; bytes control_authenticator = 4; }
+message DisconnectResponse { SessionStatus status = 1; SoraError error = 2; }
+message GetStatusRequest { ApiVersion api_version = 1; string session_id = 2; }
+message GetStatusResponse { SessionStatus status = 1; SoraError error = 2; }
+message WatchEventsRequest { ApiVersion api_version = 1; string session_id = 2; uint64 after_sequence = 3; }
+
+message SessionPlan {
+  TunnelMode tunnel_mode = 1;
+  repeated OutboundSpec outbounds = 2; // Limit: 1 to 5000 entries; total plan is at most 4 MiB.
+  repeated RoutingRule routes = 3; // Limit: 0 to 10000 entries in deterministic order.
+  DnsPolicy dns_policy = 4;
+  BypassSettings bypass_settings = 5;
+  string session_identity = 6;
+}
+message OutboundSpec {
+  string id = 1;
+  string display_name = 2; // Limit: 0 to 256 UTF-8 bytes.
+  string protocol = 3;
+  string transport = 4;
+  string security = 5;
+  Endpoint endpoint = 6;
+  CredentialsRef credentials = 7;
+}
+message Endpoint { string host = 1; uint32 port = 2; }
+message CredentialsRef { string reference = 1; }
+message RoutingRule { string destination = 1; string outbound_id = 2; }
+message DnsPolicy { repeated string servers = 1; bool block_private = 2; }
+message BypassSettings { bool enabled = 1; repeated string rules = 2; }
+enum TunnelMode { TUNNEL_MODE_UNSPECIFIED = 0; TUNNEL_MODE_SYSTEM = 1; TUNNEL_MODE_APPLICATION = 2; }
+
+message SessionStatus { ConnectionState connection = 1; ApiVersion negotiated_version = 2; }
+message GetStatsRequest { ApiVersion api_version = 1; string session_id = 2; }
+message GetStatsResponse { StatsTick stats = 1; SoraError error = 2; }
+message ConnectionState {
+  ConnectionStateValue value = 1;
+  string session_id = 2;
+  SoraErrorCode reason = 3;
+  google.protobuf.Timestamp changed_at = 4;
+  google.protobuf.Duration retry_after = 5;
+}
+enum ConnectionStateValue {
+  CONNECTION_STATE_VALUE_UNSPECIFIED = 0;
+  CONNECTION_STATE_VALUE_DISCONNECTED = 1;
+  CONNECTION_STATE_VALUE_CONNECTING = 2;
+  CONNECTION_STATE_VALUE_CONNECTED = 3;
+  CONNECTION_STATE_VALUE_RECONNECTING = 4;
+  CONNECTION_STATE_VALUE_FAILED = 5;
+}
+
+message CoreEvent {
+  uint64 sequence = 1;
+  string session_id = 2;
+  google.protobuf.Timestamp emitted_at = 3;
+  oneof payload {
+    StateChanged state_changed = 4;
+    StatsTick stats_tick = 5;
+    BypassStrategyChanged bypass_strategy_changed = 6;
+    ProbeResult probe_result = 7;
+    LogBatch log_batch = 8;
+    SoraError error = 9;
+  }
+}
+message StateChanged { ConnectionState state = 1; }
+message StatsTick { uint64 bytes_up = 1; uint64 bytes_down = 2; uint64 active_connections = 3; }
+message BypassStrategyChanged { string strategy = 1; }
+message ProbeResult { string server_id = 1; bool reachable = 2; uint32 latency_ms = 3; SoraError error = 4; }
+message LogBatch { repeated string lines = 1; } // Limit: 200 lines, 256 KiB after batching, flush at least every 250 ms.
+
+message ParseImportRequest { ApiVersion api_version = 1; string request_id = 2; bytes payload = 3; }
+message ParseImportResponse { SessionPlan session_plan = 1; SoraError error = 2; }
+message FetchSubscriptionRequest { ApiVersion api_version = 1; string request_id = 2; string reference = 3; }
+message FetchSubscriptionResponse { repeated OutboundSpec outbounds = 1; SoraError error = 2; }
+message ProbeServersRequest { ApiVersion api_version = 1; string request_id = 2; repeated Endpoint endpoints = 3; }
+message RunDiagnosticsRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; }
+message RunDiagnosticsResponse { DiagnosticReport report = 1; SoraError error = 2; }
+message ExportDiagnosticsRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; }
+message ExportDiagnosticsResponse { bytes archive = 1; SoraError error = 2; }
+message SetKillSwitchRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; bool enabled = 4; }
+message SetKillSwitchResponse { bool enabled = 1; SoraError error = 2; }
+message DiagnosticReport { repeated string lines = 1; }
+
+message HandshakeRequest { ApiVersion client_version = 1; }
+message HandshakeResponse { ApiVersion negotiated_version = 1; SoraError error = 2; }
+
+enum SoraErrorCode {
+  SORA_ERROR_CODE_UNSPECIFIED = 0;
+  SORA_ERROR_CODE_VERSION_MISMATCH = 1;
+  SORA_ERROR_CODE_UNAUTHENTICATED = 2;
+  SORA_ERROR_CODE_INVALID_ARGUMENT = 3;
+  SORA_ERROR_CODE_FAILED_PRECONDITION = 4;
+  SORA_ERROR_CODE_NOT_FOUND = 5;
+  SORA_ERROR_CODE_RESOURCE_EXHAUSTED = 6;
+  SORA_ERROR_CODE_DEADLINE_EXCEEDED = 7;
+  SORA_ERROR_CODE_UNAVAILABLE = 8;
+  SORA_ERROR_CODE_INTERNAL = 9;
+}
+message SoraError {
+  SoraErrorCode code = 1;
+  string user_message_key = 2;
+  string detail_redacted = 3; // Limit: 64 KiB; never contains secrets, addresses, or stack traces.
+  bool retryable = 4;
+  string request_id = 5;
+  google.protobuf.Duration retry_after = 6;
+}

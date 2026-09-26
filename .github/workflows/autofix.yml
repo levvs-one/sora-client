@@ -25,6 +25,7 @@ jobs:
           go install github.com/bufbuild/buf/cmd/buf@v1.50.0
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - uses: dart-lang/setup-dart@v1
       - name: Install Dart generator
         run: |
@@ -43,9 +44,19 @@ jobs:
         if: hashFiles('app/pubspec.yaml') != ''
         working-directory: app
         run: |
-          echo "Flutter setup is required when app/pubspec.yaml exists."
           flutter pub get
           dart format .
+          flutter gen-l10n
+          rm -rf /tmp/sora-platforms
+          mkdir -p /tmp/sora-platforms
+          flutter create --platforms=windows,linux,android --org one.levvs --project-name sora --no-pub /tmp/sora-platforms
+          mkdir -p app/android.generated
+          cp -R /tmp/sora-platforms/windows windows
+          cp -R /tmp/sora-platforms/linux linux
+          cp -R /tmp/sora-platforms/android/. android.generated/
+          rm -rf android.generated/tunnel
+          cp -R android.generated/. android/
+          rm -rf android.generated
       - name: Commit generated changes
         run: |
           if git diff --quiet; then

@@ -49,7 +49,6 @@ jobs:
         working-directory: proto
         run: buf lint
       - name: Check proto breaking changes
-        if: hashFiles('proto/buf.yaml') != ''
         working-directory: proto
         run: buf breaking --against '.git#branch=main,subdir=proto'
       - name: Generate protobuf code

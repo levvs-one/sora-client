@@ -71,35 +71,9 @@ enum TunnelMode { TUNNEL_MODE_UNSPECIFIED = 0; TUNNEL_MODE_SYSTEM = 1; TUNNEL_MO
 message SessionStatus { ConnectionState connection = 1; ApiVersion negotiated_version = 2; }
 message GetStatsRequest { ApiVersion api_version = 1; string session_id = 2; }
 message GetStatsResponse { StatsTick stats = 1; SoraError error = 2; }
-message ConnectionState {
-  ConnectionStateValue value = 1;
-  string session_id = 2;
-  SoraErrorCode reason = 3;
-  google.protobuf.Timestamp changed_at = 4;
-  google.protobuf.Duration retry_after = 5;
-}
-enum ConnectionStateValue {
-  CONNECTION_STATE_VALUE_UNSPECIFIED = 0;
-  CONNECTION_STATE_VALUE_DISCONNECTED = 1;
-  CONNECTION_STATE_VALUE_CONNECTING = 2;
-  CONNECTION_STATE_VALUE_CONNECTED = 3;
-  CONNECTION_STATE_VALUE_RECONNECTING = 4;
-  CONNECTION_STATE_VALUE_FAILED = 5;
-}
-
-message CoreEvent {
-  uint64 sequence = 1;
-  string session_id = 2;
-  google.protobuf.Timestamp emitted_at = 3;
-  oneof payload {
-    StateChanged state_changed = 4;
-    StatsTick stats_tick = 5;
-    BypassStrategyChanged bypass_strategy_changed = 6;
-    ProbeResult probe_result = 7;
-    LogBatch log_batch = 8;
-    SoraError error = 9;
-  }
-}
+message ConnectionState { ConnectionStateValue value = 1; string session_id = 2; SoraErrorCode reason = 3; google.protobuf.Timestamp changed_at = 4; google.protobuf.Duration retry_after = 5; }
+enum ConnectionStateValue { CONNECTION_STATE_VALUE_UNSPECIFIED = 0; CONNECTION_STATE_VALUE_DISCONNECTED = 1; CONNECTION_STATE_VALUE_CONNECTING = 2; CONNECTION_STATE_VALUE_CONNECTED = 3; CONNECTION_STATE_VALUE_RECONNECTING = 4; CONNECTION_STATE_VALUE_FAILED = 5; }
+message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; } }
 message StateChanged { ConnectionState state = 1; }
 message StatsTick { uint64 bytes_up = 1; uint64 bytes_down = 2; uint64 active_connections = 3; }
 message BypassStrategyChanged { string strategy = 1; }
@@ -118,27 +92,7 @@ message ExportDiagnosticsResponse { bytes archive = 1; SoraError error = 2; }
 message SetKillSwitchRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; bool enabled = 4; }
 message SetKillSwitchResponse { bool enabled = 1; SoraError error = 2; }
 message DiagnosticReport { repeated string lines = 1; }
-
 message HandshakeRequest { ApiVersion client_version = 1; }
 message HandshakeResponse { ApiVersion negotiated_version = 1; SoraError error = 2; }
-
-enum SoraErrorCode {
-  SORA_ERROR_CODE_UNSPECIFIED = 0;
-  SORA_ERROR_CODE_VERSION_MISMATCH = 1;
-  SORA_ERROR_CODE_UNAUTHENTICATED = 2;
-  SORA_ERROR_CODE_INVALID_ARGUMENT = 3;
-  SORA_ERROR_CODE_FAILED_PRECONDITION = 4;
-  SORA_ERROR_CODE_NOT_FOUND = 5;
-  SORA_ERROR_CODE_RESOURCE_EXHAUSTED = 6;
-  SORA_ERROR_CODE_DEADLINE_EXCEEDED = 7;
-  SORA_ERROR_CODE_UNAVAILABLE = 8;
-  SORA_ERROR_CODE_INTERNAL = 9;
-}
-message SoraError {
-  SoraErrorCode code = 1;
-  string user_message_key = 2;
-  string detail_redacted = 3; // Limit: 64 KiB; never contains secrets, addresses, or stack traces.
-  bool retryable = 4;
-  string request_id = 5;
-  google.protobuf.Duration retry_after = 6;
-}
+enum SoraErrorCode { SORA_ERROR_CODE_UNSPECIFIED = 0; SORA_ERROR_CODE_VERSION_MISMATCH = 1; SORA_ERROR_CODE_UNAUTHENTICATED = 2; SORA_ERROR_CODE_INVALID_ARGUMENT = 3; SORA_ERROR_CODE_FAILED_PRECONDITION = 4; SORA_ERROR_CODE_NOT_FOUND = 5; SORA_ERROR_CODE_RESOURCE_EXHAUSTED = 6; SORA_ERROR_CODE_DEADLINE_EXCEEDED = 7; SORA_ERROR_CODE_UNAVAILABLE = 8; SORA_ERROR_CODE_INTERNAL = 9; }
+message SoraError { SoraErrorCode code = 1; string user_message_key = 2; string detail_redacted = 3; bool retryable = 4; string request_id = 5; google.protobuf.Duration retry_after = 6; }

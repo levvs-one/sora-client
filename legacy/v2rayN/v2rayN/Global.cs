@@ -9,14 +9,14 @@ namespace v2rayN
 
         //public const string DownloadFileName = "v2ray-windows.zip";
         public const string v2rayWebsiteUrl = @"https://www.v2fly.org/";
-        public const string AboutUrl = @"https://github.com/2dust/v2rayN";
-        public const string UpdateUrl = AboutUrl + @"/releases";
+        public const string AboutUrl = @"https://github.com/levvs-one/sora-client";
+        public const string UpdateUrl = @"https://github.com/levvs-one/sora-client/releases";
         public const string v2flyCoreUrl = "https://github.com/v2fly/v2ray-core/releases";
         public const string xrayCoreUrl = "https://github.com/XTLS/Xray-core/releases";
         public const string SagerNetCoreUrl = "https://github.com/SagerNet/v2ray-core/releases";
-        public const string NUrl = @"https://github.com/2dust/v2rayN/releases";
+        public const string NUrl = @"https://github.com/levvs-one/sora-client/releases";
         public const string clashCoreUrl = "https://github.com/Dreamacro/clash/releases";
-        public const string clashMetaCoreUrl = "https://github.com/MetaCubeX/Clash.Meta/releases";
+        public const string clashMetaCoreUrl = "https://github.com/MetaCubeX/mihomo/releases";
         public const string hysteriaCoreUrl = "https://github.com/HyNetwork/hysteria/releases";
         public const string naiveproxyCoreUrl = "https://github.com/klzgrad/naiveproxy/releases";
         public const string tuicCoreUrl = "https://github.com/EAimTY/tuic/releases";
@@ -38,10 +38,6 @@ namespace v2rayN
         public const string CustomRoutingListUrl = @"https://raw.githubusercontent.com/2dust/v2rayCustomRoutingList/master/";
 
 
-        /// <summary>
-        /// PromotionUrl
-        /// </summary>
-        public const string PromotionUrl = @"aHR0cHM6Ly85LjIzNDQ1Ni54eXovYWJjLmh0bWw=";
 
         /// <summary>
         /// 本软件配置文件名

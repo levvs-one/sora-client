@@ -3,9 +3,10 @@ package control_test
 import (
 	"testing"
 
+	"google.golang.org/protobuf/reflect/protoreflect"
+
 	"github.com/levvs-one/sora-client/core/control"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func TestNegotiate(t *testing.T) {

@@ -12,7 +12,7 @@ type Key string
 // prefix is the subsystem and the rest names the condition.
 const (
 	// Contract and transport.
-	KeyApiVersionMismatch Key = "core.api.version_mismatch"
+	KeyAPIVersionMismatch Key = "core.api.version_mismatch"
 	KeyUnauthenticated    Key = "core.auth.unauthenticated"
 	KeyPermissionDenied   Key = "core.auth.permission_denied"
 	KeyRequestTooLarge    Key = "core.request.too_large"
@@ -61,6 +61,7 @@ const (
 	KeySubscriptionAllFailed Key = "core.subscription.all_servers_failed"
 
 	// Secret store.
+	//nolint:gosec // a localization key, not a credential
 	KeySecretReferenceInvalid Key = "core.secret.reference_invalid"
 	KeySecretExists           Key = "core.secret.exists"
 	KeySecretNotFound         Key = "core.secret.not_found"
@@ -103,7 +104,7 @@ type Entry struct {
 
 var catalog = map[Key]Entry{
 	// Contract and transport.
-	KeyApiVersionMismatch: {CodeVersionMismatch, false, "the interface and the core speak different contract versions"},
+	KeyAPIVersionMismatch: {CodeVersionMismatch, false, "the interface and the core speak different contract versions"},
 	KeyUnauthenticated:    {CodeUnauthenticated, false, "control-plane authentication failed or the token is stale"},
 	KeyPermissionDenied:   {CodePermissionDenied, false, "the caller is authenticated but not allowed to do this"},
 	KeyRequestTooLarge:    {CodeResourceExhausted, false, "the request exceeds a documented contract limit"},

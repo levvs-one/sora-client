@@ -420,7 +420,7 @@ func TestConcurrentUseKeepsTheVaultConsistent(t *testing.T) {
 	for i := 0; i < writers; i++ {
 		go func(i int) {
 			<-start
-			results <- store.Put("s1_"+strings.Repeat("a", i+1), bytes.Repeat([]byte{byte(i)}, 32))
+			results <- store.Put("s1_"+strings.Repeat("a", i+1), bytes.Repeat([]byte{byte('a' + i%26)}, 32))
 		}(i)
 	}
 	close(start)

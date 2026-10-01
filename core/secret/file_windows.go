@@ -9,8 +9,9 @@ func platformProtector() Protector { return DPAPIProtector{} }
 
 // hardenFile relies on the inherited access list of the data directory. The
 // directory is created with a private DACL by the service installer, so a file
-// inside it inherits an owner-only list and needs no further work here.
-func hardenFile(*os.File) error { return nil }
+// inside it inherits an owner-only list and the requested mode needs no further
+// work here.
+func hardenFile(*os.File, os.FileMode) error { return nil }
 
 // syncDir is a no-op on Windows, where a directory handle cannot be flushed. The
 // rename is still atomic, so a crash leaves either the old file or the new one;

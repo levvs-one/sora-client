@@ -24,7 +24,7 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 		// of a secret next to the vault.
 		_ = os.Remove(tmpName)
 	}()
-	if err := hardenFile(tmp); err != nil {
+	if err := hardenFile(tmp, mode); err != nil {
 		_ = tmp.Close()
 		return err
 	}

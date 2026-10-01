@@ -142,7 +142,7 @@ func TestAnnotationsReturnCopies(t *testing.T) {
 	if got := errs.Detail(withoutCause); got != cause.Error() {
 		t.Errorf("detail of the cause-free copy = %q", got)
 	}
-	if base.Cause() != cause {
+	if !errors.Is(base, cause) {
 		t.Error("WithoutCause must not change the base error")
 	}
 	if errs.RetryAfter(base) != 0 {
@@ -156,7 +156,7 @@ func TestWrapKeepsTheCauseChain(t *testing.T) {
 	if !errors.Is(err, sentinel) {
 		t.Error("errors.Is cannot see the cause")
 	}
-	if err.Cause() != sentinel {
+	if !errors.Is(err.Cause(), sentinel) {
 		t.Error("Cause did not return the sentinel")
 	}
 	if errs.Wrap(nil, errs.CodeInternal, errs.KeyInternal) != nil {

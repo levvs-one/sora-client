@@ -18,8 +18,8 @@ func platformProtector() Protector { return FileProtector{} }
 // hardenFile restricts a file to its owner. The mode is set explicitly instead
 // of relying on the process umask, because a core started by a service manager
 // inherits a umask nobody checked.
-func hardenFile(file *os.File) error {
-	if err := file.Chmod(fileMode); err != nil {
+func hardenFile(file *os.File, mode os.FileMode) error {
+	if err := file.Chmod(mode); err != nil {
 		return errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
 	}
 	return nil

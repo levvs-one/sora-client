@@ -89,6 +89,7 @@ func loadOrCreateKey(dir string, prot Protector) (key, id []byte, err error) {
 
 // loadOrCreateID reads the store identifier, creating it when the store is new.
 func loadOrCreateID(path string) ([]byte, error) {
+	//nolint:gosec // the path is the data directory of the core joined with a fixed file name
 	raw, err := os.ReadFile(path)
 	switch {
 	case err == nil:
@@ -112,6 +113,7 @@ func loadOrCreateID(path string) ([]byte, error) {
 
 // readMasterFile reads the wrapped master key and strips the header.
 func readMasterFile(path string) ([]byte, error) {
+	//nolint:gosec // the path is the data directory of the core joined with a fixed file name
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

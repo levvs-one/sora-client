@@ -42,6 +42,7 @@ func TestFromContext(t *testing.T) {
 }
 
 func TestFromURLErrorKeepsTheTokenOutOfTheDetail(t *testing.T) {
+	//nolint:gosec // a fabricated value that must never survive classification
 	const token = "eyJhbGciOiJIUzI1NiJ9.super-secret-token"
 	raw := &url.Error{
 		Op:  "Get",

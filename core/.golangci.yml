@@ -11,6 +11,23 @@ linters:
     - noctx
     - revive
     - unconvert
+  settings:
+    gosec:
+      excludes:
+        # G103 flags every use of unsafe. The core uses unsafe in exactly one
+        # place: the calls into the Windows Data Protection API, which take
+        # pointers to buffers the operating system reads during the call and
+        # never keeps. Each such call carries its own justification comment.
+        - G103
+  exclusions:
+    rules:
+      # A test reads and writes the temporary directories it created itself, and
+      # builds fixtures with obviously fake values. The path and credential
+      # heuristics of gosec say nothing about such code, and silencing them for
+      # test files only keeps them active everywhere else.
+      - path: _test\.go
+        linters:
+          - gosec
 
 formatters:
   enable:

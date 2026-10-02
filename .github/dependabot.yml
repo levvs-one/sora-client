@@ -1,0 +1,43 @@
+# Dependency updates for the whole monorepo. Grouped by ecosystem so a routine
+# bump is one review instead of twenty, and separated by security scope so an
+# advisory lands on its own.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /core
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:40'
+    open-pull-requests-limit: 5
+    groups:
+      go-core:
+        patterns: ['*']
+        exclude-patterns: ['golang.org/x/*']
+      go-tooling:
+        patterns: ['golang.org/x/*']
+    labels: ['dependencies', 'core']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:50'
+    groups:
+      actions:
+        patterns: ['*']
+    labels: ['dependencies', 'ci']
+
+  - package-ecosystem: nuget
+    directory: /legacy/v2rayN
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels: ['dependencies', 'legacy']
+
+  - package-ecosystem: gomod
+    directory: /app/android/tunnel
+    schedule:
+      interval: monthly
+    labels: ['dependencies', 'android']

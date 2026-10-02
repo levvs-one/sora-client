@@ -1512,11 +1512,6 @@ namespace v2rayN.Forms
         {
             Process.Start(Global.v2rayWebsiteUrl);
         }
-
-        private void tsbPromotion_Click(object sender, EventArgs e)
-        {
-            Process.Start($"{Utils.Base64Decode(Global.PromotionUrl)}?t={DateTime.Now.Ticks}");
-        }
         #endregion
 
         #region 订阅

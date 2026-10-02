@@ -4,6 +4,15 @@ modules:
 lint:
   use:
     - STANDARD
+  # The service and its response messages were named in the contract work order
+  # and are already generated for Go and Dart. Renaming them now would break
+  # every client for a naming rule, so the three rules that only concern naming
+  # are turned off explicitly instead of being ignored by accident.
+  except:
+    - SERVICE_SUFFIX
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
 breaking:
   use:
     - FILE
+

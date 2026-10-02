@@ -1,0 +1,24 @@
+# Line endings are normalised in the repository and checked out as LF, so a
+# contribution from Windows never rewrites the line endings of a whole file and
+# gofmt never reports a clean file as unformatted.
+* text=auto eol=lf
+
+# The legacy C# tree is committed with CRLF plus a UTF-8 BOM and is edited in
+# Visual Studio. Opt it out of conversion: removing one control stays a
+# one-line diff instead of rewriting a 1,500-line file.
+legacy/** -text
+
+# Never treat these as text.
+*.png binary
+*.ico binary
+*.jpg binary
+*.gz binary
+*.suo binary
+*.zip binary
+*.mmdb binary
+*.dat binary
+*.db binary
+*.dll binary
+*.exe binary
+*.snk binary
+*.pdb binary

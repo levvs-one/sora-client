@@ -1,3 +1,7 @@
+// Package control holds the contracts the Sora UI and the core service
+// exchange over the control plane: API version negotiation and the shapes
+// generated from sora/core/v1. It has no runtime dependencies so both sides
+// can import it.
 package control
 
 import (

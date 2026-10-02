@@ -8,7 +8,7 @@
 
 | Каталог | Что внутри |
 | --- | --- |
-| [`core`](core/README.md) | `libsora` на Go: сетевое ядро на sing-box и Xray-core, парсер подписок, проверки серверов, умный обход, каталог ошибок |
+| [`core`](core/README.md) | `libsora` на Go: надзор за сетевым ядром, разбор подписок и ссылок, хранение секретов, состояние сессии, каталог ошибок |
 | [`proto`](proto/README.md) | Контракт `sora.core.v1` между приложением и ядром |
 | [`app`](app/README.md) | Приложение на Flutter для Windows, Linux, Android и Android TV |
 | [`app/android/tunnel`](app/android/tunnel/README.md) | Android-служба туннеля в отдельном процессе |

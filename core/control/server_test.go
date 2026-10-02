@@ -15,6 +15,7 @@ import (
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/secret"
 	"github.com/levvs-one/sora-client/core/session"
+	"github.com/levvs-one/sora-client/core/subscription"
 )
 
 // stubEngine is an engine that answers without touching the system, so the tests
@@ -126,6 +127,11 @@ func validPlan(t *testing.T, store *secret.Store) *corev1.SessionPlan {
 		}},
 	}
 }
+
+// Compile-time proof that the fetcher of the subscription package is what the
+// control plane asks for. If the two ever drift, this fails next to the change
+// rather than in a service.
+var _ control.Fetcher = (*subscription.Fetcher)(nil)
 
 func TestNewRequiresItsCollaborators(t *testing.T) {
 	auth, err := control.NewAuthenticator(testToken)

@@ -110,7 +110,12 @@ type Diagnostics interface {
 	Export(ctx context.Context, status session.Status) ([]byte, error)
 }
 
-// Fetcher retrieves a subscription by reference.
+// Fetcher retrieves subscriptions by reference.
+//
+// The reference is a bearer token, so the retrieval is deliberately narrow: only
+// https, a bounded number of redirects, a bounded body, and no cache. The
+// interface is declared here because the control plane only needs the one method,
+// and because the retrieval belongs behind it rather than inside the transport.
 type Fetcher interface {
 	Fetch(ctx context.Context, reference string) ([]byte, error)
 }

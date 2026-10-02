@@ -163,7 +163,7 @@ disconnected --connect--> connecting --ok--> connected
 | `core/control` | готов | транспорт: именованный канал Windows и сокет unix |
 | `core/probe` | готов | измерение через туннель для Android |
 | `core/guard` | готов | Filtering Platform для Windows: фильтры по приложениям |
-| `core/subscription` | не начат | загрузка с лимитами, редиректами и кэшем |
+| `core/subscription` | готов | условные запросы, когда понадобится экономия трафика |
 | `core/diagnostics` | не начат | отчёт и архив без секретов |
 | `service/windows` | пусто | установка, права, автозапуск |
 | `service/linux` | пусто | unit-файлы, пользователь, права |

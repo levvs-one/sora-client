@@ -25,30 +25,22 @@ const (
 	KeyDeadlineExceeded   Key = "core.request.deadline_exceeded"
 
 	// Plans.
-	KeyPlanEmpty          Key = "core.plan.empty"
-	KeyPlanTooLarge       Key = "core.plan.too_large"
-	KeyPlanOutbounds      Key = "core.plan.outbounds_invalid"
-	KeyPlanDuplicateID    Key = "core.plan.duplicate_id"
-	KeyPlanUnknownTarget  Key = "core.plan.unknown_target"
-	KeyPlanRuleInvalid    Key = "core.plan.rule_invalid"
-	KeyPlanTunnel         Key = "core.plan.tunnel_unsupported"
-	KeyPlanDNSInvalid     Key = "core.plan.dns_invalid"
-	KeyPlanBypassInvalid  Key = "core.plan.bypass_invalid"
-	KeyPlanGroupsInvalid  Key = "core.plan.groups_invalid"
-	KeyPlanTestURLInvalid Key = "core.plan.test_url_invalid"
+	KeyPlanEmpty         Key = "core.plan.empty"
+	KeyPlanTooLarge      Key = "core.plan.too_large"
+	KeyPlanOutbounds     Key = "core.plan.outbounds_invalid"
+	KeyPlanDuplicateID   Key = "core.plan.duplicate_id"
+	KeyPlanUnknownTarget Key = "core.plan.unknown_target"
+	KeyPlanRuleInvalid   Key = "core.plan.rule_invalid"
+	KeyPlanTunnel        Key = "core.plan.tunnel_unsupported"
+	KeyPlanDNSInvalid    Key = "core.plan.dns_invalid"
+	KeyPlanBypassInvalid Key = "core.plan.bypass_invalid"
+	KeyPlanGroupsInvalid Key = "core.plan.groups_invalid"
 
 	// Engine.
-	KeyEngineBinaryMissing  Key = "core.engine.binary_missing"
-	KeyEngineBinaryUnusable Key = "core.engine.binary_unusable"
-	KeyEngineStartFailed    Key = "core.engine.start_failed"
-	KeyEngineApplyFailed    Key = "core.engine.apply_failed"
-	KeyEngineStopFailed     Key = "core.engine.stop_failed"
-	KeyEngineStopped        Key = "core.engine.stopped"
-	KeyEngineUnsupported    Key = "core.engine.unsupported"
-	KeyEngineVersionTooOld  Key = "core.engine.version_too_old"
-	KeyEngineRestartSpent   Key = "core.engine.restart_budget_spent"
-	KeyEngineOutputDenied   Key = "core.engine.output_denied"
-	KeyEngineProbeFailed    Key = "core.engine.probe_failed"
+	KeyEngineBinaryMissing Key = "core.engine.binary_missing"
+	KeyEngineStartFailed   Key = "core.engine.start_failed"
+	KeyEngineStopped       Key = "core.engine.stopped"
+	KeyEngineRestartSpent  Key = "core.engine.restart_budget_spent"
 
 	// Subscriptions and import.
 	KeySubscriptionEmpty     Key = "core.subscription.empty"
@@ -59,24 +51,19 @@ const (
 	KeySubscriptionScheme    Key = "core.subscription.scheme_unsupported"
 	KeySubscriptionFormat    Key = "core.subscription.format_unknown"
 	KeySubscriptionNoServers Key = "core.subscription.no_servers"
-	KeySubscriptionAllFailed Key = "core.subscription.all_servers_failed"
 
 	// Secret store.
 	//nolint:gosec // a localization key, not a credential
 	KeySecretReferenceInvalid Key = "core.secret.reference_invalid"
-	KeySecretExists           Key = "core.secret.exists"
 	KeySecretNotFound         Key = "core.secret.not_found"
 	KeySecretTooLarge         Key = "core.secret.too_large"
-	KeySecretStoreLocked      Key = "core.secret.store_locked"
 	KeySecretStoreCorrupt     Key = "core.secret.store_corrupt"
 	KeySecretStoreUnavailable Key = "core.secret.store_unavailable"
 
 	// System guard: kill switch, proxy, cleanup on exit.
-	KeyGuardNeedsElevation Key = "core.guard.needs_elevation"
-	KeyGuardProxyFailed    Key = "core.guard.proxy_failed"
-	KeyGuardFirewallFail   Key = "core.guard.firewall_failed"
-	KeyGuardRestoreFailed  Key = "core.guard.restore_failed"
-	KeyGuardUnsupported    Key = "core.guard.unsupported"
+	KeyGuardProxyFailed   Key = "core.guard.proxy_failed"
+	KeyGuardFirewallFail  Key = "core.guard.firewall_failed"
+	KeyGuardRestoreFailed Key = "core.guard.restore_failed"
 
 	// Probing and diagnostics.
 	KeyProbeInvalidEndpoint Key = "core.probe.invalid_endpoint"
@@ -118,30 +105,22 @@ var catalog = map[Key]Entry{
 	KeyDeadlineExceeded:   {CodeDeadlineExceeded, true, "the request ran out of its deadline"},
 
 	// Plans.
-	KeyPlanEmpty:          {CodeInvalidArgument, false, "the plan has no outbounds"},
-	KeyPlanTooLarge:       {CodeResourceExhausted, false, "the plan is larger than the contract allows"},
-	KeyPlanOutbounds:      {CodeInvalidArgument, false, "an outbound is missing fields or holds impossible values"},
-	KeyPlanDuplicateID:    {CodeInvalidArgument, false, "two outbounds share one id"},
-	KeyPlanUnknownTarget:  {CodeInvalidArgument, false, "a rule points at an outbound or group that does not exist"},
-	KeyPlanRuleInvalid:    {CodeInvalidArgument, false, "a rule has an unknown type or an unsafe value"},
-	KeyPlanTunnel:         {CodeInvalidArgument, false, "the requested tunnel mode is not supported"},
-	KeyPlanDNSInvalid:     {CodeInvalidArgument, false, "a resolver address or transport is not usable"},
-	KeyPlanBypassInvalid:  {CodeInvalidArgument, false, "a bypass entry is not a domain, address or CIDR"},
-	KeyPlanGroupsInvalid:  {CodeInvalidArgument, false, "a group is empty, cyclic or measures latency without a url"},
-	KeyPlanTestURLInvalid: {CodeInvalidArgument, false, "the latency test url is not an absolute https url"},
+	KeyPlanEmpty:         {CodeInvalidArgument, false, "the plan has no outbounds"},
+	KeyPlanTooLarge:      {CodeResourceExhausted, false, "the plan is larger than the contract allows"},
+	KeyPlanOutbounds:     {CodeInvalidArgument, false, "an outbound is missing fields or holds impossible values"},
+	KeyPlanDuplicateID:   {CodeInvalidArgument, false, "two outbounds share one id"},
+	KeyPlanUnknownTarget: {CodeInvalidArgument, false, "a rule points at an outbound or group that does not exist"},
+	KeyPlanRuleInvalid:   {CodeInvalidArgument, false, "a rule has an unknown type or an unsafe value"},
+	KeyPlanTunnel:        {CodeInvalidArgument, false, "the requested tunnel mode is not supported"},
+	KeyPlanDNSInvalid:    {CodeInvalidArgument, false, "a resolver address or transport is not usable"},
+	KeyPlanBypassInvalid: {CodeInvalidArgument, false, "a bypass entry is not a domain, address or CIDR"},
+	KeyPlanGroupsInvalid: {CodeInvalidArgument, false, "a group is empty, cyclic or measures latency without a url"},
 
 	// Engine.
-	KeyEngineBinaryMissing:  {CodeNotFound, false, "the engine binary is not installed for this platform"},
-	KeyEngineBinaryUnusable: {CodeInvalidArgument, false, "the engine binary cannot be executed"},
-	KeyEngineStartFailed:    {CodeUnavailable, true, "the engine process did not start"},
-	KeyEngineApplyFailed:    {CodeInternal, true, "the engine rejected the configuration"},
-	KeyEngineStopFailed:     {CodeInternal, true, "the engine did not stop within the grace period"},
-	KeyEngineStopped:        {CodeUnavailable, true, "the engine process exited"},
-	KeyEngineUnsupported:    {CodeUnsupported, false, "no installed engine provides the features this plan needs"},
-	KeyEngineVersionTooOld:  {CodeUnsupported, false, "the installed engine is older than the contract requires"},
-	KeyEngineRestartSpent:   {CodeUnavailable, true, "the engine kept dying and the restart budget is spent"},
-	KeyEngineOutputDenied:   {CodePermissionDenied, false, "the engine refused to write the requested configuration path"},
-	KeyEngineProbeFailed:    {CodeInternal, true, "the engine did not answer its control api"},
+	KeyEngineBinaryMissing: {CodeNotFound, false, "the engine binary is not installed for this platform"},
+	KeyEngineStartFailed:   {CodeUnavailable, true, "the engine process did not start"},
+	KeyEngineStopped:       {CodeUnavailable, true, "the engine process exited"},
+	KeyEngineRestartSpent:  {CodeUnavailable, true, "the engine kept dying and the restart budget is spent"},
 
 	// Subscriptions and import.
 	KeySubscriptionEmpty:     {CodeInvalidArgument, false, "the subscription body is empty"},
@@ -152,23 +131,18 @@ var catalog = map[Key]Entry{
 	KeySubscriptionScheme:    {CodeUnsupported, false, "the subscription reference is not an http or https url"},
 	KeySubscriptionFormat:    {CodeUnsupported, false, "no parser claims this payload"},
 	KeySubscriptionNoServers: {CodeInvalidArgument, false, "the payload parsed but produced no usable server"},
-	KeySubscriptionAllFailed: {CodeUnavailable, true, "every server in the subscription failed to start"},
 
 	// Secret store.
 	KeySecretReferenceInvalid: {CodeInvalidArgument, false, "the secret reference is not a well formed opaque id"},
-	KeySecretExists:           {CodeAlreadyExists, false, "a secret is already stored under that reference"},
 	KeySecretNotFound:         {CodeNotFound, false, "no secret is stored under that reference"},
 	KeySecretTooLarge:         {CodeResourceExhausted, false, "the secret is larger than the store allows"},
-	KeySecretStoreLocked:      {CodeFailedPrecondition, true, "the secret store is locked by another writer"},
 	KeySecretStoreCorrupt:     {CodeInternal, false, "the secret store failed its integrity check"},
 	KeySecretStoreUnavailable: {CodeInternal, true, "the secret store cannot be read or written right now"},
 
 	// System guard.
-	KeyGuardNeedsElevation: {CodePermissionDenied, false, "changing system settings requires elevation"},
-	KeyGuardProxyFailed:    {CodeInternal, true, "the system proxy could not be configured"},
-	KeyGuardFirewallFail:   {CodeInternal, true, "the kill switch rules could not be installed"},
-	KeyGuardRestoreFailed:  {CodeInternal, true, "system settings could not be restored to their previous state"},
-	KeyGuardUnsupported:    {CodeUnsupported, false, "this platform has no implementation for that guard"},
+	KeyGuardProxyFailed:   {CodeInternal, true, "the system proxy could not be configured"},
+	KeyGuardFirewallFail:  {CodeInternal, true, "the kill switch rules could not be installed"},
+	KeyGuardRestoreFailed: {CodeInternal, true, "system settings could not be restored to their previous state"},
 
 	// Probing and diagnostics.
 	KeyProbeInvalidEndpoint: {CodeInvalidArgument, false, "an endpoint has no host or an impossible port"},

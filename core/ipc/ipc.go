@@ -66,54 +66,93 @@ type Listener struct {
 	net.Listener
 	address string
 	options Options
+	allow   func(Peer) bool
 }
 
 // Listen opens the local endpoint.
-func Listen(_ context.Context, opts Options) (*Listener, error) {
+//
+// The endpoint belongs to the context: when the service context ends the listener
+// closes, whoever is serving it. A caller that hands the listener to a server
+// instead of calling Serve has no serve loop of its own to watch the context, and
+// an endpoint that outlives its service is an endpoint a stopped core still
+// answers on.
+func Listen(ctx context.Context, opts Options) (*Listener, error) {
 	address := opts.Address
 	if address == "" {
 		address = ListenAddress()
 	}
-	listener, err := listenLocal(address, opts)
+	inner, err := listenLocal(address, opts)
 	if err != nil {
 		return nil, err
 	}
-	return &Listener{Listener: listener, address: address, options: opts}, nil
+	allow := opts.Allow
+	if allow == nil {
+		allow = defaultAllow
+	}
+	listener := &Listener{
+		Listener: inner,
+		address:  address,
+		options:  opts,
+		allow:    allow,
+	}
+	if ctx != nil && ctx.Done() != nil {
+		go func() {
+			<-ctx.Done()
+			_ = listener.Close()
+		}()
+	}
+	return listener, nil
 }
 
 // Address returns the address this endpoint listens on, which is what a client
 // needs and what a diagnostics line should show.
 func (l *Listener) Address() string { return l.address }
 
+// Accept takes the next connection that is allowed to talk to this endpoint.
+//
+// The decision is made here rather than in a serve loop, because a serve loop is
+// not the only consumer: a gRPC server takes the listener itself, and a boundary
+// that only exists in one of the two paths is a boundary that will be bypassed.
+func (l *Listener) Accept() (net.Conn, error) {
+	for {
+		connection, err := l.Listener.Accept()
+		if err != nil {
+			return nil, err
+		}
+		if l.allow != nil && !l.allow(peerOf(connection)) {
+			// A refused connection is closed without a reply: an endpoint that
+			// answers an unauthorised caller has already told it that a core is here.
+			_ = connection.Close()
+			continue
+		}
+		return connection, nil
+	}
+}
+
 // Serve accepts connections until the context ends and then closes the endpoint.
-// Every accepted connection is checked against the allow rule before the handler
-// sees it, and a refused connection is closed without a reply: an endpoint that
-// answers an unauthorised caller has already told it that the core is here.
+// It is the simple shape, for a caller that wants a handler per connection; a gRPC
+// server takes the listener itself and inherits the same peer rule through Accept.
 func (l *Listener) Serve(ctx context.Context, handle func(context.Context, net.Conn) error) error {
 	go func() {
 		<-ctx.Done()
 		_ = l.Close()
 	}()
-	allow := l.options.Allow
-	if allow == nil {
-		allow = defaultAllow
-	}
 	for {
 		connection, err := l.Accept()
 		if err != nil {
-			// An endpoint that was closed on purpose ends the serve loop without a
-			// failure: the caller cancelled, and a shutdown is not an error.
+			// An endpoint that was closed on purpose ends the serve loop with the
+			// cancellation: a shutdown is not a failure.
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 			return err
 		}
-		go l.dispatch(ctx, connection, allow, handle)
+		go l.dispatch(ctx, connection, handle)
 	}
 }
 
-// dispatch gives one connection its own context, its budget and its decision.
-func (l *Listener) dispatch(ctx context.Context, connection net.Conn, allow func(Peer) bool, handle func(context.Context, net.Conn) error) {
+// dispatch gives one connection its own context and its introduction budget.
+func (l *Listener) dispatch(ctx context.Context, connection net.Conn, handle func(context.Context, net.Conn) error) {
 	connectionCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	defer func() { _ = connection.Close() }()
@@ -122,9 +161,6 @@ func (l *Listener) dispatch(ctx context.Context, connection net.Conn, allow func
 		timeout = handshakeTimeout
 	}
 	_ = connection.SetDeadline(time.Now().Add(timeout))
-	if !allow(peerOf(connection)) {
-		return
-	}
 	// The deadline covers only the introduction; the handler owns the connection
 	// from here, and a long lived stream must not carry a stale deadline.
 	_ = connection.SetDeadline(time.Time{})

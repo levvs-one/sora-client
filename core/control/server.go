@@ -382,8 +382,22 @@ const (
 // Handshake answers with the contract version the core serves. It is the only
 // method that does not require an authenticator, because a client must learn the
 // version before it can ask for anything else.
-func (s *Server) Handshake(_ context.Context, _ *corev1.HandshakeRequest) (*corev1.HandshakeResponse, error) {
-	return &corev1.HandshakeResponse{NegotiatedVersion: s.apiVersion()}, nil
+//
+// It also negotiates, and it is the method where the negotiation matters: a
+// client that is too old finds out here, and the answer carries the version the
+// core speaks even when it refuses, because a client that cannot be served still
+// has to learn what it should update to.
+func (s *Server) Handshake(_ context.Context, req *corev1.HandshakeRequest) (*corev1.HandshakeResponse, error) {
+	negotiated, err := s.checkVersion(req.GetClientVersion())
+	if err != nil {
+		return &corev1.HandshakeResponse{
+			NegotiatedVersion: s.apiVersion(),
+			Error:             toWire(err, nil, ""),
+		}, nil
+	}
+	answer := s.apiVersion()
+	answer.Minor = negotiated
+	return &corev1.HandshakeResponse{NegotiatedVersion: answer}, nil
 }
 
 // Connect starts a session for the plan of the request.
@@ -464,16 +478,43 @@ func (s *Server) Disconnect(ctx context.Context, req *corev1.DisconnectRequest) 
 }
 
 // GetStatus answers with the current state of the session and the contract version
-// that applies to it.
+// that applies to it. A client that names a session which is not the current one
+// is told so instead of being handed the state of somebody else's tunnel.
 func (s *Server) GetStatus(_ context.Context, req *corev1.GetStatusRequest) (*corev1.GetStatusResponse, error) {
+	id := requestID("")
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
+	}
+	if err := s.checkSession(req.GetSessionId()); err != nil {
+		return &corev1.GetStatusResponse{
+			Status: &corev1.SessionStatus{
+				Connection:        wireStatus(session.Status{}),
+				NegotiatedVersion: s.apiVersion(),
+			},
+			Error: toWire(err, nil, id),
+		}, nil
 	}
 	status := s.sessions.Status()
 	return &corev1.GetStatusResponse{Status: &corev1.SessionStatus{
 		Connection:        wireStatus(status),
 		NegotiatedVersion: s.apiVersion(),
 	}}, nil
+}
+
+// checkSession refuses a request that names a session other than the running one.
+// An empty name means the caller does not care, which the contract allows and a
+// client that just opened does.
+func (s *Server) checkSession(named string) error {
+	wanted := strings.TrimSpace(named)
+	if wanted == "" {
+		return nil
+	}
+	running := s.sessions.Current()
+	if running == nil || running.ID() != wanted {
+		return errs.Newf(errs.CodeNotFound, errs.KeyUnknownSession,
+			"control: the request names a session that is not running")
+	}
+	return nil
 }
 
 // SetKillSwitch arms or disarms the kill switch of the running session.
@@ -488,9 +529,7 @@ func (s *Server) SetKillSwitch(ctx context.Context, req *corev1.SetKillSwitchReq
 			"control: there is no session to arm")
 		return &corev1.SetKillSwitchResponse{Error: toWire(err, nil, id)}, nil
 	}
-	if wanted := strings.TrimSpace(req.GetSessionId()); wanted != "" && wanted != running.ID() {
-		err := errs.Newf(errs.CodeNotFound, errs.KeyUnknownSession,
-			"control: the request names a session that is not running")
+	if err := s.checkSession(req.GetSessionId()); err != nil {
 		return &corev1.SetKillSwitchResponse{Error: toWire(err, nil, id)}, nil
 	}
 	ctx, cancel := requestDeadline(ctx, guardTimeout)
@@ -507,6 +546,12 @@ func (s *Server) SetKillSwitch(ctx context.Context, req *corev1.SetKillSwitchReq
 func (s *Server) GetStats(ctx context.Context, req *corev1.GetStatsRequest) (*corev1.GetStatsResponse, error) {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
+	}
+	if err := s.checkSession(req.GetSessionId()); err != nil {
+		return &corev1.GetStatsResponse{
+			Stats: &corev1.StatsTick{},
+			Error: toWire(err, nil, ""),
+		}, nil
 	}
 	running := s.sessions.Current()
 	if running == nil {
@@ -534,11 +579,12 @@ func (s *Server) GetStats(ctx context.Context, req *corev1.GetStatsRequest) (*co
 
 // WatchEvents streams the events of the session and then keeps streaming.
 //
-// The history comes first, so a client that reconnects with the sequence it last
-// saw does not miss what happened while it was away, and the live part follows
-// without a gap. A client that asks for a sequence older than the journal still
-// receives what is left and then the live stream: the interface reconciles from a
-// status snapshot, which is exactly what it does when it first starts.
+// The order of the two halves is the whole point. The subscription is taken
+// first and the journal head is remembered; the history is replayed up to that
+// head, and the live channel then delivers everything that arrived after it. An
+// event appended between the two halves is in both, and the sequence numbers drop
+// the duplicate, so a client that reconnects with the sequence it last saw sees
+// every event exactly once and never a hole.
 func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerStreamingServer[corev1.CoreEvent]) error {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return transportStatus(err)
@@ -555,26 +601,77 @@ func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerS
 		return errs.Newf(errs.CodeNotFound, errs.KeyUnknownSession,
 			"control: the request names a session that is not running")
 	}
-	journal := running.Journal()
-	for _, event := range journal.Since(req.GetAfterSequence(), 0) {
-		if err := stream.Send(toWireEvent(event, s.redactors.get(running.ID()))); err != nil {
+	feed := newEventFeed(running.Journal(), req.GetAfterSequence(), s.redactors.get(running.ID()))
+	defer feed.close()
+
+	for _, event := range feed.history() {
+		if err := stream.Send(toWireEvent(event, feed.redactor)); err != nil {
 			return err
 		}
 	}
-	events, cancel := journal.Subscribe(streamBuffer)
-	defer cancel()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case event, ok := <-events:
+		case event, ok := <-feed.live:
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(toWireEvent(event, s.redactors.get(running.ID()))); err != nil {
+			if err := stream.Send(toWireEvent(event, feed.redactor)); err != nil {
 				return err
 			}
 		}
+	}
+}
+
+// eventFeed is the seam between the journal and the event stream. It exists so
+// the rule "subscribe first, replay up to the head, drop the duplicates" is a
+// thing a test can read and check instead of a comment nobody can verify.
+type eventFeed struct {
+	journal     *session.Journal
+	redactor    *engine.Redactor
+	live        <-chan session.Event
+	unsubscribe func()
+	after       uint64
+	head        uint64
+}
+
+// newEventFeed subscribes to the journal and remembers where the history ends.
+func newEventFeed(journal *session.Journal, after uint64, redactor *engine.Redactor) *eventFeed {
+	live, unsubscribe := journal.Subscribe(streamBuffer)
+	feed := &eventFeed{
+		journal:     journal,
+		redactor:    redactor,
+		live:        live,
+		unsubscribe: unsubscribe,
+		after:       after,
+	}
+	// The head is read after the subscription is in place, which is what makes the
+	// two halves cover the journal between them without a hole.
+	feed.head = journal.Latest()
+	return feed
+}
+
+// history returns the events a reconnecting client has not seen: the ones above
+// the sequence it named and at or below the head that existed when it subscribed.
+func (f *eventFeed) history() []session.Event {
+	events := f.journal.Since(f.after, 0)
+	out := make([]session.Event, 0, len(events))
+	for _, event := range events {
+		if event.Sequence > f.head {
+			// Beyond the head the live channel already holds it, and sending it
+			// twice would make a client count it twice.
+			continue
+		}
+		out = append(out, event)
+	}
+	return out
+}
+
+// close releases the subscription.
+func (f *eventFeed) close() {
+	if f.unsubscribe != nil {
+		f.unsubscribe()
 	}
 }
 
@@ -709,7 +806,7 @@ func (s *Server) ParseImport(_ context.Context, req *corev1.ParseImportRequest) 
 
 	plan := &corev1.SessionPlan{TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM}
 	for _, server := range result.Servers {
-		reference, err := secret.NewReference()
+		reference, err := referenceOf(server)
 		if err != nil {
 			return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
 		}
@@ -824,10 +921,15 @@ func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscri
 
 // ProbeServers measures the endpoints of the request and streams the results as
 // they arrive, so the interface fills a list in instead of waiting for all of it.
-func (s *Server) ProbeServers(ctx context.Context, req *corev1.ProbeServersRequest, stream grpc.ServerStreamingServer[corev1.ProbeResult]) error {
+//
+// The method takes no context: a server streaming call receives it from the
+// stream, and passing one separately would let a caller measure against a deadline
+// that does not belong to the connection.
+func (s *Server) ProbeServers(req *corev1.ProbeServersRequest, stream grpc.ServerStreamingServer[corev1.ProbeResult]) error {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return transportStatus(err)
 	}
+	ctx := stream.Context()
 	if len(req.GetEndpoints()) == 0 {
 		return errs.Newf(errs.CodeInvalidArgument, errs.KeyProbeNoEndpoints,
 			"control: the probe request carries no endpoints")
@@ -866,6 +968,9 @@ func (s *Server) RunDiagnostics(ctx context.Context, req *corev1.RunDiagnosticsR
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
 	}
+	if err := s.checkSession(req.GetSessionId()); err != nil {
+		return &corev1.RunDiagnosticsResponse{Error: toWire(err, nil, id)}, nil
+	}
 	if s.diagnostics == nil {
 		err := errs.Newf(errs.CodeUnsupported, errs.KeyDiagnosticsFailed,
 			"control: this core cannot collect diagnostics")
@@ -887,6 +992,9 @@ func (s *Server) ExportDiagnostics(ctx context.Context, req *corev1.ExportDiagno
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
+	}
+	if err := s.checkSession(req.GetSessionId()); err != nil {
+		return &corev1.ExportDiagnosticsResponse{Error: toWire(err, nil, id)}, nil
 	}
 	if s.diagnostics == nil {
 		err := errs.Newf(errs.CodeUnsupported, errs.KeyDiagnosticsFailed,

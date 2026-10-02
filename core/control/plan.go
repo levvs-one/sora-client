@@ -1,6 +1,8 @@
 package control
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -117,12 +119,22 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 			Enabled: in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
 		},
 	}
+	seen := make(map[string]struct{}, len(in.GetOutbounds()))
 	for index, spec := range in.GetOutbounds() {
 		outbound, err := outboundFromProto(index, spec, secrets)
 		if err != nil {
 			return nil, err
 		}
+		if _, duplicate := seen[outbound.ID]; duplicate {
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanDuplicateID,
+				"control: two outbounds share the id %q", outbound.ID)
+		}
+		seen[outbound.ID] = struct{}{}
 		plan.Outbounds = append(plan.Outbounds, outbound)
+	}
+	if mode := in.GetTunnelMode(); mode == corev1.TunnelMode_TUNNEL_MODE_UNSPECIFIED {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanTunnel,
+			"control: the plan does not say which tunnel it wants")
 	}
 	// The rules of the contract carry only a destination and a target, which is
 	// what a client can express without knowing the grammar of an engine. The
@@ -133,13 +145,62 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		if err != nil {
 			return nil, err
 		}
+		if _, ok := seen[rule.Target]; !ok && !isBuiltInTarget(rule.Target) {
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanUnknownTarget,
+				"control: rule %q points at %q, which is not in this plan", rule.Value, rule.Target)
+		}
 		plan.Rules = append(plan.Rules, rule)
 	}
 	plan.DNS = dnsFromProto(in.GetDnsPolicy())
+	if err := checkDNS(plan.DNS); err != nil {
+		return nil, err
+	}
+	for _, entry := range in.GetBypassSettings().GetRules() {
+		if err := checkBypass(entry); err != nil {
+			return nil, err
+		}
+	}
 	if err := plan.Validate(); err != nil {
-		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid)
 	}
 	return plan, nil
+}
+
+// isBuiltInTarget reports whether a rule may point at a destination that the
+// engine owns rather than at something the plan lists.
+func isBuiltInTarget(target string) bool {
+	switch target {
+	case "direct", "block", "reject":
+		return true
+	default:
+		return false
+	}
+}
+
+// checkDNS refuses a resolver the engine could not use, with the key that names
+// the problem instead of a general "the plan is invalid".
+func checkDNS(dns engine.DNS) error {
+	for _, server := range dns.Servers {
+		if server.Address == "" {
+			return errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanDNSInvalid,
+				"control: a resolver has no address")
+		}
+	}
+	return nil
+}
+
+// checkBypass refuses an entry that is not a domain, an address or a network.
+func checkBypass(entry string) error {
+	trimmed := strings.TrimSpace(entry)
+	if trimmed == "" {
+		return errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanBypassInvalid,
+			"control: a bypass entry is empty")
+	}
+	if strings.ContainsAny(trimmed, " \t\r\n") {
+		return errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanBypassInvalid,
+			"control: a bypass entry holds whitespace")
+	}
+	return nil
 }
 
 // outboundFromProto converts one outbound and resolves its credential reference.
@@ -301,6 +362,25 @@ func orDefault(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+// referenceOf is the reference a stored secret lives under.
+//
+// It is derived from the identity of the server, not minted at random, and that
+// choice is what keeps the store from growing without bound. A subscription
+// imported every morning would otherwise write a second, third and fourth copy of
+// the same credential under a new name each time, and nothing would ever remove
+// them: the core cannot tell a reference the user still uses from one an earlier
+// import invented. With a reference that follows the server, a re-import
+// overwrites the material and the number of secrets stays the number of servers
+// the user actually has.
+func referenceOf(spec parser.OutboundSpec) (string, error) {
+	sum := sha256.Sum256([]byte(spec.StableKey()))
+	// The prefix says what the reference is, the digest says which server it
+	// belongs to, and neither carries a name or a host: a reference is stored,
+	// logged and compared, and a reference that identifies its server in clear
+	// would be the leak this package exists to prevent.
+	return "s1_" + hex.EncodeToString(sum[:16]), nil
 }
 
 // outboundToProto renders one parsed server for the interface. The credential

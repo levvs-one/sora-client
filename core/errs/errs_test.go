@@ -20,7 +20,6 @@ var declaredCodes = []errs.Code{
 	errs.CodeUnauthenticated,
 	errs.CodePermissionDenied,
 	errs.CodeNotFound,
-	errs.CodeAlreadyExists,
 	errs.CodeFailedPrecondition,
 	errs.CodeResourceExhausted,
 	errs.CodeDeadlineExceeded,

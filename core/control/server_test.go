@@ -440,6 +440,47 @@ func TestSecretLifecycle(t *testing.T) {
 	}
 }
 
+// TestRepeatedImportsDoNotGrowTheStore is the test for the promise the reference
+// scheme makes: importing the same subscription again must leave the store with
+// the same secrets, not a second copy of each one. A store that grows on every
+// refresh is a store that eventually refuses to start, and the credentials in it
+// are copies nobody chose to keep.
+func TestRepeatedImportsDoNotGrowTheStore(t *testing.T) {
+	server, store := newTestServer(t)
+	const link = "vless://11111111-1111-4111-8111-111111111111@de1.example.com:443" +
+		"?encryption=none&security=tls&sni=de1.example.com#Berlin"
+
+	var references []string
+	for attempt := range 3 {
+		response, err := server.ParseImport(context.Background(), &corev1.ParseImportRequest{
+			ApiVersion: clientVersion(),
+			RequestId:  "req-import",
+			Payload:    []byte(link),
+		})
+		if err != nil {
+			t.Fatalf("ParseImport() error = %v", err)
+		}
+		if response.GetError() != nil {
+			t.Fatalf("import %d failed with %v", attempt, response.GetError())
+		}
+		references = append(references, response.GetSessionPlan().GetOutbounds()[0].GetCredentials().GetReference())
+	}
+	if references[0] != references[1] || references[1] != references[2] {
+		t.Errorf("the same server produced different references: %v", references)
+	}
+	if got := store.Len(); got != 1 {
+		t.Errorf("three imports of one server left %d secrets, want 1", got)
+	}
+	if refs := store.Refs(); len(refs) != 1 || refs[0] != references[0] {
+		t.Errorf("the store holds %v, want only %s", refs, references[0])
+	}
+	// The reference is derived from the server, so it must not carry its host or
+	// its name in clear: a reference is written to disk and copied around.
+	if strings.Contains(references[0], "de1.example.com") || strings.Contains(references[0], "Berlin") {
+		t.Errorf("the reference %q names the server", references[0])
+	}
+}
+
 func TestSecretMethodsRefuseABadReference(t *testing.T) {
 	server, _ := newTestServer(t)
 	put, err := server.PutSecret(context.Background(), &corev1.PutSecretRequest{

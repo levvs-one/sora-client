@@ -49,8 +49,6 @@ const (
 	// CodeNotFound marks a lookup of something the core does not have: an
 	// unknown session, an unknown secret reference, a missing engine binary.
 	CodeNotFound Code = "not_found"
-	// CodeAlreadyExists marks a create that collided with existing state.
-	CodeAlreadyExists Code = "already_exists"
 	// CodeFailedPrecondition marks an operation that needs a state the core is
 	// not in, for example applying a plan while the session is stopping.
 	CodeFailedPrecondition Code = "failed_precondition"

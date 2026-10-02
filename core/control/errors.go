@@ -32,7 +32,6 @@ var wireCodes = map[errs.Code]corev1.SoraErrorCode{
 	errs.CodeInvalidArgument:    corev1.SoraErrorCode_SORA_ERROR_CODE_INVALID_ARGUMENT,
 	errs.CodeUnsupported:        corev1.SoraErrorCode_SORA_ERROR_CODE_INVALID_ARGUMENT,
 	errs.CodeFailedPrecondition: corev1.SoraErrorCode_SORA_ERROR_CODE_FAILED_PRECONDITION,
-	errs.CodeAlreadyExists:      corev1.SoraErrorCode_SORA_ERROR_CODE_FAILED_PRECONDITION,
 	errs.CodeNotFound:           corev1.SoraErrorCode_SORA_ERROR_CODE_NOT_FOUND,
 	errs.CodeResourceExhausted:  corev1.SoraErrorCode_SORA_ERROR_CODE_RESOURCE_EXHAUSTED,
 	errs.CodeDeadlineExceeded:   corev1.SoraErrorCode_SORA_ERROR_CODE_DEADLINE_EXCEEDED,

@@ -15,6 +15,11 @@ type Config struct {
 	Binary Binary
 	// HomeDir is the private working directory of the engine, mode 0700.
 	HomeDir string
+	// LocalPort is the loopback port the engine serves the tunnel on. The core
+	// reserves it, because the system proxy is pointed at this port before the
+	// engine starts. Zero lets the engine choose one per start, which only a
+	// caller that never points a proxy at the engine should ask for.
+	LocalPort int
 	// DebugConfigPath writes the rendered config to a file for debugging.
 	// Empty keeps the config off the disk, which is the normal case.
 	DebugConfigPath string

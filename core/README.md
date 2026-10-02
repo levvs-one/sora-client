@@ -20,6 +20,43 @@ serves the control plane the interface talks to over `proto/sora/core/v1`.
 | `diagnostics` | the report and the archive a user can safely send |
 | `control` | the control plane over `sora.core.v1` |
 | `ipc` | the local transport: named pipe, unix socket |
+| `cmd/sora-core` | the service itself: the composition root that wires the rest |
+
+## Engines
+
+| Engine | State |
+| --- | --- |
+| mihomo | implemented: child process, rendered config, controller API, hot apply |
+| sing-box | not implemented: no package, no factory. It is the engine the service is meant to lead with |
+| Xray | not implemented: no package, no factory |
+
+`engine.Catalog` lists what each upstream engine is capable of, which is how the
+interface avoids offering a feature the chosen engine lacks. It is a matrix of
+upstream facts, not a list of things this repository can run. Nothing in the
+service can start an engine that has no implementation, and the contract has no
+field that asks for one.
+
+## Running it
+
+The service is the product; the interface is one client of it. It starts, checks
+itself and stops without any interface present:
+
+```sh
+go run ./cmd/sora-core -data-dir ./data            # serve the control plane
+go run ./cmd/sora-core -check                      # is this machine ready
+go run ./cmd/sora-core -print-token                # the token a client presents
+```
+
+What a real start does, in this order: create the data directory owner-only,
+generate or read the control token, open the secret store under the machine key
+store, discover the engine binary, build the session manager with the proxy guard
+and the kill switch, attach the prober, the subscription fetcher and the
+diagnostics collector, open the local endpoint, and serve gRPC over it. On shutdown
+the session is stopped first, so the proxy and the kill switch go back where they
+were, and only then does the endpoint close.
+
+The loopback tunnel port is reserved by the service, not by the engine, because
+the system proxy is pointed at it before the engine starts.
 
 ## Building and checking
 

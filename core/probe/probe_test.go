@@ -12,6 +12,75 @@ import (
 	"github.com/levvs-one/sora-client/core/probe"
 )
 
+// TestTheEndpointBudgetBelongsToTheProberNotToTheRequest is the test for the
+// limit that a per request semaphore does not provide: a caller that sends many
+// requests must not get many times the sockets, and once the measurements in
+// flight are full it must be told so rather than silently queued.
+func TestTheEndpointBudgetBelongsToTheProberNotToTheRequest(t *testing.T) {
+	prober := probe.New(probe.Config{Timeout: 50 * time.Millisecond, Concurrency: 1})
+	endpoint := []*corev1.Endpoint{{Host: "127.0.0.1", Port: 1}}
+
+	// The first measurements are held open by the slow timeout on a closed port.
+	held := make([]<-chan *corev1.ProbeResult, 0, probe.MaxConcurrentRequests)
+	for range probe.MaxConcurrentRequests {
+		results, err := prober.Probe(context.Background(), endpoint, nil)
+		if err != nil {
+			t.Fatalf("measurement %d was refused: %v", len(held), err)
+		}
+		held = append(held, results)
+	}
+	if _, err := prober.Probe(context.Background(), endpoint, nil); err == nil {
+		t.Fatal("a fifth measurement was accepted while four were running")
+	} else if errs.KeyOf(err) != errs.KeyProbeTooMany {
+		t.Errorf("a refused measurement answered the key %q", errs.KeyOf(err))
+	}
+	for _, results := range held {
+		// Draining is what frees the request slot again.
+		for range results {
+		}
+	}
+	if _, err := prober.Probe(context.Background(), endpoint, nil); err != nil {
+		t.Errorf("a measurement was still refused after the others finished: %v", err)
+	}
+}
+
+// TestACancelledMeasurementStops is the test for the promise that a client which
+// closes the stream stops the work it started: without it, every abandoned probe
+// would keep sockets open until the timeout expires.
+func TestACancelledMeasurementStops(t *testing.T) {
+	prober := probe.New(probe.Config{Timeout: 10 * time.Second, Concurrency: 4})
+	endpoints := make([]*corev1.Endpoint, 0, 8)
+	for range 8 {
+		endpoints = append(endpoints, &corev1.Endpoint{Host: "127.0.0.1", Port: 9})
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	results, err := prober.Probe(ctx, endpoints, nil)
+	if err != nil {
+		t.Fatalf("Probe() error = %v", err)
+	}
+	cancel()
+	closed := false
+	for range results {
+	}
+	select {
+	case _, open := <-results:
+		closed = !open
+	default:
+	}
+	if !closed {
+		t.Error("the results channel stayed open after the request was cancelled")
+	}
+	// The request slot is released, so the next caller is served.
+	short, err := prober.Probe(context.Background(),
+		[]*corev1.Endpoint{{Host: "127.0.0.1", Port: 1}}, nil)
+	if err != nil {
+		t.Errorf("the cancelled measurement kept the request slot: %v", err)
+	} else {
+		for range short {
+		}
+	}
+}
+
 // listener opens a socket that accepts and closes, which is what a reachable
 // endpoint looks like to a measurement.
 func listener(t *testing.T) (string, uint32) {

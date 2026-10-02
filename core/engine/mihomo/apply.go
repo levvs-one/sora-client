@@ -58,9 +58,18 @@ func (e *Engine) Apply(ctx context.Context, p *engine.Plan) error {
 
 // start brings the engine up from nothing and begins supervision.
 func (e *Engine) start(ctx context.Context, p *engine.Plan) error {
-	mixed, err := FreePort()
-	if err != nil {
-		return err
+	// The core reserves the port the system proxy will point at and hands it over
+	// here, because the guard is armed before the engine starts: a switch that is
+	// pointed at a port the engine then chooses for itself is a switch pointing at
+	// nothing. A port the core did not reserve is still chosen per start, which is
+	// what a caller that never points a proxy at this engine wants.
+	mixed := e.cfg.LocalPort
+	if mixed == 0 {
+		free, err := FreePort()
+		if err != nil {
+			return err
+		}
+		mixed = free
 	}
 	control, err := FreePort()
 	if err != nil {

@@ -60,7 +60,20 @@ type Prober struct {
 	concurrency int
 	tls         bool
 	serverName  string
+	// slots is shared by every request this prober serves, not created per request.
+	// A per request limit is no limit at all: a caller that sends four requests
+	// of two hundred endpoints each gets four times the sockets, on the same
+	// machine, from the same client. The prober of a service is one object, so
+	// the budget it was given is the budget of the service.
+	slots chan struct{}
+	// requests bounds how many measurements run at once, so that a flood of
+	// one endpoint requests cannot turn the endpoint budget into a queue of
+	// waiting work.
+	requests chan struct{}
 }
+
+// MaxConcurrentRequests bounds how many measurements a prober runs at once.
+const MaxConcurrentRequests = 4
 
 // New returns a prober with the defaults filled in.
 func New(cfg Config) *Prober {
@@ -75,6 +88,8 @@ func New(cfg Config) *Prober {
 		concurrency: cfg.Concurrency,
 		tls:         cfg.TLS,
 		serverName:  cfg.ServerName,
+		slots:       make(chan struct{}, cfg.Concurrency),
+		requests:    make(chan struct{}, MaxConcurrentRequests),
 	}
 }
 
@@ -85,6 +100,11 @@ func New(cfg Config) *Prober {
 // serverIDs names the endpoints for the caller; a shorter list leaves the rest
 // unnamed, and the result then carries an empty id rather than an index that
 // means nothing to a client.
+//
+// The endpoint budget belongs to the prober, not to the request, and a caller
+// that is already measuring is told so instead of being queued behind work it
+// cannot see: a refused measurement is an answer the interface can show, while a
+// queued one is a list that stops filling in.
 func (p *Prober) Probe(ctx context.Context, endpoints []*corev1.Endpoint, serverIDs []string) (<-chan *corev1.ProbeResult, error) {
 	if len(endpoints) == 0 {
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyProbeNoEndpoints,
@@ -94,18 +114,25 @@ func (p *Prober) Probe(ctx context.Context, endpoints []*corev1.Endpoint, server
 		return nil, errs.Newf(errs.CodeResourceExhausted, errs.KeyProbeTooMany,
 			"probe: the request carries %d endpoints, the limit is %d", len(endpoints), MaxEndpoints)
 	}
+	select {
+	case p.requests <- struct{}{}:
+	default:
+		return nil, errs.Newf(errs.CodeResourceExhausted, errs.KeyProbeTooMany,
+			"probe: %d measurements are already running, the limit is %d",
+			len(p.requests), MaxConcurrentRequests)
+	}
 	results := make(chan *corev1.ProbeResult, len(endpoints))
 	go func() {
 		defer close(results)
-		semaphore := make(chan struct{}, p.concurrency)
+		defer func() { <-p.requests }()
 		var wg sync.WaitGroup
 		for index, endpoint := range endpoints {
 			wg.Add(1)
 			go func(index int, endpoint *corev1.Endpoint) {
 				defer wg.Done()
 				select {
-				case semaphore <- struct{}{}:
-					defer func() { <-semaphore }()
+				case p.slots <- struct{}{}:
+					defer func() { <-p.slots }()
 				case <-ctx.Done():
 					return
 				}

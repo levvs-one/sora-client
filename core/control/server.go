@@ -204,6 +204,18 @@ func New(cfg Config) (*Server, error) {
 	}, nil
 }
 
+// SetDiagnostics attaches the collector after the plane was built. A collector
+// needs the session manager and the engine build, both of which exist before the
+// control plane does, so the composition root hands it over here instead of
+// threading it through a constructor argument it cannot fill yet.
+//
+// It is a construction step, not a runtime one: calling it while the plane serves
+// requests is a race, and a composition root that does it late has a design
+// problem that a lock would only hide.
+func (s *Server) SetDiagnostics(collector Diagnostics) {
+	s.diagnostics = collector
+}
+
 // apiVersion renders the version the core serves.
 func (s *Server) apiVersion() *corev1.ApiVersion {
 	return &corev1.ApiVersion{
@@ -377,6 +389,20 @@ const (
 	guardTimeout      = 10 * time.Second
 	statsTimeout      = 5 * time.Second
 	importTimeout     = 60 * time.Second
+)
+
+// Limits of the transport. A service that sets them once, in one place, is a
+// service whose client and server cannot drift apart: the numbers the core checks
+// in a plan are the numbers the transport refuses a message over.
+const (
+	// MaxRecvMsgBytes is the largest message the core accepts from a client. It is
+	// the plan limit plus the envelope around it, so a client cannot send a plan
+	// that is over the limit and still be believed.
+	MaxRecvMsgBytes = MaxPlanBytes + (1 << 20)
+	// MaxSendMsgBytes is the largest message the core answers with. The largest
+	// answer the contract defines is a diagnostic archive, which the collector
+	// bounds, and the room left here is what a client needs to read it.
+	MaxSendMsgBytes = 16 << 20
 )
 
 // Handshake answers with the contract version the core serves. It is the only

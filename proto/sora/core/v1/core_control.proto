@@ -80,12 +80,18 @@ message GetStatsRequest { ApiVersion api_version = 1; string session_id = 2; }
 message GetStatsResponse { StatsTick stats = 1; SoraError error = 2; }
 message ConnectionState { ConnectionStateValue value = 1; string session_id = 2; SoraErrorCode reason = 3; google.protobuf.Timestamp changed_at = 4; google.protobuf.Duration retry_after = 5; }
 enum ConnectionStateValue { CONNECTION_STATE_VALUE_UNSPECIFIED = 0; CONNECTION_STATE_VALUE_DISCONNECTED = 1; CONNECTION_STATE_VALUE_CONNECTING = 2; CONNECTION_STATE_VALUE_CONNECTED = 3; CONNECTION_STATE_VALUE_RECONNECTING = 4; CONNECTION_STATE_VALUE_FAILED = 5; }
-message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; } }
+message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; KillSwitchChanged kill_switch_changed = 10; } }
 message StateChanged { ConnectionState state = 1; }
 message StatsTick { uint64 bytes_up = 1; uint64 bytes_down = 2; uint64 active_connections = 3; }
 message BypassStrategyChanged { string strategy = 1; }
 message ProbeResult { string server_id = 1; bool reachable = 2; uint32 latency_ms = 3; SoraError error = 4; }
 message LogBatch { repeated string lines = 1; } // Limit: 200 lines, 256 KiB after batching, flush at least every 250 ms.
+// KillSwitchChanged reports the state of the kill switch of a session. Enforced
+// is separate from enabled on purpose: on a platform that cannot block traffic at
+// the packet filter the core still records the request, and the interface has to
+// be able to show a switch that is on but not blocking rather than a switch that
+// protects the user when it does not.
+message KillSwitchChanged { bool enabled = 1; bool enforced = 2; }
 
 message ParseImportRequest { ApiVersion api_version = 1; string request_id = 2; bytes payload = 3; }
 message ParseImportResponse { SessionPlan session_plan = 1; SoraError error = 2; }

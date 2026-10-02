@@ -27,7 +27,7 @@ serves the control plane the interface talks to over `proto/sora/core/v1`.
 | Engine | State |
 | --- | --- |
 | mihomo | implemented: child process, rendered config, controller API, hot apply |
-| sing-box | not implemented: no package, no factory. It is the engine the service is meant to lead with |
+| sing-box | implemented: child process, rendered config, Clash REST API, hot apply via reload |
 | Xray | not implemented: no package, no factory |
 
 `engine.Catalog` lists what each upstream engine is capable of, which is how the

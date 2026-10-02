@@ -2,9 +2,9 @@
 //
 // It is the whole product without an interface: it owns the credentials, supervises
 // the engine, changes the system settings a tunnel needs, and serves the control
-// plane that any client speaks. The interface is one such client, and so is
-// sora-corectl, which is what makes "the app works without a GUI" something that
-// can be run rather than a claim.
+// plane that any client speaks. The desktop interface is one such client. Nothing in
+// this package depends on a client existing, which is what makes the core testable
+// and scriptable on its own.
 package main
 
 import (

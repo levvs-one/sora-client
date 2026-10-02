@@ -164,7 +164,7 @@ disconnected --connect--> connecting --ok--> connected
 | `core/probe` | готов | измерение через туннель для Android |
 | `core/guard` | готов | Filtering Platform для Windows: фильтры по приложениям |
 | `core/subscription` | готов | условные запросы, когда понадобится экономия трафика |
-| `core/diagnostics` | не начат | отчёт и архив без секретов |
+| `core/diagnostics` | готов | расширить отчёт данными, которые знает только платформа |
 | `service/windows` | пусто | установка, права, автозапуск |
 | `service/linux` | пусто | unit-файлы, пользователь, права |
 | `app` | скелет | UI вне этой задачи: дизайн не трогаем |

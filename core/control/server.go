@@ -273,11 +273,16 @@ func newSessionID(proposed string) (string, error) {
 
 // mask returns a masking function for a plan, or nil when there is no plan. Every
 // answer built from a plan goes through it.
+//
+// The redactor is seeded with credentials and with identifiers: a plan that names
+// the server de1.example.com would otherwise let that name leave the core inside
+// an error detail or an event, which is a report about one user.
 func (s *Server) mask(plan *engine.Plan) func(string) string {
 	if plan == nil {
 		return nil
 	}
-	redactor := engine.NewRedactor(plan.Secrets()...)
+	values := append(plan.Secrets(), plan.Identifiers()...)
+	redactor := engine.NewRedactor(values...)
 	s.redactors.put(plan.SessionID, redactor)
 	return redactor.String
 }

@@ -3,6 +3,8 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 )
 
@@ -31,6 +33,40 @@ func (o Outbound) Secrets() []string {
 		if len(c) >= 4 {
 			out = append(out, c)
 		}
+	}
+	return out
+}
+
+// Identifiers lists the values of one outbound that are not secrets but still
+// identify a person or a provider: the server host and the host with its port.
+//
+// They are masked separately from credentials because a diagnostic that names
+// the server a user connected to is a report about that user, and because a
+// reviewer needs to see the shape of a problem without seeing whose it is.
+func (o Outbound) Identifiers() []string {
+	out := make([]string, 0, 3)
+	if o.Server != "" {
+		out = append(out, o.Server)
+		if o.Port != 0 {
+			out = append(out, net.JoinHostPort(o.Server, strconv.Itoa(int(o.Port))))
+		}
+	}
+	if o.TLS.ServerName != "" {
+		out = append(out, o.TLS.ServerName)
+	}
+	out = append(out, o.Name)
+	return out
+}
+
+// Identifiers returns every value of the plan that identifies a server. It is the
+// counterpart of Secrets for masking, and the two are used together.
+func (p *Plan) Identifiers() []string {
+	if p == nil {
+		return nil
+	}
+	out := make([]string, 0, len(p.Outbounds)*3)
+	for _, o := range p.Outbounds {
+		out = append(out, o.Identifiers()...)
 	}
 	return out
 }

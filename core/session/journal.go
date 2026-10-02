@@ -34,6 +34,7 @@ type Event struct {
 	Key        errs.Key
 	Detail     string
 	Counters   Counters
+	Probe      *ProbeOutcome
 	RetryAfter time.Duration
 	LogLine    string
 }
@@ -45,6 +46,16 @@ type Counters struct {
 	BytesDown         uint64
 	ActiveConnections int
 	At                time.Time
+}
+
+// ProbeOutcome is the result of one latency measurement. It travels with the event
+// rather than being rebuilt by the control plane, because only the session knows
+// which server the measurement was about.
+type ProbeOutcome struct {
+	ServerID  string
+	Reachable bool
+	LatencyMS int
+	Err       error
 }
 
 // Journal keeps the recent history of one session and fans new events out to

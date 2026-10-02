@@ -1,0 +1,319 @@
+package control
+
+import (
+	"encoding/json"
+	"strconv"
+	"strings"
+
+	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/errs"
+	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
+	"github.com/levvs-one/sora-client/core/parser"
+)
+
+// Limits of one request, taken from the comments of the contract. They are
+// checked before anything is allocated, so a hostile or broken client cannot make
+// the core build a plan of any size it likes.
+const (
+	// MaxPlanBytes is the largest plan the contract accepts.
+	MaxPlanBytes = 4 << 20
+	// MaxImportBytes is the largest payload ParseImport accepts.
+	MaxImportBytes = 16 << 20
+	// MaxProbeEndpoints is the largest number of endpoints one probe request
+	// may carry.
+	MaxProbeEndpoints = 256
+)
+
+// resolver turns a reference from the plan into the credential material behind
+// it. The control plane never sees the material of a plan it did not resolve, and
+// the interface never receives it back.
+type resolver interface {
+	Get(reference string) ([]byte, error)
+}
+
+// parseCredential reads the stored material of one outbound. The document is a
+// flat map written by the import pipeline; a document the core cannot read is
+// refused rather than partially applied, because half a credential is a
+// connection that fails for a reason the user cannot see.
+func parseCredential(material []byte) map[string]string {
+	out := make(map[string]string, 12)
+	if len(material) == 0 {
+		return out
+	}
+	_ = json.Unmarshal(material, &out)
+	return out
+}
+
+// credentialDocument renders the material of one outbound for storage. Only the
+// fields the core understands are written, so a future field cannot leak into a
+// vault by accident.
+func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
+	values := map[string]string{
+		"uuid":         spec.UUID,
+		"password":     spec.Password,
+		"method":       spec.Cipher,
+		"user":         spec.User,
+		"flow":         spec.Flow,
+		"public_key":   spec.PublicKey,
+		"short_id":     spec.ShortID,
+		"server_name":  spec.ServerName,
+		"fingerprint":  spec.Fingerprint,
+		"spider_x":     spec.SpiderX,
+		"mode":         spec.Mode,
+		"path":         spec.Path,
+		"host_header":  spec.HostHeader,
+		"service_name": spec.ServiceName,
+	}
+	// Obfuscation parameters travel in the free-form options of a parsed link,
+	// because only some protocols have them. They are copied explicitly instead
+	// of being merged wholesale: a link is untrusted input and a wholesale copy
+	// would let a subscription write arbitrary keys into the vault.
+	for _, key := range []string{"obfs", "obfs_param", "obfs-password"} {
+		if value, ok := spec.Options[key]; ok && value != "" {
+			values[key] = value
+		}
+	}
+	if spec.AllowInsecure {
+		values["insecure"] = "1"
+	}
+	for key, value := range values {
+		if value == "" {
+			delete(values, key)
+		}
+	}
+	document, err := json.Marshal(values)
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+	}
+	return document, nil
+}
+
+// planFromProto converts the plan of a Connect request into the engine plan.
+//
+// Two things happen here that a client cannot be trusted to do. Every outbound is
+// checked against the limits and against the plan it belongs to, and every
+// credential is resolved from the secret store into the engine plan, which is the
+// only place the material exists.
+func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (*engine.Plan, error) {
+	if in == nil {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanEmpty, "control: the request carries no plan")
+	}
+	if len(in.GetOutbounds()) == 0 {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanEmpty, "control: the plan has no outbounds")
+	}
+	if len(in.GetOutbounds()) > engine.MaxOutbounds {
+		return nil, errs.Newf(errs.CodeResourceExhausted, errs.KeyPlanTooLarge,
+			"control: the plan carries %d outbounds, the limit is %d", len(in.GetOutbounds()), engine.MaxOutbounds)
+	}
+	if len(in.GetRoutes()) > engine.MaxRules {
+		return nil, errs.Newf(errs.CodeResourceExhausted, errs.KeyPlanTooLarge,
+			"control: the plan carries %d rules, the limit is %d", len(in.GetRoutes()), engine.MaxRules)
+	}
+
+	plan := &engine.Plan{
+		SessionID: sessionID,
+		Options:   engine.Options{Mode: "rule"},
+		Tun: engine.Tun{
+			Enabled: in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+		},
+	}
+	for index, spec := range in.GetOutbounds() {
+		outbound, err := outboundFromProto(index, spec, secrets)
+		if err != nil {
+			return nil, err
+		}
+		plan.Outbounds = append(plan.Outbounds, outbound)
+	}
+	// The rules of the contract carry only a destination and a target, which is
+	// what a client can express without knowing the grammar of an engine. The
+	// type is derived from the shape of the destination so that one rule means
+	// the same thing in every engine and in every future client.
+	for _, route := range in.GetRoutes() {
+		rule, err := ruleFromProto(route)
+		if err != nil {
+			return nil, err
+		}
+		plan.Rules = append(plan.Rules, rule)
+	}
+	plan.DNS = dnsFromProto(in.GetDnsPolicy())
+	if err := plan.Validate(); err != nil {
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
+	}
+	return plan, nil
+}
+
+// outboundFromProto converts one outbound and resolves its credential reference.
+func outboundFromProto(index int, spec *corev1.OutboundSpec, secrets resolver) (engine.Outbound, error) {
+	id := strings.TrimSpace(spec.GetId())
+	if id == "" {
+		return engine.Outbound{}, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanOutbounds,
+			"control: outbound %d has no id", index)
+	}
+	port := spec.GetEndpoint().GetPort()
+	if port > 0xffff {
+		return engine.Outbound{}, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanOutbounds,
+			"control: outbound %q has port %d, which is not a port", id, port)
+	}
+	outbound := engine.Outbound{
+		ID:       id,
+		Name:     spec.GetDisplayName(),
+		Protocol: engine.Protocol(spec.GetProtocol()),
+		Server:   spec.GetEndpoint().GetHost(),
+		Port:     uint16(port),
+		Transport: engine.Transport{
+			Type: orDefault(spec.GetTransport(), "tcp"),
+		},
+		TLS: engine.TLS{Enabled: !strings.EqualFold(spec.GetSecurity(), "none")},
+	}
+	// An outbound without a name makes a list unreadable, so the id is used.
+	if outbound.Name == "" {
+		outbound.Name = id
+	}
+	if reference := spec.GetCredentials().GetReference(); reference != "" {
+		if secrets == nil {
+			return engine.Outbound{}, errs.Newf(errs.CodeFailedPrecondition, errs.KeySecretStoreUnavailable,
+				"control: outbound %q needs a secret but the core has no store", id)
+		}
+		material, err := secrets.Get(reference)
+		if err != nil {
+			return engine.Outbound{}, errs.Wrap(err, errs.CodeNotFound, errs.KeySecretNotFound)
+		}
+		applyCredential(&outbound, parseCredential(material))
+	}
+	return outbound, nil
+}
+
+// applyCredential fills the credential fields of an outbound from stored
+// material. The keys are the ones credentialDocument writes and nothing else is
+// read: a material document is data from the store, not a set of instructions.
+func applyCredential(outbound *engine.Outbound, values map[string]string) {
+	outbound.UUID = values["uuid"]
+	outbound.Password = values["password"]
+	outbound.Cipher = values["method"]
+	outbound.UserID = values["user"]
+	outbound.Flow = values["flow"]
+	outbound.Obfs = values["obfs"]
+	outbound.ObfsParam = values["obfs_param"]
+	outbound.PublicKey = values["public_key"]
+	outbound.ShortID = values["short_id"]
+	outbound.TLS.ServerName = values["server_name"]
+	outbound.TLS.Fingerprint = values["fingerprint"]
+	if insecure, ok := values["insecure"]; ok {
+		outbound.TLS.Insecure = insecure == "1" || strings.EqualFold(insecure, "true")
+	}
+}
+
+// ruleFromProto converts one routing rule.
+func ruleFromProto(route *corev1.RoutingRule) (engine.Rule, error) {
+	destination := strings.TrimSpace(route.GetDestination())
+	if destination == "" {
+		return engine.Rule{}, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid,
+			"control: a rule has no destination")
+	}
+	target := strings.TrimSpace(route.GetOutboundId())
+	if target == "" {
+		return engine.Rule{}, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid,
+			"control: rule %q has no target", destination)
+	}
+	return engine.Rule{Type: ruleTypeOf(destination), Value: destination, Target: target}, nil
+}
+
+// ruleTypeOf derives the rule type from the shape of a destination.
+func ruleTypeOf(destination string) engine.RuleType {
+	switch {
+	case strings.HasPrefix(destination, "geosite:"):
+		return engine.RuleGeoSite
+	case strings.HasPrefix(destination, "geoip:"):
+		return engine.RuleGeoIP
+	case strings.HasPrefix(destination, "ruleset:"):
+		return engine.RuleRuleSet
+	case strings.HasPrefix(destination, "domain:"):
+		return engine.RuleDomain
+	case strings.HasPrefix(destination, "full:"):
+		return engine.RuleDomainSuffix
+	case strings.Contains(destination, "/"):
+		return engine.RuleIPCIDR
+	case strings.Contains(destination, ":"):
+		return engine.RulePort
+	default:
+		return engine.RuleDomainKeyword
+	}
+}
+
+// dnsFromProto converts the resolver settings of a request.
+func dnsFromProto(policy *corev1.DnsPolicy) engine.DNS {
+	if policy == nil || len(policy.GetServers()) == 0 {
+		return engine.DNS{}
+	}
+	out := engine.DNS{
+		Enabled: true,
+		Mode:    "rule",
+		Sniff:   true,
+	}
+	for index, address := range policy.GetServers() {
+		if len(out.Servers) >= engine.MaxDNSServers {
+			break
+		}
+		host, port, transport := splitDNSServer(address)
+		out.Servers = append(out.Servers, engine.DNSServer{
+			Tag:       "dns-" + strconv.Itoa(index),
+			Transport: transport,
+			Address:   host,
+			Port:      port,
+		})
+	}
+	return out
+}
+
+// splitDNSServer reads "tls://dns.example.com:853" into its parts. A port that is
+// not a number is not a port, and the address is then used as it is.
+func splitDNSServer(address string) (host string, port uint16, transport engine.DNSTransport) {
+	transport = engine.DNSPlain
+	rest := strings.TrimSpace(address)
+	for _, candidate := range []struct {
+		prefix    string
+		transport engine.DNSTransport
+	}{
+		{"https://", engine.DNSHTTPS},
+		{"h3://", engine.DNSHTTPS},
+		{"tls://", engine.DNSTLS},
+		{"tcp://", engine.DNSTCP},
+		{"quic://", engine.DNSQUIC},
+	} {
+		if strings.HasPrefix(strings.ToLower(rest), candidate.prefix) {
+			transport = candidate.transport
+			rest = rest[len(candidate.prefix):]
+			break
+		}
+	}
+	rest = strings.TrimSuffix(rest, "/dns-query")
+	if head, tail, found := strings.Cut(rest, ":"); found {
+		if parsed, err := strconv.ParseUint(tail, 10, 16); err == nil {
+			return head, uint16(parsed), transport
+		}
+	}
+	return rest, 0, transport
+}
+
+// orDefault returns value when it is not empty and fallback otherwise.
+func orDefault(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+
+// outboundToProto renders one parsed server for the interface. The credential
+// never appears here: the reference is the only thing that crosses the wire, and
+// the core resolves it when the plan is applied.
+func outboundToProto(spec parser.OutboundSpec, reference string) *corev1.OutboundSpec {
+	return &corev1.OutboundSpec{
+		Id:          spec.StableKey(),
+		DisplayName: spec.DisplayName,
+		Protocol:    spec.Protocol,
+		Transport:   spec.Transport,
+		Security:    spec.Security,
+		Endpoint:    &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
+		Credentials: &corev1.CredentialsRef{Reference: reference},
+	}
+}

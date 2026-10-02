@@ -15,6 +15,7 @@ const (
 	KeyAPIVersionMismatch Key = "core.api.version_mismatch"
 	KeyUnauthenticated    Key = "core.auth.unauthenticated"
 	KeyPermissionDenied   Key = "core.auth.permission_denied"
+	KeyInvalidRequest     Key = "core.request.invalid"
 	KeyRequestTooLarge    Key = "core.request.too_large"
 	KeyUnknownSession     Key = "core.session.unknown"
 	KeySessionRequired    Key = "core.session.required"
@@ -107,6 +108,7 @@ var catalog = map[Key]Entry{
 	KeyAPIVersionMismatch: {CodeVersionMismatch, false, "the interface and the core speak different contract versions"},
 	KeyUnauthenticated:    {CodeUnauthenticated, false, "control-plane authentication failed or the token is stale"},
 	KeyPermissionDenied:   {CodePermissionDenied, false, "the caller is authenticated but not allowed to do this"},
+	KeyInvalidRequest:     {CodeInvalidArgument, false, "the request is malformed or holds a value the core will not accept"},
 	KeyRequestTooLarge:    {CodeResourceExhausted, false, "the request exceeds a documented contract limit"},
 	KeyUnknownSession:     {CodeNotFound, false, "the session id is unknown to the core"},
 	KeySessionRequired:    {CodeFailedPrecondition, false, "the operation needs an active session"},

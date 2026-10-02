@@ -410,6 +410,7 @@ func (s *Session) publishEngineEvent(ev engine.Event) {
 	case engine.EventGroup, engine.EventRestart:
 		out.Kind = EventProbe
 		if ev.Group != nil {
+			out.Probe = probeOutcomeOf(ev.Group)
 			out.Detail = ev.Group.Name
 		}
 	case engine.EventEngineDown, engine.EventFatal:
@@ -426,6 +427,26 @@ func (s *Session) publishEngineEvent(ev engine.Event) {
 		out.Detail = ""
 	}
 	s.log.Append(out)
+}
+
+// probeOutcomeOf turns the live state of a group into the measurement it reports.
+// A group without a latency map has not been measured yet, which is reported as
+// an unreachable result rather than as a zero delay: a zero delay would read as
+// "the fastest server" and would pick it.
+func probeOutcomeOf(group *engine.GroupStatus) *ProbeOutcome {
+	if group == nil {
+		return nil
+	}
+	outcome := &ProbeOutcome{ServerID: group.Name}
+	for name, latency := range group.LatencyMS {
+		if name == group.Selected || group.Selected == "" {
+			outcome.ServerID = name
+			outcome.Reachable = latency > 0
+			outcome.LatencyMS = latency
+			return outcome
+		}
+	}
+	return outcome
 }
 
 // publishCounters samples the engine and appends a counters event. A counter

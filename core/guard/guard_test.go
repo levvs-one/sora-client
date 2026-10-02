@@ -180,6 +180,8 @@ func TestGuardArmsOnlyWhatWasAskedFor(t *testing.T) {
 	}
 }
 
+func testContext() context.Context { return context.Background() }
+
 func TestGuardNameIsStable(t *testing.T) {
 	system, err := guard.New(testOptions(), nil, nil)
 	if err != nil {

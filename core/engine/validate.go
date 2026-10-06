@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -107,11 +109,15 @@ func (o Outbound) Validate() error {
 	if o.Protocol == "" {
 		errs = append(errs, fmt.Errorf("outbound %s: empty protocol", o.ID))
 	}
-	if o.Protocol != ProtocolDirect && o.Port == 0 {
+	serverless := o.Protocol == ProtocolDirect || o.Protocol == ProtocolBypass
+	if !serverless && o.Port == 0 {
 		errs = append(errs, fmt.Errorf("outbound %s: port must be between 1 and 65535", o.ID))
 	}
-	if err := validateServer("outbound "+o.ID, o.Server, o.Protocol != ProtocolDirect); err != nil {
+	if err := validateServer("outbound "+o.ID, o.Server, !serverless); err != nil {
 		errs = append(errs, err)
+	}
+	if o.Protocol == ProtocolBypass {
+		errs = append(errs, o.Bypass.validate(o.ID))
 	}
 	if len(o.TLS.ALPN) > 8 {
 		errs = append(errs, fmt.Errorf("outbound %s: too many ALPN entries", o.ID))
@@ -227,4 +233,29 @@ func groupCycle(group string, members map[string][]string, visiting map[string]b
 		}
 	}
 	return false
+}
+
+// bypassPosition is a zapret split position: bytes, bytes from the end, or a
+// marker with an optional offset.
+var bypassPosition = regexp.MustCompile(`^(-?[0-9]{1,4}|(method|host|endhost|sld|midsld|endsld|sniext)([+-][0-9]{1,4})?)$`)
+
+func (s *BypassStrategy) validate(id string) error {
+	if s == nil {
+		return fmt.Errorf("outbound %s: a bypass outbound needs a strategy", id)
+	}
+	if len(s.SplitPos) == 0 && s.TLSRecord == "" && !s.HostCase && !s.DomainCase && !s.MethodEOL {
+		return fmt.Errorf("outbound %s: the bypass strategy changes nothing", id)
+	}
+	if len(s.SplitPos) > 8 {
+		return fmt.Errorf("outbound %s: more than 8 split positions", id)
+	}
+	for _, pos := range append(slices.Clone(s.SplitPos), s.TLSRecord) {
+		if pos != "" && !bypassPosition.MatchString(pos) {
+			return fmt.Errorf("outbound %s: %q is not a split position", id, pos)
+		}
+	}
+	if (s.Disorder || s.OOB) && len(s.SplitPos) == 0 {
+		return fmt.Errorf("outbound %s: disorder and out-of-band bytes need a split position", id)
+	}
+	return nil
 }

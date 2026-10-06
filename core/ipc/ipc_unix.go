@@ -65,10 +65,12 @@ func dialLocal(ctx context.Context, address string) (net.Conn, error) {
 	return connection, nil
 }
 
-// defaultAllow lets in the user the core runs as and the members of the socket
-// group. A system installation runs the core as its own user, so that the kill
-// switch can tell the engine's traffic from everyone else's, and the people
-// who may drive the tunnel are put in the group; any other account is refused.
+// defaultAllow lets in the user the core runs as, the members of the socket
+// group and, on Linux, the person in the active local session as polkit sees
+// it. A system installation runs the core as its own user, so that the kill
+// switch can tell the engine's traffic from everyone else's; the person at the
+// machine needs neither a group nor a terminal, and any other account is
+// refused.
 func defaultAllow(opts Options) func(Peer) bool {
 	group := opts.Group
 	if group == "" {
@@ -81,7 +83,7 @@ func defaultAllow(opts Options) func(Peer) bool {
 			// a kernel that does not answer, which is worse than the permission.
 			return true
 		}
-		return peer.UID == os.Getuid() || inGroup(peer.UID, group)
+		return peer.UID == os.Getuid() || inGroup(peer.UID, group) || polkitAllows(peer, PolkitAction)
 	}
 }
 

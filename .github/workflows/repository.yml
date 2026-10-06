@@ -99,3 +99,42 @@ jobs:
           # Built with a Go new enough for the go directive of core/go.mod.
           version: v2.14.0
           working-directory: core
+
+  linux-packages:
+    name: Linux packages
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache: false
+      - name: Install nfpm
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Build the core
+        working-directory: core
+        run: CGO_ENABLED=0 GOARCH=${{ matrix.arch }} go build -trimpath -ldflags '-s -w' -o ../dist/sora-core ./cmd/sora-core
+      - name: Fetch and verify the engines
+        run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
+      - name: Package
+        env:
+          SORA_ARCH: ${{ matrix.arch }}
+          SORA_VERSION: 0.0.0~${{ github.run_number }}
+        run: |
+          for packager in deb rpm archlinux; do
+            nfpm package --config packaging/linux/nfpm.yaml --packager "$packager" --target dist/
+          done
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sora-core-linux-${{ matrix.arch }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.pkg.tar.zst
+          if-no-files-found: error

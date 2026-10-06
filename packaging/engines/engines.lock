@@ -1,0 +1,12 @@
+# Engine builds Sora ships, one line per engine and architecture:
+#   engine  arch  sha256  url
+# The SHA-256 is the digest GitHub publishes for the release asset; for Xray it
+# also matches the .dgst file of the release. Changing a version means changing
+# the URL and the digest together, and the tests of core/engine against the new
+# build (see core/README.md).
+sing-box  amd64  a684484d7477d1437282ee411f4d131d0340aaad60a7868841ebd5d87dd8a0c6  https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-amd64.tar.gz
+sing-box  arm64  b43a1fb1bda131c6653576741ce527eb2bdeab7c9308ca90ee8b972abb7e4a7f  https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-arm64.tar.gz
+xray      amd64  23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae  https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip
+xray      arm64  4d30283ae614e3057f730f67cd088a42be6fdf91f8639d82cb69e48cde80413c  https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-arm64-v8a.zip
+mihomo    amd64  8451100836c9eda194331c2babfad490b2faf30cebc1a04b0e76fd8ac2d35d10  https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-amd64-v1.19.32.gz
+mihomo    arm64  9dd862e28b46ff7d775f169cceebc28deccaa0a9e804237d421cd2571e0caba0  https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm64-v1.19.32.gz

@@ -1,0 +1,63 @@
+# One description for the .deb, .rpm and Arch packages of the core service.
+# Run from the repository root after building core into dist/ and fetching the
+# engines with packaging/engines/fetch.sh (see packaging/linux/README.md).
+name: sora-core
+arch: ${SORA_ARCH}
+platform: linux
+version: ${SORA_VERSION}
+section: net
+priority: optional
+maintainer: Sora <levvs.one@gmail.com>
+description: |
+  Sora core service: one core over sing-box, Xray-core and mihomo that runs
+  each connection on the engine able to carry it, with a kill switch, a log
+  center and engine control that no other application can reach.
+vendor: Sora
+homepage: https://github.com/levvs-one/sora-client
+license: GPL-3.0-only
+
+depends:
+  - nftables
+overrides:
+  deb:
+    recommends: [polkitd]
+  rpm:
+    recommends: [polkit]
+  archlinux:
+    depends: [nftables, polkit]
+
+contents:
+  - src: ./dist/sora-core
+    dst: /usr/bin/sora-core
+    file_info: {mode: 0755}
+  - src: ./dist/engines/sing-box
+    dst: /usr/lib/sora/engines/sing-box
+    file_info: {mode: 0755}
+  - src: ./dist/engines/xray
+    dst: /usr/lib/sora/engines/xray
+    file_info: {mode: 0755}
+  - src: ./dist/engines/mihomo
+    dst: /usr/lib/sora/engines/mihomo
+    file_info: {mode: 0755}
+  - src: ./dist/engines/geoip.dat
+    dst: /usr/lib/sora/engines/geoip.dat
+  - src: ./dist/engines/geosite.dat
+    dst: /usr/lib/sora/engines/geosite.dat
+  - src: ./service/linux/sora-core.service
+    dst: /usr/lib/systemd/system/sora-core.service
+  - src: ./service/linux/sora.sysusers
+    dst: /usr/lib/sysusers.d/sora.conf
+  - src: ./service/linux/sora.policy
+    dst: /usr/share/polkit-1/actions/io.github.levvs-one.sora.policy
+  - src: ./LICENSE
+    dst: /usr/share/licenses/sora-core/LICENSE
+
+scripts:
+  postinstall: ./packaging/linux/scripts/postinstall.sh
+  preremove: ./packaging/linux/scripts/preremove.sh
+  postremove: ./packaging/linux/scripts/postremove.sh
+archlinux:
+  scripts:
+    # pacman runs post_install only on a fresh install; an upgrade restarts
+    # the service through the same script.
+    postupgrade: ./packaging/linux/scripts/postinstall.sh

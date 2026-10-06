@@ -24,6 +24,8 @@ service CoreControl {
   // Since 1.3. What the "About" screen shows about the core. Nothing in it is
   // personal, so it needs no authenticator.
   rpc GetAbout(GetAboutRequest) returns (GetAboutResponse);
+  // Since 1.3. The routing presets and what each of them sends direct.
+  rpc GetRoutingPresets(GetRoutingPresetsRequest) returns (GetRoutingPresetsResponse);
 
   // Since 1.3. The log center: one bounded in-memory record of the core and
   // every engine. Every call needs the control authenticator, because the
@@ -97,6 +99,48 @@ message SessionPlan {
   // Since 1.3. The loopback HTTP and SOCKS5 listener. The system proxy mode
   // always opens it, without a login; in tun mode it exists only when enabled.
   LocalProxy local_proxy = 10;
+  // Since 1.3. Groups the user picks a server in, or the core picks one for
+  // them. A rule, a group member and the routing target may name a group.
+  repeated GroupSpec groups = 11;
+  // Since 1.3. A routing preset applied after the routes above.
+  RoutingOptions routing = 12;
+}
+
+// GroupSpec is one group of outbounds.
+message GroupSpec {
+  // Unique among the groups and different from every outbound id.
+  string name = 1;
+  GroupType type = 2;
+  // Outbound ids or names of other groups, in display order.
+  repeated string members = 3;
+  // How automatic groups measure their members; empty uses the core default.
+  string test_url = 4;
+  google.protobuf.Duration test_interval = 5;
+  // url-test switches only when another member is faster by this much.
+  uint32 tolerance_ms = 6;
+}
+
+enum GroupType {
+  GROUP_TYPE_UNSPECIFIED = 0;
+  // The user picks the member.
+  GROUP_TYPE_SELECT = 1;
+  // The fastest member that answers.
+  GROUP_TYPE_URL_TEST = 2;
+  // The first member, in order, that answers.
+  GROUP_TYPE_FALLBACK = 3;
+  // Connections spread over the members.
+  GROUP_TYPE_LOAD_BALANCE = 4;
+}
+
+// RoutingOptions apply a preset after the routes of the plan; see
+// GetRoutingPresets for what each preset sends direct.
+message RoutingOptions {
+  // A preset id from GetRoutingPresets; empty applies none.
+  string preset = 1;
+  // The outbound or group everything the routes and the preset leave goes to.
+  string proxy_target = 2;
+  // Rejects advertising and tracking domains before anything else.
+  bool block_ads = 3;
 }
 // LocalProxy is a listener other applications on the machine can use. Any of
 // them can reach it, send traffic through the tunnel and learn the server
@@ -455,4 +499,14 @@ message EngineBuild {
   string kind = 1;
   bool installed = 2;
   string version = 3;
+}
+
+message GetRoutingPresetsRequest { ApiVersion api_version = 1; }
+message GetRoutingPresetsResponse { repeated RoutingPreset presets = 1; SoraError error = 2; }
+// RoutingPreset is one preset; the interface names it by id in its own words.
+message RoutingPreset {
+  string id = 1;
+  // Destinations sent direct, in the destination form of RoutingRule, for
+  // example "geosite:category-ru" or "geoip:ru".
+  repeated string direct = 2;
 }

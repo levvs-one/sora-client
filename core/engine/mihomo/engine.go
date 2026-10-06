@@ -2,6 +2,9 @@ package mihomo
 
 import (
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/levvs-one/sora-client/core/engine"
@@ -60,4 +63,54 @@ func (driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, erro
 // and the listeners are not torn down.
 func (driver) Reload(ctx context.Context, rt supervise.Runtime, cfg []byte) error {
 	return clashapi.For(rt).ReloadPayload(ctx, string(cfg))
+}
+
+// geodataFiles maps the database names Sora ships next to the engines onto
+// the names mihomo looks for in its home directory.
+var geodataFiles = map[string]string{"geoip.dat": "GeoIP.dat", "geosite.dat": "GeoSite.dat"}
+
+// Prepare copies the shipped databases into the engine home when they are
+// newer than the copy there. A missing database is not an error: the plan may
+// have no geo rules, and a plan that has them fails the validator with a clear
+// message instead of a download.
+func (driver) Prepare(rt supervise.Runtime, b supervise.Binary) error {
+	dir := filepath.Dir(b.Path)
+	for shipped, local := range geodataFiles {
+		src := filepath.Join(dir, shipped)
+		info, err := os.Stat(src)
+		if err != nil {
+			continue
+		}
+		dst := filepath.Join(rt.HomeDir, local)
+		if have, err := os.Stat(dst); err == nil && have.Size() == info.Size() && !have.ModTime().Before(info.ModTime()) {
+			continue
+		}
+		if err := copyFile(src, dst); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// copyFile writes src to dst through a temporary file, so an engine never
+// reads a half-written database.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src) //nolint:gosec // src is a database next to the probed engine binary
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".geodata-*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err := io.Copy(tmp, in); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), dst)
 }

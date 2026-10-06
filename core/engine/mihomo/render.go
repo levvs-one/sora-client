@@ -64,8 +64,12 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 	concurrent := true
 	c.TCPConcurrent = &concurrent
 	c.FindProcessMode = findProcessMode(p)
-	geo := p.Options.GeoData
-	c.GeodataMode = &geo
+	// Geodata mode reads geoip.dat and geosite.dat, which Sora ships next to the
+	// engines and shares with Xray. Without them mihomo would download a
+	// database before the first connection, from hosts that are blocked where
+	// Sora is needed most. Options.GeoData turns on the periodic update.
+	geodata := true
+	c.GeodataMode = &geodata
 	if p.Options.GeoData {
 		auto := true
 		c.GeoAutoUpdate = &auto
@@ -125,16 +129,15 @@ func buildProxies(p *engine.Plan) (map[string]string, []proxy, error) {
 	used := make(map[string]struct{}, len(p.Outbounds))
 	out := make([]proxy, 0, len(p.Outbounds))
 	for _, o := range p.Outbounds {
-		if o.Protocol == engine.ProtocolDirect {
-			// mihomo has no proxy entry for a direct connection: DIRECT is a
-			// built-in policy that groups and rules refer to by name. Writing
-			// it as a proxy makes the engine refuse the whole configuration.
-			byID[o.ID] = "DIRECT"
-			continue
-		}
-		px, err := buildProxy(o)
-		if err != nil {
-			return nil, nil, err
+		// A direct outbound of the plan is a named "direct" proxy, so the user
+		// sees the entry their subscription named and can measure it; the
+		// built-in DIRECT policy stays for the "direct" rule target.
+		px := proxy{Type: "direct"}
+		if o.Protocol != engine.ProtocolDirect {
+			var err error
+			if px, err = buildProxy(o); err != nil {
+				return nil, nil, err
+			}
 		}
 		name := uniqueName(sanitizeName(o.Name, o.ID), used)
 		px.Name = name

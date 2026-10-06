@@ -73,7 +73,8 @@ func TestRenderProducesEveryBlockTheEngineNeeds(t *testing.T) {
 		"flow: xtls-rprx-vision",
 		"client-fingerprint: chrome",
 		"type: hysteria2",
-		"- DIRECT",
+		"- direct",
+		"type: direct",
 		"type: select",
 		"type: url-test",
 		"url: " + engine.TestURLProduction,
@@ -208,6 +209,9 @@ func TestEngineAcceptsRenderedPlans(t *testing.T) {
 			}
 			home := t.TempDir()
 			rt := supervise.Runtime{HomeDir: home}
+			if err := (driver{}).Prepare(rt, binary); err != nil {
+				t.Fatal(err)
+			}
 			if err := supervise.Check(ctx, supervise.Spec{Name: "mihomo", Path: binary.Path, Args: driver{}.CheckArgs(rt), Dir: home, Config: []byte(rendered)}); err != nil {
 				t.Fatal(err)
 			}

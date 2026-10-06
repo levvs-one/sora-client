@@ -118,6 +118,14 @@ func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
 	return document, nil
 }
 
+func kinds(names []string) []engine.Kind {
+	out := make([]engine.Kind, 0, len(names))
+	for _, n := range names {
+		out = append(out, engine.Kind(n))
+	}
+	return out
+}
+
 // planFromProto converts the plan of a Connect request into the engine plan.
 //
 // Two things happen here that a client cannot be trusted to do. Every outbound is
@@ -143,7 +151,7 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 	defences := in.GetAntiCensorship()
 	plan := &engine.Plan{
 		SessionID: sessionID,
-		Engine:    engine.Kind(in.GetEngine()),
+		Engines:   kinds(in.GetEngines()),
 		Options: engine.Options{Mode: "rule", Fragment: engine.Fragment{
 			Enabled:  defences.GetTlsFragment(),
 			Packets:  defences.GetFragmentPackets(),

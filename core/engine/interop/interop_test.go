@@ -117,7 +117,6 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, reply) }))
 	defer target.Close()
 
-	reg := registry.Discover(context.Background(), dir)
 	server, err := xray.Prober.Discover(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
@@ -145,13 +144,11 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 			}
 			t.Run(string(kind)+"/"+svc.name, func(t *testing.T) {
 				local := port(t)
-				factory, err := reg.Factory(supervise.Config{HomeDir: t.TempDir(), LocalPort: local, StartTimeout: 10 * time.Second}, kind)
-				if err != nil {
-					t.Fatal(err)
-				}
+				reg := registry.Discover(context.Background(), dir, supervise.Config{HomeDir: t.TempDir(), LocalPort: local, StartTimeout: 10 * time.Second})
+				plan.Engines = []engine.Kind{kind}
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				eng, err := factory(ctx, plan)
+				eng, err := reg.Factory()(ctx, plan)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -195,7 +192,7 @@ func fetch(ctx context.Context, local int, target string) (string, error) {
 			if rerr == nil && resp.StatusCode == http.StatusOK {
 				return string(body), nil
 			}
-			last = fmt.Errorf("status %d, %v", resp.StatusCode, rerr)
+			last = fmt.Errorf("status %d: %w", resp.StatusCode, rerr)
 		} else {
 			last = err
 		}

@@ -254,9 +254,8 @@ func resolveMember(p *engine.Plan, group, target string) (string, error) {
 
 func displayName(o engine.Outbound) string { return orDefault(o.Name, o.ID) }
 
-// Delay measures one outbound with a real request. A second Xray carries just
-// that outbound behind a SOCKS inbound, so the measurement neither touches the
-// user's routing nor waits for the observatory.
+// Delay measures one outbound with a real request, through a second Xray
+// that carries just that outbound, so the user's routing is not touched.
 func (e *Engine) Delay(ctx context.Context, name, testURL string, timeout time.Duration) (time.Duration, error) {
 	p := e.Plan()
 	if p == nil {
@@ -272,50 +271,90 @@ func (e *Engine) Delay(ctx context.Context, name, testURL string, timeout time.D
 	if target == nil {
 		return 0, fmt.Errorf("xray: no outbound %q", name)
 	}
-	if testURL == "" {
-		testURL = e.ProbeURL()
+	results := make(chan engine.Measurement, 1)
+	opts := engine.MeasureOptions{URL: orDefault(testURL, e.ProbeURL()), Timeout: timeout, Concurrency: 1}
+	if err := Measure(ctx, e.cfg, []engine.Outbound{*target}, opts, results); err != nil {
+		return 0, e.Redactor().Err(err)
 	}
-	if timeout <= 0 {
-		timeout = 5 * time.Second
-	}
-	d, err := measure(ctx, e.cfg, target, p.Options, testURL, timeout)
-	return d, e.Redactor().Err(err)
+	m := <-results
+	return m.Latency, e.Redactor().Err(m.Err)
 }
 
-func measure(ctx context.Context, cfg supervise.Config, o *engine.Outbound, opts engine.Options, testURL string, timeout time.Duration) (time.Duration, error) {
-	port, err := supervise.FreePort()
+// probeBatch bounds the inbounds of one measuring process.
+const probeBatch = 128
+
+// Measure times a real request through every outbound and sends one result per
+// outbound, as soon as it is known. Outbounds are measured in batches, each in
+// one short-lived Xray process with one SOCKS inbound per outbound.
+func Measure(ctx context.Context, cfg supervise.Config, outbounds []engine.Outbound, opts engine.MeasureOptions, out chan<- engine.Measurement) error {
+	if opts.URL == "" {
+		opts.URL = engine.TestURLProduction
+	}
+	if opts.Timeout <= 0 {
+		opts.Timeout = 5 * time.Second
+	}
+	if opts.Concurrency <= 0 {
+		opts.Concurrency = 8
+	}
+	if cfg.StartTimeout <= 0 {
+		cfg.StartTimeout = 10 * time.Second
+	}
+	for start := 0; start < len(outbounds); start += probeBatch {
+		batch := outbounds[start:min(start+probeBatch, len(outbounds))]
+		if err := measureBatch(ctx, cfg, batch, opts, out); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func measureBatch(ctx context.Context, cfg supervise.Config, batch []engine.Outbound, opts engine.MeasureOptions, out chan<- engine.Measurement) error {
+	ports := make([]int, len(batch))
+	for i := range ports {
+		p, err := supervise.FreePort()
+		if err != nil {
+			return err
+		}
+		ports[i] = p
+	}
+	raw, err := RenderProbe(batch, ports)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	metrics, err := supervise.FreePort()
-	if err != nil {
-		return 0, err
-	}
-	probe := &engine.Plan{
-		SessionID: "delay",
-		Outbounds: []engine.Outbound{*o},
-		Rules:     []engine.Rule{{Type: engine.RuleMatchAll, Target: o.ID}},
-		Options:   engine.Options{LogLevel: "error", Fragment: opts.Fragment},
-	}
-	rt := supervise.Runtime{HomeDir: cfg.HomeDir, LocalPort: port, ControlAddr: "127.0.0.1:" + strconv.Itoa(metrics)}
-	raw, err := Render(probe, rt, nil)
-	if err != nil {
-		return 0, err
-	}
-	ctx, cancel := context.WithTimeout(ctx, timeout+cfg.StartTimeout)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	proc, err := supervise.Start(ctx, supervise.Spec{Name: "xray", Path: cfg.Binary.Path, Args: []string{"run", "-c", "stdin:"}, Dir: cfg.HomeDir, Config: raw})
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer func() { _ = proc.Stop(context.WithoutCancel(ctx), 0) }()
-	if err := waitListening(ctx, proc, rt.LocalPort); err != nil {
-		return 0, err
+	ready, cancelReady := context.WithTimeout(ctx, cfg.StartTimeout)
+	defer cancelReady()
+	if err := waitListening(ready, proc, ports[len(ports)-1]); err != nil {
+		return err
 	}
 
+	sem := make(chan struct{}, opts.Concurrency)
+	var wg sync.WaitGroup
+	for i, o := range batch {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			d, err := timeThrough(ctx, ports[i], opts)
+			out <- engine.Measurement{OutboundID: o.ID, Engine: engine.KindXray, Latency: d, Err: err}
+		}()
+	}
+	wg.Wait()
+	return nil
+}
+
+// timeThrough times one request through a loopback SOCKS port.
+func timeThrough(ctx context.Context, port int, opts engine.MeasureOptions) (time.Duration, error) {
 	proxy := &url.URL{Scheme: "socks5h", Host: "127.0.0.1:" + strconv.Itoa(port)}
-	client := &http.Client{Timeout: timeout, Transport: &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true}}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
+	client := &http.Client{Timeout: opts.Timeout, Transport: &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, opts.URL, nil)
 	if err != nil {
 		return 0, err
 	}

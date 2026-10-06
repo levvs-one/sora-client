@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -97,6 +98,12 @@ func Capabilities() []string {
 	}
 }
 
+// Measurer times a real request through each outbound with the engine that
+// carries it. An outbound no engine carries gets engine.ErrNoEngine.
+type Measurer interface {
+	Measure(ctx context.Context, outbounds []engine.Outbound, opts engine.MeasureOptions) (<-chan engine.Measurement, error)
+}
+
 // Prober measures whether an endpoint answers. It is an interface so the control
 // plane does not depend on how a probe is performed: a direct dial on the desktop
 // and a probe through the tunnel on Android are different implementations of the
@@ -133,6 +140,7 @@ type Server struct {
 	parser      parser.LinkParser
 	redactors   *redactorCache
 	prober      Prober
+	measurer    Measurer
 	diagnostics Diagnostics
 	fetcher     Fetcher
 }
@@ -172,6 +180,9 @@ type Config struct {
 	MaxImportItems int
 	// Prober measures endpoints; nil answers that probing is unavailable.
 	Prober Prober
+	// Measurer times real requests through engines; nil leaves only the
+	// connection check.
+	Measurer Measurer
 	// Diagnostics collects reports and archives; nil answers that the feature is
 	// unavailable.
 	Diagnostics Diagnostics
@@ -201,6 +212,7 @@ func New(cfg Config) (*Server, error) {
 		parser:      parser.LinkParser{MaxItems: cfg.MaxImportItems},
 		redactors:   &redactorCache{byRef: make(map[string]*engine.Redactor)},
 		prober:      cfg.Prober,
+		measurer:    cfg.Measurer,
 		diagnostics: cfg.Diagnostics,
 		fetcher:     cfg.Fetcher,
 	}, nil
@@ -947,8 +959,13 @@ func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscri
 	}, nil
 }
 
-// ProbeServers measures the endpoints of the request and streams the results as
-// they arrive, so the interface fills a list in instead of waiting for all of it.
+// ProbeServers measures servers and streams the results as they arrive, so the
+// interface fills a list in instead of waiting for all of it.
+//
+// Endpoints are measured with a TCP connection. Outbounds are measured as the
+// options say: by default with a real request through the first engine that
+// carries the server, and with a connection where no engine does; the result
+// says which of the two it is.
 //
 // The method takes no context: a server streaming call receives it from the
 // stream, and passing one separately would let a caller measure against a deadline
@@ -957,37 +974,161 @@ func (s *Server) ProbeServers(req *corev1.ProbeServersRequest, stream grpc.Serve
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return transportStatus(err)
 	}
-	ctx := stream.Context()
-	if len(req.GetEndpoints()) == 0 {
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+	id := requestID(req.GetRequestId())
+	total := len(req.GetEndpoints()) + len(req.GetOutbounds())
+	if total == 0 {
 		return errs.Newf(errs.CodeInvalidArgument, errs.KeyProbeNoEndpoints,
 			"control: the probe request carries no endpoints")
 	}
-	if len(req.GetEndpoints()) > MaxProbeEndpoints {
+	if total > MaxProbeEndpoints {
 		return errs.Newf(errs.CodeResourceExhausted, errs.KeyProbeTooMany,
-			"control: the probe request carries %d endpoints, the limit is %d",
-			len(req.GetEndpoints()), MaxProbeEndpoints)
+			"control: the probe request carries %d servers, the limit is %d", total, MaxProbeEndpoints)
 	}
-	if s.prober == nil {
-		return errs.Newf(errs.CodeUnsupported, errs.KeyProbeInvalidEndpoint,
-			"control: this core cannot probe endpoints")
+
+	results := make(chan *corev1.ProbeResult, total)
+	var wg sync.WaitGroup
+	connect := func(endpoints []*corev1.Endpoint, ids []string) error {
+		if len(endpoints) == 0 {
+			return nil
+		}
+		if s.prober == nil {
+			return errs.Newf(errs.CodeUnsupported, errs.KeyProbeInvalidEndpoint,
+				"control: this core cannot probe endpoints")
+		}
+		found, err := s.prober.Probe(ctx, endpoints, ids)
+		if err != nil {
+			return err
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for r := range found {
+				r.Method = probeConnect
+				results <- r
+			}
+		}()
+		return nil
 	}
-	results, err := s.prober.Probe(ctx, req.GetEndpoints(), nil)
-	if err != nil {
+
+	if err := connect(req.GetEndpoints(), nil); err != nil {
 		return transportStatus(err)
 	}
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case result, ok := <-results:
-			if !ok {
-				return nil
-			}
-			if err := stream.Send(result); err != nil {
-				return err
-			}
+	if len(req.GetOutbounds()) > 0 {
+		if err := s.measureOutbounds(ctx, req, id, results, &wg, connect); err != nil {
+			return transportStatus(err)
 		}
 	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	for result := range results {
+		if err := stream.Send(result); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Probe methods as the results name them.
+const (
+	probeEngine  = "engine"
+	probeConnect = "connect"
+)
+
+// measureOutbounds resolves the outbounds of a probe request and measures them
+// through engines, falling back to a connection check where the options allow.
+func (s *Server) measureOutbounds(ctx context.Context, req *corev1.ProbeServersRequest, id string,
+	results chan<- *corev1.ProbeResult, wg *sync.WaitGroup, connect func([]*corev1.Endpoint, []string) error) error {
+	opts := req.GetOptions()
+	specs := req.GetOutbounds()
+	if opts.GetMethod() == corev1.ProbeMethod_PROBE_METHOD_CONNECT || s.measurer == nil {
+		if opts.GetMethod() == corev1.ProbeMethod_PROBE_METHOD_ENGINE {
+			return errs.Newf(errs.CodeUnsupported, errs.KeyProbeInvalidEndpoint,
+				"control: this core cannot measure through an engine")
+		}
+		endpoints, ids := endpointsOf(specs)
+		return connect(endpoints, ids)
+	}
+
+	// Engine errors may quote a server or a credential, so every value of the
+	// measured outbounds is masked in the results.
+	redactor := engine.NewRedactor()
+	outbounds := make([]engine.Outbound, 0, len(specs))
+	bySpec := make(map[string]*corev1.OutboundSpec, len(specs))
+	for i, spec := range specs {
+		o, err := outboundFromProto(i, spec, s.secrets)
+		if err != nil {
+			results <- &corev1.ProbeResult{ServerId: spec.GetId(), Method: probeEngine, Error: toWire(err, nil, id)}
+			continue
+		}
+		redactor.Add(o.Secrets()...)
+		redactor.Add(o.Identifiers()...)
+		outbounds = append(outbounds, o)
+		bySpec[o.ID] = spec
+	}
+	measured, err := s.measurer.Measure(ctx, outbounds, engine.MeasureOptions{
+		URL:         opts.GetUrl(),
+		Timeout:     time.Duration(opts.GetTimeoutMs()) * time.Millisecond,
+		Concurrency: int(opts.GetConcurrency()),
+		Engines:     kinds(opts.GetEngines()),
+	})
+	if err != nil {
+		return err
+	}
+	auto := opts.GetMethod() == corev1.ProbeMethod_PROBE_METHOD_UNSPECIFIED
+	// The results are forwarded as they come; this goroutine holds the wait
+	// group, so the fallback below may still add to it.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var orphans []*corev1.OutboundSpec
+		for m := range measured {
+			if auto && errors.Is(m.Err, engine.ErrNoEngine) {
+				orphans = append(orphans, bySpec[m.OutboundID])
+				continue
+			}
+			result := &corev1.ProbeResult{ServerId: m.OutboundID, Method: probeEngine, Engine: string(m.Engine)}
+			if m.Err != nil {
+				result.Error = toWire(m.Err, redactor.String, id)
+			} else {
+				result.Reachable = true
+				result.LatencyMs = latencyMS(m.Latency)
+			}
+			results <- result
+		}
+		endpoints, ids := endpointsOf(orphans)
+		if err := connect(endpoints, ids); err != nil {
+			for _, spec := range orphans {
+				results <- &corev1.ProbeResult{ServerId: spec.GetId(), Method: probeConnect, Error: toWire(err, nil, id)}
+			}
+		}
+	}()
+	return nil
+}
+
+// latencyMS converts a latency for the wire, saturating rather than wrapping.
+func latencyMS(d time.Duration) uint32 {
+	ms := d.Milliseconds()
+	switch {
+	case ms <= 0:
+		return 0
+	case ms >= math.MaxUint32:
+		return math.MaxUint32
+	}
+	return uint32(ms)
+}
+
+func endpointsOf(specs []*corev1.OutboundSpec) ([]*corev1.Endpoint, []string) {
+	endpoints := make([]*corev1.Endpoint, 0, len(specs))
+	ids := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		endpoints = append(endpoints, spec.GetEndpoint())
+		ids = append(ids, spec.GetId())
+	}
+	return endpoints, ids
 }
 
 // RunDiagnostics answers with a redacted report of the running session.

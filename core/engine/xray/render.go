@@ -468,3 +468,33 @@ func orDefault(v, fallback string) string {
 	}
 	return v
 }
+
+// RenderProbe renders a configuration that puts every outbound behind its own
+// loopback SOCKS inbound, so one Xray process measures many servers without
+// touching the routing of a running session.
+func RenderProbe(outbounds []engine.Outbound, ports []int) ([]byte, error) {
+	if len(outbounds) != len(ports) {
+		return nil, errors.New("xray: one port per outbound is required")
+	}
+	r := renderer{plan: &engine.Plan{Outbounds: outbounds}, tags: map[string]string{}, groups: map[string]engine.Group{}, byGroup: map[string]string{}}
+	inbounds := make([]obj, 0, len(outbounds))
+	rendered := make([]obj, 0, len(outbounds))
+	rules := make([]obj, 0, len(outbounds))
+	for i, o := range outbounds {
+		r.tags[o.ID] = outboundTag(i)
+		ob, err := r.outbound(o)
+		if err != nil {
+			return nil, err
+		}
+		in := "in-" + strconv.Itoa(i+1)
+		inbounds = append(inbounds, obj{"tag": in, "protocol": "socks", "listen": "127.0.0.1", "port": ports[i]})
+		rendered = append(rendered, ob)
+		rules = append(rules, obj{"inboundTag": []string{in}, "outboundTag": r.tags[o.ID]})
+	}
+	return json.Marshal(obj{
+		"log":       obj{"loglevel": "error"},
+		"inbounds":  inbounds,
+		"outbounds": rendered,
+		"routing":   obj{"rules": rules},
+	})
+}

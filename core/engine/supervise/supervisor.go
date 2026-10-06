@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,6 +52,13 @@ type Driver interface {
 	// Reload moves a running engine onto cfg without a restart, or returns
 	// ErrReloadUnsupported.
 	Reload(ctx context.Context, rt Runtime, cfg []byte) error
+}
+
+// Preparer is implemented by a Driver that puts files into the engine home
+// before the engine sees a configuration, such as the databases it would
+// otherwise download.
+type Preparer interface {
+	Prepare(rt Runtime, b Binary) error
 }
 
 // Config is what one supervised engine needs from the core service.
@@ -215,6 +223,14 @@ func (s *Supervisor) admit(p *engine.Plan) error {
 }
 
 func (s *Supervisor) check(ctx context.Context, rt Runtime, cfg []byte) error {
+	if p, ok := s.driver.(Preparer); ok {
+		if err := os.MkdirAll(rt.HomeDir, 0o700); err != nil {
+			return err
+		}
+		if err := p.Prepare(rt, s.cfg.Binary); err != nil {
+			return fmt.Errorf("%s: prepare engine home: %w", s.driver.Kind(), err)
+		}
+	}
 	return Check(ctx, Spec{Name: string(s.driver.Kind()), Path: s.cfg.Binary.Path,
 		Args: s.driver.CheckArgs(rt), Dir: s.cfg.HomeDir, Config: cfg})
 }

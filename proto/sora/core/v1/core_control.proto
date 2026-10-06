@@ -60,9 +60,10 @@ message SessionPlan {
   string session_identity = 6;
   // Since 1.3. Switches that change how connections look on the wire.
   AntiCensorship anti_censorship = 7;
-  // Since 1.3. Pins the engine for this session: "sing-box", "xray" or
-  // "mihomo". Empty lets the core pick the first engine that carries the plan.
-  string engine = 8;
+  // Since 1.3. Engine preference for this session, best first: "sing-box",
+  // "xray", "mihomo". The core runs the first one that carries the whole
+  // plan. Empty uses the core default; a single entry pins that engine.
+  repeated string engines = 8;
 }
 // AntiCensorship holds the per-session defences against DPI.
 message AntiCensorship {
@@ -100,7 +101,17 @@ message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.
 message StateChanged { ConnectionState state = 1; }
 message StatsTick { uint64 bytes_up = 1; uint64 bytes_down = 2; uint64 active_connections = 3; }
 message BypassStrategyChanged { string strategy = 1; }
-message ProbeResult { string server_id = 1; bool reachable = 2; uint32 latency_ms = 3; SoraError error = 4; }
+message ProbeResult {
+  string server_id = 1;
+  bool reachable = 2;
+  uint32 latency_ms = 3;
+  SoraError error = 4;
+  // Since 1.3. How the value was measured: "engine" is a real request through
+  // the server, "connect" only a TCP connection to it.
+  string method = 5;
+  // Since 1.3. The engine that carried an "engine" measurement.
+  string engine = 6;
+}
 message LogBatch { repeated string lines = 1; } // Limit: 200 lines, 256 KiB after batching, flush at least every 250 ms.
 // KillSwitchChanged reports the state of the kill switch of a session. Enforced
 // is separate from enabled on purpose: on a platform that cannot block traffic at
@@ -113,7 +124,35 @@ message ParseImportRequest { ApiVersion api_version = 1; string request_id = 2; 
 message ParseImportResponse { SessionPlan session_plan = 1; SoraError error = 2; }
 message FetchSubscriptionRequest { ApiVersion api_version = 1; string request_id = 2; string reference = 3; }
 message FetchSubscriptionResponse { repeated OutboundSpec outbounds = 1; SoraError error = 2; }
-message ProbeServersRequest { ApiVersion api_version = 1; string request_id = 2; repeated Endpoint endpoints = 3; }
+message ProbeServersRequest {
+  ApiVersion api_version = 1;
+  string request_id = 2;
+  // Measured with a TCP connection only.
+  repeated Endpoint endpoints = 3;
+  // Since 1.3. Measured as the options say; results carry the outbound id.
+  repeated OutboundSpec outbounds = 4;
+  ProbeOptions options = 5;
+}
+// ProbeOptions controls a latency measurement. Zero values take the core
+// defaults.
+message ProbeOptions {
+  ProbeMethod method = 1;
+  // The URL requested through each server; it should answer 204 or 200.
+  string url = 2;
+  uint32 timeout_ms = 3;
+  // How many servers are measured at once.
+  uint32 concurrency = 4;
+  // Engine preference for the measurement, as in SessionPlan.engines.
+  repeated string engines = 5;
+}
+enum ProbeMethod {
+  // Through an engine where one carries the server, otherwise a TCP connection.
+  PROBE_METHOD_UNSPECIFIED = 0;
+  // Only through an engine; servers no engine carries fail.
+  PROBE_METHOD_ENGINE = 1;
+  // Only a TCP connection, which is fast and needs no engine but proves less.
+  PROBE_METHOD_CONNECT = 2;
+}
 message RunDiagnosticsRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; }
 message RunDiagnosticsResponse { DiagnosticReport report = 1; SoraError error = 2; }
 message ExportDiagnosticsRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; }

@@ -42,17 +42,18 @@ func fakeEngine(mode string) int {
 	}
 	var cfg fakeConfig
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		os.Stderr.WriteString("fake: config is not JSON\n")
+		_, _ = os.Stderr.WriteString("fake: config is not JSON\n")
 		return 2
 	}
 	if cfg.Reject {
-		os.Stderr.WriteString("fake: rejected key\n")
+		_, _ = os.Stderr.WriteString("fake: rejected key\n")
 		return 1
 	}
 	if mode == "check" {
 		return 0
 	}
-	listener, err := net.Listen("tcp", cfg.Addr)
+	var lc net.ListenConfig
+	listener, err := lc.Listen(context.Background(), "tcp", cfg.Addr)
 	if err != nil {
 		return 4
 	}
@@ -63,7 +64,7 @@ func fakeEngine(mode string) int {
 	}()
 	if cfg.CrashAfter > 0 {
 		time.Sleep(cfg.CrashAfter)
-		os.Stderr.WriteString("fake: crashed\n")
+		_, _ = os.Stderr.WriteString("fake: crashed\n")
 		return 1
 	}
 	select {}

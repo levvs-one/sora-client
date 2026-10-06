@@ -7,7 +7,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 # The core runs as its own account: the kill switch lets the engines' traffic
-# through by uid, and the interface reaches the core through the socket group.
+# through by uid, and the interface reaches the core through the socket.
 User=sora
 Group=sora
 ExecStart=/usr/bin/sora-core -data-dir /var/lib/sora -engines-dir /usr/lib/sora/engines
@@ -20,7 +20,9 @@ TimeoutStopSec=15s
 StateDirectory=sora
 StateDirectoryMode=0700
 RuntimeDirectory=sora
-RuntimeDirectoryMode=0750
+# The person polkit admits is not in the sora group and must reach the socket;
+# the core refuses every other account on accept.
+RuntimeDirectoryMode=0755
 UMask=0077
 
 # tun devices, routes and the nftables kill switch need CAP_NET_ADMIN; the

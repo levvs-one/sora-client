@@ -281,7 +281,15 @@ message SetKillSwitchRequest { ApiVersion api_version = 1; string request_id = 2
 message SetKillSwitchResponse { bool enabled = 1; SoraError error = 2; }
 message DiagnosticReport { repeated string lines = 1; }
 message HandshakeRequest { ApiVersion client_version = 1; }
-message HandshakeResponse { ApiVersion negotiated_version = 1; SoraError error = 2; }
+message HandshakeResponse {
+  ApiVersion negotiated_version = 1;
+  SoraError error = 2;
+  // Since 1.3. The token the other calls present. The transport admits only
+  // the core's own account, the service group and the person in the active
+  // local session, so whoever reaches Handshake may hold it; a system
+  // installation keeps the token file where that person cannot read it.
+  bytes control_authenticator = 3;
+}
 
 // PutSecretRequest hands one piece of credential material to the core. The
 // interface keeps the material only until the call is confirmed; the core keeps

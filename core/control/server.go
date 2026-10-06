@@ -495,7 +495,7 @@ func (s *Server) Handshake(_ context.Context, req *corev1.HandshakeRequest) (*co
 	}
 	answer := s.apiVersion()
 	answer.Minor = negotiated
-	return &corev1.HandshakeResponse{NegotiatedVersion: answer}, nil
+	return &corev1.HandshakeResponse{NegotiatedVersion: answer, ControlAuthenticator: s.auth.Token()}, nil
 }
 
 // Connect starts a session for the plan of the request.

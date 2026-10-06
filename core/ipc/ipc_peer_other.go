@@ -4,6 +4,10 @@ package ipc
 
 import "net"
 
+// socketMode keeps the socket to the service group: without a verified peer
+// identity, the permission on the file is the boundary.
+const socketMode = 0o660
+
 // peerOf reports what a unix socket can say about the other end on this platform.
 //
 // macOS offers LOCAL_PEERCRED and LOCAL_PEERPID through the same socket options,

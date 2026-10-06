@@ -107,6 +107,14 @@ func (a *Authenticator) Check(presented []byte) error {
 		"control: the presented authenticator does not match")
 }
 
+// Token returns a copy of the current token, which Handshake gives to a client
+// the transport admitted.
+func (a *Authenticator) Token() []byte {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return append([]byte(nil), a.token...)
+}
+
 // Rotate replaces the token and returns the new one. A core that suspects its
 // token has been read rotates without a restart; every existing client is then
 // refused, which is the intended effect.

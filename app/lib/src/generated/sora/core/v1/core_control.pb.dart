@@ -3909,6 +3909,7 @@ class HandshakeResponse extends $pb.GeneratedMessage {
   factory HandshakeResponse({
     ApiVersion? negotiatedVersion,
     SoraError? error,
+    $core.List<$core.int>? controlAuthenticator,
   }) {
     final $result = create();
     if (negotiatedVersion != null) {
@@ -3916,6 +3917,9 @@ class HandshakeResponse extends $pb.GeneratedMessage {
     }
     if (error != null) {
       $result.error = error;
+    }
+    if (controlAuthenticator != null) {
+      $result.controlAuthenticator = controlAuthenticator;
     }
     return $result;
   }
@@ -3926,6 +3930,7 @@ class HandshakeResponse extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HandshakeResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
     ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'negotiatedVersion', subBuilder: ApiVersion.create)
     ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
     ..hasRequiredFields = false
   ;
 
@@ -3971,6 +3976,19 @@ class HandshakeResponse extends $pb.GeneratedMessage {
   void clearError() => clearField(2);
   @$pb.TagNumber(2)
   SoraError ensureError() => $_ensure(1);
+
+  /// Since 1.3. The token the other calls present. The transport admits only
+  /// the core's own account, the service group and the person in the active
+  /// local session, so whoever reaches Handshake may hold it; a system
+  /// installation keeps the token file where that person cannot read it.
+  @$pb.TagNumber(3)
+  $core.List<$core.int> get controlAuthenticator => $_getN(2);
+  @$pb.TagNumber(3)
+  set controlAuthenticator($core.List<$core.int> v) { $_setBytes(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasControlAuthenticator() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearControlAuthenticator() => clearField(3);
 }
 
 /// PutSecretRequest hands one piece of credential material to the core. The

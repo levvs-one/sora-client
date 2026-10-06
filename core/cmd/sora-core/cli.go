@@ -24,6 +24,7 @@ type flags struct {
 	engine      string
 	localPort   int
 	bypass      string
+	socket      string
 	logLevel    string
 	check       bool
 	fileKeys    bool
@@ -52,6 +53,7 @@ func run(arguments []string) error {
 	set.StringVar(&f.engine, "engine", "", "pin one engine: sing-box, xray or mihomo; empty picks one per plan")
 	set.IntVar(&f.localPort, "tunnel-port", 0, "loopback port the tunnel is served on; 0 picks a free one")
 	set.StringVar(&f.bypass, "bypass", "", "comma separated destinations that skip the tunnel")
+	set.StringVar(&f.socket, "socket", "", "control plane socket; empty is the platform address")
 	set.StringVar(&f.logLevel, "log-level", "info", "debug, info, warn or error")
 	set.BoolVar(&f.check, "check", false, "build everything, report on it and exit without serving")
 	set.BoolVar(&f.fileKeys, "allow-file-keys", false, "fall back to a key file when the machine key store is unavailable")
@@ -78,6 +80,7 @@ func run(arguments []string) error {
 		Engine:        engine.Kind(f.engine),
 		LocalPort:     f.localPort,
 		Bypass:        splitList(f.bypass),
+		Socket:        f.socket,
 		Log:           logger,
 		AllowFileKeys: f.fileKeys,
 	}

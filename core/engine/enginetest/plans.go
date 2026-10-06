@@ -39,7 +39,7 @@ func Outbound(p engine.Protocol) engine.Outbound {
 		o.Password = "anytls-test-password"
 		o.TLS = engine.TLS{Enabled: true, ServerName: "edge.example.com"}
 	case engine.ProtocolWireGuard:
-		o.Server, o.Port = "", 0
+		o.Server, o.Port = "198.51.100.7", 51820
 		o.PrivateKey, o.Addresses = privKey, []string{"10.7.0.2/32"}
 		o.Peers = []engine.WireGuardPeer{{PublicKey: wgPeer, Endpoint: "198.51.100.7:51820", PersistentKeepalive: 25}}
 	case engine.ProtocolSOCKS5, engine.ProtocolHTTP:
@@ -82,4 +82,17 @@ func Plan(protocols ...engine.Protocol) *engine.Plan {
 		{Type: engine.RuleMatchAll, Target: "Proxy"},
 	}
 	return p
+}
+
+// AmneziaWG returns a WireGuard outbound with AmneziaWG 2.0 parameters,
+// including a header range and a signature packet.
+func AmneziaWG() engine.Outbound {
+	o := Outbound(engine.ProtocolWireGuard)
+	o.ID, o.Name = "amneziawg", "Test amneziawg"
+	o.Amnezia = &engine.AmneziaWG{
+		Jc: 4, Jmin: 40, Jmax: 70, S1: 15, S2: 25, S3: 10, S4: 5,
+		H1: "100000-100100", H2: "200000-200100", H3: "300000", H4: "400000",
+		I1: "<b 0xf6ab3267fa><c><b 0xf6ab><t><r 10><wt 10>",
+	}
+	return o
 }

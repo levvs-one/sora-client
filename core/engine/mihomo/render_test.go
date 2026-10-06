@@ -1,10 +1,14 @@
 package mihomo
 
 import (
+	"context"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/engine/enginetest"
+	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
 func testPlan() *engine.Plan {
@@ -173,5 +177,43 @@ func TestSanitizeNameNeutralizesEngineNameInjection(t *testing.T) {
 	}
 	if sanitizeName("", "") != "server" {
 		t.Error("an empty name must fall back to a usable value")
+	}
+}
+
+// TestEngineAcceptsRenderedPlans hands rendered plans to "mihomo -t". mihomo
+// ignores keys it does not know, so this catches wrong types and values, not
+// misspelled keys; the key names are pinned to the engine source in proxy.go.
+func TestEngineAcceptsRenderedPlans(t *testing.T) {
+	path := os.Getenv(Prober.EnvVar)
+	if path == "" {
+		t.Skipf("set %s to run mihomo against the rendered plans", Prober.EnvVar)
+	}
+	ctx := context.Background()
+	binary, err := Prober.Probe(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := enginetest.Plan(engine.ProtocolVLESS, engine.ProtocolVMess, engine.ProtocolTrojan,
+		engine.ProtocolShadowsocks, engine.ProtocolHysteria2, engine.ProtocolTUIC,
+		engine.ProtocolWireGuard, engine.ProtocolSOCKS5, engine.ProtocolHTTP, engine.ProtocolDirect)
+	all.Outbounds = append(all.Outbounds, enginetest.AmneziaWG())
+	xhttp := enginetest.Plan(engine.ProtocolVLESS)
+	xhttp.Outbounds[0].Flow = ""
+	xhttp.Outbounds[0].Transport = engine.Transport{Type: "xhttp", Path: "/x", Host: "cdn.example.com", Mode: "stream-one"}
+	for name, p := range map[string]*engine.Plan{"all protocols and amneziawg": all, "xhttp": xhttp} {
+		t.Run(name, func(t *testing.T) {
+			rendered, err := Render(p, Runtime{ControllerAddr: "127.0.0.1:9090", Secret: "s", MixedPort: 7890})
+			if err != nil {
+				t.Fatal(err)
+			}
+			home := t.TempDir()
+			rt := supervise.Runtime{HomeDir: home}
+			if err := supervise.Check(ctx, supervise.Spec{Name: "mihomo", Path: binary.Path, Args: driver{}.CheckArgs(rt), Dir: home, Config: []byte(rendered)}); err != nil {
+				t.Fatal(err)
+			}
+			if name != "xhttp" && !strings.Contains(rendered, "amnezia-wg-option") {
+				t.Fatal("the AmneziaWG block is missing")
+			}
+		})
 	}
 }

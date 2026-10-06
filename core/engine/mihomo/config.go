@@ -95,7 +95,7 @@ type proxy struct {
 
 	UUID          string `yaml:"uuid,omitempty"`
 	Flow          string `yaml:"flow,omitempty"`
-	AlterID       int    `yaml:"alterId,omitempty"`
+	AlterID       *int   `yaml:"alterId,omitempty"` // required by mihomo for vmess, even when 0
 	Cipher        string `yaml:"cipher,omitempty"`
 	Password      string `yaml:"password,omitempty"`
 	Username      string `yaml:"username,omitempty"`
@@ -106,14 +106,14 @@ type proxy struct {
 	ProtocolParam string `yaml:"protocol-param,omitempty"`
 	TLS           *bool  `yaml:"tls,omitempty"`
 
-	Network     string            `yaml:"network,omitempty"`
-	WSPath      string            `yaml:"ws-path,omitempty"`
-	WSHeaders   map[string]string `yaml:"ws-headers,omitempty"`
-	GRPCService string            `yaml:"grpc-service-name,omitempty"`
-	H2Path      string            `yaml:"h2-path,omitempty"`
-	H2Host      string            `yaml:"h2-host,omitempty"`
-	HTTPath     string            `yaml:"http-path,omitempty"`
-	Headers     map[string]string `yaml:"headers,omitempty"`
+	// Transport options are nested per transport. mihomo ignores keys it
+	// does not know, so a flat key that looks right is silently dropped.
+	Network    string     `yaml:"network,omitempty"`
+	WSOpts     *wsOpts    `yaml:"ws-opts,omitempty"`
+	GRPCOpts   *grpcOpts  `yaml:"grpc-opts,omitempty"`
+	H2Opts     *h2Opts    `yaml:"h2-opts,omitempty"`
+	XHTTPOpts  *xhttpOpts `yaml:"xhttp-opts,omitempty"`
+	Encryption string     `yaml:"encryption,omitempty"`
 
 	SNI            string   `yaml:"sni,omitempty"`
 	SkipCertVerify *bool    `yaml:"skip-cert-verify,omitempty"`
@@ -122,17 +122,47 @@ type proxy struct {
 	Reality        *reality `yaml:"reality-opts,omitempty"`
 
 	PrivateKey string          `yaml:"private-key,omitempty"`
-	IPs        []string        `yaml:"ips,omitempty"`
+	IP         string          `yaml:"ip,omitempty"`
+	IPv6       string          `yaml:"ipv6,omitempty"`
 	MTU        int             `yaml:"mtu,omitempty"`
 	Peers      []wireguardPeer `yaml:"peers,omitempty"`
-	Smux       *smux           `yaml:"smux,omitempty"`
+	Amnezia    map[string]any  `yaml:"amnezia-wg-option,omitempty"`
+
+	PublicKey           string   `yaml:"public-key,omitempty"`
+	PreSharedKey        string   `yaml:"pre-shared-key,omitempty"`
+	AllowedIPs          []string `yaml:"allowed-ips,omitempty"`
+	PersistentKeepalive int      `yaml:"persistent-keepalive,omitempty"`
+	Smux                *smux    `yaml:"smux,omitempty"`
+}
+
+type wsOpts struct {
+	Path             string            `yaml:"path,omitempty"`
+	Headers          map[string]string `yaml:"headers,omitempty"`
+	V2RayHTTPUpgrade bool              `yaml:"v2ray-http-upgrade,omitempty"`
+}
+
+type grpcOpts struct {
+	ServiceName string `yaml:"grpc-service-name,omitempty"`
+}
+
+type h2Opts struct {
+	Host []string `yaml:"host,omitempty"`
+	Path string   `yaml:"path,omitempty"`
+}
+
+type xhttpOpts struct {
+	Path    string            `yaml:"path,omitempty"`
+	Host    string            `yaml:"host,omitempty"`
+	Mode    string            `yaml:"mode,omitempty"`
+	Headers map[string]string `yaml:"headers,omitempty"`
 }
 
 // wireguardPeer is one WireGuard peer.
 type wireguardPeer struct {
+	Server              string   `yaml:"server"`
+	Port                int      `yaml:"port"`
 	PublicKey           string   `yaml:"public-key"`
-	PresharedKey        string   `yaml:"preshared-key,omitempty"`
-	Endpoint            string   `yaml:"endpoint,omitempty"`
+	PreSharedKey        string   `yaml:"pre-shared-key,omitempty"`
 	AllowedIPs          []string `yaml:"allowed-ips,omitempty"`
 	PersistentKeepalive int      `yaml:"persistent-keepalive,omitempty"`
 }

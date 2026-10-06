@@ -108,6 +108,9 @@ type Outbound struct {
 	Encryption string
 
 	Peers []WireGuardPeer
+	// Amnezia turns a WireGuard outbound into AmneziaWG. Nil is plain
+	// WireGuard.
+	Amnezia *AmneziaWG
 	// Addresses are the interface addresses of a WireGuard outbound, in CIDR
 	// form. A WireGuard tunnel cannot carry traffic without them.
 	Addresses []string
@@ -211,6 +214,20 @@ type Tun struct {
 	RouteAddressSets []string
 	IncludeApps      []string
 	ExcludeApps      []string
+}
+
+// AmneziaWG holds the obfuscation parameters of an AmneziaWG tunnel, named as
+// the AmneziaWG configuration file names them. Every value must match the
+// server; zero values are not written, so the engine keeps its own default.
+type AmneziaWG struct {
+	Jc, Jmin, Jmax int
+	S1, S2, S3, S4 int
+	// H1..H4 are message type headers: a number, or a range in AmneziaWG 2.0.
+	H1, H2, H3, H4 string
+	// I1..I5 are the signature packets of AmneziaWG 1.5 and 2.0.
+	I1, I2, I3, I4, I5 string
+	J1, J2, J3         string
+	Itime              int
 }
 
 // Fragment splits the TLS ClientHello of proxy connections into several TCP

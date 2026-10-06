@@ -156,6 +156,15 @@ func (p *Plan) Validate() error {
 		ids[o.ID] = struct{}{}
 	}
 
+	// Groups may contain groups ("Proxy" offering "Auto"), so every name is
+	// known before members are checked.
+	members := make(map[string][]string, len(p.Groups))
+	for _, g := range p.Groups {
+		members[g.Name] = g.Outbounds
+		if _, clash := ids[g.Name]; clash {
+			errs = append(errs, fmt.Errorf("plan: group %q has the id of an outbound", g.Name))
+		}
+	}
 	names := make(map[string]struct{}, len(p.Groups))
 	for _, g := range p.Groups {
 		errs = append(errs, g.validate())
@@ -168,9 +177,14 @@ func (p *Plan) Validate() error {
 		}
 		names[g.Name] = struct{}{}
 		for _, ref := range g.Outbounds {
-			if _, ok := ids[ref]; !ok {
+			_, isOutbound := ids[ref]
+			_, isGroup := members[ref]
+			if !isOutbound && !isGroup && !isBuiltInTarget(ref) {
 				errs = append(errs, fmt.Errorf("group %q: unknown outbound %q", g.Name, ref))
 			}
+		}
+		if groupCycle(g.Name, members, map[string]bool{}) {
+			errs = append(errs, fmt.Errorf("group %q: contains itself through its members", g.Name))
 		}
 	}
 
@@ -189,4 +203,19 @@ func (p *Plan) Validate() error {
 
 	errs = append(errs, p.DNS.validate(), p.Tun.validate(), p.Options.validate())
 	return errors.Join(errs...)
+}
+
+// groupCycle reports whether group reaches itself through nested groups.
+func groupCycle(group string, members map[string][]string, visiting map[string]bool) bool {
+	if visiting[group] {
+		return true
+	}
+	visiting[group] = true
+	defer delete(visiting, group)
+	for _, m := range members[group] {
+		if _, isGroup := members[m]; isGroup && groupCycle(m, members, visiting) {
+			return true
+		}
+	}
+	return false
 }

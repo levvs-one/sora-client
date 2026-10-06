@@ -81,6 +81,10 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 		return "", err
 	}
 	c.Proxies = proxies
+	// Rules and groups may name a group as well as an outbound.
+	for _, g := range p.Groups {
+		byID[g.Name] = sanitizeName(g.Name, "")
+	}
 
 	for _, g := range p.Groups {
 		grp, err := buildGroup(g, byID, orDefault(p.Options.TestURL, rt.TestURL))

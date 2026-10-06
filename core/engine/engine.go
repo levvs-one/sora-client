@@ -45,6 +45,7 @@ const (
 	FeatureTLSFragment    Feature = "tls-fragment"
 	FeatureXHTTP          Feature = "xhttp"
 	FeatureVLESSEncrypt   Feature = "vless-encryption"
+	FeatureAmneziaWG      Feature = "amneziawg"
 )
 
 // Capabilities is what one engine build can actually do.

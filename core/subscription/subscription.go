@@ -35,10 +35,29 @@ const (
 	// MaxBodyBytes is the largest body accepted. It matches the import limit, so a
 	// body that passes this check can always be parsed.
 	MaxBodyBytes = 16 << 20
-	// UserAgent identifies the client honestly. It does not imitate a browser,
-	// because a provider that needs to treat Sora differently must be able to.
+	// UserAgent identifies the client honestly when a subscription names no
+	// other. It does not imitate a browser, because a provider that needs to
+	// treat Sora differently must be able to.
 	UserAgent = "sora-core/1 (+https://github.com/levvs-one/sora-client)"
+	// MaxUserAgent bounds the User-Agent a subscription may set.
+	MaxUserAgent = 256
 )
+
+// FetchOptions are the settings of one subscription.
+type FetchOptions struct {
+	// UserAgent replaces the default. Panels choose the format of the answer by
+	// it, so a subscription made for one client sometimes needs that client's
+	// name to answer with a list Sora can read.
+	UserAgent string
+}
+
+// Result is one retrieved subscription.
+type Result struct {
+	Body []byte
+	// Info is what the provider said about the subscription in its headers
+	// or in the comment lines at the top of the body.
+	Info Info
+}
 
 // Options configures a fetcher.
 type Options struct {
@@ -106,52 +125,56 @@ func New(opts Options) *Fetcher {
 // must be inside the budget, and the body must fit. A failure at any of them stops
 // the retrieval, and the detail of a failure never quotes the reference, because
 // the reference is the credential.
-func (f *Fetcher) Fetch(ctx context.Context, reference string) ([]byte, error) {
+func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions) (Result, error) {
+	agent, err := userAgent(opts.UserAgent)
+	if err != nil {
+		return Result{}, err
+	}
 	target, err := validateReference(reference)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
 
 	for hop := 0; ; hop++ {
 		if hop > f.maxRedirects {
-			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionRedirect,
+			return Result{}, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionRedirect,
 				"subscription: the provider led the request more than %d times", f.maxRedirects)
 		}
-		body, location, err := f.hop(ctx, target)
+		body, header, location, err := f.hop(ctx, target, agent)
 		if err != nil {
-			return nil, err
+			return Result{}, err
 		}
 		if location == "" {
-			return body, nil
+			return Result{Body: body, Info: parseInfo(header, body)}, nil
 		}
 		// A redirect may be relative, which the standards allow and providers use.
 		// It is resolved against the url it came from, so a hop that stays on the
 		// same host does not have to spell the host out again.
 		moved, err := url.Parse(location)
 		if err != nil {
-			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionRedirect,
+			return Result{}, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionRedirect,
 				"subscription: the provider sent a redirect that is not a location")
 		}
 		target, err = validateReference(target.ResolveReference(moved).String())
 		if err != nil {
-			return nil, err
+			return Result{}, err
 		}
 	}
 }
 
-// hop performs one request and reports either the body or where the provider sent
-// the token next.
-func (f *Fetcher) hop(ctx context.Context, target *url.URL) ([]byte, string, error) {
+// hop performs one request and reports either the body with its headers or
+// where the provider sent the token next.
+func (f *Fetcher) hop(ctx context.Context, target *url.URL, agent string) ([]byte, http.Header, string, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
 		// The error of this call quotes the url, which is the token. It is replaced
 		// by a line that names the reason and nothing else.
-		return nil, "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
+		return nil, nil, "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
 			"subscription: the reference is not a url this client can request")
 	}
-	request.Header.Set("User-Agent", UserAgent)
+	request.Header.Set("User-Agent", agent)
 	request.Header.Set("Accept", "text/plain, application/octet-stream, */*")
 	// A provider that answers with a compressed body must not be able to expand it
 	// into something larger than the limit below.
@@ -159,7 +182,7 @@ func (f *Fetcher) hop(ctx context.Context, target *url.URL) ([]byte, string, err
 
 	response, err := f.client.Do(request)
 	if err != nil {
-		return nil, "", errs.From(err)
+		return nil, nil, "", errs.From(err)
 	}
 	defer func() {
 		// The body is drained and closed so the connection can be reused, and the
@@ -170,7 +193,7 @@ func (f *Fetcher) hop(ctx context.Context, target *url.URL) ([]byte, string, err
 	}()
 
 	if location := redirectTarget(response); location != "" {
-		return nil, location, nil
+		return nil, nil, location, nil
 	}
 	if response.StatusCode != http.StatusOK {
 		failure := errs.Newf(errs.CodeUnavailable, errs.KeySubscriptionStatus,
@@ -180,28 +203,28 @@ func (f *Fetcher) hop(ctx context.Context, target *url.URL) ([]byte, string, err
 		// refuse it again, and a retry would only hide that from the user.
 		if response.StatusCode >= http.StatusInternalServerError ||
 			response.StatusCode == http.StatusTooManyRequests {
-			return nil, "", failure.WithRetry(0)
+			return nil, nil, "", failure.WithRetry(0)
 		}
-		return nil, "", failure
+		return nil, nil, "", failure
 	}
 	if response.ContentLength > int64(f.maxBody) {
-		return nil, "", errs.Newf(errs.CodeResourceExhausted, errs.KeySubscriptionTooLarge,
+		return nil, nil, "", errs.Newf(errs.CodeResourceExhausted, errs.KeySubscriptionTooLarge,
 			"subscription: the provider announced %d bytes, the limit is %d",
 			response.ContentLength, f.maxBody)
 	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, int64(f.maxBody)+1))
 	if err != nil {
-		return nil, "", errs.From(err)
+		return nil, nil, "", errs.From(err)
 	}
 	if len(body) > f.maxBody {
-		return nil, "", errs.Newf(errs.CodeResourceExhausted, errs.KeySubscriptionTooLarge,
+		return nil, nil, "", errs.Newf(errs.CodeResourceExhausted, errs.KeySubscriptionTooLarge,
 			"subscription: the body is larger than the limit of %d bytes", f.maxBody)
 	}
 	if len(body) == 0 {
-		return nil, "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionEmpty,
+		return nil, nil, "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionEmpty,
 			"subscription: the provider answered with an empty body")
 	}
-	return body, "", nil
+	return body, response.Header, "", nil
 }
 
 // drainLimit is how much of an unwanted body is read so the connection can be
@@ -255,4 +278,24 @@ func validateReference(reference string) (*url.URL, error) {
 			"subscription: the reference has no host")
 	}
 	return parsed, nil
+}
+
+// userAgent checks the User-Agent a subscription asked for. A line break would
+// let a subscription setting inject a header into the request.
+func userAgent(asked string) (string, error) {
+	trimmed := strings.TrimSpace(asked)
+	if trimmed == "" {
+		return UserAgent, nil
+	}
+	if len(trimmed) > MaxUserAgent {
+		return "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
+			"subscription: the User-Agent is longer than %d bytes", MaxUserAgent)
+	}
+	for _, r := range trimmed {
+		if r < 0x20 || r > 0x7e {
+			return "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
+				"subscription: the User-Agent may hold printable ASCII only")
+		}
+	}
+	return trimmed, nil
 }

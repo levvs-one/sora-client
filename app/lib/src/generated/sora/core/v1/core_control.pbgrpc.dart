@@ -69,6 +69,10 @@ class CoreControlClient extends $grpc.Client {
       '/sora.core.v1.CoreControl/Handshake',
       ($0.HandshakeRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.HandshakeResponse.fromBuffer(value));
+  static final _$getAbout = $grpc.ClientMethod<$0.GetAboutRequest, $0.GetAboutResponse>(
+      '/sora.core.v1.CoreControl/GetAbout',
+      ($0.GetAboutRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.GetAboutResponse.fromBuffer(value));
   static final _$queryLogs = $grpc.ClientMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
       '/sora.core.v1.CoreControl/QueryLogs',
       ($0.QueryLogsRequest value) => value.writeToBuffer(),
@@ -101,6 +105,26 @@ class CoreControlClient extends $grpc.Client {
       '/sora.core.v1.CoreControl/CloseConnection',
       ($0.CloseConnectionRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.CloseConnectionResponse.fromBuffer(value));
+  static final _$saveSubscription = $grpc.ClientMethod<$0.SaveSubscriptionRequest, $0.SaveSubscriptionResponse>(
+      '/sora.core.v1.CoreControl/SaveSubscription',
+      ($0.SaveSubscriptionRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.SaveSubscriptionResponse.fromBuffer(value));
+  static final _$listSubscriptions = $grpc.ClientMethod<$0.ListSubscriptionsRequest, $0.ListSubscriptionsResponse>(
+      '/sora.core.v1.CoreControl/ListSubscriptions',
+      ($0.ListSubscriptionsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.ListSubscriptionsResponse.fromBuffer(value));
+  static final _$deleteSubscription = $grpc.ClientMethod<$0.DeleteSubscriptionRequest, $0.DeleteSubscriptionResponse>(
+      '/sora.core.v1.CoreControl/DeleteSubscription',
+      ($0.DeleteSubscriptionRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.DeleteSubscriptionResponse.fromBuffer(value));
+  static final _$refreshSubscription = $grpc.ClientMethod<$0.RefreshSubscriptionRequest, $0.RefreshSubscriptionResponse>(
+      '/sora.core.v1.CoreControl/RefreshSubscription',
+      ($0.RefreshSubscriptionRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.RefreshSubscriptionResponse.fromBuffer(value));
+  static final _$watchSubscriptions = $grpc.ClientMethod<$0.WatchSubscriptionsRequest, $0.SubscriptionState>(
+      '/sora.core.v1.CoreControl/WatchSubscriptions',
+      ($0.WatchSubscriptionsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.SubscriptionState.fromBuffer(value));
   static final _$putSecret = $grpc.ClientMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
       '/sora.core.v1.CoreControl/PutSecret',
       ($0.PutSecretRequest value) => value.writeToBuffer(),
@@ -164,6 +188,10 @@ class CoreControlClient extends $grpc.Client {
     return $createUnaryCall(_$handshake, request, options: options);
   }
 
+  $grpc.ResponseFuture<$0.GetAboutResponse> getAbout($0.GetAboutRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$getAbout, request, options: options);
+  }
+
   $grpc.ResponseFuture<$0.QueryLogsResponse> queryLogs($0.QueryLogsRequest request, {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$queryLogs, request, options: options);
   }
@@ -194,6 +222,26 @@ class CoreControlClient extends $grpc.Client {
 
   $grpc.ResponseFuture<$0.CloseConnectionResponse> closeConnection($0.CloseConnectionRequest request, {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$closeConnection, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.SaveSubscriptionResponse> saveSubscription($0.SaveSubscriptionRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$saveSubscription, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ListSubscriptionsResponse> listSubscriptions($0.ListSubscriptionsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$listSubscriptions, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.DeleteSubscriptionResponse> deleteSubscription($0.DeleteSubscriptionRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$deleteSubscription, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.RefreshSubscriptionResponse> refreshSubscription($0.RefreshSubscriptionRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$refreshSubscription, request, options: options);
+  }
+
+  $grpc.ResponseStream<$0.SubscriptionState> watchSubscriptions($0.WatchSubscriptionsRequest request, {$grpc.CallOptions? options}) {
+    return $createStreamingCall(_$watchSubscriptions, $async.Stream.fromIterable([request]), options: options);
   }
 
   $grpc.ResponseFuture<$0.PutSecretResponse> putSecret($0.PutSecretRequest request, {$grpc.CallOptions? options}) {
@@ -294,6 +342,13 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.HandshakeRequest.fromBuffer(value),
         ($0.HandshakeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetAboutRequest, $0.GetAboutResponse>(
+        'GetAbout',
+        getAbout_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetAboutRequest.fromBuffer(value),
+        ($0.GetAboutResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
         'QueryLogs',
         queryLogs_Pre,
@@ -350,6 +405,41 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.CloseConnectionRequest.fromBuffer(value),
         ($0.CloseConnectionResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SaveSubscriptionRequest, $0.SaveSubscriptionResponse>(
+        'SaveSubscription',
+        saveSubscription_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.SaveSubscriptionRequest.fromBuffer(value),
+        ($0.SaveSubscriptionResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListSubscriptionsRequest, $0.ListSubscriptionsResponse>(
+        'ListSubscriptions',
+        listSubscriptions_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.ListSubscriptionsRequest.fromBuffer(value),
+        ($0.ListSubscriptionsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeleteSubscriptionRequest, $0.DeleteSubscriptionResponse>(
+        'DeleteSubscription',
+        deleteSubscription_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.DeleteSubscriptionRequest.fromBuffer(value),
+        ($0.DeleteSubscriptionResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.RefreshSubscriptionRequest, $0.RefreshSubscriptionResponse>(
+        'RefreshSubscription',
+        refreshSubscription_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.RefreshSubscriptionRequest.fromBuffer(value),
+        ($0.RefreshSubscriptionResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.WatchSubscriptionsRequest, $0.SubscriptionState>(
+        'WatchSubscriptions',
+        watchSubscriptions_Pre,
+        false,
+        true,
+        ($core.List<$core.int> value) => $0.WatchSubscriptionsRequest.fromBuffer(value),
+        ($0.SubscriptionState value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
         'PutSecret',
         putSecret_Pre,
@@ -414,6 +504,10 @@ abstract class CoreControlServiceBase extends $grpc.Service {
     return handshake(call, await request);
   }
 
+  $async.Future<$0.GetAboutResponse> getAbout_Pre($grpc.ServiceCall call, $async.Future<$0.GetAboutRequest> request) async {
+    return getAbout(call, await request);
+  }
+
   $async.Future<$0.QueryLogsResponse> queryLogs_Pre($grpc.ServiceCall call, $async.Future<$0.QueryLogsRequest> request) async {
     return queryLogs(call, await request);
   }
@@ -446,6 +540,26 @@ abstract class CoreControlServiceBase extends $grpc.Service {
     return closeConnection(call, await request);
   }
 
+  $async.Future<$0.SaveSubscriptionResponse> saveSubscription_Pre($grpc.ServiceCall call, $async.Future<$0.SaveSubscriptionRequest> request) async {
+    return saveSubscription(call, await request);
+  }
+
+  $async.Future<$0.ListSubscriptionsResponse> listSubscriptions_Pre($grpc.ServiceCall call, $async.Future<$0.ListSubscriptionsRequest> request) async {
+    return listSubscriptions(call, await request);
+  }
+
+  $async.Future<$0.DeleteSubscriptionResponse> deleteSubscription_Pre($grpc.ServiceCall call, $async.Future<$0.DeleteSubscriptionRequest> request) async {
+    return deleteSubscription(call, await request);
+  }
+
+  $async.Future<$0.RefreshSubscriptionResponse> refreshSubscription_Pre($grpc.ServiceCall call, $async.Future<$0.RefreshSubscriptionRequest> request) async {
+    return refreshSubscription(call, await request);
+  }
+
+  $async.Stream<$0.SubscriptionState> watchSubscriptions_Pre($grpc.ServiceCall call, $async.Future<$0.WatchSubscriptionsRequest> request) async* {
+    yield* watchSubscriptions(call, await request);
+  }
+
   $async.Future<$0.PutSecretResponse> putSecret_Pre($grpc.ServiceCall call, $async.Future<$0.PutSecretRequest> request) async {
     return putSecret(call, await request);
   }
@@ -466,6 +580,7 @@ abstract class CoreControlServiceBase extends $grpc.Service {
   $async.Future<$0.ExportDiagnosticsResponse> exportDiagnostics($grpc.ServiceCall call, $0.ExportDiagnosticsRequest request);
   $async.Future<$0.SetKillSwitchResponse> setKillSwitch($grpc.ServiceCall call, $0.SetKillSwitchRequest request);
   $async.Future<$0.HandshakeResponse> handshake($grpc.ServiceCall call, $0.HandshakeRequest request);
+  $async.Future<$0.GetAboutResponse> getAbout($grpc.ServiceCall call, $0.GetAboutRequest request);
   $async.Future<$0.QueryLogsResponse> queryLogs($grpc.ServiceCall call, $0.QueryLogsRequest request);
   $async.Stream<$0.LogEntry> watchLogs($grpc.ServiceCall call, $0.WatchLogsRequest request);
   $async.Future<$0.ExportLogsResponse> exportLogs($grpc.ServiceCall call, $0.ExportLogsRequest request);
@@ -474,6 +589,11 @@ abstract class CoreControlServiceBase extends $grpc.Service {
   $async.Future<$0.SetLogSettingsResponse> setLogSettings($grpc.ServiceCall call, $0.SetLogSettingsRequest request);
   $async.Future<$0.ListConnectionsResponse> listConnections($grpc.ServiceCall call, $0.ListConnectionsRequest request);
   $async.Future<$0.CloseConnectionResponse> closeConnection($grpc.ServiceCall call, $0.CloseConnectionRequest request);
+  $async.Future<$0.SaveSubscriptionResponse> saveSubscription($grpc.ServiceCall call, $0.SaveSubscriptionRequest request);
+  $async.Future<$0.ListSubscriptionsResponse> listSubscriptions($grpc.ServiceCall call, $0.ListSubscriptionsRequest request);
+  $async.Future<$0.DeleteSubscriptionResponse> deleteSubscription($grpc.ServiceCall call, $0.DeleteSubscriptionRequest request);
+  $async.Future<$0.RefreshSubscriptionResponse> refreshSubscription($grpc.ServiceCall call, $0.RefreshSubscriptionRequest request);
+  $async.Stream<$0.SubscriptionState> watchSubscriptions($grpc.ServiceCall call, $0.WatchSubscriptionsRequest request);
   $async.Future<$0.PutSecretResponse> putSecret($grpc.ServiceCall call, $0.PutSecretRequest request);
   $async.Future<$0.DeleteSecretResponse> deleteSecret($grpc.ServiceCall call, $0.DeleteSecretRequest request);
 }

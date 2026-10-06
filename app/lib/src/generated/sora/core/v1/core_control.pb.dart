@@ -2545,6 +2545,7 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
     ApiVersion? apiVersion,
     $core.String? requestId,
     $core.String? reference,
+    $core.String? userAgent,
   }) {
     final $result = create();
     if (apiVersion != null) {
@@ -2556,6 +2557,9 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
     if (reference != null) {
       $result.reference = reference;
     }
+    if (userAgent != null) {
+      $result.userAgent = userAgent;
+    }
     return $result;
   }
   FetchSubscriptionRequest._() : super();
@@ -2566,6 +2570,7 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
     ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
     ..aOS(2, _omitFieldNames ? '' : 'requestId')
     ..aOS(3, _omitFieldNames ? '' : 'reference')
+    ..aOS(4, _omitFieldNames ? '' : 'userAgent')
     ..hasRequiredFields = false
   ;
 
@@ -2618,12 +2623,24 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
   $core.bool hasReference() => $_has(2);
   @$pb.TagNumber(3)
   void clearReference() => clearField(3);
+
+  /// Since 1.3. Replaces the default User-Agent for this subscription: panels
+  /// choose the format of their answer by it. Printable ASCII, at most 256 bytes.
+  @$pb.TagNumber(4)
+  $core.String get userAgent => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set userAgent($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasUserAgent() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUserAgent() => clearField(4);
 }
 
 class FetchSubscriptionResponse extends $pb.GeneratedMessage {
   factory FetchSubscriptionResponse({
     $core.Iterable<OutboundSpec>? outbounds,
     SoraError? error,
+    SubscriptionInfo? info,
   }) {
     final $result = create();
     if (outbounds != null) {
@@ -2631,6 +2648,9 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
     }
     if (error != null) {
       $result.error = error;
+    }
+    if (info != null) {
+      $result.info = info;
     }
     return $result;
   }
@@ -2641,6 +2661,7 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FetchSubscriptionResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
     ..pc<OutboundSpec>(1, _omitFieldNames ? '' : 'outbounds', $pb.PbFieldType.PM, subBuilder: OutboundSpec.create)
     ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..aOM<SubscriptionInfo>(3, _omitFieldNames ? '' : 'info', subBuilder: SubscriptionInfo.create)
     ..hasRequiredFields = false
   ;
 
@@ -2678,6 +2699,206 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
   void clearError() => clearField(2);
   @$pb.TagNumber(2)
   SoraError ensureError() => $_ensure(1);
+
+  /// Since 1.3. What the provider said about the subscription.
+  @$pb.TagNumber(3)
+  SubscriptionInfo get info => $_getN(2);
+  @$pb.TagNumber(3)
+  set info(SubscriptionInfo v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasInfo() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearInfo() => clearField(3);
+  @$pb.TagNumber(3)
+  SubscriptionInfo ensureInfo() => $_ensure(2);
+}
+
+/// SubscriptionInfo is read from the panel headers (profile-title,
+/// profile-update-interval, subscription-userinfo, profile-web-page-url,
+/// support-url, announce) or from "#key: value" lines at the top of the body.
+class SubscriptionInfo extends $pb.GeneratedMessage {
+  factory SubscriptionInfo({
+    $core.String? title,
+    $2.Duration? updateInterval,
+    $core.bool? hasUsage,
+    $fixnum.Int64? uploadBytes,
+    $fixnum.Int64? downloadBytes,
+    $fixnum.Int64? totalBytes,
+    $1.Timestamp? expire,
+    $core.String? webPageUrl,
+    $core.String? supportUrl,
+    $core.String? announce,
+  }) {
+    final $result = create();
+    if (title != null) {
+      $result.title = title;
+    }
+    if (updateInterval != null) {
+      $result.updateInterval = updateInterval;
+    }
+    if (hasUsage != null) {
+      $result.hasUsage = hasUsage;
+    }
+    if (uploadBytes != null) {
+      $result.uploadBytes = uploadBytes;
+    }
+    if (downloadBytes != null) {
+      $result.downloadBytes = downloadBytes;
+    }
+    if (totalBytes != null) {
+      $result.totalBytes = totalBytes;
+    }
+    if (expire != null) {
+      $result.expire = expire;
+    }
+    if (webPageUrl != null) {
+      $result.webPageUrl = webPageUrl;
+    }
+    if (supportUrl != null) {
+      $result.supportUrl = supportUrl;
+    }
+    if (announce != null) {
+      $result.announce = announce;
+    }
+    return $result;
+  }
+  SubscriptionInfo._() : super();
+  factory SubscriptionInfo.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory SubscriptionInfo.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SubscriptionInfo', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'title')
+    ..aOM<$2.Duration>(2, _omitFieldNames ? '' : 'updateInterval', subBuilder: $2.Duration.create)
+    ..aOB(3, _omitFieldNames ? '' : 'hasUsage')
+    ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'uploadBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'downloadBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'totalBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOM<$1.Timestamp>(7, _omitFieldNames ? '' : 'expire', subBuilder: $1.Timestamp.create)
+    ..aOS(8, _omitFieldNames ? '' : 'webPageUrl')
+    ..aOS(9, _omitFieldNames ? '' : 'supportUrl')
+    ..aOS(10, _omitFieldNames ? '' : 'announce')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  SubscriptionInfo clone() => SubscriptionInfo()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  SubscriptionInfo copyWith(void Function(SubscriptionInfo) updates) => super.copyWith((message) => updates(message as SubscriptionInfo)) as SubscriptionInfo;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionInfo create() => SubscriptionInfo._();
+  SubscriptionInfo createEmptyInstance() => create();
+  static $pb.PbList<SubscriptionInfo> createRepeated() => $pb.PbList<SubscriptionInfo>();
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionInfo getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SubscriptionInfo>(create);
+  static SubscriptionInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get title => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set title($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasTitle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTitle() => clearField(1);
+
+  /// How often the provider asks to be fetched; unset when it did not say.
+  @$pb.TagNumber(2)
+  $2.Duration get updateInterval => $_getN(1);
+  @$pb.TagNumber(2)
+  set updateInterval($2.Duration v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasUpdateInterval() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUpdateInterval() => clearField(2);
+  @$pb.TagNumber(2)
+  $2.Duration ensureUpdateInterval() => $_ensure(1);
+
+  /// Whether the provider sent traffic figures at all.
+  @$pb.TagNumber(3)
+  $core.bool get hasUsage => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasUsage($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasHasUsage() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasUsage() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get uploadBytes => $_getI64(3);
+  @$pb.TagNumber(4)
+  set uploadBytes($fixnum.Int64 v) { $_setInt64(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasUploadBytes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUploadBytes() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get downloadBytes => $_getI64(4);
+  @$pb.TagNumber(5)
+  set downloadBytes($fixnum.Int64 v) { $_setInt64(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasDownloadBytes() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDownloadBytes() => clearField(5);
+
+  /// Zero means unlimited.
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get totalBytes => $_getI64(5);
+  @$pb.TagNumber(6)
+  set totalBytes($fixnum.Int64 v) { $_setInt64(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasTotalBytes() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTotalBytes() => clearField(6);
+
+  /// Unset when the subscription does not expire.
+  @$pb.TagNumber(7)
+  $1.Timestamp get expire => $_getN(6);
+  @$pb.TagNumber(7)
+  set expire($1.Timestamp v) { setField(7, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasExpire() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearExpire() => clearField(7);
+  @$pb.TagNumber(7)
+  $1.Timestamp ensureExpire() => $_ensure(6);
+
+  /// https, http or tg links only.
+  @$pb.TagNumber(8)
+  $core.String get webPageUrl => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set webPageUrl($core.String v) { $_setString(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasWebPageUrl() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearWebPageUrl() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get supportUrl => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set supportUrl($core.String v) { $_setString(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasSupportUrl() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSupportUrl() => clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get announce => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set announce($core.String v) { $_setString(9, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasAnnounce() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearAnnounce() => clearField(10);
 }
 
 class ProbeServersRequest extends $pb.GeneratedMessage {
@@ -5864,6 +6085,1296 @@ class CloseConnectionResponse extends $pb.GeneratedMessage {
   void clearError() => clearField(1);
   @$pb.TagNumber(1)
   SoraError ensureError() => $_ensure(0);
+}
+
+/// SubscriptionSettings are what the user chooses for one subscription.
+class SubscriptionSettings extends $pb.GeneratedMessage {
+  factory SubscriptionSettings({
+    $core.String? id,
+    $core.String? url,
+    $core.String? name,
+    $core.String? userAgent,
+    $core.bool? autoUpdate,
+    $2.Duration? updateInterval,
+  }) {
+    final $result = create();
+    if (id != null) {
+      $result.id = id;
+    }
+    if (url != null) {
+      $result.url = url;
+    }
+    if (name != null) {
+      $result.name = name;
+    }
+    if (userAgent != null) {
+      $result.userAgent = userAgent;
+    }
+    if (autoUpdate != null) {
+      $result.autoUpdate = autoUpdate;
+    }
+    if (updateInterval != null) {
+      $result.updateInterval = updateInterval;
+    }
+    return $result;
+  }
+  SubscriptionSettings._() : super();
+  factory SubscriptionSettings.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory SubscriptionSettings.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SubscriptionSettings', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'url')
+    ..aOS(3, _omitFieldNames ? '' : 'name')
+    ..aOS(4, _omitFieldNames ? '' : 'userAgent')
+    ..aOB(5, _omitFieldNames ? '' : 'autoUpdate')
+    ..aOM<$2.Duration>(6, _omitFieldNames ? '' : 'updateInterval', subBuilder: $2.Duration.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  SubscriptionSettings clone() => SubscriptionSettings()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  SubscriptionSettings copyWith(void Function(SubscriptionSettings) updates) => super.copyWith((message) => updates(message as SubscriptionSettings)) as SubscriptionSettings;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionSettings create() => SubscriptionSettings._();
+  SubscriptionSettings createEmptyInstance() => create();
+  static $pb.PbList<SubscriptionSettings> createRepeated() => $pb.PbList<SubscriptionSettings>();
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionSettings getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SubscriptionSettings>(create);
+  static SubscriptionSettings? _defaultInstance;
+
+  /// Empty on the first save; the core assigns one and answers with it.
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => clearField(1);
+
+  /// The https link. Required on the first save; empty on a later save keeps
+  /// the stored link.
+  @$pb.TagNumber(2)
+  $core.String get url => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set url($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUrl() => clearField(2);
+
+  /// Overrides the provider title in the list; empty shows the provider title.
+  @$pb.TagNumber(3)
+  $core.String get name => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set name($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasName() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearName() => clearField(3);
+
+  /// Empty sends the Sora User-Agent.
+  @$pb.TagNumber(4)
+  $core.String get userAgent => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set userAgent($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasUserAgent() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUserAgent() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get autoUpdate => $_getBF(4);
+  @$pb.TagNumber(5)
+  set autoUpdate($core.bool v) { $_setBool(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasAutoUpdate() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAutoUpdate() => clearField(5);
+
+  /// Overrides the interval the provider asks for; unset follows the provider,
+  /// and 24 hours when the provider did not say. At least one hour.
+  @$pb.TagNumber(6)
+  $2.Duration get updateInterval => $_getN(5);
+  @$pb.TagNumber(6)
+  set updateInterval($2.Duration v) { setField(6, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasUpdateInterval() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearUpdateInterval() => clearField(6);
+  @$pb.TagNumber(6)
+  $2.Duration ensureUpdateInterval() => $_ensure(5);
+}
+
+/// SubscriptionState is a subscription as the core holds it.
+class SubscriptionState extends $pb.GeneratedMessage {
+  factory SubscriptionState({
+    SubscriptionSettings? settings,
+    SubscriptionInfo? info,
+    $core.Iterable<OutboundSpec>? outbounds,
+    $1.Timestamp? lastUpdate,
+    $1.Timestamp? nextUpdate,
+    SoraError? lastError,
+    $core.bool? updating,
+    $core.bool? deleted,
+    $core.String? displayName,
+  }) {
+    final $result = create();
+    if (settings != null) {
+      $result.settings = settings;
+    }
+    if (info != null) {
+      $result.info = info;
+    }
+    if (outbounds != null) {
+      $result.outbounds.addAll(outbounds);
+    }
+    if (lastUpdate != null) {
+      $result.lastUpdate = lastUpdate;
+    }
+    if (nextUpdate != null) {
+      $result.nextUpdate = nextUpdate;
+    }
+    if (lastError != null) {
+      $result.lastError = lastError;
+    }
+    if (updating != null) {
+      $result.updating = updating;
+    }
+    if (deleted != null) {
+      $result.deleted = deleted;
+    }
+    if (displayName != null) {
+      $result.displayName = displayName;
+    }
+    return $result;
+  }
+  SubscriptionState._() : super();
+  factory SubscriptionState.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory SubscriptionState.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SubscriptionState', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<SubscriptionSettings>(1, _omitFieldNames ? '' : 'settings', subBuilder: SubscriptionSettings.create)
+    ..aOM<SubscriptionInfo>(2, _omitFieldNames ? '' : 'info', subBuilder: SubscriptionInfo.create)
+    ..pc<OutboundSpec>(3, _omitFieldNames ? '' : 'outbounds', $pb.PbFieldType.PM, subBuilder: OutboundSpec.create)
+    ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'lastUpdate', subBuilder: $1.Timestamp.create)
+    ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'nextUpdate', subBuilder: $1.Timestamp.create)
+    ..aOM<SoraError>(6, _omitFieldNames ? '' : 'lastError', subBuilder: SoraError.create)
+    ..aOB(7, _omitFieldNames ? '' : 'updating')
+    ..aOB(8, _omitFieldNames ? '' : 'deleted')
+    ..aOS(9, _omitFieldNames ? '' : 'displayName')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  SubscriptionState clone() => SubscriptionState()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  SubscriptionState copyWith(void Function(SubscriptionState) updates) => super.copyWith((message) => updates(message as SubscriptionState)) as SubscriptionState;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionState create() => SubscriptionState._();
+  SubscriptionState createEmptyInstance() => create();
+  static $pb.PbList<SubscriptionState> createRepeated() => $pb.PbList<SubscriptionState>();
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionState getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SubscriptionState>(create);
+  static SubscriptionState? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SubscriptionSettings get settings => $_getN(0);
+  @$pb.TagNumber(1)
+  set settings(SubscriptionSettings v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasSettings() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSettings() => clearField(1);
+  @$pb.TagNumber(1)
+  SubscriptionSettings ensureSettings() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  SubscriptionInfo get info => $_getN(1);
+  @$pb.TagNumber(2)
+  set info(SubscriptionInfo v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasInfo() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearInfo() => clearField(2);
+  @$pb.TagNumber(2)
+  SubscriptionInfo ensureInfo() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $core.List<OutboundSpec> get outbounds => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $1.Timestamp get lastUpdate => $_getN(3);
+  @$pb.TagNumber(4)
+  set lastUpdate($1.Timestamp v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasLastUpdate() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLastUpdate() => clearField(4);
+  @$pb.TagNumber(4)
+  $1.Timestamp ensureLastUpdate() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $1.Timestamp get nextUpdate => $_getN(4);
+  @$pb.TagNumber(5)
+  set nextUpdate($1.Timestamp v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasNextUpdate() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearNextUpdate() => clearField(5);
+  @$pb.TagNumber(5)
+  $1.Timestamp ensureNextUpdate() => $_ensure(4);
+
+  /// The failure of the last attempt; unset after a success.
+  @$pb.TagNumber(6)
+  SoraError get lastError => $_getN(5);
+  @$pb.TagNumber(6)
+  set lastError(SoraError v) { setField(6, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasLastError() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearLastError() => clearField(6);
+  @$pb.TagNumber(6)
+  SoraError ensureLastError() => $_ensure(5);
+
+  /// Whether a fetch is running right now.
+  @$pb.TagNumber(7)
+  $core.bool get updating => $_getBF(6);
+  @$pb.TagNumber(7)
+  set updating($core.bool v) { $_setBool(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasUpdating() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearUpdating() => clearField(7);
+
+  /// Set on a watched state when the subscription was deleted.
+  @$pb.TagNumber(8)
+  $core.bool get deleted => $_getBF(7);
+  @$pb.TagNumber(8)
+  set deleted($core.bool v) { $_setBool(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasDeleted() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDeleted() => clearField(8);
+
+  /// What the list shows: the user's name, else the provider's title, else the
+  /// file name the provider sent, else the host of the link. Never empty.
+  @$pb.TagNumber(9)
+  $core.String get displayName => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set displayName($core.String v) { $_setString(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasDisplayName() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDisplayName() => clearField(9);
+}
+
+class SaveSubscriptionRequest extends $pb.GeneratedMessage {
+  factory SaveSubscriptionRequest({
+    ApiVersion? apiVersion,
+    $core.List<$core.int>? controlAuthenticator,
+    SubscriptionSettings? settings,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    if (controlAuthenticator != null) {
+      $result.controlAuthenticator = controlAuthenticator;
+    }
+    if (settings != null) {
+      $result.settings = settings;
+    }
+    return $result;
+  }
+  SaveSubscriptionRequest._() : super();
+  factory SaveSubscriptionRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory SaveSubscriptionRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SaveSubscriptionRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..aOM<SubscriptionSettings>(3, _omitFieldNames ? '' : 'settings', subBuilder: SubscriptionSettings.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  SaveSubscriptionRequest clone() => SaveSubscriptionRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  SaveSubscriptionRequest copyWith(void Function(SaveSubscriptionRequest) updates) => super.copyWith((message) => updates(message as SaveSubscriptionRequest)) as SaveSubscriptionRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SaveSubscriptionRequest create() => SaveSubscriptionRequest._();
+  SaveSubscriptionRequest createEmptyInstance() => create();
+  static $pb.PbList<SaveSubscriptionRequest> createRepeated() => $pb.PbList<SaveSubscriptionRequest>();
+  @$core.pragma('dart2js:noInline')
+  static SaveSubscriptionRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SaveSubscriptionRequest>(create);
+  static SaveSubscriptionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get controlAuthenticator => $_getN(1);
+  @$pb.TagNumber(2)
+  set controlAuthenticator($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasControlAuthenticator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearControlAuthenticator() => clearField(2);
+
+  @$pb.TagNumber(3)
+  SubscriptionSettings get settings => $_getN(2);
+  @$pb.TagNumber(3)
+  set settings(SubscriptionSettings v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasSettings() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSettings() => clearField(3);
+  @$pb.TagNumber(3)
+  SubscriptionSettings ensureSettings() => $_ensure(2);
+}
+
+class SaveSubscriptionResponse extends $pb.GeneratedMessage {
+  factory SaveSubscriptionResponse({
+    SubscriptionState? state,
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (state != null) {
+      $result.state = state;
+    }
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  SaveSubscriptionResponse._() : super();
+  factory SaveSubscriptionResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory SaveSubscriptionResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SaveSubscriptionResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<SubscriptionState>(1, _omitFieldNames ? '' : 'state', subBuilder: SubscriptionState.create)
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  SaveSubscriptionResponse clone() => SaveSubscriptionResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  SaveSubscriptionResponse copyWith(void Function(SaveSubscriptionResponse) updates) => super.copyWith((message) => updates(message as SaveSubscriptionResponse)) as SaveSubscriptionResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SaveSubscriptionResponse create() => SaveSubscriptionResponse._();
+  SaveSubscriptionResponse createEmptyInstance() => create();
+  static $pb.PbList<SaveSubscriptionResponse> createRepeated() => $pb.PbList<SaveSubscriptionResponse>();
+  @$core.pragma('dart2js:noInline')
+  static SaveSubscriptionResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SaveSubscriptionResponse>(create);
+  static SaveSubscriptionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SubscriptionState get state => $_getN(0);
+  @$pb.TagNumber(1)
+  set state(SubscriptionState v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasState() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearState() => clearField(1);
+  @$pb.TagNumber(1)
+  SubscriptionState ensureState() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
+}
+
+class ListSubscriptionsRequest extends $pb.GeneratedMessage {
+  factory ListSubscriptionsRequest({
+    ApiVersion? apiVersion,
+    $core.List<$core.int>? controlAuthenticator,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    if (controlAuthenticator != null) {
+      $result.controlAuthenticator = controlAuthenticator;
+    }
+    return $result;
+  }
+  ListSubscriptionsRequest._() : super();
+  factory ListSubscriptionsRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ListSubscriptionsRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ListSubscriptionsRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ListSubscriptionsRequest clone() => ListSubscriptionsRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ListSubscriptionsRequest copyWith(void Function(ListSubscriptionsRequest) updates) => super.copyWith((message) => updates(message as ListSubscriptionsRequest)) as ListSubscriptionsRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListSubscriptionsRequest create() => ListSubscriptionsRequest._();
+  ListSubscriptionsRequest createEmptyInstance() => create();
+  static $pb.PbList<ListSubscriptionsRequest> createRepeated() => $pb.PbList<ListSubscriptionsRequest>();
+  @$core.pragma('dart2js:noInline')
+  static ListSubscriptionsRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ListSubscriptionsRequest>(create);
+  static ListSubscriptionsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get controlAuthenticator => $_getN(1);
+  @$pb.TagNumber(2)
+  set controlAuthenticator($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasControlAuthenticator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearControlAuthenticator() => clearField(2);
+}
+
+class ListSubscriptionsResponse extends $pb.GeneratedMessage {
+  factory ListSubscriptionsResponse({
+    $core.Iterable<SubscriptionState>? subscriptions,
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (subscriptions != null) {
+      $result.subscriptions.addAll(subscriptions);
+    }
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  ListSubscriptionsResponse._() : super();
+  factory ListSubscriptionsResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ListSubscriptionsResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ListSubscriptionsResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..pc<SubscriptionState>(1, _omitFieldNames ? '' : 'subscriptions', $pb.PbFieldType.PM, subBuilder: SubscriptionState.create)
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  ListSubscriptionsResponse clone() => ListSubscriptionsResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  ListSubscriptionsResponse copyWith(void Function(ListSubscriptionsResponse) updates) => super.copyWith((message) => updates(message as ListSubscriptionsResponse)) as ListSubscriptionsResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListSubscriptionsResponse create() => ListSubscriptionsResponse._();
+  ListSubscriptionsResponse createEmptyInstance() => create();
+  static $pb.PbList<ListSubscriptionsResponse> createRepeated() => $pb.PbList<ListSubscriptionsResponse>();
+  @$core.pragma('dart2js:noInline')
+  static ListSubscriptionsResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ListSubscriptionsResponse>(create);
+  static ListSubscriptionsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<SubscriptionState> get subscriptions => $_getList(0);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
+}
+
+class DeleteSubscriptionRequest extends $pb.GeneratedMessage {
+  factory DeleteSubscriptionRequest({
+    ApiVersion? apiVersion,
+    $core.List<$core.int>? controlAuthenticator,
+    $core.String? id,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    if (controlAuthenticator != null) {
+      $result.controlAuthenticator = controlAuthenticator;
+    }
+    if (id != null) {
+      $result.id = id;
+    }
+    return $result;
+  }
+  DeleteSubscriptionRequest._() : super();
+  factory DeleteSubscriptionRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory DeleteSubscriptionRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'DeleteSubscriptionRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..aOS(3, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  DeleteSubscriptionRequest clone() => DeleteSubscriptionRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  DeleteSubscriptionRequest copyWith(void Function(DeleteSubscriptionRequest) updates) => super.copyWith((message) => updates(message as DeleteSubscriptionRequest)) as DeleteSubscriptionRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteSubscriptionRequest create() => DeleteSubscriptionRequest._();
+  DeleteSubscriptionRequest createEmptyInstance() => create();
+  static $pb.PbList<DeleteSubscriptionRequest> createRepeated() => $pb.PbList<DeleteSubscriptionRequest>();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSubscriptionRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DeleteSubscriptionRequest>(create);
+  static DeleteSubscriptionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get controlAuthenticator => $_getN(1);
+  @$pb.TagNumber(2)
+  set controlAuthenticator($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasControlAuthenticator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearControlAuthenticator() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get id => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set id($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearId() => clearField(3);
+}
+
+class DeleteSubscriptionResponse extends $pb.GeneratedMessage {
+  factory DeleteSubscriptionResponse({
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  DeleteSubscriptionResponse._() : super();
+  factory DeleteSubscriptionResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory DeleteSubscriptionResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'DeleteSubscriptionResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<SoraError>(1, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  DeleteSubscriptionResponse clone() => DeleteSubscriptionResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  DeleteSubscriptionResponse copyWith(void Function(DeleteSubscriptionResponse) updates) => super.copyWith((message) => updates(message as DeleteSubscriptionResponse)) as DeleteSubscriptionResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteSubscriptionResponse create() => DeleteSubscriptionResponse._();
+  DeleteSubscriptionResponse createEmptyInstance() => create();
+  static $pb.PbList<DeleteSubscriptionResponse> createRepeated() => $pb.PbList<DeleteSubscriptionResponse>();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSubscriptionResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DeleteSubscriptionResponse>(create);
+  static DeleteSubscriptionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SoraError get error => $_getN(0);
+  @$pb.TagNumber(1)
+  set error(SoraError v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasError() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearError() => clearField(1);
+  @$pb.TagNumber(1)
+  SoraError ensureError() => $_ensure(0);
+}
+
+class RefreshSubscriptionRequest extends $pb.GeneratedMessage {
+  factory RefreshSubscriptionRequest({
+    ApiVersion? apiVersion,
+    $core.List<$core.int>? controlAuthenticator,
+    $core.String? id,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    if (controlAuthenticator != null) {
+      $result.controlAuthenticator = controlAuthenticator;
+    }
+    if (id != null) {
+      $result.id = id;
+    }
+    return $result;
+  }
+  RefreshSubscriptionRequest._() : super();
+  factory RefreshSubscriptionRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory RefreshSubscriptionRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'RefreshSubscriptionRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..aOS(3, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  RefreshSubscriptionRequest clone() => RefreshSubscriptionRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  RefreshSubscriptionRequest copyWith(void Function(RefreshSubscriptionRequest) updates) => super.copyWith((message) => updates(message as RefreshSubscriptionRequest)) as RefreshSubscriptionRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RefreshSubscriptionRequest create() => RefreshSubscriptionRequest._();
+  RefreshSubscriptionRequest createEmptyInstance() => create();
+  static $pb.PbList<RefreshSubscriptionRequest> createRepeated() => $pb.PbList<RefreshSubscriptionRequest>();
+  @$core.pragma('dart2js:noInline')
+  static RefreshSubscriptionRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RefreshSubscriptionRequest>(create);
+  static RefreshSubscriptionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get controlAuthenticator => $_getN(1);
+  @$pb.TagNumber(2)
+  set controlAuthenticator($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasControlAuthenticator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearControlAuthenticator() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get id => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set id($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearId() => clearField(3);
+}
+
+class RefreshSubscriptionResponse extends $pb.GeneratedMessage {
+  factory RefreshSubscriptionResponse({
+    SubscriptionState? state,
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (state != null) {
+      $result.state = state;
+    }
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  RefreshSubscriptionResponse._() : super();
+  factory RefreshSubscriptionResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory RefreshSubscriptionResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'RefreshSubscriptionResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<SubscriptionState>(1, _omitFieldNames ? '' : 'state', subBuilder: SubscriptionState.create)
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  RefreshSubscriptionResponse clone() => RefreshSubscriptionResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  RefreshSubscriptionResponse copyWith(void Function(RefreshSubscriptionResponse) updates) => super.copyWith((message) => updates(message as RefreshSubscriptionResponse)) as RefreshSubscriptionResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RefreshSubscriptionResponse create() => RefreshSubscriptionResponse._();
+  RefreshSubscriptionResponse createEmptyInstance() => create();
+  static $pb.PbList<RefreshSubscriptionResponse> createRepeated() => $pb.PbList<RefreshSubscriptionResponse>();
+  @$core.pragma('dart2js:noInline')
+  static RefreshSubscriptionResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RefreshSubscriptionResponse>(create);
+  static RefreshSubscriptionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  SubscriptionState get state => $_getN(0);
+  @$pb.TagNumber(1)
+  set state(SubscriptionState v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasState() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearState() => clearField(1);
+  @$pb.TagNumber(1)
+  SubscriptionState ensureState() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
+}
+
+class WatchSubscriptionsRequest extends $pb.GeneratedMessage {
+  factory WatchSubscriptionsRequest({
+    ApiVersion? apiVersion,
+    $core.List<$core.int>? controlAuthenticator,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    if (controlAuthenticator != null) {
+      $result.controlAuthenticator = controlAuthenticator;
+    }
+    return $result;
+  }
+  WatchSubscriptionsRequest._() : super();
+  factory WatchSubscriptionsRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory WatchSubscriptionsRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'WatchSubscriptionsRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  WatchSubscriptionsRequest clone() => WatchSubscriptionsRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  WatchSubscriptionsRequest copyWith(void Function(WatchSubscriptionsRequest) updates) => super.copyWith((message) => updates(message as WatchSubscriptionsRequest)) as WatchSubscriptionsRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static WatchSubscriptionsRequest create() => WatchSubscriptionsRequest._();
+  WatchSubscriptionsRequest createEmptyInstance() => create();
+  static $pb.PbList<WatchSubscriptionsRequest> createRepeated() => $pb.PbList<WatchSubscriptionsRequest>();
+  @$core.pragma('dart2js:noInline')
+  static WatchSubscriptionsRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<WatchSubscriptionsRequest>(create);
+  static WatchSubscriptionsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get controlAuthenticator => $_getN(1);
+  @$pb.TagNumber(2)
+  set controlAuthenticator($core.List<$core.int> v) { $_setBytes(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasControlAuthenticator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearControlAuthenticator() => clearField(2);
+}
+
+class GetAboutRequest extends $pb.GeneratedMessage {
+  factory GetAboutRequest({
+    ApiVersion? apiVersion,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    return $result;
+  }
+  GetAboutRequest._() : super();
+  factory GetAboutRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetAboutRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetAboutRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetAboutRequest clone() => GetAboutRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetAboutRequest copyWith(void Function(GetAboutRequest) updates) => super.copyWith((message) => updates(message as GetAboutRequest)) as GetAboutRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetAboutRequest create() => GetAboutRequest._();
+  GetAboutRequest createEmptyInstance() => create();
+  static $pb.PbList<GetAboutRequest> createRepeated() => $pb.PbList<GetAboutRequest>();
+  @$core.pragma('dart2js:noInline')
+  static GetAboutRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetAboutRequest>(create);
+  static GetAboutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+}
+
+class GetAboutResponse extends $pb.GeneratedMessage {
+  factory GetAboutResponse({
+    About? about,
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (about != null) {
+      $result.about = about;
+    }
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  GetAboutResponse._() : super();
+  factory GetAboutResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetAboutResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetAboutResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<About>(1, _omitFieldNames ? '' : 'about', subBuilder: About.create)
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetAboutResponse clone() => GetAboutResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetAboutResponse copyWith(void Function(GetAboutResponse) updates) => super.copyWith((message) => updates(message as GetAboutResponse)) as GetAboutResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetAboutResponse create() => GetAboutResponse._();
+  GetAboutResponse createEmptyInstance() => create();
+  static $pb.PbList<GetAboutResponse> createRepeated() => $pb.PbList<GetAboutResponse>();
+  @$core.pragma('dart2js:noInline')
+  static GetAboutResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetAboutResponse>(create);
+  static GetAboutResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  About get about => $_getN(0);
+  @$pb.TagNumber(1)
+  set about(About v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasAbout() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAbout() => clearField(1);
+  @$pb.TagNumber(1)
+  About ensureAbout() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
+}
+
+/// About describes the running core.
+class About extends $pb.GeneratedMessage {
+  factory About({
+    $core.String? coreVersion,
+    $core.String? commit,
+    $1.Timestamp? commitTime,
+    ApiVersion? contract,
+    $core.String? platform,
+    $core.String? goVersion,
+    $core.Iterable<EngineBuild>? engines,
+    $core.String? license,
+    $core.String? sourceUrl,
+  }) {
+    final $result = create();
+    if (coreVersion != null) {
+      $result.coreVersion = coreVersion;
+    }
+    if (commit != null) {
+      $result.commit = commit;
+    }
+    if (commitTime != null) {
+      $result.commitTime = commitTime;
+    }
+    if (contract != null) {
+      $result.contract = contract;
+    }
+    if (platform != null) {
+      $result.platform = platform;
+    }
+    if (goVersion != null) {
+      $result.goVersion = goVersion;
+    }
+    if (engines != null) {
+      $result.engines.addAll(engines);
+    }
+    if (license != null) {
+      $result.license = license;
+    }
+    if (sourceUrl != null) {
+      $result.sourceUrl = sourceUrl;
+    }
+    return $result;
+  }
+  About._() : super();
+  factory About.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory About.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'About', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'coreVersion')
+    ..aOS(2, _omitFieldNames ? '' : 'commit')
+    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'commitTime', subBuilder: $1.Timestamp.create)
+    ..aOM<ApiVersion>(4, _omitFieldNames ? '' : 'contract', subBuilder: ApiVersion.create)
+    ..aOS(5, _omitFieldNames ? '' : 'platform')
+    ..aOS(6, _omitFieldNames ? '' : 'goVersion')
+    ..pc<EngineBuild>(7, _omitFieldNames ? '' : 'engines', $pb.PbFieldType.PM, subBuilder: EngineBuild.create)
+    ..aOS(8, _omitFieldNames ? '' : 'license')
+    ..aOS(9, _omitFieldNames ? '' : 'sourceUrl')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  About clone() => About()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  About copyWith(void Function(About) updates) => super.copyWith((message) => updates(message as About)) as About;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static About create() => About._();
+  About createEmptyInstance() => create();
+  static $pb.PbList<About> createRepeated() => $pb.PbList<About>();
+  @$core.pragma('dart2js:noInline')
+  static About getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<About>(create);
+  static About? _defaultInstance;
+
+  /// The release version, or "dev" for a build that was not stamped.
+  @$pb.TagNumber(1)
+  $core.String get coreVersion => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set coreVersion($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCoreVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCoreVersion() => clearField(1);
+
+  /// The commit the core was built from and when, where the build recorded it.
+  @$pb.TagNumber(2)
+  $core.String get commit => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set commit($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasCommit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCommit() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $1.Timestamp get commitTime => $_getN(2);
+  @$pb.TagNumber(3)
+  set commitTime($1.Timestamp v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasCommitTime() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCommitTime() => clearField(3);
+  @$pb.TagNumber(3)
+  $1.Timestamp ensureCommitTime() => $_ensure(2);
+
+  /// The contract the core serves.
+  @$pb.TagNumber(4)
+  ApiVersion get contract => $_getN(3);
+  @$pb.TagNumber(4)
+  set contract(ApiVersion v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasContract() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearContract() => clearField(4);
+  @$pb.TagNumber(4)
+  ApiVersion ensureContract() => $_ensure(3);
+
+  /// For example "linux/amd64".
+  @$pb.TagNumber(5)
+  $core.String get platform => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set platform($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasPlatform() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPlatform() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get goVersion => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set goVersion($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasGoVersion() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearGoVersion() => clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.List<EngineBuild> get engines => $_getList(6);
+
+  /// SPDX identifier.
+  @$pb.TagNumber(8)
+  $core.String get license => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set license($core.String v) { $_setString(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasLicense() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLicense() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get sourceUrl => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set sourceUrl($core.String v) { $_setString(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasSourceUrl() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSourceUrl() => clearField(9);
+}
+
+/// EngineBuild is one engine as this machine has it.
+class EngineBuild extends $pb.GeneratedMessage {
+  factory EngineBuild({
+    $core.String? kind,
+    $core.bool? installed,
+    $core.String? version,
+  }) {
+    final $result = create();
+    if (kind != null) {
+      $result.kind = kind;
+    }
+    if (installed != null) {
+      $result.installed = installed;
+    }
+    if (version != null) {
+      $result.version = version;
+    }
+    return $result;
+  }
+  EngineBuild._() : super();
+  factory EngineBuild.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory EngineBuild.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'EngineBuild', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'kind')
+    ..aOB(2, _omitFieldNames ? '' : 'installed')
+    ..aOS(3, _omitFieldNames ? '' : 'version')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  EngineBuild clone() => EngineBuild()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  EngineBuild copyWith(void Function(EngineBuild) updates) => super.copyWith((message) => updates(message as EngineBuild)) as EngineBuild;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static EngineBuild create() => EngineBuild._();
+  EngineBuild createEmptyInstance() => create();
+  static $pb.PbList<EngineBuild> createRepeated() => $pb.PbList<EngineBuild>();
+  @$core.pragma('dart2js:noInline')
+  static EngineBuild getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<EngineBuild>(create);
+  static EngineBuild? _defaultInstance;
+
+  /// sing-box, xray or mihomo.
+  @$pb.TagNumber(1)
+  $core.String get kind => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set kind($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get installed => $_getBF(1);
+  @$pb.TagNumber(2)
+  set installed($core.bool v) { $_setBool(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasInstalled() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearInstalled() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get version => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set version($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVersion() => clearField(3);
 }
 
 

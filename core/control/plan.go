@@ -293,6 +293,12 @@ func outboundFromProto(index int, spec *corev1.OutboundSpec, secrets resolver) (
 	if outbound.Name == "" {
 		outbound.Name = id
 	}
+	if b := spec.GetBypass(); b != nil {
+		outbound.Bypass = &engine.BypassStrategy{
+			SplitPos: b.GetSplitPos(), Disorder: b.GetDisorder(), OOB: b.GetOob(), TLSRecord: b.GetTlsRecord(),
+			HostCase: b.GetHostCase(), DomainCase: b.GetDomainCase(), MethodEOL: b.GetMethodEol(),
+		}
+	}
 	if reference := spec.GetCredentials().GetReference(); reference != "" {
 		if secrets == nil {
 			return engine.Outbound{}, errs.Newf(errs.CodeFailedPrecondition, errs.KeySecretStoreUnavailable,

@@ -22,3 +22,6 @@ legacy/** -text
 *.exe binary
 *.snk binary
 *.pdb binary
+
+# Vendored sources stay byte for byte as their authors published them.
+third_party/** -text

@@ -4,6 +4,8 @@ package ipc
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"os/user"
@@ -24,6 +26,7 @@ func ListenAddress() string { return "/run/sora/core.sock" }
 // listenLocal opens a unix socket, removes a leftover from a crashed core and
 // restricts it to the group that may talk to the service.
 func listenLocal(address string, opts Options) (net.Listener, error) {
+	//nolint:gosec // the interface account must traverse the directory; the socket mode below is the boundary
 	if err := os.MkdirAll(filepath.Dir(address), 0o755); err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
@@ -32,14 +35,15 @@ func listenLocal(address string, opts Options) (net.Listener, error) {
 	if err := removeLeftover(address); err != nil {
 		return nil, err
 	}
-	listener, err := net.Listen("unix", address)
+	var lc net.ListenConfig
+	listener, err := lc.Listen(context.Background(), "unix", address)
 	if err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
 	// The socket carries the identity of the peer through the kernel, so the
 	// permission on it is the real boundary: 0660 with the service group means the
 	// interface account may connect and nothing else on the machine may.
-	if err := os.Chmod(address, 0o660); err != nil {
+	if err := os.Chmod(address, 0o660); err != nil { //nolint:gosec // group access is the design: the interface account is in the service group
 		_ = listener.Close()
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
@@ -75,10 +79,13 @@ func defaultAllow(peer Peer) bool {
 
 // removeLeftover deletes a socket that nobody is listening on.
 func removeLeftover(address string) error {
-	if _, err := os.Stat(address); err != nil {
+	if _, err := os.Stat(address); errors.Is(err, fs.ErrNotExist) {
 		return nil
+	} else if err != nil {
+		return errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
-	if connection, err := net.DialTimeout("unix", address, dialTimeout); err == nil {
+	dialer := net.Dialer{Timeout: dialTimeout}
+	if connection, err := dialer.DialContext(context.Background(), "unix", address); err == nil {
 		_ = connection.Close()
 		return nil
 	}
@@ -100,11 +107,11 @@ func chownToGroup(address, group string) error {
 	// this file is compiled for.
 	found, err := user.LookupGroup(group)
 	if err != nil || found == nil {
-		return nil
+		return nil //nolint:nilerr // a missing group is not fatal, as documented above
 	}
 	id, err := strconv.Atoi(found.Gid)
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // a group id that is not a number is treated as a missing group
 	}
 	// A failure here is not fatal: the mode 0660 already restricts the socket, and
 	// the owner is the service account.

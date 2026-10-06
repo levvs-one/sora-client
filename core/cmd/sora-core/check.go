@@ -50,10 +50,10 @@ func readyText(ready bool) string {
 	return "result: an engine is required before a tunnel can be started"
 }
 
-// control_PrintToken reads the token of a data directory. It is a separate,
+// printToken reads the token of a data directory. It is a separate,
 // explicitly named operation because the token is the thing that lets a caller
 // connect, and it is printed by nothing else.
-func control_PrintToken(dir string) (string, error) {
+func printToken(dir string) (string, error) {
 	raw, err := os.ReadFile(filepath.Join(dir, "control.token")) //nolint:gosec // a fixed name inside the core data directory
 	if err != nil {
 		return "", errs.Wrap(err, errs.CodeInternal, errs.KeyUnauthenticated)

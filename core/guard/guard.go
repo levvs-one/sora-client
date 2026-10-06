@@ -51,33 +51,6 @@ func (NoopFirewall) Disarm(context.Context) error { return nil }
 // Armed reports that no rule of this package is in force.
 func (NoopFirewall) Armed(context.Context) (bool, error) { return false, nil }
 
-// validateAddress refuses a proxy address that is not a loopback host and port.
-// The system proxy of a client must point at the local engine: a guard that
-// accepted a remote address would hand the user's traffic to whoever owns it.
-func validateAddress(address string) error {
-	trimmed := strings.TrimSpace(address)
-	if trimmed == "" {
-		return errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardProxyFailed,
-			"guard: the proxy address is empty")
-	}
-	host, port, found := strings.Cut(trimmed, ":")
-	if !found {
-		return errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardProxyFailed,
-			"guard: the proxy address has no port")
-	}
-	if port == "" {
-		return errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardProxyFailed,
-			"guard: the proxy address has an empty port")
-	}
-	switch host {
-	case "127.0.0.1", "localhost", "::1":
-		return nil
-	default:
-		return errs.Newf(errs.CodePermissionDenied, errs.KeyGuardProxyFailed,
-			"guard: the proxy address is not on the loopback interface")
-	}
-}
-
 // Proxy changes the system-wide proxy setting of the desktop.
 type Proxy interface {
 	// Apply points the system proxy at address, remembering the previous value.

@@ -1,6 +1,7 @@
 package guard_test
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 
@@ -69,6 +70,12 @@ func TestPlatformFirewallRefusesAnEngineWithoutAUser(t *testing.T) {
 }
 
 func TestPlatformFirewallIsUsable(t *testing.T) {
+	if runtime.GOOS == "linux" {
+		// On Linux the platform firewall is the nftables table: arming it needs
+		// root and changes the firewall of the machine running the tests. The
+		// ruleset itself is covered by the rendering tests in this file.
+		t.Skip("the Linux kill switch is nftables; arming it in a test would change this machine")
+	}
 	firewall, err := guard.PlatformFirewall(1000, nil)
 	if err != nil {
 		t.Fatalf("PlatformFirewall() error = %v", err)

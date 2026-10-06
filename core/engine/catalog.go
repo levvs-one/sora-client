@@ -34,7 +34,8 @@ var Catalog = map[Kind]Capabilities{
 			FeatureTun: true, FeatureFakeIP: true, FeatureRuleSets: true,
 			FeatureProxyProviders: true, FeatureURLTest: true, FeatureLatencyTest: true,
 			FeatureHotApply: true, FeatureGeoData: true, FeatureFallbackGroup: true,
-			FeatureLoadBalance: true,
+			FeatureLoadBalance: true, FeatureXHTTP: true, FeatureVLESSEncrypt: true,
+			FeatureAmneziaWG: true,
 		},
 	},
 	KindSingBox: {

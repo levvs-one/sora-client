@@ -61,6 +61,9 @@ func (p *Plan) RequiredFeatures() map[Feature]bool {
 		if o.Encryption != "" && o.Encryption != "none" {
 			out[FeatureVLESSEncrypt] = true
 		}
+		if o.Amnezia != nil {
+			out[FeatureAmneziaWG] = true
+		}
 	}
 	if p.Options.Fragment.Enabled {
 		out[FeatureTLSFragment] = true

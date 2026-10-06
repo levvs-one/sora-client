@@ -126,11 +126,11 @@ func New(opts Options) *Fetcher {
 // the retrieval, and the detail of a failure never quotes the reference, because
 // the reference is the credential.
 func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions) (Result, error) {
-	agent, err := userAgent(opts.UserAgent)
+	agent, err := UserAgentFor(opts.UserAgent)
 	if err != nil {
 		return Result{}, err
 	}
-	target, err := validateReference(reference)
+	target, err := ValidateReference(reference)
 	if err != nil {
 		return Result{}, err
 	}
@@ -157,7 +157,7 @@ func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions
 			return Result{}, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionRedirect,
 				"subscription: the provider sent a redirect that is not a location")
 		}
-		target, err = validateReference(target.ResolveReference(moved).String())
+		target, err = ValidateReference(target.ResolveReference(moved).String())
 		if err != nil {
 			return Result{}, err
 		}
@@ -244,10 +244,10 @@ func redirectTarget(response *http.Response) string {
 	return response.Header.Get("Location")
 }
 
-// validateReference checks a reference and returns it parsed. Plain http is
+// ValidateReference checks a reference and returns it parsed. Plain http is
 // refused: the reference is a credential, and a credential sent in clear is a
 // credential that has to be rotated afterwards.
-func validateReference(reference string) (*url.URL, error) {
+func ValidateReference(reference string) (*url.URL, error) {
 	trimmed := strings.TrimSpace(reference)
 	if trimmed == "" {
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
@@ -280,9 +280,10 @@ func validateReference(reference string) (*url.URL, error) {
 	return parsed, nil
 }
 
-// userAgent checks the User-Agent a subscription asked for. A line break would
+// UserAgentFor checks the User-Agent a subscription asked for and answers the
+// one to send. A line break would
 // let a subscription setting inject a header into the request.
-func userAgent(asked string) (string, error) {
+func UserAgentFor(asked string) (string, error) {
 	trimmed := strings.TrimSpace(asked)
 	if trimmed == "" {
 		return UserAgent, nil

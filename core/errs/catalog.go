@@ -42,6 +42,11 @@ const (
 	KeyLogExportFailed        Key = "core.logs.export_failed"
 	KeyConnectionsUnavailable Key = "core.connections.unavailable"
 
+	KeySubscriptionDuplicate Key = "core.subscription.duplicate"
+	KeySubscriptionNotFound  Key = "core.subscription.not_found"
+	KeySubscriptionLimit     Key = "core.subscription.limit"
+	KeySubscriptionInterval  Key = "core.subscription.interval_invalid"
+
 	// Engine.
 	KeyEngineBinaryMissing Key = "core.engine.binary_missing"
 	KeyEngineStartFailed   Key = "core.engine.start_failed"
@@ -127,6 +132,11 @@ var catalog = map[Key]Entry{
 	KeyLogFilterInvalid:       {CodeInvalidArgument, false, "the log filter has an invalid expression or range"},
 	KeyLogExportFailed:        {CodeResourceExhausted, false, "the export is larger than one answer carries; narrow the filter"},
 	KeyConnectionsUnavailable: {CodeUnsupported, false, "no session is running, or its engine cannot list connections"},
+
+	KeySubscriptionDuplicate: {CodeInvalidArgument, false, "a subscription with this link is already saved"},
+	KeySubscriptionNotFound:  {CodeNotFound, false, "no subscription with this id"},
+	KeySubscriptionLimit:     {CodeResourceExhausted, false, "the core already keeps the largest number of subscriptions"},
+	KeySubscriptionInterval:  {CodeInvalidArgument, false, "the update interval is shorter than an hour or longer than 30 days"},
 
 	// Engine.
 	KeyEngineBinaryMissing: {CodeNotFound, false, "the engine binary is not installed for this platform"},

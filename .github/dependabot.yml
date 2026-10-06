@@ -17,6 +17,11 @@ updates:
       go-tooling:
         patterns: ['golang.org/x/*']
     labels: ['dependencies', 'core']
+    ignore:
+      # grpc 1.84 still carries GO-2026-6443, fixed on 1.83.2 and on the 1.85
+      # development line; remove this once a fixed 1.84 or 1.85 is released.
+      - dependency-name: google.golang.org/grpc
+        versions: ['1.84.x']
 
   - package-ecosystem: github-actions
     directory: /
@@ -35,9 +40,3 @@ updates:
       interval: monthly
     open-pull-requests-limit: 3
     labels: ['dependencies', 'legacy']
-
-  - package-ecosystem: gomod
-    directory: /app/android/tunnel
-    schedule:
-      interval: monthly
-    labels: ['dependencies', 'android']

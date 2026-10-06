@@ -28,5 +28,7 @@
 | zapret (tpws, nfqws) | 72.13 | MIT, © 2016-2024 bol-van | https://github.com/bol-van/zapret/releases/tag/v72.13 | архив исходников `04696a1b6fe766e35cd6426555520c79d5052a759cdf4d7724a1f46eba4670f6` |
 
 Исходники zapret лежат в `third_party/zapret` без изменений, вместе с лицензией
-автора (`third_party/zapret/docs/LICENSE.txt`); пакет ставит её в
+автора. Три файла с переводами строк CRLF в архиве (`tpws/socks.h`,
+`tpws/epoll-shim/src/fix.c`, `docs/wireguard_iproute_openwrt.txt`) хранятся с LF:
+так требует `.gitattributes` самого zapret, содержимое не меняется (`third_party/zapret/docs/LICENSE.txt`); пакет ставит её в
 `/usr/share/licenses/sora-core/zapret-LICENSE.txt`.

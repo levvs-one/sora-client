@@ -1,0 +1,123 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Four times a day, so a new advisory is noticed on the day it is published
+    # rather than on the next commit.
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vulnerabilities:
+    name: Vulnerable dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache: false
+
+      # govulncheck reports what is reachable from the program, not what sits in
+      # the module graph unused. A graph scan of this repository would drown the
+      # real findings in test-only dependencies of the standard library.
+      - name: Check reachable vulnerabilities
+        working-directory: core
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  osv:
+    name: Advisory database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: google/osv-scanner-action/osv-scanner-action@v2.3.1
+        with:
+          # osv-scanner 2 reads Go dependencies from go.mod; go.sum alone has no
+          # extractor, and --skip-gitignore no longer exists.
+          scan-args: |-
+            --lockfile=go.mod:core/go.mod
+
+  codeql:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['go']
+    steps:
+      - uses: actions/checkout@v6
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      # Fails the pull request on a licence that the project does not ship, on a
+      # dependency with a known advisory, or on a package that is not from a
+      # source the project trusts.
+      - uses: actions/dependency-review-action@v4
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Look for credentials in the tree
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cross-build:
+    name: Core builds everywhere
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache: false
+
+      # The core is compiled for every platform it ships on, because a package
+      # that only builds on the machine of its author is a package that ships
+      # broken. This is the check the local machine cannot replace.
+      - name: Build every target
+        working-directory: core
+        run: |
+          set -euo pipefail
+          for target in windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            goos="${target%%/*}"
+            goarch="${target##*/}"
+            echo "== $goos/$goarch"
+            CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build ./...
+          done
+
+      - name: Build with the race detector
+        working-directory: core
+        run: go test -race -count=1 ./...

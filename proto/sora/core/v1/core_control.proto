@@ -21,6 +21,27 @@ service CoreControl {
   rpc ExportDiagnostics(ExportDiagnosticsRequest) returns (ExportDiagnosticsResponse);
   rpc SetKillSwitch(SetKillSwitchRequest) returns (SetKillSwitchResponse);
   rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
+
+  // Since 1.3. The log center: one bounded in-memory record of the core and
+  // every engine. Every call needs the control authenticator, because the
+  // record and the connection list describe where a person goes.
+  rpc QueryLogs(QueryLogsRequest) returns (QueryLogsResponse);
+  rpc WatchLogs(WatchLogsRequest) returns (stream LogEntry);
+  rpc ExportLogs(ExportLogsRequest) returns (ExportLogsResponse);
+  rpc ClearLogs(ClearLogsRequest) returns (ClearLogsResponse);
+  rpc GetLogSettings(GetLogSettingsRequest) returns (GetLogSettingsResponse);
+  rpc SetLogSettings(SetLogSettingsRequest) returns (SetLogSettingsResponse);
+
+  // Since 1.3. The connection center: live connections of the session.
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+  rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse);
+  // PutSecret and DeleteSecret manage the credential material the core keeps.
+  // They exist because the rest of the contract carries only references: a plan
+  // names a secret, and these two calls are the only way a secret ever reaches
+  // the core. Keeping them separate means no other method can be turned into a
+  // way to read a stored credential.
+  rpc PutSecret(PutSecretRequest) returns (PutSecretResponse);
+  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
 }
 
 message ApiVersion {
@@ -51,6 +72,38 @@ message SessionPlan {
   DnsPolicy dns_policy = 4;
   BypassSettings bypass_settings = 5;
   string session_identity = 6;
+  // Since 1.3. Switches that change how connections look on the wire.
+  AntiCensorship anti_censorship = 7;
+  // Since 1.3. Engine preference for this session, best first: "sing-box",
+  // "xray", "mihomo". The core runs the first one that carries the whole
+  // plan. Empty uses the core default; a single entry pins that engine.
+  repeated string engines = 8;
+  // Since 1.3. Lets an engine controlled over a loopback port carry this
+  // session. Off by default: a port scan finds a loopback controller, so only
+  // an engine controlled through a unix socket or a named pipe is chosen.
+  bool network_control_allowed = 9;
+  // Since 1.3. The loopback HTTP and SOCKS5 listener. The system proxy mode
+  // always opens it, without a login; in tun mode it exists only when enabled.
+  LocalProxy local_proxy = 10;
+}
+// LocalProxy is a listener other applications on the machine can use. Any of
+// them can reach it, send traffic through the tunnel and learn the server
+// address, so it is closed unless asked for, and a login is recommended.
+message LocalProxy {
+  bool enabled = 1;
+  string username = 2;
+  string password = 3;
+}
+// AntiCensorship holds the per-session defences against DPI.
+message AntiCensorship {
+  // Splits the TLS ClientHello of proxy connections into several TCP segments.
+  bool tls_fragment = 1;
+  // Xray grammar: "tlshello" or a segment range such as "1-3". Empty means "tlshello".
+  string fragment_packets = 2;
+  // Segment length range in bytes, for example "100-200".
+  string fragment_length = 3;
+  // Pause range between segments in milliseconds, for example "10-20".
+  string fragment_interval = 4;
 }
 message OutboundSpec {
   string id = 1;
@@ -73,18 +126,62 @@ message GetStatsRequest { ApiVersion api_version = 1; string session_id = 2; }
 message GetStatsResponse { StatsTick stats = 1; SoraError error = 2; }
 message ConnectionState { ConnectionStateValue value = 1; string session_id = 2; SoraErrorCode reason = 3; google.protobuf.Timestamp changed_at = 4; google.protobuf.Duration retry_after = 5; }
 enum ConnectionStateValue { CONNECTION_STATE_VALUE_UNSPECIFIED = 0; CONNECTION_STATE_VALUE_DISCONNECTED = 1; CONNECTION_STATE_VALUE_CONNECTING = 2; CONNECTION_STATE_VALUE_CONNECTED = 3; CONNECTION_STATE_VALUE_RECONNECTING = 4; CONNECTION_STATE_VALUE_FAILED = 5; }
-message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; } }
+message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; KillSwitchChanged kill_switch_changed = 10; } }
 message StateChanged { ConnectionState state = 1; }
 message StatsTick { uint64 bytes_up = 1; uint64 bytes_down = 2; uint64 active_connections = 3; }
 message BypassStrategyChanged { string strategy = 1; }
-message ProbeResult { string server_id = 1; bool reachable = 2; uint32 latency_ms = 3; SoraError error = 4; }
+message ProbeResult {
+  string server_id = 1;
+  bool reachable = 2;
+  uint32 latency_ms = 3;
+  SoraError error = 4;
+  // Since 1.3. How the value was measured: "engine" is a real request through
+  // the server, "connect" only a TCP connection to it.
+  string method = 5;
+  // Since 1.3. The engine that carried an "engine" measurement.
+  string engine = 6;
+}
 message LogBatch { repeated string lines = 1; } // Limit: 200 lines, 256 KiB after batching, flush at least every 250 ms.
+// KillSwitchChanged reports the state of the kill switch of a session. Enforced
+// is separate from enabled on purpose: on a platform that cannot block traffic at
+// the packet filter the core still records the request, and the interface has to
+// be able to show a switch that is on but not blocking rather than a switch that
+// protects the user when it does not.
+message KillSwitchChanged { bool enabled = 1; bool enforced = 2; }
 
 message ParseImportRequest { ApiVersion api_version = 1; string request_id = 2; bytes payload = 3; }
 message ParseImportResponse { SessionPlan session_plan = 1; SoraError error = 2; }
 message FetchSubscriptionRequest { ApiVersion api_version = 1; string request_id = 2; string reference = 3; }
 message FetchSubscriptionResponse { repeated OutboundSpec outbounds = 1; SoraError error = 2; }
-message ProbeServersRequest { ApiVersion api_version = 1; string request_id = 2; repeated Endpoint endpoints = 3; }
+message ProbeServersRequest {
+  ApiVersion api_version = 1;
+  string request_id = 2;
+  // Measured with a TCP connection only.
+  repeated Endpoint endpoints = 3;
+  // Since 1.3. Measured as the options say; results carry the outbound id.
+  repeated OutboundSpec outbounds = 4;
+  ProbeOptions options = 5;
+}
+// ProbeOptions controls a latency measurement. Zero values take the core
+// defaults.
+message ProbeOptions {
+  ProbeMethod method = 1;
+  // The URL requested through each server; it should answer 204 or 200.
+  string url = 2;
+  uint32 timeout_ms = 3;
+  // How many servers are measured at once.
+  uint32 concurrency = 4;
+  // Engine preference for the measurement, as in SessionPlan.engines.
+  repeated string engines = 5;
+}
+enum ProbeMethod {
+  // Through an engine where one carries the server, otherwise a TCP connection.
+  PROBE_METHOD_UNSPECIFIED = 0;
+  // Only through an engine; servers no engine carries fail.
+  PROBE_METHOD_ENGINE = 1;
+  // Only a TCP connection, which is fast and needs no engine but proves less.
+  PROBE_METHOD_CONNECT = 2;
+}
 message RunDiagnosticsRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; }
 message RunDiagnosticsResponse { DiagnosticReport report = 1; SoraError error = 2; }
 message ExportDiagnosticsRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; }
@@ -94,5 +191,152 @@ message SetKillSwitchResponse { bool enabled = 1; SoraError error = 2; }
 message DiagnosticReport { repeated string lines = 1; }
 message HandshakeRequest { ApiVersion client_version = 1; }
 message HandshakeResponse { ApiVersion negotiated_version = 1; SoraError error = 2; }
-enum SoraErrorCode { SORA_ERROR_CODE_UNSPECIFIED = 0; SORA_ERROR_CODE_VERSION_MISMATCH = 1; SORA_ERROR_CODE_UNAUTHENTICATED = 2; SORA_ERROR_CODE_INVALID_ARGUMENT = 3; SORA_ERROR_CODE_FAILED_PRECONDITION = 4; SORA_ERROR_CODE_NOT_FOUND = 5; SORA_ERROR_CODE_RESOURCE_EXHAUSTED = 6; SORA_ERROR_CODE_DEADLINE_EXCEEDED = 7; SORA_ERROR_CODE_UNAVAILABLE = 8; SORA_ERROR_CODE_INTERNAL = 9; }
+
+// PutSecretRequest hands one piece of credential material to the core. The
+// interface keeps the material only until the call is confirmed; the core keeps
+// it encrypted at rest and hands it back only to a plan that names it.
+message PutSecretRequest {
+  ApiVersion api_version = 1;
+  string request_id = 2;
+  CredentialsRef credentials = 3; // The reference a plan will use. Max 64 bytes, opaque.
+  bytes material = 4;             // Limit: 1 to 65536 bytes.
+}
+message PutSecretResponse { CredentialsRef credentials = 1; SoraError error = 2; }
+
+// DeleteSecretRequest removes stored material. It is safe to call for a
+// reference that holds nothing, so a cleanup path may run twice.
+message DeleteSecretRequest { ApiVersion api_version = 1; string request_id = 2; CredentialsRef credentials = 3; }
+message DeleteSecretResponse { SoraError error = 1; }
+enum SoraErrorCode { SORA_ERROR_CODE_UNSPECIFIED = 0; SORA_ERROR_CODE_VERSION_MISMATCH = 1; SORA_ERROR_CODE_UNAUTHENTICATED = 2; SORA_ERROR_CODE_INVALID_ARGUMENT = 3; SORA_ERROR_CODE_FAILED_PRECONDITION = 4; SORA_ERROR_CODE_NOT_FOUND = 5; SORA_ERROR_CODE_RESOURCE_EXHAUSTED = 6; SORA_ERROR_CODE_DEADLINE_EXCEEDED = 7; SORA_ERROR_CODE_UNAVAILABLE = 8; SORA_ERROR_CODE_INTERNAL = 9; SORA_ERROR_CODE_PERMISSION_DENIED = 10; SORA_ERROR_CODE_CANCELLED = 11; }
 message SoraError { SoraErrorCode code = 1; string user_message_key = 2; string detail_redacted = 3; bool retryable = 4; string request_id = 5; google.protobuf.Duration retry_after = 6; }
+
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_DEBUG = 1;
+  LOG_LEVEL_INFO = 2;
+  LOG_LEVEL_WARNING = 3;
+  LOG_LEVEL_ERROR = 4;
+}
+
+// LogEntry is one record. The message is masked of credentials, and of the
+// destinations a person visits unless LogSettings.record_destinations is on.
+message LogEntry {
+  uint64 sequence = 1;
+  google.protobuf.Timestamp time = 2;
+  LogLevel level = 3;
+  // "core" for the service itself, otherwise the engine: sing-box, xray, mihomo.
+  string source = 4;
+  string message = 5;
+  // Identical consecutive messages fold into one entry; a watcher receives the
+  // entry again with the same sequence and a higher repeat.
+  uint32 repeat = 6;
+}
+
+// LogFilter selects entries; unset fields select everything.
+message LogFilter {
+  LogLevel min_level = 1;
+  repeated string sources = 2;
+  // Case-insensitive substring of the message.
+  string contains = 3;
+  // Case-insensitive regular expression (RE2), at most 512 bytes.
+  string pattern = 4;
+  google.protobuf.Timestamp since = 5;
+  google.protobuf.Timestamp until = 6;
+}
+
+message QueryLogsRequest {
+  ApiVersion api_version = 1;
+  bytes control_authenticator = 2;
+  LogFilter filter = 3;
+  // Entries older than this sequence; 0 starts at the newest.
+  uint64 before_sequence = 4;
+  // At most 1000; 0 means 1000.
+  uint32 limit = 5;
+}
+message QueryLogsResponse {
+  // Newest first.
+  repeated LogEntry entries = 1;
+  // Cursor of the next, older page; 0 when there is none.
+  uint64 before_sequence = 2;
+  LogStats stats = 3;
+  SoraError error = 4;
+}
+// LogStats describe the whole record, not only what the filter matched.
+message LogStats {
+  repeated LogLevelCount by_level = 1;
+  repeated LogSourceCount by_source = 2;
+  uint64 total = 3;
+  uint64 bytes = 4;
+  uint64 max_bytes = 5;
+  // Entries the bounds evicted since the core started.
+  uint64 dropped = 6;
+}
+message LogLevelCount { LogLevel level = 1; uint64 count = 2; }
+message LogSourceCount { string source = 1; uint64 count = 2; }
+
+message WatchLogsRequest {
+  ApiVersion api_version = 1;
+  bytes control_authenticator = 2;
+  LogFilter filter = 3;
+  // Replays the matching entries after this sequence, then follows.
+  uint64 after_sequence = 4;
+}
+
+enum LogExportFormat {
+  // Plain text.
+  LOG_EXPORT_FORMAT_UNSPECIFIED = 0;
+  LOG_EXPORT_FORMAT_JSON_LINES = 1;
+  LOG_EXPORT_FORMAT_CSV = 2;
+}
+message ExportLogsRequest {
+  ApiVersion api_version = 1;
+  bytes control_authenticator = 2;
+  LogFilter filter = 3;
+  LogExportFormat format = 4;
+}
+message ExportLogsResponse {
+  bytes data = 1;
+  string file_name = 2;
+  string media_type = 3;
+  SoraError error = 4;
+}
+
+message ClearLogsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; }
+message ClearLogsResponse { SoraError error = 1; }
+
+// LogSettings change at runtime and apply to the next entry.
+message LogSettings {
+  // Entries below it are dropped before they are stored. Engines run at debug
+  // level, so a change takes effect at once, without a reconnect.
+  LogLevel capture_level = 1;
+  // Keeps the hosts and addresses of visited sites in engine messages.
+  bool record_destinations = 2;
+  // Bounds of the record; 0 keeps the core default.
+  uint32 max_entries = 3;
+  uint32 max_bytes = 4;
+}
+message GetLogSettingsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; }
+message GetLogSettingsResponse { LogSettings settings = 1; SoraError error = 2; }
+message SetLogSettingsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; LogSettings settings = 3; }
+message SetLogSettingsResponse { LogSettings settings = 1; SoraError error = 2; }
+
+// Connection is one live connection of the session.
+message Connection {
+  string id = 1;
+  // tcp or udp.
+  string network = 2;
+  // What the application asked for: a name where one was seen, else an address.
+  string host = 3;
+  uint32 port = 4;
+  string process = 5;
+  string rule = 6;
+  // From the group the rule chose to the outbound that carried it.
+  repeated string chain = 7;
+  uint64 upload = 8;
+  uint64 download = 9;
+  google.protobuf.Timestamp start = 10;
+}
+message ListConnectionsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string session_id = 3; }
+message ListConnectionsResponse { repeated Connection connections = 1; SoraError error = 2; }
+message CloseConnectionRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string session_id = 3; string connection_id = 4; }
+message CloseConnectionResponse { SoraError error = 1; }

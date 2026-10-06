@@ -540,12 +540,6 @@
   <data name="tsbHelp.Text" xml:space="preserve">
     <value>   帮助   </value>
   </data>
-  <data name="tsbPromotion.Size" type="System.Drawing.Size, System.Drawing">
-    <value>68, 53</value>
-  </data>
-  <data name="tsbPromotion.Text" xml:space="preserve">
-    <value>    推广    </value>
-  </data>
   <data name="tsbClose.Size" type="System.Drawing.Size, System.Drawing">
     <value>76, 53</value>
   </data>

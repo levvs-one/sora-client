@@ -25,6 +25,9 @@ func (p *Plan) Secrets() []string {
 // characters are skipped: masking them would destroy ordinary log text.
 func (o Outbound) Secrets() []string {
 	candidates := []string{o.UUID, o.Password, o.UserID, o.ObfsParam, o.PrivateKey, o.OriginalLink}
+	if o.Encryption != "none" {
+		candidates = append(candidates, o.Encryption)
+	}
 	for _, p := range o.Peers {
 		candidates = append(candidates, p.PreSharedKey)
 	}

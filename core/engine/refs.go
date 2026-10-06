@@ -45,9 +45,25 @@ func (p *Plan) RequiredFeatures() map[Feature]bool {
 		if g.Provider != "" {
 			out[FeatureProxyProviders] = true
 		}
-		if g.Type == GroupURLTest || g.Type == GroupFallback || g.Type == GroupLoadBalance {
+		switch g.Type {
+		case GroupURLTest:
 			out[FeatureURLTest] = true
+		case GroupFallback:
+			out[FeatureFallbackGroup] = true
+		case GroupLoadBalance:
+			out[FeatureLoadBalance] = true
 		}
+	}
+	for _, o := range p.Outbounds {
+		if o.Transport.Type == "xhttp" {
+			out[FeatureXHTTP] = true
+		}
+		if o.Encryption != "" && o.Encryption != "none" {
+			out[FeatureVLESSEncrypt] = true
+		}
+	}
+	if p.Options.Fragment.Enabled {
+		out[FeatureTLSFragment] = true
 	}
 	if len(p.Tun.IncludeApps) > 0 || len(p.Tun.ExcludeApps) > 0 {
 		out[FeaturePerAppRouting] = true

@@ -18,8 +18,7 @@ import (
 // Kind identifies a forwarding engine implementation.
 type Kind string
 
-// Engine kinds Sora knows about. Only mihomo is implemented today; the others
-// are placeholders of the control plane contract.
+// Engine kinds Sora drives.
 const (
 	KindMihomo  Kind = "mihomo"
 	KindSingBox Kind = "sing-box"
@@ -41,6 +40,11 @@ const (
 	FeatureHotApply       Feature = "hot-apply"
 	FeatureGeoData        Feature = "geodata"
 	FeaturePerAppRouting  Feature = "per-app-routing"
+	FeatureFallbackGroup  Feature = "fallback-group"
+	FeatureLoadBalance    Feature = "load-balance"
+	FeatureTLSFragment    Feature = "tls-fragment"
+	FeatureXHTTP          Feature = "xhttp"
+	FeatureVLESSEncrypt   Feature = "vless-encryption"
 )
 
 // Capabilities is what one engine build can actually do.

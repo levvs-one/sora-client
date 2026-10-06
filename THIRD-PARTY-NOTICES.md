@@ -17,3 +17,16 @@
 | Markdig | 1.3.2 | BSD-2-Clause | https://github.com/xoofx/markdig/releases/tag/1.3.2 | NuGet-зависимость для безопасного разбора Markdown |
 
 Тексты лицензий Xray, sing-box, tun2proxy, Wintun, Phosphor Icons и распространяемых NuGet-зависимостей устанавливаются в каталог `licenses`. Уведомление об источнике флагов распространяется вместе с ресурсами в `Assets/Flags/NOTICE.txt`. Точное соответствие NuGet-пакетов лицензиям находится в `licenses/nuget/ATTRIBUTIONS.md`.
+
+## Новый клиент: компоненты пакетов Linux
+
+| Компонент | Версия | Лицензия | Источник | SHA-256 |
+|---|---|---|---|---|
+| sing-box | 1.14.2 | GPL-3.0-or-later | https://github.com/SagerNet/sing-box/releases/tag/v1.14.2 | см. `packaging/engines/engines.lock` |
+| Xray-core | 26.3.27 | MPL-2.0 | https://github.com/XTLS/Xray-core/releases/tag/v26.3.27 | см. `packaging/engines/engines.lock` |
+| mihomo | 1.19.32 | GPL-3.0 | https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.32 | см. `packaging/engines/engines.lock` |
+| zapret (tpws, nfqws) | 72.13 | MIT, © 2016-2024 bol-van | https://github.com/bol-van/zapret/releases/tag/v72.13 | архив исходников `04696a1b6fe766e35cd6426555520c79d5052a759cdf4d7724a1f46eba4670f6` |
+
+Исходники zapret лежат в `third_party/zapret` без изменений, вместе с лицензией
+автора (`third_party/zapret/docs/LICENSE.txt`); пакет ставит её в
+`/usr/share/licenses/sora-core/zapret-LICENSE.txt`.

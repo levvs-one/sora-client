@@ -12,6 +12,9 @@
 - Добавлен движок Xray-core: XHTTP, VLESS Encryption, балансировщики,
   измерение задержки настоящим запросом через отдельный процесс.
 - Добавлена фрагментация TLS ClientHello против DPI для sing-box и Xray.
+- Контракт `sora.core.v1` поднят до 1.3: `SessionPlan.anti_censorship` включает
+  фрагментацию, `SessionPlan.engine` закрепляет движок сессии. Возможности
+  `engine-selection` и `tls-fragment` объявляются в handshake.
 - Исправлено: ключ REALITY, путь и host транспорта, режим XHTTP и ALPN
   сохранялись при импорте, но не доходили до движка; серверы REALITY, ws и grpc
   не подключались.

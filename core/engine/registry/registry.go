@@ -84,7 +84,8 @@ func (r *Registry) LastSelection() engine.Selection {
 // Factory returns the engine factory of the core service. Each plan gets the
 // first engine in preference order that carries all of it; a pinned kind
 // narrows the preference to that engine alone. Every engine has its own home
-// directory under base.HomeDir, because their state files differ.
+// directory under base.HomeDir, because their state files differ. A plan
+// that pins an engine is honoured unless the service pinned one itself.
 func (r *Registry) Factory(base supervise.Config, pinned engine.Kind) (func(context.Context, *engine.Plan) (engine.Engine, error), error) {
 	preference := engine.DefaultPreference
 	if pinned != "" {
@@ -94,7 +95,14 @@ func (r *Registry) Factory(base supervise.Config, pinned engine.Kind) (func(cont
 		preference = []engine.Kind{pinned}
 	}
 	return func(_ context.Context, p *engine.Plan) (engine.Engine, error) {
-		sel, err := engine.SelectEngine(p, r.availability, preference)
+		order := preference
+		if p != nil && p.Engine != "" && pinned == "" {
+			if _, known := drivers[p.Engine]; !known {
+				return nil, fmt.Errorf("registry: unknown engine %q", p.Engine)
+			}
+			order = []engine.Kind{p.Engine}
+		}
+		sel, err := engine.SelectEngine(p, r.availability, order)
 		r.mu.Lock()
 		r.last = sel
 		r.mu.Unlock()

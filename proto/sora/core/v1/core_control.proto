@@ -58,6 +58,22 @@ message SessionPlan {
   DnsPolicy dns_policy = 4;
   BypassSettings bypass_settings = 5;
   string session_identity = 6;
+  // Since 1.3. Switches that change how connections look on the wire.
+  AntiCensorship anti_censorship = 7;
+  // Since 1.3. Pins the engine for this session: "sing-box", "xray" or
+  // "mihomo". Empty lets the core pick the first engine that carries the plan.
+  string engine = 8;
+}
+// AntiCensorship holds the per-session defences against DPI.
+message AntiCensorship {
+  // Splits the TLS ClientHello of proxy connections into several TCP segments.
+  bool tls_fragment = 1;
+  // Xray grammar: "tlshello" or a segment range such as "1-3". Empty means "tlshello".
+  string fragment_packets = 2;
+  // Segment length range in bytes, for example "100-200".
+  string fragment_length = 3;
+  // Pause range between segments in milliseconds, for example "10-20".
+  string fragment_interval = 4;
 }
 message OutboundSpec {
   string id = 1;

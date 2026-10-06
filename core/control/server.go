@@ -92,6 +92,8 @@ func Capabilities() []string {
 		"event-stream",
 		"kill-switch",
 		"stats",
+		"engine-selection",
+		"tls-fragment",
 	}
 }
 

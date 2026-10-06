@@ -151,8 +151,40 @@ message KillSwitchChanged { bool enabled = 1; bool enforced = 2; }
 
 message ParseImportRequest { ApiVersion api_version = 1; string request_id = 2; bytes payload = 3; }
 message ParseImportResponse { SessionPlan session_plan = 1; SoraError error = 2; }
-message FetchSubscriptionRequest { ApiVersion api_version = 1; string request_id = 2; string reference = 3; }
-message FetchSubscriptionResponse { repeated OutboundSpec outbounds = 1; SoraError error = 2; }
+message FetchSubscriptionRequest {
+  ApiVersion api_version = 1;
+  string request_id = 2;
+  string reference = 3;
+  // Since 1.3. Replaces the default User-Agent for this subscription: panels
+  // choose the format of their answer by it. Printable ASCII, at most 256 bytes.
+  string user_agent = 4;
+}
+message FetchSubscriptionResponse {
+  repeated OutboundSpec outbounds = 1;
+  SoraError error = 2;
+  // Since 1.3. What the provider said about the subscription.
+  SubscriptionInfo info = 3;
+}
+// SubscriptionInfo is read from the panel headers (profile-title,
+// profile-update-interval, subscription-userinfo, profile-web-page-url,
+// support-url, announce) or from "#key: value" lines at the top of the body.
+message SubscriptionInfo {
+  string title = 1;
+  // How often the provider asks to be fetched; unset when it did not say.
+  google.protobuf.Duration update_interval = 2;
+  // Whether the provider sent traffic figures at all.
+  bool has_usage = 3;
+  uint64 upload_bytes = 4;
+  uint64 download_bytes = 5;
+  // Zero means unlimited.
+  uint64 total_bytes = 6;
+  // Unset when the subscription does not expire.
+  google.protobuf.Timestamp expire = 7;
+  // https, http or tg links only.
+  string web_page_url = 8;
+  string support_url = 9;
+  string announce = 10;
+}
 message ProbeServersRequest {
   ApiVersion api_version = 1;
   string request_id = 2;

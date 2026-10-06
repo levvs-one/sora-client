@@ -3,10 +3,12 @@ package subscription_test
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/levvs-one/sora-client/core/errs"
 	"github.com/levvs-one/sora-client/core/subscription"
@@ -43,18 +45,18 @@ func TestFetchReturnsTheBody(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(body))
 	})
-	got, err := fetcher.Fetch(context.Background(), url)
+	got, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
 	}
-	if string(got) != body {
-		t.Errorf("Fetch() = %q", got)
+	if string(got.Body) != body {
+		t.Errorf("Fetch() = %q", got.Body)
 	}
 }
 
 func TestFetchRefusesAPlainHttpReference(t *testing.T) {
 	fetcher := subscription.New(subscription.Options{})
-	_, err := fetcher.Fetch(context.Background(), "http://provider.example/sub?token=abc")
+	_, err := fetcher.Fetch(context.Background(), "http://provider.example/sub?token=abc", subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionScheme {
 		t.Fatalf("a plain http reference = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -65,12 +67,12 @@ func TestFetchRefusesAPlainHttpReference(t *testing.T) {
 
 func TestFetchRefusesReferencesThatCarryTheirOwnCredentials(t *testing.T) {
 	fetcher := subscription.New(subscription.Options{})
-	_, err := fetcher.Fetch(context.Background(), "https://user:pass@provider.example/sub")
+	_, err := fetcher.Fetch(context.Background(), "https://user:pass@provider.example/sub", subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionScheme {
 		t.Errorf("a reference with credentials = %v, key = %q", err, errs.KeyOf(err))
 	}
 	for _, reference := range []string{"", "   ", "ftp://provider.example/sub", "https:///sub"} {
-		if _, err := fetcher.Fetch(context.Background(), reference); err == nil {
+		if _, err := fetcher.Fetch(context.Background(), reference, subscription.FetchOptions{}); err == nil {
 			t.Errorf("the fetcher accepted %q", reference)
 		}
 	}
@@ -87,12 +89,12 @@ func TestFetchFollowsARedirectToAnotherHttpsHost(t *testing.T) {
 		moves++
 		http.Redirect(w, r, final.URL+"/moved", http.StatusFound)
 	})
-	got, err := fetcher.Fetch(context.Background(), url)
+	got, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
 	}
-	if string(got) != body {
-		t.Errorf("Fetch() = %q after one redirect", got)
+	if string(got.Body) != body {
+		t.Errorf("Fetch() = %q after one redirect", got.Body)
 	}
 	if moves != 1 {
 		t.Errorf("the provider was asked %d times, want once before the redirect", moves)
@@ -103,7 +105,7 @@ func TestFetchStopsAtARedirectThatDowngradesToHttp(t *testing.T) {
 	fetcher, url := newServer(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "http://provider.example/sub", http.StatusFound)
 	})
-	_, err := fetcher.Fetch(context.Background(), url)
+	_, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionScheme {
 		t.Errorf("a redirect to http = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -113,7 +115,7 @@ func TestFetchStopsAfterTooManyRedirects(t *testing.T) {
 	fetcher, url := newServer(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/again", http.StatusFound)
 	})
-	_, err := fetcher.Fetch(context.Background(), url)
+	_, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionRedirect {
 		t.Errorf("an endless redirect = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -139,7 +141,7 @@ func TestFetchRefusesABodyPastTheLimit(t *testing.T) {
 		_, _ = w.Write([]byte(strings.Repeat("x", 2048)))
 	})
 	small := subscription.New(subscription.Options{MaxBodyBytes: 1024, HTTPClient: fetcherClient(t)})
-	_, err := small.Fetch(context.Background(), url)
+	_, err := small.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionTooLarge {
 		t.Errorf("an oversized body = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -149,7 +151,7 @@ func TestFetchReportsAProviderStatusWithoutQuotingTheToken(t *testing.T) {
 	fetcher, url := newServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 	})
-	_, err := fetcher.Fetch(context.Background(), url)
+	_, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionStatus {
 		t.Fatalf("a 403 = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -167,7 +169,7 @@ func TestFetchAsksAgainWhenAProviderIsBroken(t *testing.T) {
 	fetcher, url := newServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	})
-	_, err := fetcher.Fetch(context.Background(), url)
+	_, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionStatus {
 		t.Fatalf("a 503 = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -180,8 +182,45 @@ func TestFetchRefusesAnEmptyBody(t *testing.T) {
 	fetcher, url := newServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	_, err := fetcher.Fetch(context.Background(), url)
+	_, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{})
 	if errs.KeyOf(err) != errs.KeySubscriptionEmpty {
 		t.Errorf("an empty body = %v, key = %q", err, errs.KeyOf(err))
+	}
+}
+
+func TestFetchSendsTheSubscriptionUserAgentAndReadsThePanelHeaders(t *testing.T) {
+	fetcher, url := newServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("User-Agent"); got != "Happ/3.2.1" {
+			t.Errorf("user-agent = %q", got)
+		}
+		// The headers Remnawave sends, as its subscription headers interface names them.
+		w.Header().Set("profile-title", "base64:"+base64.StdEncoding.EncodeToString([]byte("Мой VPN")))
+		w.Header().Set("profile-update-interval", "12")
+		w.Header().Set("subscription-userinfo", "upload=455727941; download=6174315083; total=1073741824000; expire=1798761600")
+		w.Header().Set("support-url", "https://t.me/provider_support")
+		w.Header().Set("profile-web-page-url", "javascript:alert(1)")
+		_, _ = w.Write([]byte("vless://b831381d-6324-4d53-ad4f-8cda48b30811@edge.example.com:443#a"))
+	})
+	got, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{UserAgent: "Happ/3.2.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := got.Info
+	if info.Title != "Мой VPN" || info.UpdateInterval != 12*time.Hour || !info.HasUsage ||
+		info.Upload != 455727941 || info.Download != 6174315083 || info.Total != 1073741824000 ||
+		info.Expire.Year() != 2027 || info.SupportURL != "https://t.me/provider_support" {
+		t.Fatalf("info = %+v", info)
+	}
+	if info.WebPageURL != "" {
+		t.Errorf("a javascript: link must not reach the interface, got %q", info.WebPageURL)
+	}
+}
+
+func TestFetchRefusesAUserAgentThatInjectsAHeader(t *testing.T) {
+	fetcher, url := newServer(t, func(http.ResponseWriter, *http.Request) {
+		t.Error("the request must not be sent")
+	})
+	if _, err := fetcher.Fetch(context.Background(), url, subscription.FetchOptions{UserAgent: "Sora\r\nX-Evil: 1"}); err == nil {
+		t.Fatal("a User-Agent with a line break must be refused")
 	}
 }

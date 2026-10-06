@@ -21,6 +21,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
@@ -29,6 +31,7 @@ import (
 	"github.com/levvs-one/sora-client/core/parser"
 	"github.com/levvs-one/sora-client/core/secret"
 	"github.com/levvs-one/sora-client/core/session"
+	"github.com/levvs-one/sora-client/core/subscription"
 )
 
 // sessionSettings reads the system settings a session owns from the request.
@@ -129,7 +132,7 @@ type Diagnostics interface {
 // interface is declared here because the control plane only needs the one method,
 // and because the retrieval belongs behind it rather than inside the transport.
 type Fetcher interface {
-	Fetch(ctx context.Context, reference string) ([]byte, error)
+	Fetch(ctx context.Context, reference string, opts subscription.FetchOptions) (subscription.Result, error)
 }
 
 // Server implements the control-plane service.
@@ -943,7 +946,7 @@ func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscri
 	}
 	ctx, cancel := requestDeadline(ctx, importTimeout)
 	defer cancel()
-	payload, err := s.fetcher.Fetch(ctx, req.GetReference())
+	fetched, err := s.fetcher.Fetch(ctx, req.GetReference(), subscription.FetchOptions{UserAgent: req.GetUserAgent()})
 	if err != nil {
 		return &corev1.FetchSubscriptionResponse{Error: toWire(err, nil, id)}, nil
 	}
@@ -953,7 +956,7 @@ func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscri
 	imported, importErr := s.ParseImport(ctx, &corev1.ParseImportRequest{
 		ApiVersion: req.GetApiVersion(),
 		RequestId:  req.GetRequestId(),
-		Payload:    payload,
+		Payload:    fetched.Body,
 	})
 	if importErr != nil {
 		return nil, importErr
@@ -963,7 +966,23 @@ func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscri
 	}
 	return &corev1.FetchSubscriptionResponse{
 		Outbounds: imported.GetSessionPlan().GetOutbounds(),
+		Info:      subscriptionInfoToWire(fetched.Info),
 	}, nil
+}
+
+func subscriptionInfoToWire(info subscription.Info) *corev1.SubscriptionInfo {
+	out := &corev1.SubscriptionInfo{
+		Title: info.Title, HasUsage: info.HasUsage,
+		UploadBytes: info.Upload, DownloadBytes: info.Download, TotalBytes: info.Total,
+		WebPageUrl: info.WebPageURL, SupportUrl: info.SupportURL, Announce: info.Announce,
+	}
+	if info.UpdateInterval > 0 {
+		out.UpdateInterval = durationpb.New(info.UpdateInterval)
+	}
+	if !info.Expire.IsZero() {
+		out.Expire = timestamppb.New(info.Expire)
+	}
+	return out
 }
 
 // ProbeServers measures servers and streams the results as they arrive, so the

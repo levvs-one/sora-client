@@ -30,6 +30,7 @@ import (
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/guard"
 	"github.com/levvs-one/sora-client/core/ipc"
+	"github.com/levvs-one/sora-client/core/logs"
 	"github.com/levvs-one/sora-client/core/probe"
 	"github.com/levvs-one/sora-client/core/secret"
 	"github.com/levvs-one/sora-client/core/session"
@@ -96,6 +97,10 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	if log == nil {
 		log = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	}
+	// The log center records the service and every engine in memory only; the
+	// service log keeps writing where it wrote before.
+	center := logs.New(logs.DefaultSettings())
+	log = slog.New(logs.NewHandler(center, log.Handler()))
 	// The data directory is created here, owner-only, before anything is written
 	// into it. Creating it per component would work too, and would leave the
 	// question of who owns it to whoever happened to be first.
@@ -129,7 +134,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	if factory == nil {
 		port, _ := portOf(local)
 		app.engines = registry.Discover(ctx, opts.EnginesDir, supervise.Config{
-			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: port,
+			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: port, Logs: center,
 		})
 		if err := app.engines.Pin(opts.Engine); err != nil {
 			return nil, err
@@ -192,6 +197,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		Secrets:       store,
 		Prober:        probe.New(probe.Config{}),
 		Measurer:      measurer,
+		Logs:          center,
 		Fetcher:       subscription.New(subscription.Options{}),
 	})
 	if err != nil {

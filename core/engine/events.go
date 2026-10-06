@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -128,4 +129,29 @@ type Measurement struct {
 	Engine     Kind
 	Latency    time.Duration
 	Err        error
+}
+
+// Connection is one live connection of a session, as the connection center
+// shows it. Host is what the application asked for: a name where the engine
+// saw one, an address otherwise.
+type Connection struct {
+	ID      string
+	Network string
+	Host    string
+	Port    uint16
+	Process string
+	Rule    string
+	// Chain runs from the group the rule chose to the outbound that carried
+	// the connection.
+	Chain    []string
+	Upload   uint64
+	Download uint64
+	Start    time.Time
+}
+
+// ConnectionTracker is implemented by engines that can list and close the
+// live connections of a session. Xray cannot, so it does not implement it.
+type ConnectionTracker interface {
+	Connections(ctx context.Context) ([]Connection, error)
+	CloseConnection(ctx context.Context, id string) error
 }

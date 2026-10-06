@@ -316,6 +316,26 @@ func (s *Session) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
 	return s.eng.Groups(ctx)
 }
 
+// Connections lists the live connections, where the engine can.
+func (s *Session) Connections(ctx context.Context) ([]engine.Connection, error) {
+	tracker, ok := s.eng.(engine.ConnectionTracker)
+	if !ok {
+		return nil, errs.Newf(errs.CodeUnsupported, errs.KeyConnectionsUnavailable,
+			"session: the engine cannot list connections")
+	}
+	return tracker.Connections(ctx)
+}
+
+// CloseConnection drops one live connection, where the engine can.
+func (s *Session) CloseConnection(ctx context.Context, id string) error {
+	tracker, ok := s.eng.(engine.ConnectionTracker)
+	if !ok {
+		return errs.Newf(errs.CodeUnsupported, errs.KeyConnectionsUnavailable,
+			"session: the engine cannot close connections")
+	}
+	return tracker.CloseConnection(ctx, id)
+}
+
 // supervise watches the engine for the whole life of the session. It is the
 // only goroutine a session owns, and it is the reason a session survives a window
 // closing: engine logs, counters, an engine that died and the decision to give

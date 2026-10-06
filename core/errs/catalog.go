@@ -37,6 +37,11 @@ const (
 	KeyPlanGroupsInvalid Key = "core.plan.groups_invalid"
 	KeyPlanLocalProxy    Key = "core.plan.local_proxy_invalid"
 
+	KeyLogsUnavailable        Key = "core.logs.unavailable"
+	KeyLogFilterInvalid       Key = "core.logs.filter_invalid"
+	KeyLogExportFailed        Key = "core.logs.export_failed"
+	KeyConnectionsUnavailable Key = "core.connections.unavailable"
+
 	// Engine.
 	KeyEngineBinaryMissing Key = "core.engine.binary_missing"
 	KeyEngineStartFailed   Key = "core.engine.start_failed"
@@ -117,6 +122,11 @@ var catalog = map[Key]Entry{
 	KeyPlanBypassInvalid: {CodeInvalidArgument, false, "a bypass entry is not a domain, address or CIDR"},
 	KeyPlanGroupsInvalid: {CodeInvalidArgument, false, "a group is empty, cyclic or measures latency without a url"},
 	KeyPlanLocalProxy:    {CodeInvalidArgument, false, "the local proxy needs a login the system proxy cannot carry, or half a login"},
+
+	KeyLogsUnavailable:        {CodeUnsupported, false, "this core keeps no log record"},
+	KeyLogFilterInvalid:       {CodeInvalidArgument, false, "the log filter has an invalid expression or range"},
+	KeyLogExportFailed:        {CodeResourceExhausted, false, "the export is larger than one answer carries; narrow the filter"},
+	KeyConnectionsUnavailable: {CodeUnsupported, false, "no session is running, or its engine cannot list connections"},
 
 	// Engine.
 	KeyEngineBinaryMissing: {CodeNotFound, false, "the engine binary is not installed for this platform"},

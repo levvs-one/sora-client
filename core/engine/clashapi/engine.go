@@ -92,3 +92,22 @@ func (e *Engine) Counters(ctx context.Context) (engine.Counters, error) {
 	e.counters = counters
 	return counters, nil
 }
+
+// Connections lists the live connections of the session.
+func (e *Engine) Connections(ctx context.Context) ([]engine.Connection, error) {
+	c, err := e.api()
+	if err != nil {
+		return nil, err
+	}
+	list, err := c.ListConnections(ctx)
+	return list, e.Redactor().Err(err)
+}
+
+// CloseConnection drops one live connection.
+func (e *Engine) CloseConnection(ctx context.Context, id string) error {
+	c, err := e.api()
+	if err != nil {
+		return err
+	}
+	return e.Redactor().Err(c.CloseConnection(ctx, id))
+}

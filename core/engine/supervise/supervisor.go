@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/logs"
 )
 
 // ErrReloadUnsupported is returned by a Driver that cannot move a running
@@ -60,6 +61,12 @@ type PrivateController interface {
 	ControlAddress(rt Runtime) (string, error)
 }
 
+// LogParser is implemented by a Driver that knows the output format of its
+// engine. A line it cannot read is recorded as it is, at info level.
+type LogParser interface {
+	ParseLog(line string) (at time.Time, level logs.Level, message string)
+}
+
 // Preparer is implemented by a Driver that puts files into the engine home
 // before the engine sees a configuration, such as the databases it would
 // otherwise download.
@@ -81,6 +88,8 @@ type Config struct {
 	Redactor      *engine.Redactor
 	RestartBudget int
 	RestartWindow time.Duration
+	// Logs receives the engine output, masked, when set.
+	Logs *logs.Center
 }
 
 // Supervisor runs one engine binary through a Driver and implements the
@@ -310,7 +319,7 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	s.setState(engine.StateStarting)
 	kind := s.driver.Kind()
 	proc, err := Start(s.ctx, Spec{Name: string(kind), Path: s.cfg.Binary.Path,
-		Args: s.driver.RunArgs(rt), Dir: s.cfg.HomeDir, Config: cfg})
+		Args: s.driver.RunArgs(rt), Dir: s.cfg.HomeDir, Config: cfg, Lines: s.logLine})
 	if err != nil {
 		return err
 	}
@@ -333,6 +342,19 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 		Message: string(kind) + " " + version.String() + " is running"})
 	go s.watch(proc)
 	return nil
+}
+
+// logLine records one engine output line in the log center, masked of every
+// secret of the applied plans.
+func (s *Supervisor) logLine(line string) {
+	if s.cfg.Logs == nil {
+		return
+	}
+	at, level, message := time.Time{}, logs.LevelInfo, line
+	if p, ok := s.driver.(LogParser); ok {
+		at, level, message = p.ParseLog(line)
+	}
+	s.cfg.Logs.Write(at, level, string(s.driver.Kind()), s.redactor.String(message))
 }
 
 // reserve picks the ports and the secret of one start.

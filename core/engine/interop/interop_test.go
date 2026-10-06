@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/registry"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 	"github.com/levvs-one/sora-client/core/engine/xray"
+	"github.com/levvs-one/sora-client/core/logs"
 )
 
 const (
@@ -146,8 +148,10 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 			}
 			t.Run(string(kind)+"/"+svc.name, func(t *testing.T) {
 				local := port(t)
-				reg := registry.Discover(context.Background(), dir, supervise.Config{HomeDir: t.TempDir(), LocalPort: local, StartTimeout: 10 * time.Second})
+				center := logs.New(logs.Settings{CaptureLevel: logs.LevelDebug, RecordDestinations: true})
+				reg := registry.Discover(context.Background(), dir, supervise.Config{HomeDir: t.TempDir(), LocalPort: local, StartTimeout: 10 * time.Second, Logs: center})
 				plan.Engines = []engine.Kind{kind}
+				plan.Options.LogLevel = "debug"
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				eng, err := reg.Factory()(ctx, plan)
@@ -170,6 +174,16 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 				}
 				if body != reply {
 					t.Fatalf("got %q", body)
+				}
+				// The engine log reached the center, and no credential did.
+				page := center.Query(logs.Filter{Sources: []string{string(kind)}}, 0, 0)
+				if len(page.Entries) == 0 {
+					t.Fatalf("%s wrote nothing to the log center", kind)
+				}
+				for _, e := range center.Matching(logs.Filter{}) {
+					if strings.Contains(e.Message, uuid) || strings.Contains(e.Message, password) {
+						t.Fatalf("a credential reached the log center: %q", e.Message)
+					}
 				}
 			})
 		}

@@ -93,7 +93,7 @@ func (pr Prober) Discover(ctx context.Context, enginesDir string) (Binary, error
 	}
 	lastErr := errors.New("no candidate")
 	for _, candidate := range candidates {
-		info, err := os.Stat(candidate)
+		info, err := os.Stat(candidate) //nolint:gosec // candidates are the Sora engines dir, PATH and an operator-set env var
 		if err != nil || info.IsDir() {
 			lastErr = fmt.Errorf("%s is not a file", candidate)
 			continue

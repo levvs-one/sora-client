@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/parser"
 )
 
@@ -79,5 +80,21 @@ func TestWireGuardSurvivesTheVault(t *testing.T) {
 				t.Errorf("peers = %+v", o.Peers)
 			}
 		})
+	}
+}
+
+func TestPlanCarriesDefencesAndEnginePin(t *testing.T) {
+	in := &corev1.SessionPlan{
+		Outbounds:      []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+		AntiCensorship: &corev1.AntiCensorship{TlsFragment: true, FragmentLength: "50-100"},
+		Engine:         "xray",
+		TunnelMode:     corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.Options.Fragment.Enabled || p.Options.Fragment.Length != "50-100" || p.Engine != engine.KindXray {
+		t.Fatalf("defences or engine pin lost: %+v %q", p.Options.Fragment, p.Engine)
 	}
 }

@@ -246,6 +246,9 @@ type Options struct {
 // Plan is a complete, engine-independent description of one session.
 type Plan struct {
 	SessionID string
+	// Engine pins the engine of this session. Empty lets the core pick the
+	// first engine in preference order that carries the plan.
+	Engine    Kind
 	Outbounds []Outbound
 	Groups    []Group
 	Rules     []Rule

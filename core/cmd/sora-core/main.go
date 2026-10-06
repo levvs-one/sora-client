@@ -39,7 +39,7 @@ import (
 // Version is the contract this build serves. It is the same number the interface
 // checks, and a build that changes the contract changes it here and in the
 // generated code together.
-var Version = control.Version{Major: 1, Minor: 2, MinSupportedMinor: 1}
+var Version = control.Version{Major: 1, Minor: 3, MinSupportedMinor: 1}
 
 // Options is everything a running core needs to know about itself.
 type Options struct {

@@ -132,9 +132,16 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 			"control: the plan carries %d rules, the limit is %d", len(in.GetRoutes()), engine.MaxRules)
 	}
 
+	defences := in.GetAntiCensorship()
 	plan := &engine.Plan{
 		SessionID: sessionID,
-		Options:   engine.Options{Mode: "rule"},
+		Engine:    engine.Kind(in.GetEngine()),
+		Options: engine.Options{Mode: "rule", Fragment: engine.Fragment{
+			Enabled:  defences.GetTlsFragment(),
+			Packets:  defences.GetFragmentPackets(),
+			Length:   defences.GetFragmentLength(),
+			Interval: defences.GetFragmentInterval(),
+		}},
 		Tun: engine.Tun{
 			Enabled: in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
 		},

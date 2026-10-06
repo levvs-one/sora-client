@@ -24,7 +24,8 @@ import (
 	"github.com/levvs-one/sora-client/core/control"
 	"github.com/levvs-one/sora-client/core/diagnostics"
 	"github.com/levvs-one/sora-client/core/engine"
-	"github.com/levvs-one/sora-client/core/engine/mihomo"
+	"github.com/levvs-one/sora-client/core/engine/registry"
+	"github.com/levvs-one/sora-client/core/engine/supervise"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/guard"
@@ -44,10 +45,11 @@ var Version = control.Version{Major: 1, Minor: 2, MinSupportedMinor: 1}
 type Options struct {
 	// DataDir holds the token, the secret store and the engine home directory.
 	DataDir string
-	// EnginesDir is where the engine binary is looked for first.
+	// EnginesDir is where the engine binaries are looked for first.
 	EnginesDir string
-	// EnginePath names the engine binary. Empty means discover it.
-	EnginePath string
+	// Engine pins one engine kind. Empty lets the core pick, per plan, the
+	// first engine in preference order that can carry the plan.
+	Engine engine.Kind
 	// LocalPort is the loopback port the tunnel is served on and the system proxy
 	// is pointed at. Zero picks a free one.
 	LocalPort int
@@ -81,7 +83,7 @@ type App struct {
 	report   *diagnostics.Collector
 	address  string
 	local    string
-	engine   mihomo.Binary
+	engines  *registry.Registry
 }
 
 // New builds a core from its options.
@@ -125,8 +127,16 @@ func New(ctx context.Context, opts Options) (*App, error) {
 
 	factory := opts.Factory
 	if factory == nil {
-		factory, app.engine = mihomoFactory(ctx, opts, local)
-		if app.engine.Path == "" {
+		app.engines = registry.Discover(ctx, opts.EnginesDir)
+		port, _ := portOf(local)
+		factory, err = app.engines.Factory(supervise.Config{
+			HomeDir:   filepath.Join(opts.DataDir, "engine"),
+			LocalPort: port,
+		}, opts.Engine)
+		if err != nil {
+			return nil, err
+		}
+		if !app.engines.Usable() {
 			// A core without an engine is still a core: it answers status,
 			// diagnostics and the import, and it says plainly that it cannot
 			// connect. Refusing to start would leave an operator with nothing to
@@ -227,39 +237,6 @@ func protectorFor(opts Options, log *slog.Logger) secret.Protector {
 	return secret.FileProtector{}
 }
 
-// mihomoFactory builds the engine factory of a real installation and reports the
-// binary it found. A missing engine is not a broken installation, so the factory
-// says so on the first connect instead of the core refusing to start: a service
-// that will not start cannot tell anyone why it will not start.
-func mihomoFactory(ctx context.Context, opts Options, local string) (session.Factory, mihomo.Binary) {
-	var (
-		binary mihomo.Binary
-		err    error
-	)
-	if opts.EnginePath != "" {
-		binary, err = mihomo.Probe(ctx, opts.EnginePath, 10*time.Second)
-	} else {
-		binary, err = mihomo.Discover(opts.EnginesDir)
-	}
-	if err != nil {
-		return nil, mihomo.Binary{}
-	}
-	home := filepath.Join(opts.DataDir, "engine")
-	if mkErr := os.MkdirAll(home, 0o700); mkErr != nil {
-		return nil, mihomo.Binary{}
-	}
-	port, _ := portOf(local)
-	factory := func(context.Context, *engine.Plan) (engine.Engine, error) {
-		return mihomo.New(mihomo.Config{
-			Binary:    binary,
-			HomeDir:   home,
-			LocalPort: port,
-			Redactor:  engine.NewRedactor(),
-		})
-	}
-	return factory, binary
-}
-
 // source feeds the diagnostics collector from the running core.
 type source struct{ app *App }
 
@@ -284,15 +261,22 @@ func (s *source) EngineLines() []string {
 		"platform: " + platformName(),
 		"tunnel: " + s.app.local,
 		"endpoint: " + s.app.address,
-		"engine: mihomo",
 	}
-	if s.app.engine.Path != "" {
-		lines = append(lines,
-			"engine build: "+s.app.engine.Version.Raw,
-			"engine platform: "+s.app.engine.Goos+"/"+s.app.engine.Goarch,
-		)
-	} else {
-		lines = append(lines, "engine build: not installed")
+	if s.app.engines == nil {
+		return append(lines, "engine: provided by the caller")
+	}
+	for _, a := range s.app.engines.Availability() {
+		if a.Usable {
+			lines = append(lines, "engine "+string(a.Kind)+": "+a.Version.Raw)
+		} else {
+			lines = append(lines, "engine "+string(a.Kind)+": not installed")
+		}
+	}
+	if sel := s.app.engines.LastSelection(); sel.Kind != "" {
+		lines = append(lines, "engine selected: "+string(sel.Kind))
+	}
+	for _, why := range s.app.engines.LastSelection().Rejected {
+		lines = append(lines, "engine passed over: "+why)
 	}
 	return lines
 }

@@ -43,10 +43,10 @@ jobs:
       - uses: actions/checkout@v6
       - uses: google/osv-scanner-action/osv-scanner-action@v2.3.1
         with:
+          # osv-scanner 2 reads Go dependencies from go.mod; go.sum alone has no
+          # extractor, and --skip-gitignore no longer exists.
           scan-args: |-
-            --lockfile=core/go.sum
-            --recursive
-            --skip-gitignore=false
+            --lockfile=go.mod:core/go.mod
 
   codeql:
     name: Static analysis

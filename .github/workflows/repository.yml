@@ -48,7 +48,7 @@ jobs:
             # buf clones the local repository, and a pull request checkout has
             # no local main branch, only the remote one.
             git show-ref --verify --quiet refs/heads/main || git branch main origin/main
-            buf breaking --against '.git#branch=main,subdir=proto'
+            buf breaking proto --against '.git#branch=main,subdir=proto'
           else
             echo 'No proto directory exists on main; skipping breaking check.'
           fi

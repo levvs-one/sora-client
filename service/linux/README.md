@@ -7,15 +7,20 @@
 | --- | --- | --- |
 | `sora-core.service` | `/usr/lib/systemd/system/` | служба ядра под пользователем `sora` с песочницей systemd |
 | `sora.sysusers` | `/usr/lib/sysusers.d/sora.conf` | пользователь и группа `sora` |
+| `sora.policy` | `/usr/share/polkit-1/actions/io.github.levvs-one.sora.policy` | доступ для активной локальной сессии |
 
 ## Как устроено
 
 - Ядро работает от отдельного пользователя `sora`. Kill switch на nftables
   пропускает трафик движков по их uid, поэтому ядро и движки не должны делить
   учётную запись с человеком.
-- Интерфейс подключается к `/run/sora/core.sock`. Сокет пускает пользователя
-  `sora` и участников группы `sora`; остальные учётные записи получают отказ ещё до
-  токена. Добавить себя в группу: `sudo usermod -aG sora $USER`, затем перелогиниться.
+- Интерфейс подключается к `/run/sora/core.sock`. Сокет пускает человека в
+  активной локальной сессии — его подтверждает polkit, без пароля и без групп, как
+  настройки сети рабочего стола. Удалённые и неактивные сессии получают отказ ещё до
+  токена. Политика назначает пользователя `sora` владельцем действия: только так
+  служба, которая работает не от root, может спросить polkit о чужом процессе.
+- Для систем без polkit, например серверов без графики, остаётся группа `sora`:
+  `sudo usermod -aG sora <user>`.
 - Данные ядра — токен, шифрованное хранилище секретов, состояние движков — лежат в
   `/var/lib/sora` с правами 0700. Ключ хранилища защищён правами файла.
 - Движки и базы geoip/geosite лежат в `/usr/lib/sora/engines`.
@@ -26,10 +31,13 @@
 
 ## Установка вручную
 
+Обычно служба ставится пакетом, см. [packaging/linux](../../packaging/linux/README.md).
+
 ```sh
 sudo install -Dm755 sora-core /usr/bin/sora-core
 sudo install -Dm644 service/linux/sora-core.service /usr/lib/systemd/system/sora-core.service
 sudo install -Dm644 service/linux/sora.sysusers /usr/lib/sysusers.d/sora.conf
+sudo install -Dm644 service/linux/sora.policy /usr/share/polkit-1/actions/io.github.levvs-one.sora.policy
 sudo systemd-sysusers
 sudo systemctl daemon-reload
 sudo systemctl enable --now sora-core

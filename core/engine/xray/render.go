@@ -90,15 +90,24 @@ func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error)
 	if p.Options.AllowLAN {
 		listen = "0.0.0.0"
 	}
-	cfg := obj{
-		"log": obj{"loglevel": logLevel(p.Options.LogLevel)},
-		// The socks inbound of Xray also answers plain HTTP proxy requests,
-		// which makes it the mixed listener the system proxy points at.
-		"inbounds": []obj{{
-			"tag": tagInbound, "protocol": "socks", "listen": listen, "port": rt.LocalPort,
-			"settings": obj{"udp": true},
+	// The socks inbound of Xray also answers plain HTTP proxy requests, which
+	// makes it the mixed listener. It exists only when the plan asks for it: a
+	// loopback port is open to every application on the machine.
+	inbounds := []obj{}
+	if lp := p.LocalProxy; lp.Enabled {
+		settings := obj{"udp": true}
+		if lp.Username != "" {
+			settings["auth"] = "password"
+			settings["accounts"] = []obj{{"user": lp.Username, "pass": lp.Password}}
+		}
+		inbounds = append(inbounds, obj{
+			"tag": tagInbound, "protocol": "socks", "listen": listen, "port": rt.LocalPort, "settings": settings,
 			"sniffing": obj{"enabled": true, "destOverride": []string{"http", "tls", "quic"}, "routeOnly": true},
-		}},
+		})
+	}
+	cfg := obj{
+		"log":       obj{"loglevel": logLevel(p.Options.LogLevel)},
+		"inbounds":  inbounds,
 		"outbounds": outbounds,
 		"routing":   routing,
 		"dns":       dns,

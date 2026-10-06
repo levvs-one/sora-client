@@ -68,6 +68,9 @@ func (p *Plan) RequiredFeatures() map[Feature]bool {
 	if p.Options.Fragment.Enabled {
 		out[FeatureTLSFragment] = true
 	}
+	if p.PrivateControl {
+		out[FeaturePrivateControl] = true
+	}
 	if len(p.Tun.IncludeApps) > 0 || len(p.Tun.ExcludeApps) > 0 {
 		out[FeaturePerAppRouting] = true
 	}

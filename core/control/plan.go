@@ -161,6 +161,23 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		Tun: engine.Tun{
 			Enabled: in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
 		},
+		PrivateControl: !in.GetNetworkControlAllowed(),
+	}
+	// The system proxy mode needs the listener the system proxy points at, and a
+	// system proxy cannot carry a login.
+	local := in.GetLocalProxy()
+	plan.LocalProxy = engine.LocalProxy{
+		Enabled:  local.GetEnabled() || !plan.Tun.Enabled,
+		Username: local.GetUsername(),
+		Password: local.GetPassword(),
+	}
+	if !plan.Tun.Enabled && local.GetUsername() != "" {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanLocalProxy,
+			"control: the system proxy cannot carry a login for the local proxy")
+	}
+	if (local.GetUsername() == "") != (local.GetPassword() == "") {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanLocalProxy,
+			"control: the local proxy login needs both a username and a password")
 	}
 	seen := make(map[string]struct{}, len(in.GetOutbounds()))
 	for index, spec := range in.GetOutbounds() {

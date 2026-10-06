@@ -14,9 +14,12 @@ func (p *Plan) Secrets() []string {
 	if p == nil {
 		return nil
 	}
-	out := make([]string, 0, len(p.Outbounds)*4)
+	out := make([]string, 0, len(p.Outbounds)*4+1)
 	for _, o := range p.Outbounds {
 		out = append(out, o.Secrets()...)
+	}
+	if len(p.LocalProxy.Password) >= 4 {
+		out = append(out, p.LocalProxy.Password)
 	}
 	return out
 }
@@ -164,6 +167,12 @@ func (p *Plan) Validate() error {
 		if _, clash := ids[g.Name]; clash {
 			errs = append(errs, fmt.Errorf("plan: group %q has the id of an outbound", g.Name))
 		}
+	}
+	if (p.LocalProxy.Username == "") != (p.LocalProxy.Password == "") {
+		errs = append(errs, errors.New("plan: the local proxy login needs both a username and a password"))
+	}
+	if strings.ContainsAny(p.LocalProxy.Username, ":@ \r\n") {
+		errs = append(errs, errors.New("plan: the local proxy username contains a separator"))
 	}
 	names := make(map[string]struct{}, len(p.Groups))
 	for _, g := range p.Groups {

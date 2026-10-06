@@ -82,7 +82,16 @@ func Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	if p.Options.AllowLAN {
 		listen = "0.0.0.0"
 	}
-	inbounds := []obj{{"type": "mixed", "tag": "mixed-in", "listen": listen, "listen_port": rt.LocalPort}}
+	// The listener exists only when the plan asks for it: a loopback port is
+	// open to every application on the machine.
+	inbounds := []obj{}
+	if lp := p.LocalProxy; lp.Enabled {
+		mixed := obj{"type": "mixed", "tag": "mixed-in", "listen": listen, "listen_port": rt.LocalPort}
+		if lp.Username != "" {
+			mixed["users"] = []obj{{"username": lp.Username, "password": lp.Password}}
+		}
+		inbounds = append(inbounds, mixed)
+	}
 	if p.Tun.Enabled {
 		inbounds = append(inbounds, tun(p.Tun))
 	}

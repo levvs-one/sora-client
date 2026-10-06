@@ -90,7 +90,7 @@ func (c *Client) call(ctx context.Context, method, path string, body any, out an
 		}
 		reader = bytes.NewReader(raw)
 	}
-	endpoint := "http://" + c.addr + path
+	endpoint := "http://" + c.host + path
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, reader)
 	if err != nil {
 		return fmt.Errorf("clashapi: build request: %w", err)

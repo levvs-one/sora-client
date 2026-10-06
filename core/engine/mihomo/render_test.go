@@ -13,7 +13,8 @@ import (
 
 func testPlan() *engine.Plan {
 	return &engine.Plan{
-		SessionID: "session-1",
+		SessionID:  "session-1",
+		LocalProxy: engine.LocalProxy{Enabled: true},
 		Outbounds: []engine.Outbound{
 			{
 				ID: "srv-1", Name: "Tokyo 01", Protocol: engine.ProtocolVLESS,

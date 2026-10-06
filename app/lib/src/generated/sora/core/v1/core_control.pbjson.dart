@@ -329,6 +329,7 @@ const OutboundSpec$json = {
   '2': [
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'display_name', '3': 2, '4': 1, '5': 9, '10': 'displayName'},
+    {'1': 'bypass', '3': 8, '4': 1, '5': 11, '6': '.sora.core.v1.BypassStrategy', '10': 'bypass'},
     {'1': 'protocol', '3': 3, '4': 1, '5': 9, '10': 'protocol'},
     {'1': 'transport', '3': 4, '4': 1, '5': 9, '10': 'transport'},
     {'1': 'security', '3': 5, '4': 1, '5': 9, '10': 'security'},
@@ -340,10 +341,11 @@ const OutboundSpec$json = {
 /// Descriptor for `OutboundSpec`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List outboundSpecDescriptor = $convert.base64Decode(
     'CgxPdXRib3VuZFNwZWMSDgoCaWQYASABKAlSAmlkEiEKDGRpc3BsYXlfbmFtZRgCIAEoCVILZG'
-    'lzcGxheU5hbWUSGgoIcHJvdG9jb2wYAyABKAlSCHByb3RvY29sEhwKCXRyYW5zcG9ydBgEIAEo'
-    'CVIJdHJhbnNwb3J0EhoKCHNlY3VyaXR5GAUgASgJUghzZWN1cml0eRIyCghlbmRwb2ludBgGIA'
-    'EoCzIWLnNvcmEuY29yZS52MS5FbmRwb2ludFIIZW5kcG9pbnQSPgoLY3JlZGVudGlhbHMYByAB'
-    'KAsyHC5zb3JhLmNvcmUudjEuQ3JlZGVudGlhbHNSZWZSC2NyZWRlbnRpYWxz');
+    'lzcGxheU5hbWUSNAoGYnlwYXNzGAggASgLMhwuc29yYS5jb3JlLnYxLkJ5cGFzc1N0cmF0ZWd5'
+    'UgZieXBhc3MSGgoIcHJvdG9jb2wYAyABKAlSCHByb3RvY29sEhwKCXRyYW5zcG9ydBgEIAEoCV'
+    'IJdHJhbnNwb3J0EhoKCHNlY3VyaXR5GAUgASgJUghzZWN1cml0eRIyCghlbmRwb2ludBgGIAEo'
+    'CzIWLnNvcmEuY29yZS52MS5FbmRwb2ludFIIZW5kcG9pbnQSPgoLY3JlZGVudGlhbHMYByABKA'
+    'syHC5zb3JhLmNvcmUudjEuQ3JlZGVudGlhbHNSZWZSC2NyZWRlbnRpYWxz');
 
 @$core.Deprecated('Use endpointDescriptor instead')
 const Endpoint$json = {
@@ -1295,4 +1297,25 @@ const CloseConnectionResponse$json = {
 final $typed_data.Uint8List closeConnectionResponseDescriptor = $convert.base64Decode(
     'ChdDbG9zZUNvbm5lY3Rpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS52MS'
     '5Tb3JhRXJyb3JSBWVycm9y');
+
+@$core.Deprecated('Use bypassStrategyDescriptor instead')
+const BypassStrategy$json = {
+  '1': 'BypassStrategy',
+  '2': [
+    {'1': 'split_pos', '3': 1, '4': 3, '5': 9, '10': 'splitPos'},
+    {'1': 'disorder', '3': 2, '4': 1, '5': 8, '10': 'disorder'},
+    {'1': 'oob', '3': 3, '4': 1, '5': 8, '10': 'oob'},
+    {'1': 'tls_record', '3': 4, '4': 1, '5': 9, '10': 'tlsRecord'},
+    {'1': 'host_case', '3': 5, '4': 1, '5': 8, '10': 'hostCase'},
+    {'1': 'domain_case', '3': 6, '4': 1, '5': 8, '10': 'domainCase'},
+    {'1': 'method_eol', '3': 7, '4': 1, '5': 8, '10': 'methodEol'},
+  ],
+};
+
+/// Descriptor for `BypassStrategy`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List bypassStrategyDescriptor = $convert.base64Decode(
+    'Cg5CeXBhc3NTdHJhdGVneRIbCglzcGxpdF9wb3MYASADKAlSCHNwbGl0UG9zEhoKCGRpc29yZG'
+    'VyGAIgASgIUghkaXNvcmRlchIQCgNvb2IYAyABKAhSA29vYhIdCgp0bHNfcmVjb3JkGAQgASgJ'
+    'Ugl0bHNSZWNvcmQSGwoJaG9zdF9jYXNlGAUgASgIUghob3N0Q2FzZRIfCgtkb21haW5fY2FzZR'
+    'gGIAEoCFIKZG9tYWluQ2FzZRIdCgptZXRob2RfZW9sGAcgASgIUgltZXRob2RFb2w=');
 

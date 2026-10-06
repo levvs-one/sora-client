@@ -53,6 +53,23 @@ class ConnectionStateValue extends $pb.ProtobufEnum {
   const ConnectionStateValue._($core.int v, $core.String n) : super(v, n);
 }
 
+class ProbeMethod extends $pb.ProtobufEnum {
+  static const ProbeMethod PROBE_METHOD_UNSPECIFIED = ProbeMethod._(0, _omitEnumNames ? '' : 'PROBE_METHOD_UNSPECIFIED');
+  static const ProbeMethod PROBE_METHOD_ENGINE = ProbeMethod._(1, _omitEnumNames ? '' : 'PROBE_METHOD_ENGINE');
+  static const ProbeMethod PROBE_METHOD_CONNECT = ProbeMethod._(2, _omitEnumNames ? '' : 'PROBE_METHOD_CONNECT');
+
+  static const $core.List<ProbeMethod> values = <ProbeMethod> [
+    PROBE_METHOD_UNSPECIFIED,
+    PROBE_METHOD_ENGINE,
+    PROBE_METHOD_CONNECT,
+  ];
+
+  static final $core.Map<$core.int, ProbeMethod> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static ProbeMethod? valueOf($core.int value) => _byValue[value];
+
+  const ProbeMethod._($core.int v, $core.String n) : super(v, n);
+}
+
 class SoraErrorCode extends $pb.ProtobufEnum {
   static const SoraErrorCode SORA_ERROR_CODE_UNSPECIFIED = SoraErrorCode._(0, _omitEnumNames ? '' : 'SORA_ERROR_CODE_UNSPECIFIED');
   static const SoraErrorCode SORA_ERROR_CODE_VERSION_MISMATCH = SoraErrorCode._(1, _omitEnumNames ? '' : 'SORA_ERROR_CODE_VERSION_MISMATCH');
@@ -86,6 +103,44 @@ class SoraErrorCode extends $pb.ProtobufEnum {
   static SoraErrorCode? valueOf($core.int value) => _byValue[value];
 
   const SoraErrorCode._($core.int v, $core.String n) : super(v, n);
+}
+
+class LogLevel extends $pb.ProtobufEnum {
+  static const LogLevel LOG_LEVEL_UNSPECIFIED = LogLevel._(0, _omitEnumNames ? '' : 'LOG_LEVEL_UNSPECIFIED');
+  static const LogLevel LOG_LEVEL_DEBUG = LogLevel._(1, _omitEnumNames ? '' : 'LOG_LEVEL_DEBUG');
+  static const LogLevel LOG_LEVEL_INFO = LogLevel._(2, _omitEnumNames ? '' : 'LOG_LEVEL_INFO');
+  static const LogLevel LOG_LEVEL_WARNING = LogLevel._(3, _omitEnumNames ? '' : 'LOG_LEVEL_WARNING');
+  static const LogLevel LOG_LEVEL_ERROR = LogLevel._(4, _omitEnumNames ? '' : 'LOG_LEVEL_ERROR');
+
+  static const $core.List<LogLevel> values = <LogLevel> [
+    LOG_LEVEL_UNSPECIFIED,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARNING,
+    LOG_LEVEL_ERROR,
+  ];
+
+  static final $core.Map<$core.int, LogLevel> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static LogLevel? valueOf($core.int value) => _byValue[value];
+
+  const LogLevel._($core.int v, $core.String n) : super(v, n);
+}
+
+class LogExportFormat extends $pb.ProtobufEnum {
+  static const LogExportFormat LOG_EXPORT_FORMAT_UNSPECIFIED = LogExportFormat._(0, _omitEnumNames ? '' : 'LOG_EXPORT_FORMAT_UNSPECIFIED');
+  static const LogExportFormat LOG_EXPORT_FORMAT_JSON_LINES = LogExportFormat._(1, _omitEnumNames ? '' : 'LOG_EXPORT_FORMAT_JSON_LINES');
+  static const LogExportFormat LOG_EXPORT_FORMAT_CSV = LogExportFormat._(2, _omitEnumNames ? '' : 'LOG_EXPORT_FORMAT_CSV');
+
+  static const $core.List<LogExportFormat> values = <LogExportFormat> [
+    LOG_EXPORT_FORMAT_UNSPECIFIED,
+    LOG_EXPORT_FORMAT_JSON_LINES,
+    LOG_EXPORT_FORMAT_CSV,
+  ];
+
+  static final $core.Map<$core.int, LogExportFormat> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static LogExportFormat? valueOf($core.int value) => _byValue[value];
+
+  const LogExportFormat._($core.int v, $core.String n) : super(v, n);
 }
 
 

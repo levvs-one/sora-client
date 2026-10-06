@@ -25,7 +25,9 @@ func TestRealityAndTransportSurviveTheVault(t *testing.T) {
 		t.Fatal(err)
 	}
 	var o engine.Outbound
-	applyCredential(&o, parseCredential(document))
+	if err := applyCredential(&o, parseCredential(document)); err != nil {
+		t.Fatal(err)
+	}
 
 	if !o.TLS.Reality || o.TLS.RealityPublicKey != "Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw" || o.TLS.RealityShortID != "6ba85179e30d4fc2" {
 		t.Errorf("REALITY lost on the way to the engine: %+v", o.TLS)
@@ -69,7 +71,9 @@ func TestWireGuardSurvivesTheVault(t *testing.T) {
 				t.Fatal(err)
 			}
 			var o engine.Outbound
-			applyCredential(&o, parseCredential(document))
+			if err := applyCredential(&o, parseCredential(document)); err != nil {
+				t.Fatal(err)
+			}
 			if o.PrivateKey != "cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk=" {
 				t.Errorf("private key = %q", o.PrivateKey)
 			}
@@ -87,15 +91,15 @@ func TestPlanCarriesDefencesAndEnginePin(t *testing.T) {
 	in := &corev1.SessionPlan{
 		Outbounds:      []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
 		AntiCensorship: &corev1.AntiCensorship{TlsFragment: true, FragmentLength: "50-100"},
-		Engine:         "xray",
+		Engines:        []string{"xray"},
 		TunnelMode:     corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
 	}
 	p, err := planFromProto(in, "s", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !p.Options.Fragment.Enabled || p.Options.Fragment.Length != "50-100" || p.Engine != engine.KindXray {
-		t.Fatalf("defences or engine pin lost: %+v %q", p.Options.Fragment, p.Engine)
+	if !p.Options.Fragment.Enabled || p.Options.Fragment.Length != "50-100" || len(p.Engines) != 1 || p.Engines[0] != engine.KindXray {
+		t.Fatalf("defences or engine preference lost: %+v %v", p.Options.Fragment, p.Engines)
 	}
 }
 

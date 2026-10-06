@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -81,6 +82,9 @@ var Catalog = map[Kind]Capabilities{
 // Xray carries what nobody else does (XHTTP, VLESS Encryption). mihomo is the
 // most complete rule engine and carries fallback groups and providers.
 var DefaultPreference = []Kind{KindSingBox, KindXray, KindMihomo}
+
+// ErrNoEngine reports that no available engine carries an outbound or a plan.
+var ErrNoEngine = errors.New("engine: no available engine carries this")
 
 // Selection is the engine chosen for a plan.
 type Selection struct {

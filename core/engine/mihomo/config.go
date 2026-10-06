@@ -19,11 +19,11 @@ const (
 	MaxConfigBytes = 8 << 20
 )
 
-// Default geodata mirrors. mihomo downloads them into its home directory.
+// Default geodata sources for the automatic update. Sora runs mihomo in
+// geodata mode, so both are .dat files, the format Xray reads as well.
 const (
 	GeoSiteDefaultURL = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
-	GeoIPDefaultURL   = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country.mmdb"
-	GeoASNDefaultURL  = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+	GeoIPDefaultURL   = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
 )
 
 // Runtime holds the values the supervisor chooses for one run. They are

@@ -127,15 +127,14 @@ func New(ctx context.Context, opts Options) (*App, error) {
 
 	factory := opts.Factory
 	if factory == nil {
-		app.engines = registry.Discover(ctx, opts.EnginesDir)
 		port, _ := portOf(local)
-		factory, err = app.engines.Factory(supervise.Config{
-			HomeDir:   filepath.Join(opts.DataDir, "engine"),
-			LocalPort: port,
-		}, opts.Engine)
-		if err != nil {
+		app.engines = registry.Discover(ctx, opts.EnginesDir, supervise.Config{
+			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: port,
+		})
+		if err := app.engines.Pin(opts.Engine); err != nil {
 			return nil, err
 		}
+		factory = app.engines.Factory()
 		if !app.engines.Usable() {
 			// A core without an engine is still a core: it answers status,
 			// diagnostics and the import, and it says plainly that it cannot
@@ -180,12 +179,19 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		}
 		app.report = collector
 	}
+	// A nil registry must stay a nil interface, or the control plane would
+	// call into a nil pointer instead of answering that it cannot measure.
+	var measurer control.Measurer
+	if app.engines != nil {
+		measurer = app.engines
+	}
 	plane, err := control.New(control.Config{
 		Version:       Version,
 		Authenticator: auth,
 		Sessions:      manager,
 		Secrets:       store,
 		Prober:        probe.New(probe.Config{}),
+		Measurer:      measurer,
 		Fetcher:       subscription.New(subscription.Options{}),
 	})
 	if err != nil {

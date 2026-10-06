@@ -111,3 +111,21 @@ func (b *EventBus) Dropped() int64 {
 	defer b.mu.Unlock()
 	return b.dropped
 }
+
+// MeasureOptions controls a latency measurement through engines.
+type MeasureOptions struct {
+	URL         string
+	Timeout     time.Duration
+	Concurrency int
+	// Engines is the preference order; empty uses the core default.
+	Engines []Kind
+}
+
+// Measurement is the latency of one outbound measured with a real request
+// through an engine. Err is ErrNoEngine when no engine carries the outbound.
+type Measurement struct {
+	OutboundID string
+	Engine     Kind
+	Latency    time.Duration
+	Err        error
+}

@@ -6,7 +6,11 @@
 useDefault = true
 
 [allowlist]
-description = "Throwaway keys of the engine test fixtures"
+description = "Throwaway keys of the engine test fixtures and upstream documentation examples"
+# zapret is vendored unchanged; its WireGuard guide shows an example key.
+paths = [
+  '''third_party/zapret/docs/wireguard_iproute_openwrt\.txt''',
+]
 regexes = [
   '''cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk=''',
   '''MTIzNDU2Nzg5MDEyMzQ1Ng==''',

@@ -244,3 +244,23 @@ func TestEveryEngineAcceptsAPlanWithGroupsAndAPreset(t *testing.T) {
 		})
 	}
 }
+
+func TestPlanCarriesABypassOutbound(t *testing.T) {
+	in := &corev1.SessionPlan{
+		TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+		Outbounds: []*corev1.OutboundSpec{{Id: "zapret", Protocol: "bypass",
+			Bypass: &corev1.BypassStrategy{SplitPos: []string{"1", "midsld"}, Disorder: true}}},
+		Routes: []*corev1.RoutingRule{{Destination: "geosite:youtube", OutboundId: "zapret"}},
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := p.Outbounds[0].Bypass; b == nil || !b.Disorder || len(b.SplitPos) != 2 {
+		t.Fatalf("bypass = %+v", p.Outbounds[0])
+	}
+	in.Outbounds[0].Bypass = &corev1.BypassStrategy{SplitPos: []string{"1 --debug=@/tmp/x"}}
+	if _, err := planFromProto(in, "s", nil); err == nil {
+		t.Fatal("a split position carrying an option must be refused")
+	}
+}

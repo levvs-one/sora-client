@@ -149,6 +149,7 @@ type Server struct {
 	measurer    Measurer
 	subs        *subscriptionBook
 	logs        *logs.Center
+	about       func() *corev1.About
 	diagnostics Diagnostics
 	fetcher     Fetcher
 }
@@ -197,6 +198,9 @@ type Config struct {
 	Measurer Measurer
 	// Logs is the log center; nil answers that the core keeps no record.
 	Logs *logs.Center
+	// About describes the build of the core for the "About" screen; the
+	// contract version is filled in here.
+	About func() *corev1.About
 	// Diagnostics collects reports and archives; nil answers that the feature is
 	// unavailable.
 	Diagnostics Diagnostics
@@ -228,11 +232,26 @@ func New(cfg Config) (*Server, error) {
 		prober:      cfg.Prober,
 		measurer:    cfg.Measurer,
 		logs:        cfg.Logs,
+		about:       cfg.About,
 		diagnostics: cfg.Diagnostics,
 		fetcher:     cfg.Fetcher,
 	}
 	server.subs = newSubscriptionBook(server)
 	return server, nil
+}
+
+// GetAbout answers what the "About" screen shows about the core.
+func (s *Server) GetAbout(_ context.Context, req *corev1.GetAboutRequest) (*corev1.GetAboutResponse, error) {
+	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
+		return nil, transportStatus(err)
+	}
+	if s.about == nil {
+		err := errs.Newf(errs.CodeUnsupported, errs.KeyInternal, "control: this core does not describe its build")
+		return &corev1.GetAboutResponse{Error: toWire(err, nil, "")}, nil
+	}
+	about := s.about()
+	about.Contract = s.apiVersion()
+	return &corev1.GetAboutResponse{About: about}, nil
 }
 
 // Run does the work of the core that belongs to no request: it updates the

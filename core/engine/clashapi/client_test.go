@@ -136,3 +136,27 @@ func TestReloadPayloadUsesForceAndPayload(t *testing.T) {
 		t.Errorf("body = %s", rec.body)
 	}
 }
+
+// The bodies are real answers of mihomo 1.19.32 and sing-box 1.14.2.
+func TestListConnectionsReadsBothEngines(t *testing.T) {
+	for name, body := range map[string]string{
+		"mihomo":   `{"downloadTotal":206756,"uploadTotal":1785,"connections":[{"id":"d86b2537","metadata":{"network":"tcp","type":"Socks5","sourceIP":"127.0.0.1","destinationIP":"","sourcePort":"47524","destinationPort":"443","host":"speed.cloudflare.com","process":"","processPath":"/usr/bin/curl","sniffHost":""},"upload":1785,"download":206756,"start":"2026-10-06T15:16:05.577928007+03:00","chains":["Tokyo","Proxy"],"rule":"Match","rulePayload":""}]}`,
+		"sing-box": `{"downloadTotal":206739,"uploadTotal":1785,"connections":[{"chains":["Tokyo","Proxy"],"download":206739,"id":"d86b2537","metadata":{"destinationIP":"","destinationPort":"443","host":"speed.cloudflare.com","network":"tcp","processPath":"/usr/bin/curl","sourceIP":"127.0.0.1","sourcePort":"59950","type":"mixed/0"},"rule":"final","rulePayload":"","start":"2026-10-06T15:16:05.448171201+03:00","upload":1785}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, rec := newTestServer(t, func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, body) })
+			list, err := client.ListConnections(context.Background())
+			if err != nil || len(list) != 1 {
+				t.Fatalf("ListConnections = %v, %v", list, err)
+			}
+			c := list[0]
+			if c.Host != "speed.cloudflare.com" || c.Port != 443 || c.Process != "curl" || c.Download < 200000 ||
+				c.Start.Year() != 2026 || len(c.Chain) != 2 || c.Chain[0] != "Proxy" {
+				t.Fatalf("connection = %+v", c)
+			}
+			if err := client.CloseConnection(context.Background(), "d86b2537"); err != nil || rec.method != http.MethodDelete || rec.path != "/connections/d86b2537" {
+				t.Fatalf("close = %v %s %s", err, rec.method, rec.path)
+			}
+		})
+	}
+}

@@ -10,6 +10,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,14 +23,73 @@ import (
 // traffic counters. The websocket stream stays a later optimization: polling
 // this endpoint is cheap and needs no extra dependency.
 type Connections struct {
-	DownloadTotal uint64 `json:"downloadTotal"`
-	UploadTotal   uint64 `json:"uploadTotal"`
-	Memory        uint64 `json:"memory"`
-	Connections   []struct {
-		ID       string `json:"id"`
-		Download uint64 `json:"download"`
-		Upload   uint64 `json:"upload"`
-	} `json:"connections"`
+	DownloadTotal uint64       `json:"downloadTotal"`
+	UploadTotal   uint64       `json:"uploadTotal"`
+	Memory        uint64       `json:"memory"`
+	Connections   []connection `json:"connections"`
+}
+
+// connection is one entry of GET /connections, in the shape both mihomo and
+// sing-box answer with.
+type connection struct {
+	ID       string    `json:"id"`
+	Download uint64    `json:"download"`
+	Upload   uint64    `json:"upload"`
+	Start    time.Time `json:"start"`
+	Chains   []string  `json:"chains"`
+	Rule     string    `json:"rule"`
+	Payload  string    `json:"rulePayload"`
+	Metadata struct {
+		Network         string `json:"network"`
+		Host            string `json:"host"`
+		SniffHost       string `json:"sniffHost"`
+		DestinationIP   string `json:"destinationIP"`
+		DestinationPort string `json:"destinationPort"`
+		Process         string `json:"process"`
+		ProcessPath     string `json:"processPath"`
+	} `json:"metadata"`
+}
+
+// ListConnections reads the live connections.
+func (c *Client) ListConnections(ctx context.Context) ([]engine.Connection, error) {
+	var raw Connections
+	if err := c.call(ctx, http.MethodGet, "/connections", nil, &raw); err != nil {
+		return nil, err
+	}
+	out := make([]engine.Connection, 0, len(raw.Connections))
+	for _, in := range raw.Connections {
+		m := in.Metadata
+		host := firstOf(m.Host, m.SniffHost, m.DestinationIP)
+		port, _ := strconv.ParseUint(m.DestinationPort, 10, 16)
+		rule := in.Rule
+		if in.Payload != "" {
+			rule += " " + in.Payload
+		}
+		// Chains run from the outbound that carried the flow to the group the
+		// rule chose; the interface reads them the other way.
+		chain := slices.Clone(in.Chains)
+		slices.Reverse(chain)
+		out = append(out, engine.Connection{
+			ID: in.ID, Network: m.Network, Host: host, Port: uint16(port),
+			Process: firstOf(m.Process, filepath.Base(m.ProcessPath)), Rule: rule, Chain: chain,
+			Upload: in.Upload, Download: in.Download, Start: in.Start,
+		})
+	}
+	return out, nil
+}
+
+// CloseConnection drops one live connection.
+func (c *Client) CloseConnection(ctx context.Context, id string) error {
+	return c.call(ctx, http.MethodDelete, "/connections/"+url.PathEscape(id), nil, nil)
+}
+
+func firstOf(values ...string) string {
+	for _, v := range values {
+		if v != "" && v != "." {
+			return v
+		}
+	}
+	return ""
 }
 
 // ReloadConfig points a running engine at a config file inside its home

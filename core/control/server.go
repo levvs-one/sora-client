@@ -25,6 +25,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
+	"github.com/levvs-one/sora-client/core/logs"
 	"github.com/levvs-one/sora-client/core/parser"
 	"github.com/levvs-one/sora-client/core/secret"
 	"github.com/levvs-one/sora-client/core/session"
@@ -95,6 +96,8 @@ func Capabilities() []string {
 		"stats",
 		"engine-selection",
 		"tls-fragment",
+		"log-center",
+		"connection-center",
 	}
 }
 
@@ -141,6 +144,7 @@ type Server struct {
 	redactors   *redactorCache
 	prober      Prober
 	measurer    Measurer
+	logs        *logs.Center
 	diagnostics Diagnostics
 	fetcher     Fetcher
 }
@@ -183,6 +187,8 @@ type Config struct {
 	// Measurer times real requests through engines; nil leaves only the
 	// connection check.
 	Measurer Measurer
+	// Logs is the log center; nil answers that the core keeps no record.
+	Logs *logs.Center
 	// Diagnostics collects reports and archives; nil answers that the feature is
 	// unavailable.
 	Diagnostics Diagnostics
@@ -213,6 +219,7 @@ func New(cfg Config) (*Server, error) {
 		redactors:   &redactorCache{byRef: make(map[string]*engine.Redactor)},
 		prober:      cfg.Prober,
 		measurer:    cfg.Measurer,
+		logs:        cfg.Logs,
 		diagnostics: cfg.Diagnostics,
 		fetcher:     cfg.Fetcher,
 	}, nil

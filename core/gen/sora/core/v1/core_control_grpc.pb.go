@@ -31,6 +31,14 @@ const (
 	CoreControl_ExportDiagnostics_FullMethodName = "/sora.core.v1.CoreControl/ExportDiagnostics"
 	CoreControl_SetKillSwitch_FullMethodName     = "/sora.core.v1.CoreControl/SetKillSwitch"
 	CoreControl_Handshake_FullMethodName         = "/sora.core.v1.CoreControl/Handshake"
+	CoreControl_QueryLogs_FullMethodName         = "/sora.core.v1.CoreControl/QueryLogs"
+	CoreControl_WatchLogs_FullMethodName         = "/sora.core.v1.CoreControl/WatchLogs"
+	CoreControl_ExportLogs_FullMethodName        = "/sora.core.v1.CoreControl/ExportLogs"
+	CoreControl_ClearLogs_FullMethodName         = "/sora.core.v1.CoreControl/ClearLogs"
+	CoreControl_GetLogSettings_FullMethodName    = "/sora.core.v1.CoreControl/GetLogSettings"
+	CoreControl_SetLogSettings_FullMethodName    = "/sora.core.v1.CoreControl/SetLogSettings"
+	CoreControl_ListConnections_FullMethodName   = "/sora.core.v1.CoreControl/ListConnections"
+	CoreControl_CloseConnection_FullMethodName   = "/sora.core.v1.CoreControl/CloseConnection"
 	CoreControl_PutSecret_FullMethodName         = "/sora.core.v1.CoreControl/PutSecret"
 	CoreControl_DeleteSecret_FullMethodName      = "/sora.core.v1.CoreControl/DeleteSecret"
 )
@@ -53,6 +61,18 @@ type CoreControlClient interface {
 	ExportDiagnostics(ctx context.Context, in *ExportDiagnosticsRequest, opts ...grpc.CallOption) (*ExportDiagnosticsResponse, error)
 	SetKillSwitch(ctx context.Context, in *SetKillSwitchRequest, opts ...grpc.CallOption) (*SetKillSwitchResponse, error)
 	Handshake(ctx context.Context, in *HandshakeRequest, opts ...grpc.CallOption) (*HandshakeResponse, error)
+	// Since 1.3. The log center: one bounded in-memory record of the core and
+	// every engine. Every call needs the control authenticator, because the
+	// record and the connection list describe where a person goes.
+	QueryLogs(ctx context.Context, in *QueryLogsRequest, opts ...grpc.CallOption) (*QueryLogsResponse, error)
+	WatchLogs(ctx context.Context, in *WatchLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogEntry], error)
+	ExportLogs(ctx context.Context, in *ExportLogsRequest, opts ...grpc.CallOption) (*ExportLogsResponse, error)
+	ClearLogs(ctx context.Context, in *ClearLogsRequest, opts ...grpc.CallOption) (*ClearLogsResponse, error)
+	GetLogSettings(ctx context.Context, in *GetLogSettingsRequest, opts ...grpc.CallOption) (*GetLogSettingsResponse, error)
+	SetLogSettings(ctx context.Context, in *SetLogSettingsRequest, opts ...grpc.CallOption) (*SetLogSettingsResponse, error)
+	// Since 1.3. The connection center: live connections of the session.
+	ListConnections(ctx context.Context, in *ListConnectionsRequest, opts ...grpc.CallOption) (*ListConnectionsResponse, error)
+	CloseConnection(ctx context.Context, in *CloseConnectionRequest, opts ...grpc.CallOption) (*CloseConnectionResponse, error)
 	// PutSecret and DeleteSecret manage the credential material the core keeps.
 	// They exist because the rest of the contract carries only references: a plan
 	// names a secret, and these two calls are the only way a secret ever reaches
@@ -208,6 +228,95 @@ func (c *coreControlClient) Handshake(ctx context.Context, in *HandshakeRequest,
 	return out, nil
 }
 
+func (c *coreControlClient) QueryLogs(ctx context.Context, in *QueryLogsRequest, opts ...grpc.CallOption) (*QueryLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueryLogsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_QueryLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) WatchLogs(ctx context.Context, in *WatchLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogEntry], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &CoreControl_ServiceDesc.Streams[2], CoreControl_WatchLogs_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[WatchLogsRequest, LogEntry]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CoreControl_WatchLogsClient = grpc.ServerStreamingClient[LogEntry]
+
+func (c *coreControlClient) ExportLogs(ctx context.Context, in *ExportLogsRequest, opts ...grpc.CallOption) (*ExportLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExportLogsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_ExportLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) ClearLogs(ctx context.Context, in *ClearLogsRequest, opts ...grpc.CallOption) (*ClearLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClearLogsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_ClearLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) GetLogSettings(ctx context.Context, in *GetLogSettingsRequest, opts ...grpc.CallOption) (*GetLogSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLogSettingsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_GetLogSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) SetLogSettings(ctx context.Context, in *SetLogSettingsRequest, opts ...grpc.CallOption) (*SetLogSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetLogSettingsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_SetLogSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) ListConnections(ctx context.Context, in *ListConnectionsRequest, opts ...grpc.CallOption) (*ListConnectionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListConnectionsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_ListConnections_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) CloseConnection(ctx context.Context, in *CloseConnectionRequest, opts ...grpc.CallOption) (*CloseConnectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CloseConnectionResponse)
+	err := c.cc.Invoke(ctx, CoreControl_CloseConnection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *coreControlClient) PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PutSecretResponse)
@@ -246,6 +355,18 @@ type CoreControlServer interface {
 	ExportDiagnostics(context.Context, *ExportDiagnosticsRequest) (*ExportDiagnosticsResponse, error)
 	SetKillSwitch(context.Context, *SetKillSwitchRequest) (*SetKillSwitchResponse, error)
 	Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error)
+	// Since 1.3. The log center: one bounded in-memory record of the core and
+	// every engine. Every call needs the control authenticator, because the
+	// record and the connection list describe where a person goes.
+	QueryLogs(context.Context, *QueryLogsRequest) (*QueryLogsResponse, error)
+	WatchLogs(*WatchLogsRequest, grpc.ServerStreamingServer[LogEntry]) error
+	ExportLogs(context.Context, *ExportLogsRequest) (*ExportLogsResponse, error)
+	ClearLogs(context.Context, *ClearLogsRequest) (*ClearLogsResponse, error)
+	GetLogSettings(context.Context, *GetLogSettingsRequest) (*GetLogSettingsResponse, error)
+	SetLogSettings(context.Context, *SetLogSettingsRequest) (*SetLogSettingsResponse, error)
+	// Since 1.3. The connection center: live connections of the session.
+	ListConnections(context.Context, *ListConnectionsRequest) (*ListConnectionsResponse, error)
+	CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error)
 	// PutSecret and DeleteSecret manage the credential material the core keeps.
 	// They exist because the rest of the contract carries only references: a plan
 	// names a secret, and these two calls are the only way a secret ever reaches
@@ -298,6 +419,30 @@ func (UnimplementedCoreControlServer) SetKillSwitch(context.Context, *SetKillSwi
 }
 func (UnimplementedCoreControlServer) Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
+func (UnimplementedCoreControlServer) QueryLogs(context.Context, *QueryLogsRequest) (*QueryLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryLogs not implemented")
+}
+func (UnimplementedCoreControlServer) WatchLogs(*WatchLogsRequest, grpc.ServerStreamingServer[LogEntry]) error {
+	return status.Errorf(codes.Unimplemented, "method WatchLogs not implemented")
+}
+func (UnimplementedCoreControlServer) ExportLogs(context.Context, *ExportLogsRequest) (*ExportLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExportLogs not implemented")
+}
+func (UnimplementedCoreControlServer) ClearLogs(context.Context, *ClearLogsRequest) (*ClearLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClearLogs not implemented")
+}
+func (UnimplementedCoreControlServer) GetLogSettings(context.Context, *GetLogSettingsRequest) (*GetLogSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLogSettings not implemented")
+}
+func (UnimplementedCoreControlServer) SetLogSettings(context.Context, *SetLogSettingsRequest) (*SetLogSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetLogSettings not implemented")
+}
+func (UnimplementedCoreControlServer) ListConnections(context.Context, *ListConnectionsRequest) (*ListConnectionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListConnections not implemented")
+}
+func (UnimplementedCoreControlServer) CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CloseConnection not implemented")
 }
 func (UnimplementedCoreControlServer) PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PutSecret not implemented")
@@ -528,6 +673,143 @@ func _CoreControl_Handshake_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreControl_QueryLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).QueryLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_QueryLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).QueryLogs(ctx, req.(*QueryLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_WatchLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchLogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CoreControlServer).WatchLogs(m, &grpc.GenericServerStream[WatchLogsRequest, LogEntry]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CoreControl_WatchLogsServer = grpc.ServerStreamingServer[LogEntry]
+
+func _CoreControl_ExportLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).ExportLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_ExportLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).ExportLogs(ctx, req.(*ExportLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_ClearLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClearLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).ClearLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_ClearLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).ClearLogs(ctx, req.(*ClearLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_GetLogSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLogSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).GetLogSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_GetLogSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).GetLogSettings(ctx, req.(*GetLogSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_SetLogSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetLogSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).SetLogSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_SetLogSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).SetLogSettings(ctx, req.(*SetLogSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_ListConnections_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListConnectionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).ListConnections(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_ListConnections_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).ListConnections(ctx, req.(*ListConnectionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_CloseConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseConnectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).CloseConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_CloseConnection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).CloseConnection(ctx, req.(*CloseConnectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CoreControl_PutSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutSecretRequest)
 	if err := dec(in); err != nil {
@@ -612,6 +894,34 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CoreControl_Handshake_Handler,
 		},
 		{
+			MethodName: "QueryLogs",
+			Handler:    _CoreControl_QueryLogs_Handler,
+		},
+		{
+			MethodName: "ExportLogs",
+			Handler:    _CoreControl_ExportLogs_Handler,
+		},
+		{
+			MethodName: "ClearLogs",
+			Handler:    _CoreControl_ClearLogs_Handler,
+		},
+		{
+			MethodName: "GetLogSettings",
+			Handler:    _CoreControl_GetLogSettings_Handler,
+		},
+		{
+			MethodName: "SetLogSettings",
+			Handler:    _CoreControl_SetLogSettings_Handler,
+		},
+		{
+			MethodName: "ListConnections",
+			Handler:    _CoreControl_ListConnections_Handler,
+		},
+		{
+			MethodName: "CloseConnection",
+			Handler:    _CoreControl_CloseConnection_Handler,
+		},
+		{
 			MethodName: "PutSecret",
 			Handler:    _CoreControl_PutSecret_Handler,
 		},
@@ -629,6 +939,11 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ProbeServers",
 			Handler:       _CoreControl_ProbeServers_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WatchLogs",
+			Handler:       _CoreControl_WatchLogs_Handler,
 			ServerStreams: true,
 		},
 	},

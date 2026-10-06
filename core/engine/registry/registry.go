@@ -183,6 +183,9 @@ func (r *Registry) Measure(ctx context.Context, outbounds []engine.Outbound, opt
 			cfg.Binary = r.binaries[kind]
 			cfg.HomeDir = filepath.Join(r.base.HomeDir, "measure-"+string(kind))
 			cfg.LocalPort = 0
+			// A measurement reports through its results; its engine chatter
+			// would bury the session in the log center.
+			cfg.Logs = nil
 			if err := drivers[kind].measure(ctx, cfg, group, opts, out); err != nil {
 				// The engine never came up; every server of the group gets
 				// the reason instead of silently missing from the list.

@@ -152,7 +152,10 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 	plan := &engine.Plan{
 		SessionID: sessionID,
 		Engines:   kinds(in.GetEngines()),
-		Options: engine.Options{Mode: "rule", Fragment: engine.Fragment{
+		// Engines always run at debug level and the log center drops what is
+		// below its capture level, so changing the level takes effect at once on
+		// every engine, without a restart that would cut the user's connections.
+		Options: engine.Options{Mode: "rule", LogLevel: "debug", Fragment: engine.Fragment{
 			Enabled:  defences.GetTlsFragment(),
 			Packets:  defences.GetFragmentPackets(),
 			Length:   defences.GetFragmentLength(),

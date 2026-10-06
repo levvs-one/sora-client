@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -34,6 +35,8 @@ type Spec struct {
 	// engine reads its configuration from stdin, which keeps credentials out of
 	// both the process arguments and the disk.
 	Config []byte
+	// Lines receives every complete output line of the engine, when set.
+	Lines func(string)
 }
 
 // Process is one running engine child process.
@@ -64,9 +67,13 @@ func Start(ctx context.Context, spec Spec) (*Process, error) {
 	cmd.Stdin = bytes.NewReader(spec.Config)
 	tail := NewTail(80)
 	// Engines log to either stream depending on build and level; both feed the
-	// same bounded tail, which is the only explanation a user gets for a crash.
-	cmd.Stdout = tail
-	cmd.Stderr = tail
+	// same bounded tail, which explains a crash, and the log center.
+	var out io.Writer = tail
+	if spec.Lines != nil {
+		out = io.MultiWriter(tail, &lineWriter{emit: spec.Lines})
+	}
+	cmd.Stdout = out
+	cmd.Stderr = out
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("%s: start engine: %w", spec.Name, err)
 	}
@@ -187,4 +194,35 @@ func Check(ctx context.Context, spec Spec) error {
 		return fmt.Errorf("%s: configuration rejected: %w: %s", spec.Name, err, out.Last(8))
 	}
 	return nil
+}
+
+// maxLine bounds a line the engine never ends, so a runaway write cannot grow
+// the buffer without limit.
+const maxLine = 64 << 10
+
+// lineWriter turns output chunks into complete lines. exec serializes the
+// writes of one stream, and both streams share this writer, so it locks.
+type lineWriter struct {
+	mu   sync.Mutex
+	buf  []byte
+	emit func(string)
+}
+
+func (w *lineWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.buf = append(w.buf, p...)
+	for {
+		i := bytes.IndexByte(w.buf, '\n')
+		if i < 0 {
+			break
+		}
+		w.emit(string(bytes.TrimRight(w.buf[:i], "\r")))
+		w.buf = w.buf[i+1:]
+	}
+	if len(w.buf) > maxLine {
+		w.emit(string(w.buf))
+		w.buf = nil
+	}
+	return len(p), nil
 }

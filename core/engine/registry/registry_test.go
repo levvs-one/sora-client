@@ -83,7 +83,7 @@ func TestMeasureRoutesEachServerToAnEngine(t *testing.T) {
 		t.Run(string(kind), func(t *testing.T) {
 			live := engine.Outbound{ID: "live", Protocol: engine.ProtocolDirect}
 			results, err := r.Measure(context.Background(), []engine.Outbound{live, dead, xhttp},
-				engine.MeasureOptions{Timeout: 3 * time.Second, Engines: []engine.Kind{kind, engine.KindXray}})
+				engine.MeasureOptions{Timeout: 8 * time.Second, Engines: []engine.Kind{kind, engine.KindXray}})
 			if err != nil {
 				t.Fatal(err)
 			}

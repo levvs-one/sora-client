@@ -54,6 +54,12 @@ type Driver interface {
 	Reload(ctx context.Context, rt Runtime, cfg []byte) error
 }
 
+// PrivateController is implemented by a Driver whose engine can serve its
+// controller on a unix socket or a named pipe instead of a loopback port.
+type PrivateController interface {
+	ControlAddress(rt Runtime) (string, error)
+}
+
 // Preparer is implemented by a Driver that puts files into the engine home
 // before the engine sees a configuration, such as the databases it would
 // otherwise download.
@@ -347,10 +353,21 @@ func (s *Supervisor) reserve() (Runtime, error) {
 	if err != nil {
 		return Runtime{}, err
 	}
-	return Runtime{
+	rt := Runtime{
 		HomeDir: s.cfg.HomeDir, LocalPort: local, ControlAddr: "127.0.0.1:" + strconv.Itoa(control),
 		Secret: secret, ProbeURL: s.cfg.ProbeURL,
-	}, nil
+	}
+	if private, ok := s.driver.(PrivateController); ok {
+		if err := os.MkdirAll(rt.HomeDir, 0o700); err != nil {
+			return Runtime{}, err
+		}
+		addr, err := private.ControlAddress(rt)
+		if err != nil {
+			return Runtime{}, err
+		}
+		rt.ControlAddr = addr
+	}
+	return rt, nil
 }
 
 // waitReady polls the handshake until it answers, the deadline passes or the

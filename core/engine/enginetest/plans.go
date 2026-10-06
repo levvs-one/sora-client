@@ -56,8 +56,9 @@ func Outbound(p engine.Protocol) engine.Outbound {
 // open devices, run without privileges.
 func Plan(protocols ...engine.Protocol) *engine.Plan {
 	p := &engine.Plan{
-		SessionID: "enginetest",
-		Options:   engine.Options{LogLevel: "warning", Mode: "rule", TestURL: engine.TestURLProduction},
+		SessionID:  "enginetest",
+		LocalProxy: engine.LocalProxy{Enabled: true},
+		Options:    engine.Options{LogLevel: "warning", Mode: "rule", TestURL: engine.TestURLProduction},
 		DNS: engine.DNS{Enabled: true, Servers: []engine.DNSServer{
 			{Tag: "local", Transport: engine.DNSSystem, Address: "system"},
 			{Tag: "doh", Transport: engine.DNSHTTPS, Address: "1.1.1.1", ProxyOnly: true},

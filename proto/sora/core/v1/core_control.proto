@@ -64,6 +64,21 @@ message SessionPlan {
   // "xray", "mihomo". The core runs the first one that carries the whole
   // plan. Empty uses the core default; a single entry pins that engine.
   repeated string engines = 8;
+  // Since 1.3. Lets an engine controlled over a loopback port carry this
+  // session. Off by default: a port scan finds a loopback controller, so only
+  // an engine controlled through a unix socket or a named pipe is chosen.
+  bool network_control_allowed = 9;
+  // Since 1.3. The loopback HTTP and SOCKS5 listener. The system proxy mode
+  // always opens it, without a login; in tun mode it exists only when enabled.
+  LocalProxy local_proxy = 10;
+}
+// LocalProxy is a listener other applications on the machine can use. Any of
+// them can reach it, send traffic through the tunnel and learn the server
+// address, so it is closed unless asked for, and a login is recommended.
+message LocalProxy {
+  bool enabled = 1;
+  string username = 2;
+  string password = 3;
 }
 // AntiCensorship holds the per-session defences against DPI.
 message AntiCensorship {

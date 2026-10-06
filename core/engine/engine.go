@@ -46,6 +46,7 @@ const (
 	FeatureXHTTP          Feature = "xhttp"
 	FeatureVLESSEncrypt   Feature = "vless-encryption"
 	FeatureAmneziaWG      Feature = "amneziawg"
+	FeaturePrivateControl Feature = "private-control"
 )
 
 // Capabilities is what one engine build can actually do.

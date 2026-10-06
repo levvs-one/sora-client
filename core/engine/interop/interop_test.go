@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -134,10 +135,11 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 	for _, kind := range []engine.Kind{engine.KindSingBox, engine.KindXray, engine.KindMihomo} {
 		for _, svc := range append(svcs, wrong) {
 			plan := &engine.Plan{
-				SessionID: "interop",
-				Outbounds: []engine.Outbound{svc.outbound},
-				Rules:     []engine.Rule{{Type: engine.RuleMatchAll, Target: svc.name}},
-				Options:   engine.Options{LogLevel: "warning", TestURL: engine.TestURLProduction},
+				SessionID:  "interop",
+				LocalProxy: engine.LocalProxy{Enabled: true},
+				Outbounds:  []engine.Outbound{svc.outbound},
+				Rules:      []engine.Rule{{Type: engine.RuleMatchAll, Target: svc.name}},
+				Options:    engine.Options{LogLevel: "warning", TestURL: engine.TestURLProduction},
 			}
 			if missing := engine.Catalog[kind].Missing(plan); len(missing) > 0 {
 				continue
@@ -199,4 +201,79 @@ func fetch(ctx context.Context, local int, target string) (string, error) {
 		time.Sleep(300 * time.Millisecond)
 	}
 	return "", last
+}
+
+// TestLocalProxyIsClosedOrLockedOnEveryEngine proves the two properties that
+// keep other applications out of the tunnel: without a local proxy in the
+// plan nothing listens on the port, and with a login nothing passes without it.
+func TestLocalProxyIsClosedOrLockedOnEveryEngine(t *testing.T) {
+	dir := os.Getenv("SORA_ENGINES_DIR")
+	if dir == "" {
+		t.Skip("set SORA_ENGINES_DIR to a directory with sing-box, xray and mihomo")
+	}
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, reply) }))
+	defer target.Close()
+	for _, kind := range []engine.Kind{engine.KindSingBox, engine.KindXray, engine.KindMihomo} {
+		t.Run(string(kind), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			run := func(lp engine.LocalProxy) (int, func()) {
+				local := port(t)
+				reg := registry.Discover(ctx, dir, supervise.Config{HomeDir: t.TempDir(), LocalPort: local, StartTimeout: 10 * time.Second})
+				plan := &engine.Plan{
+					SessionID:  "isolation",
+					Engines:    []engine.Kind{kind},
+					LocalProxy: lp,
+					Outbounds:  []engine.Outbound{{ID: "out", Protocol: engine.ProtocolDirect}},
+					Rules:      []engine.Rule{{Type: engine.RuleMatchAll, Target: "out"}},
+					Options:    engine.Options{LogLevel: "warning", TestURL: engine.TestURLProduction},
+				}
+				eng, err := reg.Factory()(ctx, plan)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := eng.Apply(ctx, plan); err != nil {
+					t.Fatalf("Apply: %v", err)
+				}
+				return local, func() { _ = eng.Close() }
+			}
+
+			local, stop := run(engine.LocalProxy{})
+			var dialer net.Dialer
+			if conn, err := dialer.DialContext(ctx, "tcp", "127.0.0.1:"+strconv.Itoa(local)); err == nil {
+				_ = conn.Close()
+				t.Error("a plan without a local proxy must not listen on the port")
+			}
+			stop()
+
+			local, stop = run(engine.LocalProxy{Enabled: true, Username: "sora", Password: "interop-login-password"})
+			defer stop()
+			if _, err := fetch(ctx, local, target.URL); err == nil {
+				t.Error("a locked local proxy must refuse a request without the login")
+			}
+			if body, err := fetchAs(ctx, local, "sora", "interop-login-password", target.URL); err != nil || body != reply {
+				t.Errorf("the login must open the local proxy: %q, %v", body, err)
+			}
+		})
+	}
+}
+
+// fetchAs is fetch with a proxy login.
+func fetchAs(ctx context.Context, local int, user, password, target string) (string, error) {
+	proxy := &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(local), User: url.UserPassword(user, password)}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status %d", resp.StatusCode)
+	}
+	return string(body), err
 }

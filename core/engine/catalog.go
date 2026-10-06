@@ -36,7 +36,7 @@ var Catalog = map[Kind]Capabilities{
 			FeatureProxyProviders: true, FeatureURLTest: true, FeatureLatencyTest: true,
 			FeatureHotApply: true, FeatureGeoData: true, FeatureFallbackGroup: true,
 			FeatureLoadBalance: true, FeatureXHTTP: true, FeatureVLESSEncrypt: true,
-			FeatureAmneziaWG: true,
+			FeatureAmneziaWG: true, FeaturePrivateControl: true,
 		},
 	},
 	KindSingBox: {

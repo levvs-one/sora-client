@@ -26,15 +26,18 @@ func TestFactoryPicksTheEngineThatCarriesThePlan(t *testing.T) {
 
 	xhttp := enginetest.Plan(engine.ProtocolVLESS)
 	xhttp.Outbounds[0].Transport.Type = "xhttp"
+	private := enginetest.Plan(engine.ProtocolVLESS)
+	private.PrivateControl = true
 	fallback := enginetest.Plan(engine.ProtocolTrojan)
 	fallback.Groups[0].Type = engine.GroupFallback
 	for name, tc := range map[string]struct {
 		plan *engine.Plan
 		want engine.Kind
 	}{
-		"plain plan goes to the preferred engine": {enginetest.Plan(engine.ProtocolVLESS, engine.ProtocolAnyTLS), engine.KindSingBox},
-		"xhttp needs xray":                        {xhttp, engine.KindXray},
-		"fallback groups need mihomo":             {fallback, engine.KindMihomo},
+		"plain plan goes to the preferred engine":  {enginetest.Plan(engine.ProtocolVLESS, engine.ProtocolAnyTLS), engine.KindSingBox},
+		"xhttp needs xray":                         {xhttp, engine.KindXray},
+		"fallback groups need mihomo":              {fallback, engine.KindMihomo},
+		"private control needs a socket or a pipe": {private, engine.KindMihomo},
 	} {
 		t.Run(name, func(t *testing.T) {
 			e, err := factory(context.Background(), tc.plan)

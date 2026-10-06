@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/clashapi"
@@ -47,7 +48,15 @@ func (driver) Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 }
 
 func (driver) RunArgs(rt supervise.Runtime) []string {
-	return []string{"-d", rt.HomeDir, "-f", "-", "-ext-ctl", rt.ControlAddr}
+	args := []string{"-d", rt.HomeDir, "-f", "-"}
+	addr := rt.ControlAddr
+	switch {
+	case strings.HasPrefix(addr, "unix:"):
+		return append(args, "-ext-ctl-unix", strings.TrimPrefix(addr, "unix:"))
+	case strings.HasPrefix(addr, "pipe:"):
+		return append(args, "-ext-ctl-pipe", strings.TrimPrefix(addr, "pipe:"))
+	}
+	return append(args, "-ext-ctl", addr)
 }
 
 func (driver) CheckArgs(rt supervise.Runtime) []string {

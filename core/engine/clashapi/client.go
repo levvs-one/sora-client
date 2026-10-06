@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
@@ -33,24 +34,45 @@ var (
 
 // Client talks to one engine controller.
 type Client struct {
-	addr   string
+	// host is what request URLs carry. Over a socket or a pipe it is a fixed
+	// name, because the dialer, not the URL, decides where the request goes.
+	host   string
 	secret string
 	http   *http.Client
 }
 
-// NewClient builds a controller client. timeout bounds one request, not the
-// lifetime of the client.
+// Controller address schemes besides a plain host:port.
+const (
+	schemeUnix = "unix:"
+	schemePipe = "pipe:"
+)
+
+// NewClient builds a controller client. addr is host:port, "unix:" followed by
+// a socket path, or "pipe:" followed by a Windows named pipe. timeout bounds
+// one request, not the lifetime of the client.
 func NewClient(addr, secret string, timeout time.Duration) *Client {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
 	dialer := &net.Dialer{Timeout: 3 * time.Second, KeepAlive: 15 * time.Second}
+	dial := dialer.DialContext
+	host := addr
+	switch {
+	case strings.HasPrefix(addr, schemeUnix):
+		path := strings.TrimPrefix(addr, schemeUnix)
+		dial = func(ctx context.Context, _, _ string) (net.Conn, error) { return dialer.DialContext(ctx, "unix", path) }
+		host = "controller"
+	case strings.HasPrefix(addr, schemePipe):
+		pipe := strings.TrimPrefix(addr, schemePipe)
+		dial = func(ctx context.Context, _, _ string) (net.Conn, error) { return dialPipe(ctx, pipe) }
+		host = "controller"
+	}
 	return &Client{
-		addr:   addr,
+		host:   host,
 		secret: secret,
 		http: &http.Client{
 			Timeout:   timeout,
-			Transport: &http.Transport{DialContext: dialer.DialContext, MaxIdleConnsPerHost: 4},
+			Transport: &http.Transport{DialContext: dial, MaxIdleConnsPerHost: 4},
 		},
 	}
 }

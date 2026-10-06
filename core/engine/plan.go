@@ -260,12 +260,31 @@ type Options struct {
 	Fragment       Fragment
 }
 
+// LocalProxy is the loopback HTTP and SOCKS5 listener of a session. Any
+// application on the machine can reach a loopback port, send traffic through
+// it and learn the address of the server behind it, which is how apps find
+// and report VPN servers. The listener therefore exists only when the session
+// needs it (system proxy mode) or the user asked for it.
+type LocalProxy struct {
+	Enabled bool
+	// Username and Password require a login. A system proxy cannot carry one,
+	// so a login fits a listener the user hands to chosen applications.
+	Username string
+	Password string
+}
+
 // Plan is a complete, engine-independent description of one session.
 type Plan struct {
 	SessionID string
 	// Engines is the engine preference of this session, best first. Empty
 	// uses the core default; a single entry pins that engine.
-	Engines   []Kind
+	Engines []Kind
+	// PrivateControl keeps every engine control channel off the network: the
+	// session runs only on an engine controlled through a unix socket or a
+	// named pipe, so a port scan finds nothing that answers.
+	PrivateControl bool
+	LocalProxy     LocalProxy
+
 	Outbounds []Outbound
 	Groups    []Group
 	Rules     []Rule

@@ -13,8 +13,6 @@ package mihomo
 
 // Ports and limits used when Sora starts one engine process.
 const (
-	// DefaultMixedPort is used only when a render has no reserved port.
-	DefaultMixedPort = 7890
 	// MaxConfigBytes bounds the rendered config before it reaches the engine.
 	MaxConfigBytes = 8 << 20
 )
@@ -36,7 +34,8 @@ type Runtime struct {
 	// Secret authorizes the controller API. mihomo accepts an empty secret,
 	// Sora never does: a loopback port is reachable by every local user.
 	Secret string
-	// MixedPort is the local http+socks listener. A free port is chosen when 0.
+	// MixedPort is the local http+socks listener, opened only when the plan
+	// asks for a local proxy.
 	MixedPort int
 	// TestURL is the default latency probe for groups without one.
 	TestURL string
@@ -53,6 +52,9 @@ type config struct {
 	LogLevel           string                   `yaml:"log-level"`
 	IPv6               *bool                    `yaml:"ipv6,omitempty"`
 	ExternalController string                   `yaml:"external-controller,omitempty"`
+	ControllerUnix     string                   `yaml:"external-controller-unix,omitempty"`
+	ControllerPipe     string                   `yaml:"external-controller-pipe,omitempty"`
+	Authentication     []string                 `yaml:"authentication,omitempty"`
 	Secret             string                   `yaml:"secret,omitempty"`
 	UnifiedDelay       *bool                    `yaml:"unified-delay,omitempty"`
 	TCPConcurrent      *bool                    `yaml:"tcp-concurrent,omitempty"`

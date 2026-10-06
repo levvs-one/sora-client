@@ -35,6 +35,7 @@ const (
 	KeyPlanDNSInvalid    Key = "core.plan.dns_invalid"
 	KeyPlanBypassInvalid Key = "core.plan.bypass_invalid"
 	KeyPlanGroupsInvalid Key = "core.plan.groups_invalid"
+	KeyPlanLocalProxy    Key = "core.plan.local_proxy_invalid"
 
 	// Engine.
 	KeyEngineBinaryMissing Key = "core.engine.binary_missing"
@@ -115,6 +116,7 @@ var catalog = map[Key]Entry{
 	KeyPlanDNSInvalid:    {CodeInvalidArgument, false, "a resolver address or transport is not usable"},
 	KeyPlanBypassInvalid: {CodeInvalidArgument, false, "a bypass entry is not a domain, address or CIDR"},
 	KeyPlanGroupsInvalid: {CodeInvalidArgument, false, "a group is empty, cyclic or measures latency without a url"},
+	KeyPlanLocalProxy:    {CodeInvalidArgument, false, "the local proxy needs a login the system proxy cannot carry, or half a login"},
 
 	// Engine.
 	KeyEngineBinaryMissing: {CodeNotFound, false, "the engine binary is not installed for this platform"},

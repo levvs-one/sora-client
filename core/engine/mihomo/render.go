@@ -3,6 +3,7 @@ package mihomo
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -41,21 +42,33 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 		// message the user never sees.
 		return "", errors.New("mihomo: a tun plan needs a resolver")
 	}
-	mixed := rt.MixedPort
-	if mixed == 0 {
-		mixed = DefaultMixedPort
+	// Zero keeps the listener closed: a loopback port is open to every
+	// application on the machine.
+	mixed := 0
+	if p.LocalProxy.Enabled {
+		mixed = rt.MixedPort
 	}
 
 	c := config{
-		MixedPort:          mixed,
-		AllowLAN:           p.Options.AllowLAN,
-		Mode:               orDefault(p.Options.Mode, "rule"),
-		LogLevel:           orDefault(p.Options.LogLevel, "warning"),
-		ExternalController: rt.ControllerAddr,
-		Secret:             rt.Secret,
-		GlobalUA:           globalUA,
-		GeodataLoader:      "memconservative",
-		Profile:            &profile{StoreSelected: true, StoreFakeIP: p.DNS.Mode == string(engine.DNSFakeIP)},
+		MixedPort:     mixed,
+		AllowLAN:      p.Options.AllowLAN,
+		Mode:          orDefault(p.Options.Mode, "rule"),
+		LogLevel:      orDefault(p.Options.LogLevel, "warning"),
+		Secret:        rt.Secret,
+		GlobalUA:      globalUA,
+		GeodataLoader: "memconservative",
+		Profile:       &profile{StoreSelected: true, StoreFakeIP: p.DNS.Mode == string(engine.DNSFakeIP)},
+	}
+	switch addr := rt.ControllerAddr; {
+	case strings.HasPrefix(addr, "unix:"):
+		c.ControllerUnix = strings.TrimPrefix(addr, "unix:")
+	case strings.HasPrefix(addr, "pipe:"):
+		c.ControllerPipe = strings.TrimPrefix(addr, "pipe:")
+	default:
+		c.ExternalController = addr
+	}
+	if p.LocalProxy.Username != "" {
+		c.Authentication = []string{p.LocalProxy.Username + ":" + p.LocalProxy.Password}
 	}
 	ipv6 := p.Options.IPv6
 	c.IPv6 = &ipv6

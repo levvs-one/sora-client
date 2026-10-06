@@ -129,3 +129,31 @@ func TestAmneziaWGSurvivesTheVault(t *testing.T) {
 		t.Fatal("a parameter that is not a number must fail the plan")
 	}
 }
+
+func TestPlanKeepsEngineControlAndTheLocalProxyPrivate(t *testing.T) {
+	base := func(mode corev1.TunnelMode, lp *corev1.LocalProxy) *corev1.SessionPlan {
+		return &corev1.SessionPlan{TunnelMode: mode, LocalProxy: lp,
+			Outbounds: []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}}}
+	}
+	p, err := planFromProto(base(corev1.TunnelMode_TUNNEL_MODE_SYSTEM, nil), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.PrivateControl || p.LocalProxy.Enabled {
+		t.Errorf("by default a tun session has private control and no listener: %+v %+v", p.PrivateControl, p.LocalProxy)
+	}
+	p, err = planFromProto(base(corev1.TunnelMode_TUNNEL_MODE_APPLICATION, nil), "s", nil)
+	if err != nil || !p.LocalProxy.Enabled {
+		t.Errorf("the system proxy mode needs its listener: %+v, %v", p.LocalProxy, err)
+	}
+	login := &corev1.LocalProxy{Enabled: true, Username: "me", Password: "local-proxy-password"}
+	if p, err = planFromProto(base(corev1.TunnelMode_TUNNEL_MODE_SYSTEM, login), "s", nil); err != nil || p.LocalProxy.Username != "me" {
+		t.Errorf("a tun session may share a locked listener: %+v, %v", p.LocalProxy, err)
+	}
+	if _, err := planFromProto(base(corev1.TunnelMode_TUNNEL_MODE_APPLICATION, login), "s", nil); err == nil {
+		t.Error("a login the system proxy cannot carry must be refused")
+	}
+	if _, err := planFromProto(base(corev1.TunnelMode_TUNNEL_MODE_SYSTEM, &corev1.LocalProxy{Enabled: true, Username: "me"}), "s", nil); err == nil {
+		t.Error("half a login must be refused")
+	}
+}

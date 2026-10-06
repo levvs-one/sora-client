@@ -17,8 +17,7 @@ const globalUA = "clash.meta"
 // Render turns a plan into the YAML mihomo reads.
 //
 // The result carries credentials, so the supervisor hands it to the engine on
-// stdin and never writes it to disk unless Runtime.WriteConfigTo is set for
-// debugging. Nothing from this text may enter a diagnostic archive.
+// stdin and never writes it to disk. Nothing from this text may enter a diagnostic archive.
 //
 // Sora resolves subscriptions itself and passes concrete outbounds to the
 // engine: proxy-providers would put subscription URLs into the engine state

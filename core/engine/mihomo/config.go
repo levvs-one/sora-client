@@ -5,26 +5,18 @@
 // license boundary clean, keeps an engine crash from taking the core service
 // down with it, and lets Sora update the engine without a rebuild.
 //
-// Render turns an engine.Plan into the YAML mihomo reads, and the client in
-// controller.go talks to the external controller bound to the loopback
+// Render turns an engine.Plan into the YAML mihomo reads, and the client of
+// package clashapi talks to the external controller bound to the loopback
 // interface only. Facts about keys, endpoints and flags are recorded with
 // sources in docs/research/mihomo-engine.md.
 package mihomo
 
 // Ports and limits used when Sora starts one engine process.
 const (
-	// DefaultMixedPort is only a fallback; the supervisor picks a free port.
+	// DefaultMixedPort is used only when a render has no reserved port.
 	DefaultMixedPort = 7890
-	// SecretBytes is the length of the controller secret in bytes.
-	SecretBytes = 32
 	// MaxConfigBytes bounds the rendered config before it reaches the engine.
 	MaxConfigBytes = 8 << 20
-	// MaxAPIResponse bounds one controller response body. Answers are small by
-	// contract; the cap stops a hung or hostile engine from exhausting memory.
-	MaxAPIResponse = 8 << 20
-	// MinPort and MaxPort is the ephemeral range Sora chooses listeners from.
-	MinPort = 20000
-	MaxPort = 60999
 )
 
 // Default geodata mirrors. mihomo downloads them into its home directory.
@@ -46,9 +38,6 @@ type Runtime struct {
 	Secret string
 	// MixedPort is the local http+socks listener. A free port is chosen when 0.
 	MixedPort int
-	// WriteConfigTo keeps the rendered YAML on disk for debugging. Empty means
-	// the config goes to the engine over stdin and never touches the disk.
-	WriteConfigTo string
 	// TestURL is the default latency probe for groups without one.
 	TestURL string
 }

@@ -1,4 +1,4 @@
-package mihomo
+package clashapi
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
@@ -85,14 +86,14 @@ func (c *Client) call(ctx context.Context, method, path string, body any, out an
 	if body != nil {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			return fmt.Errorf("mihomo: encode request: %w", err)
+			return fmt.Errorf("clashapi: encode request: %w", err)
 		}
 		reader = bytes.NewReader(raw)
 	}
 	endpoint := "http://" + c.addr + path
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, reader)
 	if err != nil {
-		return fmt.Errorf("mihomo: build request: %w", err)
+		return fmt.Errorf("clashapi: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.secret)
 	req.Header.Set("Accept", "application/json")
@@ -109,16 +110,16 @@ func (c *Client) call(ctx context.Context, method, path string, body any, out an
 		if errors.As(err, &netErr) || isRefused(err) {
 			return fmt.Errorf("%w: %s: %w", ErrUnreachable, redactURL(endpoint), err)
 		}
-		return fmt.Errorf("mihomo: controller request: %w", err)
+		return fmt.Errorf("clashapi: controller request: %w", err)
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
 		_ = resp.Body.Close()
 	}()
 
-	payload, err := io.ReadAll(io.LimitReader(resp.Body, MaxAPIResponse))
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponse))
 	if err != nil {
-		return fmt.Errorf("mihomo: read controller response: %w", err)
+		return fmt.Errorf("clashapi: read controller response: %w", err)
 	}
 	switch {
 	case resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK && out == nil:
@@ -128,13 +129,13 @@ func (c *Client) call(ctx context.Context, method, path string, body any, out an
 	case resp.StatusCode == http.StatusNotFound:
 		return fmt.Errorf("%w: %s %s", ErrNotFound, method, redactURL(endpoint))
 	case resp.StatusCode >= 400:
-		return fmt.Errorf("mihomo: %s %s answered %d: %s", method, redactURL(endpoint), resp.StatusCode, snippet(payload))
+		return fmt.Errorf("clashapi: %s %s answered %d: %s", method, redactURL(endpoint), resp.StatusCode, snippet(payload))
 	}
 	if out == nil {
 		return nil
 	}
 	if err := json.Unmarshal(payload, out); err != nil {
-		return fmt.Errorf("mihomo: decode controller response: %w", err)
+		return fmt.Errorf("clashapi: decode controller response: %w", err)
 	}
 	return nil
 }
@@ -148,24 +149,13 @@ func isRefused(err error) bool {
 // credential cannot be spread over a log line.
 func snippet(b []byte) string {
 	s := string(b)
-	if i := indexAny(s, "\r\n"); i >= 0 {
+	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
 		s = s[:i]
 	}
 	if len(s) > 240 {
 		s = s[:240]
 	}
 	return s
-}
-
-func indexAny(s, chars string) int {
-	for i, r := range s {
-		for _, c := range chars {
-			if r == c {
-				return i
-			}
-		}
-	}
-	return -1
 }
 
 // redactURL removes any user info from a URL before it reaches an error.

@@ -1,4 +1,4 @@
-package mihomo
+package clashapi
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func TestVersionRejectsClashForks(t *testing.T) {
 	client, _ := newTestServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		jsonReply(w, http.StatusOK, map[string]any{"meta": false, "version": "0.20.1"})
 	})
-	if _, err := client.Version(context.Background()); !errors.Is(err, ErrNotMihomo) {
+	if _, err := client.Version(context.Background()); !errors.Is(err, ErrNotMeta) {
 		t.Fatalf("a non Meta core must be refused, got %v", err)
 	}
 }

@@ -88,9 +88,6 @@ func SelectEngine(p *Plan, available []Availability, preference []Kind) (Selecti
 	for _, a := range available {
 		byKind[a.Kind] = a
 	}
-	wanted := p.Protocols()
-	features := p.RequiredFeatures()
-
 	var rejected []string
 	for _, kind := range preference {
 		avail, ok := byKind[kind]
@@ -111,19 +108,8 @@ func SelectEngine(p *Plan, available []Availability, preference []Kind) (Selecti
 			rejected = append(rejected, fmt.Sprintf("%s: version %s is older than %s", kind, avail.Version, caps.MinVersion))
 			continue
 		}
-		var missing []string
-		for proto := range wanted {
-			if !caps.SupportsProtocol(proto) {
-				missing = append(missing, "protocol "+string(proto))
-			}
-		}
-		for f := range features {
-			if !caps.Supports(f) {
-				missing = append(missing, "feature "+string(f))
-			}
-		}
+		missing := caps.Missing(p)
 		if len(missing) > 0 {
-			sort.Strings(missing)
 			rejected = append(rejected, fmt.Sprintf("%s: cannot carry %s", kind, strings.Join(missing, ", ")))
 			continue
 		}
@@ -134,4 +120,22 @@ func SelectEngine(p *Plan, available []Availability, preference []Kind) (Selecti
 		}, nil
 	}
 	return Selection{Rejected: rejected}, fmt.Errorf("engine: no engine can carry this plan (%s)", strings.Join(rejected, "; "))
+}
+
+// Missing lists, sorted, every protocol and feature of p this engine cannot
+// carry. An empty answer means the engine can run the whole plan.
+func (c Capabilities) Missing(p *Plan) []string {
+	var missing []string
+	for proto := range p.Protocols() {
+		if !c.SupportsProtocol(proto) {
+			missing = append(missing, "protocol "+string(proto))
+		}
+	}
+	for f := range p.RequiredFeatures() {
+		if !c.Supports(f) {
+			missing = append(missing, "feature "+string(f))
+		}
+	}
+	sort.Strings(missing)
+	return missing
 }

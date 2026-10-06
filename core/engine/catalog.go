@@ -65,8 +65,10 @@ var Catalog = map[Kind]Capabilities{
 			ProtocolSOCKS5: true, ProtocolHTTP: true, ProtocolDirect: true,
 		},
 		Features: map[Feature]bool{
-			FeatureTun: true, FeatureURLTest: true, FeatureLoadBalance: true,
-			FeatureLatencyTest: true, FeatureGeoData: true, FeatureTLSFragment: true,
+			// Xray has a tun inbound but no automatic routes; tun sessions go to
+			// sing-box or mihomo, which own the routing table themselves.
+			FeatureURLTest: true, FeatureLoadBalance: true, FeatureLatencyTest: true,
+			FeatureGeoData: true, FeatureTLSFragment: true,
 			FeatureXHTTP: true, FeatureVLESSEncrypt: true,
 		},
 	},

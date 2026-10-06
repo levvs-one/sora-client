@@ -50,3 +50,34 @@ func TestRuleDestinationsFollowTheXrayVocabulary(t *testing.T) {
 		}
 	}
 }
+
+func TestWireGuardSurvivesTheVault(t *testing.T) {
+	for name, source := range map[string]string{
+		"conf": "[Interface]\nPrivateKey = cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk=\nAddress = 10.7.0.2, fd00::2/128\n\n" +
+			"[Peer]\nPublicKey = Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw=\nEndpoint = 198.51.100.7:51820\nAllowedIPs = 0.0.0.0/0, ::/0\n",
+		"link": "wireguard://cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk%3D@198.51.100.7:51820" +
+			"?publickey=Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw%3D&address=10.7.0.2%2C2001%3Adb8%3A%3A2#WG",
+	} {
+		t.Run(name, func(t *testing.T) {
+			result, err := parser.LinkParser{}.Parse([]byte(source))
+			if err != nil || len(result.Servers) != 1 {
+				t.Fatalf("Parse = %+v, %v", result, err)
+			}
+			document, err := credentialDocument(result.Servers[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var o engine.Outbound
+			applyCredential(&o, parseCredential(document))
+			if o.PrivateKey != "cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk=" {
+				t.Errorf("private key = %q", o.PrivateKey)
+			}
+			if len(o.Addresses) != 2 || o.Addresses[0] != "10.7.0.2/32" {
+				t.Errorf("addresses = %v", o.Addresses)
+			}
+			if len(o.Peers) != 1 || o.Peers[0].Endpoint != "198.51.100.7:51820" || o.Peers[0].PublicKey == "" {
+				t.Errorf("peers = %+v", o.Peers)
+			}
+		})
+	}
+}

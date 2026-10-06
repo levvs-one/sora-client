@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"net"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -72,10 +74,25 @@ func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
 	// Obfuscation parameters travel in the free-form options of a parsed link,
 	// because only some protocols have them. They are copied explicitly instead
 	// of being merged wholesale: a link is untrusted input and a wholesale copy
-	// would let a subscription write arbitrary keys into the vault.
-	for _, key := range []string{"obfs", "obfs_param", "obfs-password"} {
-		if value, ok := spec.Options[key]; ok && value != "" {
-			values[key] = value
+	// would let a subscription write arbitrary keys into the vault. Links spell
+	// the obfuscation password three ways; the vault knows one.
+	values["obfs"] = spec.Options["obfs"]
+	for _, key := range []string{"obfs_param", "obfs-password", "obfs_password"} {
+		if value := spec.Options[key]; value != "" {
+			values["obfs_param"] = value
+			break
+		}
+	}
+	if strings.EqualFold(spec.Protocol, "wireguard") {
+		key, addresses, peers := wireguardMaterial(spec)
+		values["private_key"] = key
+		values["addresses"] = strings.Join(addresses, ",")
+		if len(peers) > 0 {
+			raw, err := json.Marshal(peers)
+			if err != nil {
+				return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+			}
+			values["peers"] = string(raw)
 		}
 	}
 	if spec.AllowInsecure {
@@ -282,6 +299,61 @@ func applyCredential(outbound *engine.Outbound, values map[string]string) {
 	outbound.Transport.Host = values["host_header"]
 	outbound.Transport.Service = values["service_name"]
 	outbound.Transport.Mode = values["mode"]
+	outbound.PrivateKey = values["private_key"]
+	if addresses := values["addresses"]; addresses != "" {
+		outbound.Addresses = strings.Split(addresses, ",")
+	}
+	if peers := values["peers"]; peers != "" {
+		// A document that does not decode leaves the outbound without peers,
+		// and the plan validation names the outbound that cannot connect.
+		_ = json.Unmarshal([]byte(peers), &outbound.Peers)
+	}
+}
+
+// wireguardMaterial collects the private key, the interface addresses and the
+// peers of a WireGuard import. A .conf file carries them in its sections; a
+// wireguard:// link carries the key as user info and the rest as query.
+func wireguardMaterial(spec parser.OutboundSpec) (key string, addresses []string, peers []engine.WireGuardPeer) {
+	key = spec.Options["privatekey"]
+	if key == "" {
+		key, _ = url.PathUnescape(spec.Password)
+	}
+	for _, a := range strings.Split(spec.Options["address"], ",") {
+		a = strings.TrimSpace(a)
+		switch {
+		case a == "":
+			continue
+		case !strings.Contains(a, "/") && strings.Contains(a, ":"):
+			a += "/128"
+		case !strings.Contains(a, "/"):
+			a += "/32"
+		}
+		addresses = append(addresses, a)
+	}
+	split := func(list []string) []string {
+		var out []string
+		for _, v := range list {
+			if v = strings.TrimSpace(v); v != "" {
+				out = append(out, v)
+			}
+		}
+		return out
+	}
+	for _, p := range spec.Peers {
+		peers = append(peers, engine.WireGuardPeer{
+			PublicKey: p.PublicKey, PreSharedKey: p.PreSharedKey, Endpoint: p.Endpoint,
+			AllowedIPs: split(p.AllowedIPs), PersistentKeepalive: p.PersistentKeepalive,
+		})
+	}
+	if len(peers) == 0 && spec.Options["publickey"] != "" {
+		peers = append(peers, engine.WireGuardPeer{
+			PublicKey:    spec.Options["publickey"],
+			PreSharedKey: spec.Options["presharedkey"],
+			Endpoint:     net.JoinHostPort(spec.Host, strconv.Itoa(int(spec.Port))),
+			AllowedIPs:   split(strings.Split(spec.Options["allowedips"], ",")),
+		})
+	}
+	return key, addresses, peers
 }
 
 // ruleFromProto converts one routing rule.

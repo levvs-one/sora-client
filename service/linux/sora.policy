@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  The person in the active local session drives the tunnel without a password,
+  as with the network settings of a desktop. Remote and inactive sessions need an
+  administrator. The owner annotation lets the core, which runs as the sora user
+  and not as root, ask polkit about the processes that connect to it.
+-->
+<policyconfig>
+  <vendor>Sora</vendor>
+  <vendor_url>https://github.com/levvs-one/sora-client</vendor_url>
+  <action id="io.github.levvs-one.sora.control">
+    <description>Control the Sora tunnel</description>
+    <description xml:lang="ru">Управление туннелем Sora</description>
+    <message>Authentication is required to control the Sora tunnel</message>
+    <message xml:lang="ru">Для управления туннелем Sora нужна аутентификация</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:sora</annotate>
+  </action>
+</policyconfig>

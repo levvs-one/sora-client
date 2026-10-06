@@ -22,16 +22,16 @@ func checkReport(app *App) ([]string, bool) {
 		"guard: proxy and kill switch are available on this platform",
 	}
 	ready := true
-	if app.engine.Path == "" {
+	if app.engines == nil || !app.engines.Usable() {
 		ready = false
 		lines = append(lines,
-			"engine: not found",
-			"  install mihomo into "+app.opts.EnginesDir+" or pass -engine <path>",
+			"engines: none found",
+			"  install sing-box, xray or mihomo into "+app.opts.EnginesDir,
 		)
 	} else {
-		lines = append(lines,
-			"engine: mihomo "+app.engine.Version.Raw+" ("+app.engine.Goos+"/"+app.engine.Goarch+")",
-		)
+		for _, b := range app.engines.Binaries() {
+			lines = append(lines, "engine: "+string(b.Kind)+" "+b.Version.Raw+" ("+b.Goos+"/"+b.Goarch+") "+b.Path)
+		}
 	}
 	if runtime.GOOS != "windows" && runtime.GOOS != "linux" {
 		lines = append(lines,

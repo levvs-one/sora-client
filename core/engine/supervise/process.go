@@ -170,6 +170,9 @@ func (p *Process) Stop(ctx context.Context, grace time.Duration) error {
 // that knows its grammar, so this is what catches a key Sora got wrong, before
 // any listener is opened.
 func Check(ctx context.Context, spec Spec) error {
+	if err := os.MkdirAll(spec.Dir, 0o700); err != nil {
+		return fmt.Errorf("%s: create engine home: %w", spec.Name, err)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, spec.Path, spec.Args...) //nolint:gosec // spec.Path is a probed engine binary, the config arrives on stdin

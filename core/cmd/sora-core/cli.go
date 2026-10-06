@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
@@ -20,7 +21,7 @@ import (
 type flags struct {
 	dataDir     string
 	enginesDir  string
-	enginePath  string
+	engine      string
 	localPort   int
 	bypass      string
 	logLevel    string
@@ -47,8 +48,8 @@ func run(arguments []string) error {
 	set := flag.NewFlagSet("sora-core", flag.ContinueOnError)
 	var f flags
 	set.StringVar(&f.dataDir, "data-dir", defaultDataDir(), "where the token, the secrets and the engine state live")
-	set.StringVar(&f.enginesDir, "engines-dir", filepath.Join(defaultDataDir(), "engines"), "where the engine binary is looked for")
-	set.StringVar(&f.enginePath, "engine", "", "path to the engine binary, instead of looking for one")
+	set.StringVar(&f.enginesDir, "engines-dir", filepath.Join(defaultDataDir(), "engines"), "where the engine binaries are looked for")
+	set.StringVar(&f.engine, "engine", "", "pin one engine: sing-box, xray or mihomo; empty picks one per plan")
 	set.IntVar(&f.localPort, "tunnel-port", 0, "loopback port the tunnel is served on; 0 picks a free one")
 	set.StringVar(&f.bypass, "bypass", "", "comma separated destinations that skip the tunnel")
 	set.StringVar(&f.logLevel, "log-level", "info", "debug, info, warn or error")
@@ -74,7 +75,7 @@ func run(arguments []string) error {
 	options := Options{
 		DataDir:       f.dataDir,
 		EnginesDir:    f.enginesDir,
-		EnginePath:    f.enginePath,
+		Engine:        engine.Kind(f.engine),
 		LocalPort:     f.localPort,
 		Bypass:        splitList(f.bypass),
 		Log:           logger,

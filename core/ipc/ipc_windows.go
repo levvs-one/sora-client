@@ -105,4 +105,4 @@ func peerOf(net.Conn) Peer {
 // defaultAllow accepts every connection that got past the access list of the pipe.
 // Anything else was refused by the kernel before it reached this point, and a
 // second check with no information would only be theatre.
-func defaultAllow(Peer) bool { return true }
+func defaultAllow(Options) func(Peer) bool { return func(Peer) bool { return true } }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 
 	"github.com/levvs-one/sora-client/core/errs"
@@ -64,17 +65,42 @@ func dialLocal(ctx context.Context, address string) (net.Conn, error) {
 	return connection, nil
 }
 
-// defaultAllow lets the owner of the core and nobody else. A different uid means
-// another account on the machine, and an interface running as that account has no
-// business driving a privileged service of this one.
-func defaultAllow(peer Peer) bool {
-	if !peer.Verified {
-		// The peer could not be identified, so the permission on the socket is the
-		// only boundary left. Refusing here would make the core unusable on a kernel
-		// that does not answer, which is worse than the permission.
-		return true
+// defaultAllow lets in the user the core runs as and the members of the socket
+// group. A system installation runs the core as its own user, so that the kill
+// switch can tell the engine's traffic from everyone else's, and the people
+// who may drive the tunnel are put in the group; any other account is refused.
+func defaultAllow(opts Options) func(Peer) bool {
+	group := opts.Group
+	if group == "" {
+		group = defaultSocketGroup
 	}
-	return peer.UID == os.Getuid()
+	return func(peer Peer) bool {
+		if !peer.Verified {
+			// The peer could not be identified, so the permission on the socket is
+			// the only boundary left. Refusing here would make the core unusable on
+			// a kernel that does not answer, which is worse than the permission.
+			return true
+		}
+		return peer.UID == os.Getuid() || inGroup(peer.UID, group)
+	}
+}
+
+// inGroup reports whether the account uid belongs to the named group, as its
+// primary group or a supplementary one.
+func inGroup(uid int, group string) bool {
+	wanted, err := user.LookupGroup(group)
+	if err != nil {
+		return false
+	}
+	account, err := user.LookupId(strconv.Itoa(uid))
+	if err != nil {
+		return false
+	}
+	ids, err := account.GroupIds()
+	if err != nil {
+		return false
+	}
+	return slices.Contains(ids, wanted.Gid)
 }
 
 // removeLeftover deletes a socket that nobody is listening on.

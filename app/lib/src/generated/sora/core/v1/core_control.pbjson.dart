@@ -49,6 +49,21 @@ final $typed_data.Uint8List connectionStateValueDescriptor = $convert.base64Deco
     'VFX0NPTk5FQ1RFRBADEicKI0NPTk5FQ1RJT05fU1RBVEVfVkFMVUVfUkVDT05ORUNUSU5HEAQS'
     'IQodQ09OTkVDVElPTl9TVEFURV9WQUxVRV9GQUlMRUQQBQ==');
 
+@$core.Deprecated('Use probeMethodDescriptor instead')
+const ProbeMethod$json = {
+  '1': 'ProbeMethod',
+  '2': [
+    {'1': 'PROBE_METHOD_UNSPECIFIED', '2': 0},
+    {'1': 'PROBE_METHOD_ENGINE', '2': 1},
+    {'1': 'PROBE_METHOD_CONNECT', '2': 2},
+  ],
+};
+
+/// Descriptor for `ProbeMethod`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List probeMethodDescriptor = $convert.base64Decode(
+    'CgtQcm9iZU1ldGhvZBIcChhQUk9CRV9NRVRIT0RfVU5TUEVDSUZJRUQQABIXChNQUk9CRV9NRV'
+    'RIT0RfRU5HSU5FEAESGAoUUFJPQkVfTUVUSE9EX0NPTk5FQ1QQAg==');
+
 @$core.Deprecated('Use soraErrorCodeDescriptor instead')
 const SoraErrorCode$json = {
   '1': 'SoraErrorCode',
@@ -79,6 +94,40 @@ final $typed_data.Uint8List soraErrorCodeDescriptor = $convert.base64Decode(
     'TkFWQUlMQUJMRRAIEhwKGFNPUkFfRVJST1JfQ09ERV9JTlRFUk5BTBAJEiUKIVNPUkFfRVJST1'
     'JfQ09ERV9QRVJNSVNTSU9OX0RFTklFRBAKEh0KGVNPUkFfRVJST1JfQ09ERV9DQU5DRUxMRUQQ'
     'Cw==');
+
+@$core.Deprecated('Use logLevelDescriptor instead')
+const LogLevel$json = {
+  '1': 'LogLevel',
+  '2': [
+    {'1': 'LOG_LEVEL_UNSPECIFIED', '2': 0},
+    {'1': 'LOG_LEVEL_DEBUG', '2': 1},
+    {'1': 'LOG_LEVEL_INFO', '2': 2},
+    {'1': 'LOG_LEVEL_WARNING', '2': 3},
+    {'1': 'LOG_LEVEL_ERROR', '2': 4},
+  ],
+};
+
+/// Descriptor for `LogLevel`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List logLevelDescriptor = $convert.base64Decode(
+    'CghMb2dMZXZlbBIZChVMT0dfTEVWRUxfVU5TUEVDSUZJRUQQABITCg9MT0dfTEVWRUxfREVCVU'
+    'cQARISCg5MT0dfTEVWRUxfSU5GTxACEhUKEUxPR19MRVZFTF9XQVJOSU5HEAMSEwoPTE9HX0xF'
+    'VkVMX0VSUk9SEAQ=');
+
+@$core.Deprecated('Use logExportFormatDescriptor instead')
+const LogExportFormat$json = {
+  '1': 'LogExportFormat',
+  '2': [
+    {'1': 'LOG_EXPORT_FORMAT_UNSPECIFIED', '2': 0},
+    {'1': 'LOG_EXPORT_FORMAT_JSON_LINES', '2': 1},
+    {'1': 'LOG_EXPORT_FORMAT_CSV', '2': 2},
+  ],
+};
+
+/// Descriptor for `LogExportFormat`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List logExportFormatDescriptor = $convert.base64Decode(
+    'Cg9Mb2dFeHBvcnRGb3JtYXQSIQodTE9HX0VYUE9SVF9GT1JNQVRfVU5TUEVDSUZJRUQQABIgCh'
+    'xMT0dfRVhQT1JUX0ZPUk1BVF9KU09OX0xJTkVTEAESGQoVTE9HX0VYUE9SVF9GT1JNQVRfQ1NW'
+    'EAI=');
 
 @$core.Deprecated('Use apiVersionDescriptor instead')
 const ApiVersion$json = {
@@ -220,6 +269,10 @@ const SessionPlan$json = {
     {'1': 'dns_policy', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.DnsPolicy', '10': 'dnsPolicy'},
     {'1': 'bypass_settings', '3': 5, '4': 1, '5': 11, '6': '.sora.core.v1.BypassSettings', '10': 'bypassSettings'},
     {'1': 'session_identity', '3': 6, '4': 1, '5': 9, '10': 'sessionIdentity'},
+    {'1': 'anti_censorship', '3': 7, '4': 1, '5': 11, '6': '.sora.core.v1.AntiCensorship', '10': 'antiCensorship'},
+    {'1': 'engines', '3': 8, '4': 3, '5': 9, '10': 'engines'},
+    {'1': 'network_control_allowed', '3': 9, '4': 1, '5': 8, '10': 'networkControlAllowed'},
+    {'1': 'local_proxy', '3': 10, '4': 1, '5': 11, '6': '.sora.core.v1.LocalProxy', '10': 'localProxy'},
   ],
 };
 
@@ -231,7 +284,44 @@ final $typed_data.Uint8List sessionPlanDescriptor = $convert.base64Decode(
     'luZ1J1bGVSBnJvdXRlcxI2CgpkbnNfcG9saWN5GAQgASgLMhcuc29yYS5jb3JlLnYxLkRuc1Bv'
     'bGljeVIJZG5zUG9saWN5EkUKD2J5cGFzc19zZXR0aW5ncxgFIAEoCzIcLnNvcmEuY29yZS52MS'
     '5CeXBhc3NTZXR0aW5nc1IOYnlwYXNzU2V0dGluZ3MSKQoQc2Vzc2lvbl9pZGVudGl0eRgGIAEo'
-    'CVIPc2Vzc2lvbklkZW50aXR5');
+    'CVIPc2Vzc2lvbklkZW50aXR5EkUKD2FudGlfY2Vuc29yc2hpcBgHIAEoCzIcLnNvcmEuY29yZS'
+    '52MS5BbnRpQ2Vuc29yc2hpcFIOYW50aUNlbnNvcnNoaXASGAoHZW5naW5lcxgIIAMoCVIHZW5n'
+    'aW5lcxI2ChduZXR3b3JrX2NvbnRyb2xfYWxsb3dlZBgJIAEoCFIVbmV0d29ya0NvbnRyb2xBbG'
+    'xvd2VkEjkKC2xvY2FsX3Byb3h5GAogASgLMhguc29yYS5jb3JlLnYxLkxvY2FsUHJveHlSCmxv'
+    'Y2FsUHJveHk=');
+
+@$core.Deprecated('Use localProxyDescriptor instead')
+const LocalProxy$json = {
+  '1': 'LocalProxy',
+  '2': [
+    {'1': 'enabled', '3': 1, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'username', '3': 2, '4': 1, '5': 9, '10': 'username'},
+    {'1': 'password', '3': 3, '4': 1, '5': 9, '10': 'password'},
+  ],
+};
+
+/// Descriptor for `LocalProxy`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List localProxyDescriptor = $convert.base64Decode(
+    'CgpMb2NhbFByb3h5EhgKB2VuYWJsZWQYASABKAhSB2VuYWJsZWQSGgoIdXNlcm5hbWUYAiABKA'
+    'lSCHVzZXJuYW1lEhoKCHBhc3N3b3JkGAMgASgJUghwYXNzd29yZA==');
+
+@$core.Deprecated('Use antiCensorshipDescriptor instead')
+const AntiCensorship$json = {
+  '1': 'AntiCensorship',
+  '2': [
+    {'1': 'tls_fragment', '3': 1, '4': 1, '5': 8, '10': 'tlsFragment'},
+    {'1': 'fragment_packets', '3': 2, '4': 1, '5': 9, '10': 'fragmentPackets'},
+    {'1': 'fragment_length', '3': 3, '4': 1, '5': 9, '10': 'fragmentLength'},
+    {'1': 'fragment_interval', '3': 4, '4': 1, '5': 9, '10': 'fragmentInterval'},
+  ],
+};
+
+/// Descriptor for `AntiCensorship`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List antiCensorshipDescriptor = $convert.base64Decode(
+    'Cg5BbnRpQ2Vuc29yc2hpcBIhCgx0bHNfZnJhZ21lbnQYASABKAhSC3Rsc0ZyYWdtZW50EikKEG'
+    'ZyYWdtZW50X3BhY2tldHMYAiABKAlSD2ZyYWdtZW50UGFja2V0cxInCg9mcmFnbWVudF9sZW5n'
+    'dGgYAyABKAlSDmZyYWdtZW50TGVuZ3RoEisKEWZyYWdtZW50X2ludGVydmFsGAQgASgJUhBmcm'
+    'FnbWVudEludGVydmFs');
 
 @$core.Deprecated('Use outboundSpecDescriptor instead')
 const OutboundSpec$json = {
@@ -471,6 +561,8 @@ const ProbeResult$json = {
     {'1': 'reachable', '3': 2, '4': 1, '5': 8, '10': 'reachable'},
     {'1': 'latency_ms', '3': 3, '4': 1, '5': 13, '10': 'latencyMs'},
     {'1': 'error', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {'1': 'method', '3': 5, '4': 1, '5': 9, '10': 'method'},
+    {'1': 'engine', '3': 6, '4': 1, '5': 9, '10': 'engine'},
   ],
 };
 
@@ -478,7 +570,8 @@ const ProbeResult$json = {
 final $typed_data.Uint8List probeResultDescriptor = $convert.base64Decode(
     'CgtQcm9iZVJlc3VsdBIbCglzZXJ2ZXJfaWQYASABKAlSCHNlcnZlcklkEhwKCXJlYWNoYWJsZR'
     'gCIAEoCFIJcmVhY2hhYmxlEh0KCmxhdGVuY3lfbXMYAyABKA1SCWxhdGVuY3lNcxItCgVlcnJv'
-    'chgEIAEoCzIXLnNvcmEuY29yZS52MS5Tb3JhRXJyb3JSBWVycm9y');
+    'chgEIAEoCzIXLnNvcmEuY29yZS52MS5Tb3JhRXJyb3JSBWVycm9yEhYKBm1ldGhvZBgFIAEoCV'
+    'IGbWV0aG9kEhYKBmVuZ2luZRgGIAEoCVIGZW5naW5l');
 
 @$core.Deprecated('Use logBatchDescriptor instead')
 const LogBatch$json = {
@@ -575,6 +668,8 @@ const ProbeServersRequest$json = {
     {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'endpoints', '3': 3, '4': 3, '5': 11, '6': '.sora.core.v1.Endpoint', '10': 'endpoints'},
+    {'1': 'outbounds', '3': 4, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
+    {'1': 'options', '3': 5, '4': 1, '5': 11, '6': '.sora.core.v1.ProbeOptions', '10': 'options'},
   ],
 };
 
@@ -582,7 +677,29 @@ const ProbeServersRequest$json = {
 final $typed_data.Uint8List probeServersRequestDescriptor = $convert.base64Decode(
     'ChNQcm9iZVNlcnZlcnNSZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS5jb3JlLn'
     'YxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SHQoKcmVxdWVzdF9pZBgCIAEoCVIJcmVxdWVzdElk'
-    'EjQKCWVuZHBvaW50cxgDIAMoCzIWLnNvcmEuY29yZS52MS5FbmRwb2ludFIJZW5kcG9pbnRz');
+    'EjQKCWVuZHBvaW50cxgDIAMoCzIWLnNvcmEuY29yZS52MS5FbmRwb2ludFIJZW5kcG9pbnRzEj'
+    'gKCW91dGJvdW5kcxgEIAMoCzIaLnNvcmEuY29yZS52MS5PdXRib3VuZFNwZWNSCW91dGJvdW5k'
+    'cxI0CgdvcHRpb25zGAUgASgLMhouc29yYS5jb3JlLnYxLlByb2JlT3B0aW9uc1IHb3B0aW9ucw'
+    '==');
+
+@$core.Deprecated('Use probeOptionsDescriptor instead')
+const ProbeOptions$json = {
+  '1': 'ProbeOptions',
+  '2': [
+    {'1': 'method', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.ProbeMethod', '10': 'method'},
+    {'1': 'url', '3': 2, '4': 1, '5': 9, '10': 'url'},
+    {'1': 'timeout_ms', '3': 3, '4': 1, '5': 13, '10': 'timeoutMs'},
+    {'1': 'concurrency', '3': 4, '4': 1, '5': 13, '10': 'concurrency'},
+    {'1': 'engines', '3': 5, '4': 3, '5': 9, '10': 'engines'},
+  ],
+};
+
+/// Descriptor for `ProbeOptions`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List probeOptionsDescriptor = $convert.base64Decode(
+    'CgxQcm9iZU9wdGlvbnMSMQoGbWV0aG9kGAEgASgOMhkuc29yYS5jb3JlLnYxLlByb2JlTWV0aG'
+    '9kUgZtZXRob2QSEAoDdXJsGAIgASgJUgN1cmwSHQoKdGltZW91dF9tcxgDIAEoDVIJdGltZW91'
+    'dE1zEiAKC2NvbmN1cnJlbmN5GAQgASgNUgtjb25jdXJyZW5jeRIYCgdlbmdpbmVzGAUgAygJUg'
+    'dlbmdpbmVz');
 
 @$core.Deprecated('Use runDiagnosticsRequestDescriptor instead')
 const RunDiagnosticsRequest$json = {
@@ -800,4 +917,382 @@ final $typed_data.Uint8List soraErrorDescriptor = $convert.base64Decode(
     'bF9yZWRhY3RlZBgDIAEoCVIOZGV0YWlsUmVkYWN0ZWQSHAoJcmV0cnlhYmxlGAQgASgIUglyZX'
     'RyeWFibGUSHQoKcmVxdWVzdF9pZBgFIAEoCVIJcmVxdWVzdElkEjoKC3JldHJ5X2FmdGVyGAYg'
     'ASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uUgpyZXRyeUFmdGVy');
+
+@$core.Deprecated('Use logEntryDescriptor instead')
+const LogEntry$json = {
+  '1': 'LogEntry',
+  '2': [
+    {'1': 'sequence', '3': 1, '4': 1, '5': 4, '10': 'sequence'},
+    {'1': 'time', '3': 2, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'time'},
+    {'1': 'level', '3': 3, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'level'},
+    {'1': 'source', '3': 4, '4': 1, '5': 9, '10': 'source'},
+    {'1': 'message', '3': 5, '4': 1, '5': 9, '10': 'message'},
+    {'1': 'repeat', '3': 6, '4': 1, '5': 13, '10': 'repeat'},
+  ],
+};
+
+/// Descriptor for `LogEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logEntryDescriptor = $convert.base64Decode(
+    'CghMb2dFbnRyeRIaCghzZXF1ZW5jZRgBIAEoBFIIc2VxdWVuY2USLgoEdGltZRgCIAEoCzIaLm'
+    'dvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSBHRpbWUSLAoFbGV2ZWwYAyABKA4yFi5zb3JhLmNv'
+    'cmUudjEuTG9nTGV2ZWxSBWxldmVsEhYKBnNvdXJjZRgEIAEoCVIGc291cmNlEhgKB21lc3NhZ2'
+    'UYBSABKAlSB21lc3NhZ2USFgoGcmVwZWF0GAYgASgNUgZyZXBlYXQ=');
+
+@$core.Deprecated('Use logFilterDescriptor instead')
+const LogFilter$json = {
+  '1': 'LogFilter',
+  '2': [
+    {'1': 'min_level', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'minLevel'},
+    {'1': 'sources', '3': 2, '4': 3, '5': 9, '10': 'sources'},
+    {'1': 'contains', '3': 3, '4': 1, '5': 9, '10': 'contains'},
+    {'1': 'pattern', '3': 4, '4': 1, '5': 9, '10': 'pattern'},
+    {'1': 'since', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'since'},
+    {'1': 'until', '3': 6, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'until'},
+  ],
+};
+
+/// Descriptor for `LogFilter`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logFilterDescriptor = $convert.base64Decode(
+    'CglMb2dGaWx0ZXISMwoJbWluX2xldmVsGAEgASgOMhYuc29yYS5jb3JlLnYxLkxvZ0xldmVsUg'
+    'htaW5MZXZlbBIYCgdzb3VyY2VzGAIgAygJUgdzb3VyY2VzEhoKCGNvbnRhaW5zGAMgASgJUghj'
+    'b250YWlucxIYCgdwYXR0ZXJuGAQgASgJUgdwYXR0ZXJuEjAKBXNpbmNlGAUgASgLMhouZ29vZ2'
+    'xlLnByb3RvYnVmLlRpbWVzdGFtcFIFc2luY2USMAoFdW50aWwYBiABKAsyGi5nb29nbGUucHJv'
+    'dG9idWYuVGltZXN0YW1wUgV1bnRpbA==');
+
+@$core.Deprecated('Use queryLogsRequestDescriptor instead')
+const QueryLogsRequest$json = {
+  '1': 'QueryLogsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'filter', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogFilter', '10': 'filter'},
+    {'1': 'before_sequence', '3': 4, '4': 1, '5': 4, '10': 'beforeSequence'},
+    {'1': 'limit', '3': 5, '4': 1, '5': 13, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `QueryLogsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List queryLogsRequestDescriptor = $convert.base64Decode(
+    'ChBRdWVyeUxvZ3NSZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS5jb3JlLnYxLk'
+    'FwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9yGAIgASgMUhRj'
+    'b250cm9sQXV0aGVudGljYXRvchIvCgZmaWx0ZXIYAyABKAsyFy5zb3JhLmNvcmUudjEuTG9nRm'
+    'lsdGVyUgZmaWx0ZXISJwoPYmVmb3JlX3NlcXVlbmNlGAQgASgEUg5iZWZvcmVTZXF1ZW5jZRIU'
+    'CgVsaW1pdBgFIAEoDVIFbGltaXQ=');
+
+@$core.Deprecated('Use queryLogsResponseDescriptor instead')
+const QueryLogsResponse$json = {
+  '1': 'QueryLogsResponse',
+  '2': [
+    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.LogEntry', '10': 'entries'},
+    {'1': 'before_sequence', '3': 2, '4': 1, '5': 4, '10': 'beforeSequence'},
+    {'1': 'stats', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogStats', '10': 'stats'},
+    {'1': 'error', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `QueryLogsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List queryLogsResponseDescriptor = $convert.base64Decode(
+    'ChFRdWVyeUxvZ3NSZXNwb25zZRIwCgdlbnRyaWVzGAEgAygLMhYuc29yYS5jb3JlLnYxLkxvZ0'
+    'VudHJ5UgdlbnRyaWVzEicKD2JlZm9yZV9zZXF1ZW5jZRgCIAEoBFIOYmVmb3JlU2VxdWVuY2US'
+    'LAoFc3RhdHMYAyABKAsyFi5zb3JhLmNvcmUudjEuTG9nU3RhdHNSBXN0YXRzEi0KBWVycm9yGA'
+    'QgASgLMhcuc29yYS5jb3JlLnYxLlNvcmFFcnJvclIFZXJyb3I=');
+
+@$core.Deprecated('Use logStatsDescriptor instead')
+const LogStats$json = {
+  '1': 'LogStats',
+  '2': [
+    {'1': 'by_level', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.LogLevelCount', '10': 'byLevel'},
+    {'1': 'by_source', '3': 2, '4': 3, '5': 11, '6': '.sora.core.v1.LogSourceCount', '10': 'bySource'},
+    {'1': 'total', '3': 3, '4': 1, '5': 4, '10': 'total'},
+    {'1': 'bytes', '3': 4, '4': 1, '5': 4, '10': 'bytes'},
+    {'1': 'max_bytes', '3': 5, '4': 1, '5': 4, '10': 'maxBytes'},
+    {'1': 'dropped', '3': 6, '4': 1, '5': 4, '10': 'dropped'},
+  ],
+};
+
+/// Descriptor for `LogStats`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logStatsDescriptor = $convert.base64Decode(
+    'CghMb2dTdGF0cxI2CghieV9sZXZlbBgBIAMoCzIbLnNvcmEuY29yZS52MS5Mb2dMZXZlbENvdW'
+    '50UgdieUxldmVsEjkKCWJ5X3NvdXJjZRgCIAMoCzIcLnNvcmEuY29yZS52MS5Mb2dTb3VyY2VD'
+    'b3VudFIIYnlTb3VyY2USFAoFdG90YWwYAyABKARSBXRvdGFsEhQKBWJ5dGVzGAQgASgEUgVieX'
+    'RlcxIbCgltYXhfYnl0ZXMYBSABKARSCG1heEJ5dGVzEhgKB2Ryb3BwZWQYBiABKARSB2Ryb3Bw'
+    'ZWQ=');
+
+@$core.Deprecated('Use logLevelCountDescriptor instead')
+const LogLevelCount$json = {
+  '1': 'LogLevelCount',
+  '2': [
+    {'1': 'level', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'level'},
+    {'1': 'count', '3': 2, '4': 1, '5': 4, '10': 'count'},
+  ],
+};
+
+/// Descriptor for `LogLevelCount`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logLevelCountDescriptor = $convert.base64Decode(
+    'Cg1Mb2dMZXZlbENvdW50EiwKBWxldmVsGAEgASgOMhYuc29yYS5jb3JlLnYxLkxvZ0xldmVsUg'
+    'VsZXZlbBIUCgVjb3VudBgCIAEoBFIFY291bnQ=');
+
+@$core.Deprecated('Use logSourceCountDescriptor instead')
+const LogSourceCount$json = {
+  '1': 'LogSourceCount',
+  '2': [
+    {'1': 'source', '3': 1, '4': 1, '5': 9, '10': 'source'},
+    {'1': 'count', '3': 2, '4': 1, '5': 4, '10': 'count'},
+  ],
+};
+
+/// Descriptor for `LogSourceCount`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logSourceCountDescriptor = $convert.base64Decode(
+    'Cg5Mb2dTb3VyY2VDb3VudBIWCgZzb3VyY2UYASABKAlSBnNvdXJjZRIUCgVjb3VudBgCIAEoBF'
+    'IFY291bnQ=');
+
+@$core.Deprecated('Use watchLogsRequestDescriptor instead')
+const WatchLogsRequest$json = {
+  '1': 'WatchLogsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'filter', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogFilter', '10': 'filter'},
+    {'1': 'after_sequence', '3': 4, '4': 1, '5': 4, '10': 'afterSequence'},
+  ],
+};
+
+/// Descriptor for `WatchLogsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List watchLogsRequestDescriptor = $convert.base64Decode(
+    'ChBXYXRjaExvZ3NSZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS5jb3JlLnYxLk'
+    'FwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9yGAIgASgMUhRj'
+    'b250cm9sQXV0aGVudGljYXRvchIvCgZmaWx0ZXIYAyABKAsyFy5zb3JhLmNvcmUudjEuTG9nRm'
+    'lsdGVyUgZmaWx0ZXISJQoOYWZ0ZXJfc2VxdWVuY2UYBCABKARSDWFmdGVyU2VxdWVuY2U=');
+
+@$core.Deprecated('Use exportLogsRequestDescriptor instead')
+const ExportLogsRequest$json = {
+  '1': 'ExportLogsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'filter', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogFilter', '10': 'filter'},
+    {'1': 'format', '3': 4, '4': 1, '5': 14, '6': '.sora.core.v1.LogExportFormat', '10': 'format'},
+  ],
+};
+
+/// Descriptor for `ExportLogsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List exportLogsRequestDescriptor = $convert.base64Decode(
+    'ChFFeHBvcnRMb2dzUmVxdWVzdBI5CgthcGlfdmVyc2lvbhgBIAEoCzIYLnNvcmEuY29yZS52MS'
+    '5BcGlWZXJzaW9uUgphcGlWZXJzaW9uEjMKFWNvbnRyb2xfYXV0aGVudGljYXRvchgCIAEoDFIU'
+    'Y29udHJvbEF1dGhlbnRpY2F0b3ISLwoGZmlsdGVyGAMgASgLMhcuc29yYS5jb3JlLnYxLkxvZ0'
+    'ZpbHRlclIGZmlsdGVyEjUKBmZvcm1hdBgEIAEoDjIdLnNvcmEuY29yZS52MS5Mb2dFeHBvcnRG'
+    'b3JtYXRSBmZvcm1hdA==');
+
+@$core.Deprecated('Use exportLogsResponseDescriptor instead')
+const ExportLogsResponse$json = {
+  '1': 'ExportLogsResponse',
+  '2': [
+    {'1': 'data', '3': 1, '4': 1, '5': 12, '10': 'data'},
+    {'1': 'file_name', '3': 2, '4': 1, '5': 9, '10': 'fileName'},
+    {'1': 'media_type', '3': 3, '4': 1, '5': 9, '10': 'mediaType'},
+    {'1': 'error', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `ExportLogsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List exportLogsResponseDescriptor = $convert.base64Decode(
+    'ChJFeHBvcnRMb2dzUmVzcG9uc2USEgoEZGF0YRgBIAEoDFIEZGF0YRIbCglmaWxlX25hbWUYAi'
+    'ABKAlSCGZpbGVOYW1lEh0KCm1lZGlhX3R5cGUYAyABKAlSCW1lZGlhVHlwZRItCgVlcnJvchgE'
+    'IAEoCzIXLnNvcmEuY29yZS52MS5Tb3JhRXJyb3JSBWVycm9y');
+
+@$core.Deprecated('Use clearLogsRequestDescriptor instead')
+const ClearLogsRequest$json = {
+  '1': 'ClearLogsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+  ],
+};
+
+/// Descriptor for `ClearLogsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearLogsRequestDescriptor = $convert.base64Decode(
+    'ChBDbGVhckxvZ3NSZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS5jb3JlLnYxLk'
+    'FwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9yGAIgASgMUhRj'
+    'b250cm9sQXV0aGVudGljYXRvcg==');
+
+@$core.Deprecated('Use clearLogsResponseDescriptor instead')
+const ClearLogsResponse$json = {
+  '1': 'ClearLogsResponse',
+  '2': [
+    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `ClearLogsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearLogsResponseDescriptor = $convert.base64Decode(
+    'ChFDbGVhckxvZ3NSZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS52MS5Tb3JhRX'
+    'Jyb3JSBWVycm9y');
+
+@$core.Deprecated('Use logSettingsDescriptor instead')
+const LogSettings$json = {
+  '1': 'LogSettings',
+  '2': [
+    {'1': 'capture_level', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'captureLevel'},
+    {'1': 'record_destinations', '3': 2, '4': 1, '5': 8, '10': 'recordDestinations'},
+    {'1': 'max_entries', '3': 3, '4': 1, '5': 13, '10': 'maxEntries'},
+    {'1': 'max_bytes', '3': 4, '4': 1, '5': 13, '10': 'maxBytes'},
+  ],
+};
+
+/// Descriptor for `LogSettings`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List logSettingsDescriptor = $convert.base64Decode(
+    'CgtMb2dTZXR0aW5ncxI7Cg1jYXB0dXJlX2xldmVsGAEgASgOMhYuc29yYS5jb3JlLnYxLkxvZ0'
+    'xldmVsUgxjYXB0dXJlTGV2ZWwSLwoTcmVjb3JkX2Rlc3RpbmF0aW9ucxgCIAEoCFIScmVjb3Jk'
+    'RGVzdGluYXRpb25zEh8KC21heF9lbnRyaWVzGAMgASgNUgptYXhFbnRyaWVzEhsKCW1heF9ieX'
+    'RlcxgEIAEoDVIIbWF4Qnl0ZXM=');
+
+@$core.Deprecated('Use getLogSettingsRequestDescriptor instead')
+const GetLogSettingsRequest$json = {
+  '1': 'GetLogSettingsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+  ],
+};
+
+/// Descriptor for `GetLogSettingsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getLogSettingsRequestDescriptor = $convert.base64Decode(
+    'ChVHZXRMb2dTZXR0aW5nc1JlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLmNvcm'
+    'UudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbhIzChVjb250cm9sX2F1dGhlbnRpY2F0b3IYAiAB'
+    'KAxSFGNvbnRyb2xBdXRoZW50aWNhdG9y');
+
+@$core.Deprecated('Use getLogSettingsResponseDescriptor instead')
+const GetLogSettingsResponse$json = {
+  '1': 'GetLogSettingsResponse',
+  '2': [
+    {'1': 'settings', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.LogSettings', '10': 'settings'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `GetLogSettingsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getLogSettingsResponseDescriptor = $convert.base64Decode(
+    'ChZHZXRMb2dTZXR0aW5nc1Jlc3BvbnNlEjUKCHNldHRpbmdzGAEgASgLMhkuc29yYS5jb3JlLn'
+    'YxLkxvZ1NldHRpbmdzUghzZXR0aW5ncxItCgVlcnJvchgCIAEoCzIXLnNvcmEuY29yZS52MS5T'
+    'b3JhRXJyb3JSBWVycm9y');
+
+@$core.Deprecated('Use setLogSettingsRequestDescriptor instead')
+const SetLogSettingsRequest$json = {
+  '1': 'SetLogSettingsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'settings', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogSettings', '10': 'settings'},
+  ],
+};
+
+/// Descriptor for `SetLogSettingsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setLogSettingsRequestDescriptor = $convert.base64Decode(
+    'ChVTZXRMb2dTZXR0aW5nc1JlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLmNvcm'
+    'UudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbhIzChVjb250cm9sX2F1dGhlbnRpY2F0b3IYAiAB'
+    'KAxSFGNvbnRyb2xBdXRoZW50aWNhdG9yEjUKCHNldHRpbmdzGAMgASgLMhkuc29yYS5jb3JlLn'
+    'YxLkxvZ1NldHRpbmdzUghzZXR0aW5ncw==');
+
+@$core.Deprecated('Use setLogSettingsResponseDescriptor instead')
+const SetLogSettingsResponse$json = {
+  '1': 'SetLogSettingsResponse',
+  '2': [
+    {'1': 'settings', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.LogSettings', '10': 'settings'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `SetLogSettingsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setLogSettingsResponseDescriptor = $convert.base64Decode(
+    'ChZTZXRMb2dTZXR0aW5nc1Jlc3BvbnNlEjUKCHNldHRpbmdzGAEgASgLMhkuc29yYS5jb3JlLn'
+    'YxLkxvZ1NldHRpbmdzUghzZXR0aW5ncxItCgVlcnJvchgCIAEoCzIXLnNvcmEuY29yZS52MS5T'
+    'b3JhRXJyb3JSBWVycm9y');
+
+@$core.Deprecated('Use connectionDescriptor instead')
+const Connection$json = {
+  '1': 'Connection',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'network', '3': 2, '4': 1, '5': 9, '10': 'network'},
+    {'1': 'host', '3': 3, '4': 1, '5': 9, '10': 'host'},
+    {'1': 'port', '3': 4, '4': 1, '5': 13, '10': 'port'},
+    {'1': 'process', '3': 5, '4': 1, '5': 9, '10': 'process'},
+    {'1': 'rule', '3': 6, '4': 1, '5': 9, '10': 'rule'},
+    {'1': 'chain', '3': 7, '4': 3, '5': 9, '10': 'chain'},
+    {'1': 'upload', '3': 8, '4': 1, '5': 4, '10': 'upload'},
+    {'1': 'download', '3': 9, '4': 1, '5': 4, '10': 'download'},
+    {'1': 'start', '3': 10, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'start'},
+  ],
+};
+
+/// Descriptor for `Connection`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List connectionDescriptor = $convert.base64Decode(
+    'CgpDb25uZWN0aW9uEg4KAmlkGAEgASgJUgJpZBIYCgduZXR3b3JrGAIgASgJUgduZXR3b3JrEh'
+    'IKBGhvc3QYAyABKAlSBGhvc3QSEgoEcG9ydBgEIAEoDVIEcG9ydBIYCgdwcm9jZXNzGAUgASgJ'
+    'Ugdwcm9jZXNzEhIKBHJ1bGUYBiABKAlSBHJ1bGUSFAoFY2hhaW4YByADKAlSBWNoYWluEhYKBn'
+    'VwbG9hZBgIIAEoBFIGdXBsb2FkEhoKCGRvd25sb2FkGAkgASgEUghkb3dubG9hZBIwCgVzdGFy'
+    'dBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBSBXN0YXJ0');
+
+@$core.Deprecated('Use listConnectionsRequestDescriptor instead')
+const ListConnectionsRequest$json = {
+  '1': 'ListConnectionsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `ListConnectionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listConnectionsRequestDescriptor = $convert.base64Decode(
+    'ChZMaXN0Q29ubmVjdGlvbnNSZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS5jb3'
+    'JlLnYxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9yGAIg'
+    'ASgMUhRjb250cm9sQXV0aGVudGljYXRvchIdCgpzZXNzaW9uX2lkGAMgASgJUglzZXNzaW9uSW'
+    'Q=');
+
+@$core.Deprecated('Use listConnectionsResponseDescriptor instead')
+const ListConnectionsResponse$json = {
+  '1': 'ListConnectionsResponse',
+  '2': [
+    {'1': 'connections', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.Connection', '10': 'connections'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `ListConnectionsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listConnectionsResponseDescriptor = $convert.base64Decode(
+    'ChdMaXN0Q29ubmVjdGlvbnNSZXNwb25zZRI6Cgtjb25uZWN0aW9ucxgBIAMoCzIYLnNvcmEuY2'
+    '9yZS52MS5Db25uZWN0aW9uUgtjb25uZWN0aW9ucxItCgVlcnJvchgCIAEoCzIXLnNvcmEuY29y'
+    'ZS52MS5Tb3JhRXJyb3JSBWVycm9y');
+
+@$core.Deprecated('Use closeConnectionRequestDescriptor instead')
+const CloseConnectionRequest$json = {
+  '1': 'CloseConnectionRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'connection_id', '3': 4, '4': 1, '5': 9, '10': 'connectionId'},
+  ],
+};
+
+/// Descriptor for `CloseConnectionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List closeConnectionRequestDescriptor = $convert.base64Decode(
+    'ChZDbG9zZUNvbm5lY3Rpb25SZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS5jb3'
+    'JlLnYxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9yGAIg'
+    'ASgMUhRjb250cm9sQXV0aGVudGljYXRvchIdCgpzZXNzaW9uX2lkGAMgASgJUglzZXNzaW9uSW'
+    'QSIwoNY29ubmVjdGlvbl9pZBgEIAEoCVIMY29ubmVjdGlvbklk');
+
+@$core.Deprecated('Use closeConnectionResponseDescriptor instead')
+const CloseConnectionResponse$json = {
+  '1': 'CloseConnectionResponse',
+  '2': [
+    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `CloseConnectionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List closeConnectionResponseDescriptor = $convert.base64Decode(
+    'ChdDbG9zZUNvbm5lY3Rpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS52MS'
+    '5Tb3JhRXJyb3JSBWVycm9y');
 

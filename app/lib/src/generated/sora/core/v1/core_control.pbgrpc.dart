@@ -69,6 +69,38 @@ class CoreControlClient extends $grpc.Client {
       '/sora.core.v1.CoreControl/Handshake',
       ($0.HandshakeRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.HandshakeResponse.fromBuffer(value));
+  static final _$queryLogs = $grpc.ClientMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
+      '/sora.core.v1.CoreControl/QueryLogs',
+      ($0.QueryLogsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.QueryLogsResponse.fromBuffer(value));
+  static final _$watchLogs = $grpc.ClientMethod<$0.WatchLogsRequest, $0.LogEntry>(
+      '/sora.core.v1.CoreControl/WatchLogs',
+      ($0.WatchLogsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.LogEntry.fromBuffer(value));
+  static final _$exportLogs = $grpc.ClientMethod<$0.ExportLogsRequest, $0.ExportLogsResponse>(
+      '/sora.core.v1.CoreControl/ExportLogs',
+      ($0.ExportLogsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.ExportLogsResponse.fromBuffer(value));
+  static final _$clearLogs = $grpc.ClientMethod<$0.ClearLogsRequest, $0.ClearLogsResponse>(
+      '/sora.core.v1.CoreControl/ClearLogs',
+      ($0.ClearLogsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.ClearLogsResponse.fromBuffer(value));
+  static final _$getLogSettings = $grpc.ClientMethod<$0.GetLogSettingsRequest, $0.GetLogSettingsResponse>(
+      '/sora.core.v1.CoreControl/GetLogSettings',
+      ($0.GetLogSettingsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.GetLogSettingsResponse.fromBuffer(value));
+  static final _$setLogSettings = $grpc.ClientMethod<$0.SetLogSettingsRequest, $0.SetLogSettingsResponse>(
+      '/sora.core.v1.CoreControl/SetLogSettings',
+      ($0.SetLogSettingsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.SetLogSettingsResponse.fromBuffer(value));
+  static final _$listConnections = $grpc.ClientMethod<$0.ListConnectionsRequest, $0.ListConnectionsResponse>(
+      '/sora.core.v1.CoreControl/ListConnections',
+      ($0.ListConnectionsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.ListConnectionsResponse.fromBuffer(value));
+  static final _$closeConnection = $grpc.ClientMethod<$0.CloseConnectionRequest, $0.CloseConnectionResponse>(
+      '/sora.core.v1.CoreControl/CloseConnection',
+      ($0.CloseConnectionRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.CloseConnectionResponse.fromBuffer(value));
   static final _$putSecret = $grpc.ClientMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
       '/sora.core.v1.CoreControl/PutSecret',
       ($0.PutSecretRequest value) => value.writeToBuffer(),
@@ -130,6 +162,38 @@ class CoreControlClient extends $grpc.Client {
 
   $grpc.ResponseFuture<$0.HandshakeResponse> handshake($0.HandshakeRequest request, {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$handshake, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.QueryLogsResponse> queryLogs($0.QueryLogsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$queryLogs, request, options: options);
+  }
+
+  $grpc.ResponseStream<$0.LogEntry> watchLogs($0.WatchLogsRequest request, {$grpc.CallOptions? options}) {
+    return $createStreamingCall(_$watchLogs, $async.Stream.fromIterable([request]), options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ExportLogsResponse> exportLogs($0.ExportLogsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$exportLogs, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ClearLogsResponse> clearLogs($0.ClearLogsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$clearLogs, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetLogSettingsResponse> getLogSettings($0.GetLogSettingsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$getLogSettings, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.SetLogSettingsResponse> setLogSettings($0.SetLogSettingsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$setLogSettings, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.ListConnectionsResponse> listConnections($0.ListConnectionsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$listConnections, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.CloseConnectionResponse> closeConnection($0.CloseConnectionRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$closeConnection, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.PutSecretResponse> putSecret($0.PutSecretRequest request, {$grpc.CallOptions? options}) {
@@ -230,6 +294,62 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.HandshakeRequest.fromBuffer(value),
         ($0.HandshakeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
+        'QueryLogs',
+        queryLogs_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.QueryLogsRequest.fromBuffer(value),
+        ($0.QueryLogsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.WatchLogsRequest, $0.LogEntry>(
+        'WatchLogs',
+        watchLogs_Pre,
+        false,
+        true,
+        ($core.List<$core.int> value) => $0.WatchLogsRequest.fromBuffer(value),
+        ($0.LogEntry value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ExportLogsRequest, $0.ExportLogsResponse>(
+        'ExportLogs',
+        exportLogs_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.ExportLogsRequest.fromBuffer(value),
+        ($0.ExportLogsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClearLogsRequest, $0.ClearLogsResponse>(
+        'ClearLogs',
+        clearLogs_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.ClearLogsRequest.fromBuffer(value),
+        ($0.ClearLogsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetLogSettingsRequest, $0.GetLogSettingsResponse>(
+        'GetLogSettings',
+        getLogSettings_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetLogSettingsRequest.fromBuffer(value),
+        ($0.GetLogSettingsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetLogSettingsRequest, $0.SetLogSettingsResponse>(
+        'SetLogSettings',
+        setLogSettings_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.SetLogSettingsRequest.fromBuffer(value),
+        ($0.SetLogSettingsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListConnectionsRequest, $0.ListConnectionsResponse>(
+        'ListConnections',
+        listConnections_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.ListConnectionsRequest.fromBuffer(value),
+        ($0.ListConnectionsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CloseConnectionRequest, $0.CloseConnectionResponse>(
+        'CloseConnection',
+        closeConnection_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.CloseConnectionRequest.fromBuffer(value),
+        ($0.CloseConnectionResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
         'PutSecret',
         putSecret_Pre,
@@ -294,6 +414,38 @@ abstract class CoreControlServiceBase extends $grpc.Service {
     return handshake(call, await request);
   }
 
+  $async.Future<$0.QueryLogsResponse> queryLogs_Pre($grpc.ServiceCall call, $async.Future<$0.QueryLogsRequest> request) async {
+    return queryLogs(call, await request);
+  }
+
+  $async.Stream<$0.LogEntry> watchLogs_Pre($grpc.ServiceCall call, $async.Future<$0.WatchLogsRequest> request) async* {
+    yield* watchLogs(call, await request);
+  }
+
+  $async.Future<$0.ExportLogsResponse> exportLogs_Pre($grpc.ServiceCall call, $async.Future<$0.ExportLogsRequest> request) async {
+    return exportLogs(call, await request);
+  }
+
+  $async.Future<$0.ClearLogsResponse> clearLogs_Pre($grpc.ServiceCall call, $async.Future<$0.ClearLogsRequest> request) async {
+    return clearLogs(call, await request);
+  }
+
+  $async.Future<$0.GetLogSettingsResponse> getLogSettings_Pre($grpc.ServiceCall call, $async.Future<$0.GetLogSettingsRequest> request) async {
+    return getLogSettings(call, await request);
+  }
+
+  $async.Future<$0.SetLogSettingsResponse> setLogSettings_Pre($grpc.ServiceCall call, $async.Future<$0.SetLogSettingsRequest> request) async {
+    return setLogSettings(call, await request);
+  }
+
+  $async.Future<$0.ListConnectionsResponse> listConnections_Pre($grpc.ServiceCall call, $async.Future<$0.ListConnectionsRequest> request) async {
+    return listConnections(call, await request);
+  }
+
+  $async.Future<$0.CloseConnectionResponse> closeConnection_Pre($grpc.ServiceCall call, $async.Future<$0.CloseConnectionRequest> request) async {
+    return closeConnection(call, await request);
+  }
+
   $async.Future<$0.PutSecretResponse> putSecret_Pre($grpc.ServiceCall call, $async.Future<$0.PutSecretRequest> request) async {
     return putSecret(call, await request);
   }
@@ -314,6 +466,14 @@ abstract class CoreControlServiceBase extends $grpc.Service {
   $async.Future<$0.ExportDiagnosticsResponse> exportDiagnostics($grpc.ServiceCall call, $0.ExportDiagnosticsRequest request);
   $async.Future<$0.SetKillSwitchResponse> setKillSwitch($grpc.ServiceCall call, $0.SetKillSwitchRequest request);
   $async.Future<$0.HandshakeResponse> handshake($grpc.ServiceCall call, $0.HandshakeRequest request);
+  $async.Future<$0.QueryLogsResponse> queryLogs($grpc.ServiceCall call, $0.QueryLogsRequest request);
+  $async.Stream<$0.LogEntry> watchLogs($grpc.ServiceCall call, $0.WatchLogsRequest request);
+  $async.Future<$0.ExportLogsResponse> exportLogs($grpc.ServiceCall call, $0.ExportLogsRequest request);
+  $async.Future<$0.ClearLogsResponse> clearLogs($grpc.ServiceCall call, $0.ClearLogsRequest request);
+  $async.Future<$0.GetLogSettingsResponse> getLogSettings($grpc.ServiceCall call, $0.GetLogSettingsRequest request);
+  $async.Future<$0.SetLogSettingsResponse> setLogSettings($grpc.ServiceCall call, $0.SetLogSettingsRequest request);
+  $async.Future<$0.ListConnectionsResponse> listConnections($grpc.ServiceCall call, $0.ListConnectionsRequest request);
+  $async.Future<$0.CloseConnectionResponse> closeConnection($grpc.ServiceCall call, $0.CloseConnectionRequest request);
   $async.Future<$0.PutSecretResponse> putSecret($grpc.ServiceCall call, $0.PutSecretRequest request);
   $async.Future<$0.DeleteSecretResponse> deleteSecret($grpc.ServiceCall call, $0.DeleteSecretRequest request);
 }

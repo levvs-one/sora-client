@@ -29,6 +29,7 @@ import (
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/logs"
 	"github.com/levvs-one/sora-client/core/parser"
+	"github.com/levvs-one/sora-client/core/routing"
 	"github.com/levvs-one/sora-client/core/secret"
 	"github.com/levvs-one/sora-client/core/session"
 	"github.com/levvs-one/sora-client/core/subscription"
@@ -252,6 +253,23 @@ func (s *Server) GetAbout(_ context.Context, req *corev1.GetAboutRequest) (*core
 	about := s.about()
 	about.Contract = s.apiVersion()
 	return &corev1.GetAboutResponse{About: about}, nil
+}
+
+// GetRoutingPresets answers every routing preset with what it sends direct, in
+// the destination form the routes of a plan use.
+func (s *Server) GetRoutingPresets(_ context.Context, req *corev1.GetRoutingPresetsRequest) (*corev1.GetRoutingPresetsResponse, error) {
+	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
+		return nil, transportStatus(err)
+	}
+	out := &corev1.GetRoutingPresetsResponse{}
+	for _, preset := range routing.Presets() {
+		wire := &corev1.RoutingPreset{Id: preset.ID}
+		for _, rule := range preset.Direct {
+			wire.Direct = append(wire.Direct, string(rule.Type)+":"+rule.Value)
+		}
+		out.Presets = append(out.Presets, wire)
+	}
+	return out, nil
 }
 
 // Run does the work of the core that belongs to no request: it updates the

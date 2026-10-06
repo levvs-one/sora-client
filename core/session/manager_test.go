@@ -114,10 +114,16 @@ func TestManagerRejectsConcurrentCommands(t *testing.T) {
 			return newFakeEngine(), nil
 		},
 	})
+	// busy is read under the lock the manager writes it under.
+	busy := func() bool {
+		manager.mu.Lock()
+		defer manager.mu.Unlock()
+		return manager.busy
+	}
 	go func() {
 		_, _ = manager.Connect(context.Background(), testPlan("session-1"), Settings{})
 	}()
-	waitFor(t, time.Second, func() bool { return manager.busy })
+	waitFor(t, time.Second, busy)
 	if _, err := manager.Connect(context.Background(), testPlan("session-2"), Settings{}); errs.KeyOf(err) != errs.KeySessionBusy {
 		t.Errorf("a second Connect() = %v, key = %q", err, errs.KeyOf(err))
 	}
@@ -125,7 +131,7 @@ func TestManagerRejectsConcurrentCommands(t *testing.T) {
 		t.Errorf("Disconnect() during a connect = %v, key = %q", err, errs.KeyOf(err))
 	}
 	close(release)
-	waitFor(t, time.Second, func() bool { return !manager.busy })
+	waitFor(t, time.Second, func() bool { return !busy() })
 }
 
 // release gates the blocking engine factory of the concurrency test.

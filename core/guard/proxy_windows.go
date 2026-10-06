@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 	"sync"
 
 	"golang.org/x/sys/windows/registry"
@@ -230,3 +231,30 @@ func isNotFound(err error) bool {
 // PlatformProxy returns the proxy this platform has, which is the registry of the
 // current user on Windows and nothing anywhere else.
 func PlatformProxy() Proxy { return NewRegistryProxy() }
+
+// validateAddress refuses a proxy address that is not a loopback host and port.
+// The system proxy of a client must point at the local engine: a guard that
+// accepted a remote address would hand the user's traffic to whoever owns it.
+func validateAddress(address string) error {
+	trimmed := strings.TrimSpace(address)
+	if trimmed == "" {
+		return errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardProxyFailed,
+			"guard: the proxy address is empty")
+	}
+	host, port, found := strings.Cut(trimmed, ":")
+	if !found {
+		return errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardProxyFailed,
+			"guard: the proxy address has no port")
+	}
+	if port == "" {
+		return errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardProxyFailed,
+			"guard: the proxy address has an empty port")
+	}
+	switch host {
+	case "127.0.0.1", "localhost", "::1":
+		return nil
+	default:
+		return errs.Newf(errs.CodePermissionDenied, errs.KeyGuardProxyFailed,
+			"guard: the proxy address is not on the loopback interface")
+	}
+}

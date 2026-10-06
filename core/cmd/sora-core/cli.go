@@ -100,7 +100,7 @@ func run(arguments []string) error {
 		}
 	}()
 	if f.showToken {
-		token, err := control_PrintToken(f.dataDir)
+		token, err := printToken(f.dataDir)
 		if err != nil {
 			return err
 		}

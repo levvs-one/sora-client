@@ -30,9 +30,9 @@ func hardenFile(file *os.File, mode os.FileMode) error {
 // a vault that survives a crash on a filesystem that does not support it is
 // still correct, only less durable.
 func syncDir(dir string) error {
-	handle, err := os.Open(dir)
+	handle, err := os.Open(dir) //nolint:gosec // dir is the vault's own directory
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // best effort, as documented above
 	}
 	defer func() { _ = handle.Close() }()
 	_ = handle.Sync()

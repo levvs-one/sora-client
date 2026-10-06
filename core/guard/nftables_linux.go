@@ -74,7 +74,7 @@ func (n *Nftables) Name() string { return "nftables" }
 // rather than the command line because a ruleset is far longer than any command
 // line and because an argument list is visible to every process on the machine.
 func (n *Nftables) apply(ctx context.Context, ruleset string) error {
-	process := exec.CommandContext(ctx, n.command, "-f", "-")
+	process := exec.CommandContext(ctx, n.command, "-f", "-") //nolint:gosec // n.command is the nft binary found at construction; the ruleset arrives on stdin
 	process.Stdin = strings.NewReader(ruleset)
 	output, err := process.CombinedOutput()
 	if err != nil {
@@ -84,15 +84,6 @@ func (n *Nftables) apply(ctx context.Context, ruleset string) error {
 			"guard: nft refused the ruleset: %s", FirstLine(string(output)))
 	}
 	return nil
-}
-
-// firstLine keeps an error message to one line, because a details line is rendered
-// as one line everywhere else in the core.
-func firstLine(text string) string {
-	if index := strings.IndexAny(text, "\r\n"); index >= 0 {
-		return strings.TrimSpace(text[:index])
-	}
-	return strings.TrimSpace(text)
 }
 
 // PlatformFirewall returns the kill switch this platform has. Linux blocks traffic

@@ -114,6 +114,12 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		return nil, err
 	}
 	app.local = local
+	// The port is decided once, here, and every component that needs it reads
+	// it from this value: the engines bind it and the kill switch lets it pass.
+	tunnelPort, err := portOf(local)
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyEngineStartFailed)
+	}
 
 	// The token is what stands between a local process and the tunnel, so it is
 	// generated once, stored with owner-only rights and printed by nothing but an
@@ -132,9 +138,8 @@ func New(ctx context.Context, opts Options) (*App, error) {
 
 	factory := opts.Factory
 	if factory == nil {
-		port, _ := portOf(local)
 		app.engines = registry.Discover(ctx, opts.EnginesDir, supervise.Config{
-			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: port, Logs: center,
+			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: int(tunnelPort), Logs: center,
 		})
 		if err := app.engines.Pin(opts.Engine); err != nil {
 			return nil, err
@@ -157,7 +162,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	}
 	system, err := guard.New(guard.Options{
 		ProxyAddress: local,
-		EnginePorts:  []uint16{uint16(opts.LocalPort)},
+		EnginePorts:  []uint16{tunnelPort},
 	}, guard.PlatformProxy(), firewall)
 	if err != nil {
 		_ = store.Close()
@@ -300,7 +305,7 @@ func (a *App) Serve(ctx context.Context) error {
 	if ctx.Err() != nil {
 		// The listener closes with the context, so a server that stops because the
 		// service was told to stop has done its job.
-		return nil
+		return nil //nolint:nilerr // the error is the closed listener of a requested stop
 	}
 	if errors.Is(err, grpc.ErrServerStopped) {
 		return nil
@@ -346,7 +351,7 @@ func (a *App) TunnelAddress() string { return a.local }
 // before the engine runs, so it is decided here and never per session.
 func localAddress(port int) (string, error) {
 	if port == 0 {
-		free, err := freePort()
+		free, err := supervise.FreePort()
 		if err != nil {
 			return "", err
 		}
@@ -360,29 +365,11 @@ func localAddress(port int) (string, error) {
 }
 
 // portOf reads the port back out of an address.
-func portOf(address string) (int, error) {
+func portOf(address string) (uint16, error) {
 	_, portText, err := net.SplitHostPort(address)
 	if err != nil {
 		return 0, err
 	}
-	return strconv.Atoi(portText)
-}
-
-// freePort asks the kernel for a port nothing holds right now. The window between
-// the answer and the engine binding it is small and local, and the engine fails
-// loudly if it loses the race, which is better than a port decided twice.
-func freePort() (int, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, errs.Wrap(err, errs.CodeInternal, errs.KeyEngineStartFailed)
-	}
-	port, err := portOf(listener.Addr().String())
-	if err != nil {
-		_ = listener.Close()
-		return 0, err
-	}
-	if err := listener.Close(); err != nil {
-		return 0, errs.Wrap(err, errs.CodeInternal, errs.KeyEngineStartFailed)
-	}
-	return port, nil
+	port, err := strconv.ParseUint(portText, 10, 16)
+	return uint16(port), err
 }

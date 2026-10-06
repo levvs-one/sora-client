@@ -1,0 +1,17 @@
+# Test fixtures carry key-shaped values on purpose: engines validate key
+# lengths, so a test plan needs keys of the right shape. Each value below is a
+# throwaway generated for the tests, allowed by its exact text so that any
+# other key-shaped string anywhere in the tree is still reported.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Throwaway keys of the engine test fixtures"
+regexes = [
+  '''cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk=''',
+  '''MTIzNDU2Nzg5MDEyMzQ1Ng==''',
+  # A Shadowsocks cipher name next to a password field, not a key.
+  '''2022-blake3-aes-128-gcm''',
+  # The redaction test feeds an obviously fake token through the masker.
+  '''abcdef123456''',
+]

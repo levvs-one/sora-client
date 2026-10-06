@@ -11,8 +11,11 @@ serves the control plane the interface talks to over `proto/sora/core/v1`.
 | `errs` | the error catalog: class, localization key, masked detail |
 | `secret` | the encrypted credential store |
 | `parser` | subscriptions and share links into an engine plan |
-| `engine` | the plan, the engine boundary, redaction, backoff, restart budget |
-| `engine/mihomo` | the mihomo child process and its control interface |
+| `engine` | the plan, the capability matrix, engine selection, redaction, backoff |
+| `engine/supervise` | the engine child process: probe, stdin config, validation, restarts |
+| `engine/clashapi` | the Clash API client and controls shared by mihomo and sing-box |
+| `engine/singbox`, `engine/xray`, `engine/mihomo` | one driver per engine |
+| `engine/registry` | which engines this machine has and which one carries a plan |
 | `session` | the session state machine, supervision, event journal, guard contract |
 | `guard` | the system proxy and the kill switch |
 | `probe` | measuring whether a server answers |
@@ -24,17 +27,23 @@ serves the control plane the interface talks to over `proto/sora/core/v1`.
 
 ## Engines
 
-| Engine | State |
-| --- | --- |
-| mihomo | implemented: child process, rendered config, controller API, hot apply |
-| sing-box | implemented: child process, rendered config, Clash REST API, hot apply via reload |
-| Xray | not implemented: no package, no factory |
+| Engine | Verified build | Control |
+| --- | --- | --- |
+| sing-box | 1.14.2 | Clash API; a new plan restarts the engine, selections survive in the cache file |
+| Xray | 26.3.27 | metrics listener; select groups pinned in routing, latency through a tester process |
+| mihomo | 1.19.32 | Clash API with hot apply |
 
-`engine.Catalog` lists what each upstream engine is capable of, which is how the
-interface avoids offering a feature the chosen engine lacks. It is a matrix of
-upstream facts, not a list of things this repository can run. Nothing in the
-service can start an engine that has no implementation, and the contract has no
-field that asks for one.
+The core picks, per plan, the first engine in `engine.DefaultPreference` that
+carries every protocol and feature of the plan; `-engine` pins one. The design
+and the capability matrix are in
+[docs/architecture/engines.md](../docs/architecture/engines.md).
+
+With the engine binaries at hand, the tests run every rendered plan through the
+engine's own validator and drive each engine live:
+
+```sh
+SORA_SINGBOX_BIN=... SORA_XRAY_BIN=... SORA_MIHOMO_BIN=... SORA_ENGINES_DIR=... go test ./...
+```
 
 ## Running it
 

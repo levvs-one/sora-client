@@ -1022,6 +1022,7 @@ class OutboundSpec extends $pb.GeneratedMessage {
     $core.String? security,
     Endpoint? endpoint,
     CredentialsRef? credentials,
+    BypassStrategy? bypass,
   }) {
     final $result = create();
     if (id != null) {
@@ -1045,6 +1046,9 @@ class OutboundSpec extends $pb.GeneratedMessage {
     if (credentials != null) {
       $result.credentials = credentials;
     }
+    if (bypass != null) {
+      $result.bypass = bypass;
+    }
     return $result;
   }
   OutboundSpec._() : super();
@@ -1059,6 +1063,7 @@ class OutboundSpec extends $pb.GeneratedMessage {
     ..aOS(5, _omitFieldNames ? '' : 'security')
     ..aOM<Endpoint>(6, _omitFieldNames ? '' : 'endpoint', subBuilder: Endpoint.create)
     ..aOM<CredentialsRef>(7, _omitFieldNames ? '' : 'credentials', subBuilder: CredentialsRef.create)
+    ..aOM<BypassStrategy>(8, _omitFieldNames ? '' : 'bypass', subBuilder: BypassStrategy.create)
     ..hasRequiredFields = false
   ;
 
@@ -1149,6 +1154,19 @@ class OutboundSpec extends $pb.GeneratedMessage {
   void clearCredentials() => clearField(7);
   @$pb.TagNumber(7)
   CredentialsRef ensureCredentials() => $_ensure(6);
+
+  /// Since 1.3. For protocol "bypass": sites reached directly with the
+  /// handshake reshaped by zapret against DPI; no endpoint, no credentials.
+  @$pb.TagNumber(8)
+  BypassStrategy get bypass => $_getN(7);
+  @$pb.TagNumber(8)
+  set bypass(BypassStrategy v) { setField(8, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasBypass() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearBypass() => clearField(8);
+  @$pb.TagNumber(8)
+  BypassStrategy ensureBypass() => $_ensure(7);
 }
 
 class Endpoint extends $pb.GeneratedMessage {
@@ -5864,6 +5882,141 @@ class CloseConnectionResponse extends $pb.GeneratedMessage {
   void clearError() => clearField(1);
   @$pb.TagNumber(1)
   SoraError ensureError() => $_ensure(0);
+}
+
+/// BypassStrategy is how zapret reshapes a handshake. Positions are a number
+/// of bytes, negative from the end, or a marker (method, host, endhost, sld,
+/// midsld, endsld, sniext) with an optional +N or -N.
+class BypassStrategy extends $pb.GeneratedMessage {
+  factory BypassStrategy({
+    $core.Iterable<$core.String>? splitPos,
+    $core.bool? disorder,
+    $core.bool? oob,
+    $core.String? tlsRecord,
+    $core.bool? hostCase,
+    $core.bool? domainCase,
+    $core.bool? methodEol,
+  }) {
+    final $result = create();
+    if (splitPos != null) {
+      $result.splitPos.addAll(splitPos);
+    }
+    if (disorder != null) {
+      $result.disorder = disorder;
+    }
+    if (oob != null) {
+      $result.oob = oob;
+    }
+    if (tlsRecord != null) {
+      $result.tlsRecord = tlsRecord;
+    }
+    if (hostCase != null) {
+      $result.hostCase = hostCase;
+    }
+    if (domainCase != null) {
+      $result.domainCase = domainCase;
+    }
+    if (methodEol != null) {
+      $result.methodEol = methodEol;
+    }
+    return $result;
+  }
+  BypassStrategy._() : super();
+  factory BypassStrategy.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory BypassStrategy.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'BypassStrategy', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..pPS(1, _omitFieldNames ? '' : 'splitPos')
+    ..aOB(2, _omitFieldNames ? '' : 'disorder')
+    ..aOB(3, _omitFieldNames ? '' : 'oob')
+    ..aOS(4, _omitFieldNames ? '' : 'tlsRecord')
+    ..aOB(5, _omitFieldNames ? '' : 'hostCase')
+    ..aOB(6, _omitFieldNames ? '' : 'domainCase')
+    ..aOB(7, _omitFieldNames ? '' : 'methodEol')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  BypassStrategy clone() => BypassStrategy()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  BypassStrategy copyWith(void Function(BypassStrategy) updates) => super.copyWith((message) => updates(message as BypassStrategy)) as BypassStrategy;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static BypassStrategy create() => BypassStrategy._();
+  BypassStrategy createEmptyInstance() => create();
+  static $pb.PbList<BypassStrategy> createRepeated() => $pb.PbList<BypassStrategy>();
+  @$core.pragma('dart2js:noInline')
+  static BypassStrategy getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BypassStrategy>(create);
+  static BypassStrategy? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.String> get splitPos => $_getList(0);
+
+  /// Sends the second part of a split first.
+  @$pb.TagNumber(2)
+  $core.bool get disorder => $_getBF(1);
+  @$pb.TagNumber(2)
+  set disorder($core.bool v) { $_setBool(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasDisorder() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDisorder() => clearField(2);
+
+  /// Sends an out-of-band byte with the split.
+  @$pb.TagNumber(3)
+  $core.bool get oob => $_getBF(2);
+  @$pb.TagNumber(3)
+  set oob($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasOob() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOob() => clearField(3);
+
+  /// Splits the TLS ClientHello into two records at this position.
+  @$pb.TagNumber(4)
+  $core.String get tlsRecord => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set tlsRecord($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasTlsRecord() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTlsRecord() => clearField(4);
+
+  /// Reshape plain HTTP requests.
+  @$pb.TagNumber(5)
+  $core.bool get hostCase => $_getBF(4);
+  @$pb.TagNumber(5)
+  set hostCase($core.bool v) { $_setBool(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasHostCase() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHostCase() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get domainCase => $_getBF(5);
+  @$pb.TagNumber(6)
+  set domainCase($core.bool v) { $_setBool(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasDomainCase() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDomainCase() => clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get methodEol => $_getBF(6);
+  @$pb.TagNumber(7)
+  set methodEol($core.bool v) { $_setBool(6, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasMethodEol() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMethodEol() => clearField(7);
 }
 
 

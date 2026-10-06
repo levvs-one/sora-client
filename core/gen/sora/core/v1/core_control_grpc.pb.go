@@ -19,28 +19,33 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CoreControl_Connect_FullMethodName           = "/sora.core.v1.CoreControl/Connect"
-	CoreControl_Disconnect_FullMethodName        = "/sora.core.v1.CoreControl/Disconnect"
-	CoreControl_GetStatus_FullMethodName         = "/sora.core.v1.CoreControl/GetStatus"
-	CoreControl_WatchEvents_FullMethodName       = "/sora.core.v1.CoreControl/WatchEvents"
-	CoreControl_ParseImport_FullMethodName       = "/sora.core.v1.CoreControl/ParseImport"
-	CoreControl_FetchSubscription_FullMethodName = "/sora.core.v1.CoreControl/FetchSubscription"
-	CoreControl_ProbeServers_FullMethodName      = "/sora.core.v1.CoreControl/ProbeServers"
-	CoreControl_GetStats_FullMethodName          = "/sora.core.v1.CoreControl/GetStats"
-	CoreControl_RunDiagnostics_FullMethodName    = "/sora.core.v1.CoreControl/RunDiagnostics"
-	CoreControl_ExportDiagnostics_FullMethodName = "/sora.core.v1.CoreControl/ExportDiagnostics"
-	CoreControl_SetKillSwitch_FullMethodName     = "/sora.core.v1.CoreControl/SetKillSwitch"
-	CoreControl_Handshake_FullMethodName         = "/sora.core.v1.CoreControl/Handshake"
-	CoreControl_QueryLogs_FullMethodName         = "/sora.core.v1.CoreControl/QueryLogs"
-	CoreControl_WatchLogs_FullMethodName         = "/sora.core.v1.CoreControl/WatchLogs"
-	CoreControl_ExportLogs_FullMethodName        = "/sora.core.v1.CoreControl/ExportLogs"
-	CoreControl_ClearLogs_FullMethodName         = "/sora.core.v1.CoreControl/ClearLogs"
-	CoreControl_GetLogSettings_FullMethodName    = "/sora.core.v1.CoreControl/GetLogSettings"
-	CoreControl_SetLogSettings_FullMethodName    = "/sora.core.v1.CoreControl/SetLogSettings"
-	CoreControl_ListConnections_FullMethodName   = "/sora.core.v1.CoreControl/ListConnections"
-	CoreControl_CloseConnection_FullMethodName   = "/sora.core.v1.CoreControl/CloseConnection"
-	CoreControl_PutSecret_FullMethodName         = "/sora.core.v1.CoreControl/PutSecret"
-	CoreControl_DeleteSecret_FullMethodName      = "/sora.core.v1.CoreControl/DeleteSecret"
+	CoreControl_Connect_FullMethodName             = "/sora.core.v1.CoreControl/Connect"
+	CoreControl_Disconnect_FullMethodName          = "/sora.core.v1.CoreControl/Disconnect"
+	CoreControl_GetStatus_FullMethodName           = "/sora.core.v1.CoreControl/GetStatus"
+	CoreControl_WatchEvents_FullMethodName         = "/sora.core.v1.CoreControl/WatchEvents"
+	CoreControl_ParseImport_FullMethodName         = "/sora.core.v1.CoreControl/ParseImport"
+	CoreControl_FetchSubscription_FullMethodName   = "/sora.core.v1.CoreControl/FetchSubscription"
+	CoreControl_ProbeServers_FullMethodName        = "/sora.core.v1.CoreControl/ProbeServers"
+	CoreControl_GetStats_FullMethodName            = "/sora.core.v1.CoreControl/GetStats"
+	CoreControl_RunDiagnostics_FullMethodName      = "/sora.core.v1.CoreControl/RunDiagnostics"
+	CoreControl_ExportDiagnostics_FullMethodName   = "/sora.core.v1.CoreControl/ExportDiagnostics"
+	CoreControl_SetKillSwitch_FullMethodName       = "/sora.core.v1.CoreControl/SetKillSwitch"
+	CoreControl_Handshake_FullMethodName           = "/sora.core.v1.CoreControl/Handshake"
+	CoreControl_QueryLogs_FullMethodName           = "/sora.core.v1.CoreControl/QueryLogs"
+	CoreControl_WatchLogs_FullMethodName           = "/sora.core.v1.CoreControl/WatchLogs"
+	CoreControl_ExportLogs_FullMethodName          = "/sora.core.v1.CoreControl/ExportLogs"
+	CoreControl_ClearLogs_FullMethodName           = "/sora.core.v1.CoreControl/ClearLogs"
+	CoreControl_GetLogSettings_FullMethodName      = "/sora.core.v1.CoreControl/GetLogSettings"
+	CoreControl_SetLogSettings_FullMethodName      = "/sora.core.v1.CoreControl/SetLogSettings"
+	CoreControl_ListConnections_FullMethodName     = "/sora.core.v1.CoreControl/ListConnections"
+	CoreControl_CloseConnection_FullMethodName     = "/sora.core.v1.CoreControl/CloseConnection"
+	CoreControl_SaveSubscription_FullMethodName    = "/sora.core.v1.CoreControl/SaveSubscription"
+	CoreControl_ListSubscriptions_FullMethodName   = "/sora.core.v1.CoreControl/ListSubscriptions"
+	CoreControl_DeleteSubscription_FullMethodName  = "/sora.core.v1.CoreControl/DeleteSubscription"
+	CoreControl_RefreshSubscription_FullMethodName = "/sora.core.v1.CoreControl/RefreshSubscription"
+	CoreControl_WatchSubscriptions_FullMethodName  = "/sora.core.v1.CoreControl/WatchSubscriptions"
+	CoreControl_PutSecret_FullMethodName           = "/sora.core.v1.CoreControl/PutSecret"
+	CoreControl_DeleteSecret_FullMethodName        = "/sora.core.v1.CoreControl/DeleteSecret"
 )
 
 // CoreControlClient is the client API for CoreControl service.
@@ -73,6 +78,14 @@ type CoreControlClient interface {
 	// Since 1.3. The connection center: live connections of the session.
 	ListConnections(ctx context.Context, in *ListConnectionsRequest, opts ...grpc.CallOption) (*ListConnectionsResponse, error)
 	CloseConnection(ctx context.Context, in *CloseConnectionRequest, opts ...grpc.CallOption) (*CloseConnectionResponse, error)
+	// Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
+	// current while the interface is closed. The link of a subscription is its
+	// credential: the core stores it encrypted and never sends it back.
+	SaveSubscription(ctx context.Context, in *SaveSubscriptionRequest, opts ...grpc.CallOption) (*SaveSubscriptionResponse, error)
+	ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error)
+	DeleteSubscription(ctx context.Context, in *DeleteSubscriptionRequest, opts ...grpc.CallOption) (*DeleteSubscriptionResponse, error)
+	RefreshSubscription(ctx context.Context, in *RefreshSubscriptionRequest, opts ...grpc.CallOption) (*RefreshSubscriptionResponse, error)
+	WatchSubscriptions(ctx context.Context, in *WatchSubscriptionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscriptionState], error)
 	// PutSecret and DeleteSecret manage the credential material the core keeps.
 	// They exist because the rest of the contract carries only references: a plan
 	// names a secret, and these two calls are the only way a secret ever reaches
@@ -317,6 +330,65 @@ func (c *coreControlClient) CloseConnection(ctx context.Context, in *CloseConnec
 	return out, nil
 }
 
+func (c *coreControlClient) SaveSubscription(ctx context.Context, in *SaveSubscriptionRequest, opts ...grpc.CallOption) (*SaveSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveSubscriptionResponse)
+	err := c.cc.Invoke(ctx, CoreControl_SaveSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSubscriptionsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_ListSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) DeleteSubscription(ctx context.Context, in *DeleteSubscriptionRequest, opts ...grpc.CallOption) (*DeleteSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteSubscriptionResponse)
+	err := c.cc.Invoke(ctx, CoreControl_DeleteSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) RefreshSubscription(ctx context.Context, in *RefreshSubscriptionRequest, opts ...grpc.CallOption) (*RefreshSubscriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefreshSubscriptionResponse)
+	err := c.cc.Invoke(ctx, CoreControl_RefreshSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) WatchSubscriptions(ctx context.Context, in *WatchSubscriptionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscriptionState], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &CoreControl_ServiceDesc.Streams[3], CoreControl_WatchSubscriptions_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[WatchSubscriptionsRequest, SubscriptionState]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CoreControl_WatchSubscriptionsClient = grpc.ServerStreamingClient[SubscriptionState]
+
 func (c *coreControlClient) PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PutSecretResponse)
@@ -367,6 +439,14 @@ type CoreControlServer interface {
 	// Since 1.3. The connection center: live connections of the session.
 	ListConnections(context.Context, *ListConnectionsRequest) (*ListConnectionsResponse, error)
 	CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error)
+	// Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
+	// current while the interface is closed. The link of a subscription is its
+	// credential: the core stores it encrypted and never sends it back.
+	SaveSubscription(context.Context, *SaveSubscriptionRequest) (*SaveSubscriptionResponse, error)
+	ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error)
+	DeleteSubscription(context.Context, *DeleteSubscriptionRequest) (*DeleteSubscriptionResponse, error)
+	RefreshSubscription(context.Context, *RefreshSubscriptionRequest) (*RefreshSubscriptionResponse, error)
+	WatchSubscriptions(*WatchSubscriptionsRequest, grpc.ServerStreamingServer[SubscriptionState]) error
 	// PutSecret and DeleteSecret manage the credential material the core keeps.
 	// They exist because the rest of the contract carries only references: a plan
 	// names a secret, and these two calls are the only way a secret ever reaches
@@ -443,6 +523,21 @@ func (UnimplementedCoreControlServer) ListConnections(context.Context, *ListConn
 }
 func (UnimplementedCoreControlServer) CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseConnection not implemented")
+}
+func (UnimplementedCoreControlServer) SaveSubscription(context.Context, *SaveSubscriptionRequest) (*SaveSubscriptionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveSubscription not implemented")
+}
+func (UnimplementedCoreControlServer) ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSubscriptions not implemented")
+}
+func (UnimplementedCoreControlServer) DeleteSubscription(context.Context, *DeleteSubscriptionRequest) (*DeleteSubscriptionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSubscription not implemented")
+}
+func (UnimplementedCoreControlServer) RefreshSubscription(context.Context, *RefreshSubscriptionRequest) (*RefreshSubscriptionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshSubscription not implemented")
+}
+func (UnimplementedCoreControlServer) WatchSubscriptions(*WatchSubscriptionsRequest, grpc.ServerStreamingServer[SubscriptionState]) error {
+	return status.Errorf(codes.Unimplemented, "method WatchSubscriptions not implemented")
 }
 func (UnimplementedCoreControlServer) PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PutSecret not implemented")
@@ -810,6 +905,89 @@ func _CoreControl_CloseConnection_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreControl_SaveSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).SaveSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_SaveSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).SaveSubscription(ctx, req.(*SaveSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_ListSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubscriptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).ListSubscriptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_ListSubscriptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).ListSubscriptions(ctx, req.(*ListSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_DeleteSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).DeleteSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_DeleteSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).DeleteSubscription(ctx, req.(*DeleteSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_RefreshSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).RefreshSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_RefreshSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).RefreshSubscription(ctx, req.(*RefreshSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_WatchSubscriptions_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchSubscriptionsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CoreControlServer).WatchSubscriptions(m, &grpc.GenericServerStream[WatchSubscriptionsRequest, SubscriptionState]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CoreControl_WatchSubscriptionsServer = grpc.ServerStreamingServer[SubscriptionState]
+
 func _CoreControl_PutSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutSecretRequest)
 	if err := dec(in); err != nil {
@@ -922,6 +1100,22 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CoreControl_CloseConnection_Handler,
 		},
 		{
+			MethodName: "SaveSubscription",
+			Handler:    _CoreControl_SaveSubscription_Handler,
+		},
+		{
+			MethodName: "ListSubscriptions",
+			Handler:    _CoreControl_ListSubscriptions_Handler,
+		},
+		{
+			MethodName: "DeleteSubscription",
+			Handler:    _CoreControl_DeleteSubscription_Handler,
+		},
+		{
+			MethodName: "RefreshSubscription",
+			Handler:    _CoreControl_RefreshSubscription_Handler,
+		},
+		{
 			MethodName: "PutSecret",
 			Handler:    _CoreControl_PutSecret_Handler,
 		},
@@ -944,6 +1138,11 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "WatchLogs",
 			Handler:       _CoreControl_WatchLogs_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "WatchSubscriptions",
+			Handler:       _CoreControl_WatchSubscriptions_Handler,
 			ServerStreams: true,
 		},
 	},

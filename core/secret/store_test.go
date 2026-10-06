@@ -462,3 +462,39 @@ func TestVaultIsEncryptedOnDisk(t *testing.T) {
 		t.Error("the vault file leaks reference names in the clear")
 	}
 }
+
+func TestApplyIsAllOrNothing(t *testing.T) {
+	store, err := Open(t.TempDir(), Options{Protector: FileProtector{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	if err := store.Put("keep", []byte("kept")); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Put("old", []byte("old")); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Apply(map[string][]byte{"new_a": []byte("a"), "new_b": []byte("b")}, []string{"old"}); err != nil {
+		t.Fatal(err)
+	}
+	if store.Has("old") || !store.Has("new_a") || !store.Has("new_b") || !store.Has("keep") {
+		t.Fatalf("refs = %v", store.Refs())
+	}
+	if got, _ := store.Get("keep"); string(got) != "kept" {
+		t.Fatalf("an untouched value was damaged: %q", got)
+	}
+	// A change that breaks a limit leaves everything as it was.
+	err = store.Apply(map[string][]byte{"fine": []byte("x"), "bad ref!": []byte("y")}, []string{"keep"})
+	if err == nil || store.Has("fine") || !store.Has("keep") {
+		t.Fatalf("a refused change must not apply in part: %v, refs %v", err, store.Refs())
+	}
+	reopened, err := Open(store.dir, Options{Protector: FileProtector{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reopened.Close() }()
+	if got, _ := reopened.Get("new_b"); string(got) != "b" || reopened.Has("old") {
+		t.Fatalf("the change did not reach the disk: refs %v", reopened.Refs())
+	}
+}

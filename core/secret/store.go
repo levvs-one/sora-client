@@ -216,6 +216,70 @@ func (s *Store) Delete(reference string) error {
 	return nil
 }
 
+// Apply stores every value of puts and removes every reference of deletes in
+// one write of the vault: either all of it reaches the disk or none of it does,
+// so an update of many secrets never leaves a half-applied state behind, and
+// it costs one write instead of one per secret.
+func (s *Store) Apply(puts map[string][]byte, deletes []string) error {
+	for reference, material := range puts {
+		if err := ValidateReference(reference); err != nil {
+			return err
+		}
+		if len(material) == 0 {
+			return errs.Newf(errs.CodeInvalidArgument, errs.KeySecretReferenceInvalid,
+				"secret store: reference %q has empty material", reference)
+		}
+		if len(material) > MaxSecretBytes {
+			return errs.Newf(errs.CodeResourceExhausted, errs.KeySecretTooLarge,
+				"secret store: reference %q holds %d bytes, the limit is %d", reference, len(material), MaxSecretBytes)
+		}
+	}
+	for _, reference := range deletes {
+		if err := ValidateReference(reference); err != nil {
+			return err
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return errs.Newf(errs.CodeInternal, errs.KeySecretStoreUnavailable, "secret store: closed")
+	}
+	next := make(map[string][]byte, len(s.items)+len(puts))
+	for reference, material := range s.items {
+		next[reference] = material
+	}
+	for _, reference := range deletes {
+		delete(next, reference)
+	}
+	for reference, material := range puts {
+		next[reference] = append([]byte(nil), material...)
+	}
+	if len(next) > MaxSecrets {
+		for reference := range puts {
+			wipe(next[reference])
+		}
+		return errs.Newf(errs.CodeResourceExhausted, errs.KeySecretStoreUnavailable,
+			"secret store: the change would hold %d secrets, the limit is %d", len(next), MaxSecrets)
+	}
+	previous := s.items
+	s.items = next
+	if err := s.writeLocked(); err != nil {
+		s.items = previous
+		for reference := range puts {
+			wipe(next[reference])
+		}
+		return err
+	}
+	// Values that were replaced or removed are wiped; values still in use are
+	// shared between the two maps and stay.
+	for reference, material := range previous {
+		if kept, ok := next[reference]; !ok || &kept[0] != &material[0] {
+			wipe(material)
+		}
+	}
+	return nil
+}
+
 // Has reports whether a reference is stored, without copying the material.
 func (s *Store) Has(reference string) bool {
 	if ValidateReference(reference) != nil {

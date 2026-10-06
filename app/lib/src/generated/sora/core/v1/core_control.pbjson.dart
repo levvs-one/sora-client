@@ -917,6 +917,7 @@ const HandshakeResponse$json = {
   '2': [
     {'1': 'negotiated_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'negotiatedVersion'},
     {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {'1': 'control_authenticator', '3': 3, '4': 1, '5': 12, '10': 'controlAuthenticator'},
   ],
 };
 
@@ -924,7 +925,8 @@ const HandshakeResponse$json = {
 final $typed_data.Uint8List handshakeResponseDescriptor = $convert.base64Decode(
     'ChFIYW5kc2hha2VSZXNwb25zZRJHChJuZWdvdGlhdGVkX3ZlcnNpb24YASABKAsyGC5zb3JhLm'
     'NvcmUudjEuQXBpVmVyc2lvblIRbmVnb3RpYXRlZFZlcnNpb24SLQoFZXJyb3IYAiABKAsyFy5z'
-    'b3JhLmNvcmUudjEuU29yYUVycm9yUgVlcnJvcg==');
+    'b3JhLmNvcmUudjEuU29yYUVycm9yUgVlcnJvchIzChVjb250cm9sX2F1dGhlbnRpY2F0b3IYAy'
+    'ABKAxSFGNvbnRyb2xBdXRoZW50aWNhdG9y');
 
 @$core.Deprecated('Use putSecretRequestDescriptor instead')
 const PutSecretRequest$json = {

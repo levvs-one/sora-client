@@ -1,6 +1,7 @@
 package control_test
 
 import (
+	"bytes"
 	"context"
 	"net"
 	"path/filepath"
@@ -103,6 +104,9 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 	if handshake.GetNegotiatedVersion().GetMajor() != 1 {
 		t.Fatalf("the core answered version %v", handshake.GetNegotiatedVersion())
 	}
+	if !bytes.Equal(handshake.GetControlAuthenticator(), testToken) {
+		t.Fatal("an admitted client must receive the token: it cannot read the token file of a system core")
+	}
 
 	// A client that is too old is refused, and it is refused in band: the answer
 	// tells it what the core speaks so it can update itself.
@@ -114,6 +118,9 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 	}
 	if stale.GetError() == nil {
 		t.Error("a client that speaks a version the core dropped was answered with a session")
+	}
+	if len(stale.GetControlAuthenticator()) != 0 {
+		t.Error("a refused client must not receive the token")
 	}
 
 	if _, err := client.Connect(ctx, &corev1.ConnectRequest{

@@ -59,6 +59,9 @@ type Options struct {
 	LocalPort int
 	// Bypass lists destinations that skip the tunnel.
 	Bypass []string
+	// Socket is where the control plane listens. Empty is the platform address;
+	// a core run by hand without root cannot create that one.
+	Socket string
 	// Log receives what the core does. Nil means the default handler.
 	Log *slog.Logger
 	// Factory overrides the engine. Nil means mihomo, and a test uses it to run
@@ -216,7 +219,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	plane.SetDiagnostics(app.report)
 	app.plane = plane
 
-	listener, err := ipc.Listen(ctx, ipc.Options{})
+	listener, err := ipc.Listen(ctx, ipc.Options{Address: opts.Socket})
 	if err != nil {
 		_ = store.Close()
 		return nil, err

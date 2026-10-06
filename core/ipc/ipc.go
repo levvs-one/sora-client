@@ -54,8 +54,9 @@ type Options struct {
 	// Group is the unix group allowed to connect, where the platform has one.
 	// Empty means the group the core itself runs in.
 	Group string
-	// Allow decides which peers may connect. Empty means the platform default,
-	// which is the same user on unix and the access list of the pipe on Windows.
+	// Allow decides which peers may connect. Empty means the platform default:
+	// on unix the user of the core and the members of Group, on Windows the
+	// access list of the pipe.
 	Allow func(Peer) bool
 	// HandshakeTimeout bounds a connection that has not introduced itself.
 	HandshakeTimeout time.Duration
@@ -87,7 +88,7 @@ func Listen(ctx context.Context, opts Options) (*Listener, error) {
 	}
 	allow := opts.Allow
 	if allow == nil {
-		allow = defaultAllow
+		allow = defaultAllow(opts)
 	}
 	listener := &Listener{
 		Listener: inner,

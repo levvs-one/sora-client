@@ -17,8 +17,9 @@ type Availability struct {
 
 // Catalog holds the capability matrix of the engines Sora knows about. The
 // matrix is static knowledge about upstream engines; Availability is what the
-// machine actually has. Versions checked here: mihomo v1.19.32,
-// sing-box v1.11.x, Xray-core v25.x. See docs/research.
+// machine actually has. Every entry was checked against the engine's own
+// validator: mihomo v1.19.32 (-t), sing-box v1.14.2 (check) and Xray-core
+// v26.3.27 (run -test). See docs/architecture/engines.md.
 var Catalog = map[Kind]Capabilities{
 	KindMihomo: {
 		Kind:       KindMihomo,
@@ -32,37 +33,51 @@ var Catalog = map[Kind]Capabilities{
 		Features: map[Feature]bool{
 			FeatureTun: true, FeatureFakeIP: true, FeatureRuleSets: true,
 			FeatureProxyProviders: true, FeatureURLTest: true, FeatureLatencyTest: true,
-			FeatureHotApply: true, FeatureGeoData: true,
+			FeatureHotApply: true, FeatureGeoData: true, FeatureFallbackGroup: true,
+			FeatureLoadBalance: true,
 		},
 	},
 	KindSingBox: {
-		Kind:       KindSingBox,
-		MinVersion: "1.11.0",
+		Kind: KindSingBox,
+		// 1.12 introduced the DNS server and rule action formats the renderer
+		// writes; the legacy formats are gone in 1.14.
+		MinVersion: "1.12.0",
 		Protocols: map[Protocol]bool{
 			ProtocolVLESS: true, ProtocolVMess: true, ProtocolTrojan: true,
 			ProtocolShadowsocks: true, ProtocolHysteria2: true, ProtocolTUIC: true,
 			ProtocolWireGuard: true, ProtocolSOCKS5: true, ProtocolHTTP: true,
-			ProtocolDirect: true,
+			ProtocolAnyTLS: true, ProtocolDirect: true,
 		},
 		Features: map[Feature]bool{
 			FeatureTun: true, FeatureFakeIP: true, FeatureRuleSets: true,
-			FeatureURLTest: true, FeatureLatencyTest: true, FeatureHotApply: true,
-			FeaturePerAppRouting: true,
+			FeatureURLTest: true, FeatureLatencyTest: true, FeatureGeoData: true,
+			FeaturePerAppRouting: true, FeatureTLSFragment: true,
 		},
 	},
 	KindXray: {
-		Kind:       KindXray,
-		MinVersion: "24.0.0",
+		Kind: KindXray,
+		// Hysteria2, XHTTP and VLESS Encryption are recent; the floor is the
+		// build they were verified on, and Sora ships that build itself.
+		MinVersion: "26.3.27",
 		Protocols: map[Protocol]bool{
 			ProtocolVLESS: true, ProtocolVMess: true, ProtocolTrojan: true,
-			ProtocolShadowsocks: true, ProtocolSOCKS5: true, ProtocolHTTP: true,
-			ProtocolDirect: true,
+			ProtocolShadowsocks: true, ProtocolHysteria2: true, ProtocolWireGuard: true,
+			ProtocolSOCKS5: true, ProtocolHTTP: true, ProtocolDirect: true,
 		},
 		Features: map[Feature]bool{
-			FeatureTun: true, FeatureLatencyTest: true, FeatureGeoData: true,
+			FeatureTun: true, FeatureURLTest: true, FeatureLoadBalance: true,
+			FeatureLatencyTest: true, FeatureGeoData: true, FeatureTLSFragment: true,
+			FeatureXHTTP: true, FeatureVLESSEncrypt: true,
 		},
 	},
 }
+
+// DefaultPreference is the engine order Sora tries when the user has not
+// pinned one. sing-box comes first: the smallest memory footprint, a tun
+// stack that works the same on every platform and a native Android build.
+// Xray carries what nobody else does (XHTTP, VLESS Encryption). mihomo is the
+// most complete rule engine and carries fallback groups and providers.
+var DefaultPreference = []Kind{KindSingBox, KindXray, KindMihomo}
 
 // Selection is the engine chosen for a plan.
 type Selection struct {

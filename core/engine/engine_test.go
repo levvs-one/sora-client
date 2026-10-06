@@ -89,7 +89,7 @@ func TestSelectEnginePicksByCapability(t *testing.T) {
 		UUID: "cccccccc-1111-2222-3333-444444444444", Password: "another-secret",
 	})
 	available := []Availability{
-		{Kind: KindXray, Usable: true, Version: mustVersion(t, "25.3.6")},
+		{Kind: KindXray, Usable: true, Version: mustVersion(t, "26.3.27")},
 		{Kind: KindMihomo, Usable: true, Version: mustVersion(t, "1.19.32")},
 		{Kind: KindSingBox, Usable: false, Reason: "binary missing"},
 	}

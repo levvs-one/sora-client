@@ -27,6 +27,7 @@ const (
 	ProtocolWireGuard   Protocol = "wireguard"
 	ProtocolSOCKS5      Protocol = "socks5"
 	ProtocolHTTP        Protocol = "http"
+	ProtocolAnyTLS      Protocol = "anytls"
 	ProtocolDirect      Protocol = "direct"
 )
 
@@ -58,7 +59,7 @@ type TLS struct {
 
 // Transport holds the stream transport of an outbound.
 type Transport struct {
-	// Type is tcp, ws, grpc, h2, h3 or httpupgrade.
+	// Type is tcp, ws, grpc, h2, httpupgrade or xhttp.
 	Type        string
 	Path        string
 	Host        string
@@ -66,6 +67,8 @@ type Transport struct {
 	Headers     map[string]string
 	Prefix      string
 	IdleTimeout int
+	// Mode is the XHTTP mode: auto, packet-up, stream-up or stream-one.
+	Mode string
 }
 
 // WireGuardPeer is one WireGuard peer of an outbound.
@@ -100,8 +103,14 @@ type Outbound struct {
 	PrivateKey string
 	PublicKey  string
 	ShortID    string
+	// Encryption is the VLESS encryption setting. Empty and "none" mean
+	// none; anything else is the post-quantum VLESS Encryption of Xray.
+	Encryption string
 
 	Peers []WireGuardPeer
+	// Addresses are the interface addresses of a WireGuard outbound, in CIDR
+	// form. A WireGuard tunnel cannot carry traffic without them.
+	Addresses []string
 
 	// Tags come from subscriptions and drive grouping in the interface.
 	Tags         []string
@@ -204,6 +213,20 @@ type Tun struct {
 	ExcludeApps      []string
 }
 
+// Fragment splits the TLS ClientHello of proxy connections into several TCP
+// segments. It defeats DPI boxes that match the SNI of a single segment, which
+// is how most SNI blocking in Russia, Iran and China works today.
+type Fragment struct {
+	Enabled bool
+	// Packets, Length and Interval follow Xray: "tlshello" or a range of TCP
+	// segments such as "1-3", the segment length in bytes ("100-200") and
+	// the pause between segments in milliseconds ("10-20"). Engines that only
+	// know an on/off switch use Enabled alone.
+	Packets  string
+	Length   string
+	Interval string
+}
+
 // Options are the engine-wide switches of a plan.
 type Options struct {
 	LogLevel       string
@@ -217,6 +240,7 @@ type Options struct {
 	TestURL        string
 	GeoSiteURL     string
 	GeoIPURL       string
+	Fragment       Fragment
 }
 
 // Plan is a complete, engine-independent description of one session.

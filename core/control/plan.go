@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/url"
 	"strconv"
@@ -93,6 +94,13 @@ func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
 				return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
 			}
 			values["peers"] = string(raw)
+		}
+		if awg := amneziaMaterial(spec.Options); len(awg) > 0 {
+			raw, err := json.Marshal(awg)
+			if err != nil {
+				return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+			}
+			values["amneziawg"] = string(raw)
 		}
 	}
 	if spec.AllowInsecure {
@@ -266,7 +274,10 @@ func outboundFromProto(index int, spec *corev1.OutboundSpec, secrets resolver) (
 		if err != nil {
 			return engine.Outbound{}, errs.Wrap(err, errs.CodeNotFound, errs.KeySecretNotFound)
 		}
-		applyCredential(&outbound, parseCredential(material))
+		if err := applyCredential(&outbound, parseCredential(material)); err != nil {
+			return engine.Outbound{}, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanOutbounds,
+				"control: outbound %q: %v", id, err)
+		}
 	}
 	return outbound, nil
 }
@@ -274,7 +285,7 @@ func outboundFromProto(index int, spec *corev1.OutboundSpec, secrets resolver) (
 // applyCredential fills the credential fields of an outbound from stored
 // material. The keys are the ones credentialDocument writes and nothing else is
 // read: a material document is data from the store, not a set of instructions.
-func applyCredential(outbound *engine.Outbound, values map[string]string) {
+func applyCredential(outbound *engine.Outbound, values map[string]string) error {
 	outbound.UUID = values["uuid"]
 	outbound.Password = values["password"]
 	outbound.Cipher = values["method"]
@@ -315,6 +326,62 @@ func applyCredential(outbound *engine.Outbound, values map[string]string) {
 		// and the plan validation names the outbound that cannot connect.
 		_ = json.Unmarshal([]byte(peers), &outbound.Peers)
 	}
+	if raw := values["amneziawg"]; raw != "" {
+		awg, err := amneziaFrom(raw)
+		if err != nil {
+			return err
+		}
+		outbound.Amnezia = awg
+	}
+	return nil
+}
+
+// amneziaKeys are the AmneziaWG parameters of a configuration file, in the
+// lower case the parser stores interface keys in.
+var amneziaKeys = []string{"jc", "jmin", "jmax", "s1", "s2", "s3", "s4", "h1", "h2", "h3", "h4",
+	"i1", "i2", "i3", "i4", "i5", "j1", "j2", "j3", "itime"}
+
+// amneziaMaterial keeps the AmneziaWG parameters of an import and nothing
+// else: an import is untrusted input, so only known keys reach the vault.
+func amneziaMaterial(options map[string]string) map[string]string {
+	out := map[string]string{}
+	for _, key := range amneziaKeys {
+		if v := strings.TrimSpace(options[key]); v != "" {
+			out[key] = v
+		}
+	}
+	return out
+}
+
+// amneziaFrom restores the AmneziaWG parameters from the vault. A value that
+// is not a number where the protocol wants one fails the plan instead of
+// connecting with a parameter the server does not expect.
+func amneziaFrom(raw string) (*engine.AmneziaWG, error) {
+	var v map[string]string
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return nil, err
+	}
+	number := func(key string) (int, error) {
+		if v[key] == "" {
+			return 0, nil
+		}
+		n, err := strconv.Atoi(v[key])
+		if err != nil {
+			return 0, fmt.Errorf("amneziawg %s: %q is not a number", key, v[key])
+		}
+		return n, nil
+	}
+	a := &engine.AmneziaWG{H1: v["h1"], H2: v["h2"], H3: v["h3"], H4: v["h4"],
+		I1: v["i1"], I2: v["i2"], I3: v["i3"], I4: v["i4"], I5: v["i5"], J1: v["j1"], J2: v["j2"], J3: v["j3"]}
+	for key, field := range map[string]*int{"jc": &a.Jc, "jmin": &a.Jmin, "jmax": &a.Jmax,
+		"s1": &a.S1, "s2": &a.S2, "s3": &a.S3, "s4": &a.S4, "itime": &a.Itime} {
+		n, err := number(key)
+		if err != nil {
+			return nil, err
+		}
+		*field = n
+	}
+	return a, nil
 }
 
 // wireguardMaterial collects the private key, the interface addresses and the

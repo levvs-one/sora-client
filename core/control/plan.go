@@ -65,6 +65,9 @@ func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
 		"path":         spec.Path,
 		"host_header":  spec.HostHeader,
 		"service_name": spec.ServiceName,
+		"alpn":         strings.Join(spec.ALPN, ","),
+		"security":     spec.Security,
+		"encryption":   spec.Options["encryption"],
 	}
 	// Obfuscation parameters travel in the free-form options of a parsed link,
 	// because only some protocols have them. They are copied explicitly instead
@@ -257,11 +260,28 @@ func applyCredential(outbound *engine.Outbound, values map[string]string) {
 	outbound.ObfsParam = values["obfs_param"]
 	outbound.PublicKey = values["public_key"]
 	outbound.ShortID = values["short_id"]
+	outbound.Encryption = values["encryption"]
 	outbound.TLS.ServerName = values["server_name"]
 	outbound.TLS.Fingerprint = values["fingerprint"]
 	if insecure, ok := values["insecure"]; ok {
 		outbound.TLS.Insecure = insecure == "1" || strings.EqualFold(insecure, "true")
 	}
+	if alpn := values["alpn"]; alpn != "" {
+		outbound.TLS.ALPN = strings.Split(alpn, ",")
+	}
+	// REALITY is a security mode of its own: the engines need the public key
+	// and short id in the TLS block, not as loose credential fields.
+	if strings.EqualFold(values["security"], "reality") {
+		outbound.TLS.Enabled = true
+		outbound.TLS.Reality = true
+		outbound.TLS.RealityPublicKey = values["public_key"]
+		outbound.TLS.RealityShortID = values["short_id"]
+		outbound.TLS.SpiderX = values["spider_x"]
+	}
+	outbound.Transport.Path = values["path"]
+	outbound.Transport.Host = values["host_header"]
+	outbound.Transport.Service = values["service_name"]
+	outbound.Transport.Mode = values["mode"]
 }
 
 // ruleFromProto converts one routing rule.
@@ -276,7 +296,26 @@ func ruleFromProto(route *corev1.RoutingRule) (engine.Rule, error) {
 		return engine.Rule{}, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid,
 			"control: rule %q has no target", destination)
 	}
-	return engine.Rule{Type: ruleTypeOf(destination), Value: destination, Target: target}, nil
+	kind := ruleTypeOf(destination)
+	return engine.Rule{Type: kind, Value: ruleValue(kind, destination), Target: target}, nil
+}
+
+// ruleValue strips the type prefix: the engines add their own.
+func ruleValue(kind engine.RuleType, destination string) string {
+	if prefix, ok := rulePrefixes[kind]; ok {
+		return strings.TrimPrefix(destination, prefix)
+	}
+	return destination
+}
+
+// rulePrefixes follow the Xray routing vocabulary that subscriptions use:
+// "domain:" matches a domain and its subdomains, "full:" one exact name.
+var rulePrefixes = map[engine.RuleType]string{
+	engine.RuleGeoSite:      "geosite:",
+	engine.RuleGeoIP:        "geoip:",
+	engine.RuleRuleSet:      "ruleset:",
+	engine.RuleDomainSuffix: "domain:",
+	engine.RuleDomain:       "full:",
 }
 
 // ruleTypeOf derives the rule type from the shape of a destination.
@@ -289,9 +328,9 @@ func ruleTypeOf(destination string) engine.RuleType {
 	case strings.HasPrefix(destination, "ruleset:"):
 		return engine.RuleRuleSet
 	case strings.HasPrefix(destination, "domain:"):
-		return engine.RuleDomain
-	case strings.HasPrefix(destination, "full:"):
 		return engine.RuleDomainSuffix
+	case strings.HasPrefix(destination, "full:"):
+		return engine.RuleDomain
 	case strings.Contains(destination, "/"):
 		return engine.RuleIPCIDR
 	case strings.Contains(destination, ":"):

@@ -1,4 +1,8 @@
-package mihomo
+// Package clashapi is the client of the Clash compatible controller API that
+// both mihomo (external-controller) and sing-box (experimental.clash_api)
+// serve on the loopback interface. One client belongs to one running engine:
+// the address and the secret change with every start.
+package clashapi
 
 import (
 	"context"
@@ -7,23 +11,27 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
+// MaxResponse bounds one controller response body. Answers are small by
+// contract; the cap stops a hung or hostile engine from exhausting memory.
+const MaxResponse = 8 << 20
+
 // Controller errors the caller has to tell apart from transport noise.
 var (
-	ErrUnauthorized = errors.New("mihomo: controller rejected the secret")
-	ErrNotFound     = errors.New("mihomo: controller has no such object")
-	ErrNotMihomo    = errors.New("mihomo: controller is not a mihomo core")
-	ErrUnreachable  = errors.New("mihomo: controller is not reachable")
-	ErrDelayFailed  = errors.New("mihomo: latency test failed")
+	ErrUnauthorized = errors.New("clashapi: controller rejected the secret")
+	ErrNotFound     = errors.New("clashapi: controller has no such object")
+	ErrNotMeta      = errors.New("clashapi: controller is not a Clash Meta compatible core")
+	ErrUnreachable  = errors.New("clashapi: controller is not reachable")
+	ErrDelayFailed  = errors.New("clashapi: latency test failed")
 )
 
-// Client talks to the mihomo external controller. One client belongs to one
-// running engine: the address and the secret change with every start.
+// Client talks to one engine controller.
 type Client struct {
 	addr   string
 	secret string
@@ -62,7 +70,7 @@ func (c *Client) Version(ctx context.Context) (VersionInfo, error) {
 		return VersionInfo{}, err
 	}
 	if !out.Meta {
-		return out, ErrNotMihomo
+		return out, ErrNotMeta
 	}
 	return out, nil
 }
@@ -124,4 +132,46 @@ func (c *Client) Delay(ctx context.Context, name, testURL string, timeout time.D
 		return 0, fmt.Errorf("%w: %s is unreachable", ErrDelayFailed, name)
 	}
 	return time.Duration(out.Delay) * time.Millisecond, nil
+}
+
+// groupTypes maps the group type names the controller reports onto the names
+// the Sora contract uses. The API answers in CamelCase while configuration
+// files are written in lowercase, and both appear in the same conversation.
+var groupTypes = map[string]engine.GroupType{
+	"Selector":     engine.GroupSelect,
+	"URLTest":      engine.GroupURLTest,
+	"Fallback":     engine.GroupFallback,
+	"LoadBalance":  engine.GroupLoadBalance,
+	"Relay":        "relay",
+	"select":       engine.GroupSelect,
+	"url-test":     engine.GroupURLTest,
+	"fallback":     engine.GroupFallback,
+	"load-balance": engine.GroupLoadBalance,
+}
+
+// Groups returns the selectable groups with their live state. GLOBAL is the
+// controller's own synthetic group and is not part of any Sora plan.
+func (c *Client) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
+	proxies, err := c.Proxies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]engine.GroupStatus, 0, len(proxies))
+	for name, px := range proxies {
+		kind, isGroup := groupTypes[px.Type]
+		if !isGroup || name == "GLOBAL" {
+			continue
+		}
+		status := engine.GroupStatus{
+			Name: name, Type: kind, Selected: px.Now, All: px.All,
+			Hidden: px.Hidden, Icon: px.Icon, TestURL: px.TestURL, Provider: px.ProviderName,
+			LatencyMS: map[string]int{},
+		}
+		for _, h := range px.History {
+			status.LatencyMS[h.Name] = h.Delay
+		}
+		out = append(out, status)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
 }

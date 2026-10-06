@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
 // TestLiveEngineLifecycle runs the real mihomo binary end to end: render,
@@ -15,14 +16,14 @@ import (
 // is not a wish, so it runs whenever an engine binary is available and is
 // skipped otherwise, for example in a container without the engine.
 func TestLiveEngineLifecycle(t *testing.T) {
-	path := os.Getenv(EnvBinary)
+	path := os.Getenv(Prober.EnvVar)
 	if path == "" {
-		t.Skipf("set %s to the path of an engine binary to run this test", EnvBinary)
+		t.Skipf("set %s to the path of an engine binary to run this test", Prober.EnvVar)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	binary, err := Probe(ctx, path, 10*time.Second)
+	binary, err := Prober.Probe(ctx, path)
 	if err != nil {
 		t.Fatalf("probe %s: %v", path, err)
 	}
@@ -30,7 +31,7 @@ func TestLiveEngineLifecycle(t *testing.T) {
 		t.Skipf("engine binary is built for %s", binary.Goos)
 	}
 
-	instance, err := New(Config{
+	instance, err := New(supervise.Config{
 		Binary:        binary,
 		HomeDir:       t.TempDir(),
 		ProbeURL:      engine.TestURLProduction,

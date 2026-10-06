@@ -35,9 +35,3 @@ updates:
       interval: monthly
     open-pull-requests-limit: 3
     labels: ['dependencies', 'legacy']
-
-  - package-ecosystem: gomod
-    directory: /app/android/tunnel
-    schedule:
-      interval: monthly
-    labels: ['dependencies', 'android']

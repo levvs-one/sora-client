@@ -98,3 +98,30 @@ func TestPlanCarriesDefencesAndEnginePin(t *testing.T) {
 		t.Fatalf("defences or engine pin lost: %+v %q", p.Options.Fragment, p.Engine)
 	}
 }
+
+func TestAmneziaWGSurvivesTheVault(t *testing.T) {
+	conf := "[Interface]\nPrivateKey = cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzLDYVk=\nAddress = 10.8.0.2/32\n" +
+		"Jc = 4\nJmin = 40\nJmax = 70\nS1 = 15\nS2 = 25\nS3 = 10\nS4 = 5\nH1 = 100000-100100\nH2 = 200000\nH3 = 300000\nH4 = 400000\n" +
+		"I1 = <b 0xf6ab3267fa><c><t><r 10>\n\n[Peer]\nPublicKey = Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw=\nEndpoint = 198.51.100.7:51820\nAllowedIPs = 0.0.0.0/0\n"
+	result, err := parser.LinkParser{}.Parse([]byte(conf))
+	if err != nil || len(result.Servers) != 1 {
+		t.Fatalf("Parse = %+v, %v", result, err)
+	}
+	document, err := credentialDocument(result.Servers[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var o engine.Outbound
+	if err := applyCredential(&o, parseCredential(document)); err != nil {
+		t.Fatal(err)
+	}
+	want := engine.AmneziaWG{Jc: 4, Jmin: 40, Jmax: 70, S1: 15, S2: 25, S3: 10, S4: 5,
+		H1: "100000-100100", H2: "200000", H3: "300000", H4: "400000", I1: "<b 0xf6ab3267fa><c><t><r 10>"}
+	if o.Amnezia == nil || *o.Amnezia != want {
+		t.Fatalf("amneziawg = %+v, want %+v", o.Amnezia, want)
+	}
+
+	if err := applyCredential(&o, map[string]string{"amneziawg": `{"jc":"four"}`}); err == nil {
+		t.Fatal("a parameter that is not a number must fail the plan")
+	}
+}

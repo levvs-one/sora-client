@@ -45,6 +45,9 @@ jobs:
         shell: bash
         run: |
           if git ls-tree -r --name-only origin/main | grep -q '^proto/'; then
+            # buf clones the local repository, and a pull request checkout has
+            # no local main branch, only the remote one.
+            git show-ref --verify --quiet refs/heads/main || git branch main origin/main
             buf breaking --against '.git#branch=main,subdir=proto'
           else
             echo 'No proto directory exists on main; skipping breaking check.'
@@ -71,9 +74,15 @@ jobs:
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
         working-directory: .
+      # Only the Go code is generated here: the Dart plugin needs the Dart SDK,
+      # and the autofix workflow keeps the Dart code current.
       - name: Generate protobuf code
         working-directory: proto
-        run: buf generate
+        run: >-
+          buf generate --template
+          '{"version":"v2","plugins":[{"local":"protoc-gen-go","out":"../core/gen","opt":"paths=source_relative"},{"local":"protoc-gen-go-grpc","out":"../core/gen","opt":"paths=source_relative"}]}'
+      - name: Generated code is current
+        run: git diff --exit-code -- gen
       - name: Tidy modules
         run: go mod tidy
       - name: Check formatting
@@ -87,5 +96,6 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1.6
+          # Built with a Go new enough for the go directive of core/go.mod.
+          version: v2.14.0
           working-directory: core

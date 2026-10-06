@@ -63,7 +63,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          language: ${{ matrix.language }}
+          languages: ${{ matrix.language }}
           queries: security-and-quality
       - name: Analyze
         uses: github/codeql-action/analyze@v3

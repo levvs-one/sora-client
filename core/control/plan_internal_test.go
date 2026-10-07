@@ -264,3 +264,82 @@ func TestPlanCarriesABypassOutbound(t *testing.T) {
 		t.Fatal("a split position carrying an option must be refused")
 	}
 }
+
+func TestTunPlanGetsResolversWhenItNamesNone(t *testing.T) {
+	plan := func(mode corev1.TunnelMode, servers ...string) *corev1.SessionPlan {
+		return &corev1.SessionPlan{
+			TunnelMode: mode,
+			Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+			DnsPolicy:  &corev1.DnsPolicy{Servers: servers},
+		}
+	}
+	p, err := planFromProto(plan(corev1.TunnelMode_TUNNEL_MODE_SYSTEM), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.DNS.Enabled || len(p.DNS.Servers) != 2 || p.DNS.Servers[0].Transport != engine.DNSHTTPS {
+		t.Fatalf("a tun plan without resolvers must get the defaults: %+v", p.DNS)
+	}
+	p, err = planFromProto(plan(corev1.TunnelMode_TUNNEL_MODE_SYSTEM, "tls://dns.example:853"), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.DNS.Servers) != 1 || p.DNS.Servers[0].Address != "dns.example" {
+		t.Fatalf("the person's resolver replaces the defaults: %+v", p.DNS)
+	}
+	p, err = planFromProto(plan(corev1.TunnelMode_TUNNEL_MODE_APPLICATION), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.DNS.Enabled {
+		t.Fatalf("a proxy plan resolves through the system unless asked: %+v", p.DNS)
+	}
+}
+
+func TestPlanCarriesTheIPv6Choice(t *testing.T) {
+	in := &corev1.SessionPlan{
+		TunnelMode: corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
+		Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Options.IPv6 {
+		t.Fatal("IPv6 is off unless asked for")
+	}
+	in.Ipv6 = true
+	if p, _ = planFromProto(in, "s", nil); !p.Options.IPv6 {
+		t.Fatal("the IPv6 choice must reach the engine options")
+	}
+}
+
+func TestAProfileSurvivesTheVault(t *testing.T) {
+	profile := `{"remarks":"x","outbounds":[{"protocol":"vless","tag":"proxy"}],"routing":{"rules":[]}}`
+	packed, err := packProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := unpackProfile(packed)
+	if err != nil || string(back) != profile {
+		t.Fatalf("round trip = %q, %v", back, err)
+	}
+	if _, err := unpackProfile("not base64"); err == nil {
+		t.Fatal("an unreadable profile must be refused")
+	}
+}
+
+func TestARuleCanNameAProgram(t *testing.T) {
+	in := &corev1.SessionPlan{
+		TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+		Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+		Routes:     []*corev1.RoutingRule{{Destination: "process:telegram-desktop", OutboundId: "direct"}},
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := p.Rules[0]; r.Type != engine.RuleProcess || r.Value != "telegram-desktop" {
+		t.Fatalf("rule = %+v", r)
+	}
+}

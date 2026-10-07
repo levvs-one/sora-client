@@ -244,7 +244,7 @@ func (s *Store) Apply(puts map[string][]byte, deletes []string) error {
 	if s.closed {
 		return errs.Newf(errs.CodeInternal, errs.KeySecretStoreUnavailable, "secret store: closed")
 	}
-	next := make(map[string][]byte, len(s.items)+len(puts))
+	next := make(map[string][]byte, len(s.items))
 	for reference, material := range s.items {
 		next[reference] = material
 	}

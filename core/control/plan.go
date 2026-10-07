@@ -1,10 +1,14 @@
 package control
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"strconv"
@@ -108,6 +112,13 @@ func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
 	if spec.AllowInsecure {
 		values["insecure"] = "1"
 	}
+	if profile := spec.Options["profile"]; profile != "" {
+		packed, err := packProfile(profile)
+		if err != nil {
+			return nil, err
+		}
+		values["xray_profile"] = packed
+	}
 	for key, value := range values {
 		if value == "" {
 			delete(values, key)
@@ -157,14 +168,18 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		// Engines always run at debug level and the log center drops what is
 		// below its capture level, so changing the level takes effect at once on
 		// every engine, without a restart that would cut the user's connections.
-		Options: engine.Options{Mode: "rule", LogLevel: "debug", TestURL: engine.TestURLProduction, Fragment: engine.Fragment{
+		Options: engine.Options{Mode: "rule", LogLevel: "debug", TestURL: engine.TestURLProduction, IPv6: in.GetIpv6(), Fragment: engine.Fragment{
 			Enabled:  defences.GetTlsFragment(),
 			Packets:  defences.GetFragmentPackets(),
 			Length:   defences.GetFragmentLength(),
 			Interval: defences.GetFragmentInterval(),
 		}},
+		// A tun adapter without routes carries nothing, so the plan always
+		// asks the engine to route through it.
 		Tun: engine.Tun{
-			Enabled: in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+			Enabled:    in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+			AutoRoute:  true,
+			DeviceName: engine.TunDevice,
 		},
 		PrivateControl: !in.GetNetworkControlAllowed(),
 	}
@@ -237,7 +252,7 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 	if err != nil {
 		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
 	}
-	plan.DNS = dnsFromProto(in.GetDnsPolicy())
+	plan.DNS = dnsFromProto(in.GetDnsPolicy(), plan.Tun.Enabled)
 	if err := checkDNS(plan.DNS); err != nil {
 		return nil, err
 	}
@@ -436,6 +451,13 @@ func applyCredential(outbound *engine.Outbound, values map[string]string) error 
 		// and the plan validation names the outbound that cannot connect.
 		_ = json.Unmarshal([]byte(peers), &outbound.Peers)
 	}
+	if packed := values["xray_profile"]; packed != "" {
+		profile, err := unpackProfile(packed)
+		if err != nil {
+			return err
+		}
+		outbound.Profile = profile
+	}
 	if raw := values["amneziawg"]; raw != "" {
 		awg, err := amneziaFrom(raw)
 		if err != nil {
@@ -572,6 +594,7 @@ var rulePrefixes = map[engine.RuleType]string{
 	engine.RuleRuleSet:      "ruleset:",
 	engine.RuleDomainSuffix: "domain:",
 	engine.RuleDomain:       "full:",
+	engine.RuleProcess:      "process:",
 }
 
 // ruleTypeOf derives the rule type from the shape of a destination.
@@ -587,6 +610,8 @@ func ruleTypeOf(destination string) engine.RuleType {
 		return engine.RuleDomainSuffix
 	case strings.HasPrefix(destination, "full:"):
 		return engine.RuleDomain
+	case strings.HasPrefix(destination, "process:"):
+		return engine.RuleProcess
 	case strings.Contains(destination, "/"):
 		return engine.RuleIPCIDR
 	case strings.Contains(destination, ":"):
@@ -596,9 +621,19 @@ func ruleTypeOf(destination string) engine.RuleType {
 	}
 }
 
+// defaultTunResolvers serve a tun plan that names none: a tun adapter carries
+// every lookup of the machine, so it needs a resolver of its own. DNS over
+// HTTPS by address needs no other resolver to start and is not readable on
+// the way.
+var defaultTunResolvers = []string{"https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"}
+
 // dnsFromProto converts the resolver settings of a request.
-func dnsFromProto(policy *corev1.DnsPolicy) engine.DNS {
-	if policy == nil || len(policy.GetServers()) == 0 {
+func dnsFromProto(policy *corev1.DnsPolicy, tun bool) engine.DNS {
+	servers := policy.GetServers()
+	if len(servers) == 0 && tun {
+		servers = defaultTunResolvers
+	}
+	if len(servers) == 0 {
 		return engine.DNS{}
 	}
 	out := engine.DNS{
@@ -606,7 +641,7 @@ func dnsFromProto(policy *corev1.DnsPolicy) engine.DNS {
 		Mode:    "rule",
 		Sniff:   true,
 	}
-	for index, address := range policy.GetServers() {
+	for index, address := range servers {
 		if len(out.Servers) >= engine.MaxDNSServers {
 			break
 		}
@@ -691,4 +726,36 @@ func outboundToProto(spec parser.OutboundSpec, reference string) *corev1.Outboun
 		Endpoint:    &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
 		Credentials: &corev1.CredentialsRef{Reference: reference},
 	}
+}
+
+// A profile is a whole configuration, tens of kilobytes with the provider's
+// rule lists, and a secret stores at most 64 KiB; compressed it is a few.
+func packProfile(profile string) (string, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	if _, err := w.Write([]byte(profile)); err != nil {
+		return "", errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+	}
+	if err := w.Close(); err != nil {
+		return "", errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+	}
+	return base64.StdEncoding.EncodeToString(b.Bytes()), nil
+}
+
+// unpackProfile reverses packProfile; a profile larger than the limit of a
+// plan is refused rather than read into memory whole.
+func unpackProfile(packed string) (json.RawMessage, error) {
+	raw, err := base64.StdEncoding.DecodeString(packed)
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanOutbounds)
+	}
+	r, err := gzip.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanOutbounds)
+	}
+	profile, err := io.ReadAll(io.LimitReader(r, MaxPlanBytes+1))
+	if err != nil || len(profile) > MaxPlanBytes {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanOutbounds, "control: a stored Xray profile is unreadable or too large")
+	}
+	return profile, nil
 }

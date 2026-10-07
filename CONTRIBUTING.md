@@ -23,4 +23,4 @@
 
 ## Sora Legacy
 
-Правила сборки Sora Legacy описаны в [legacy/CONTRIBUTING.md](legacy/CONTRIBUTING.md). В Legacy принимаются только исправления безопасности и критических ошибок.
+Sora Legacy живёт в ветке [`legacy`](https://github.com/levvs-one/sora-client/tree/legacy), правила её сборки — в `legacy/CONTRIBUTING.md` той ветки. Туда принимаются только исправления безопасности и критических ошибок; пулреквесты для неё открываются в ветку `legacy`.

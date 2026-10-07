@@ -3,6 +3,9 @@ name: Repository checks
 on:
   push:
     branches: [main]
+    # A version tag builds everything once more, stamped with its number, and
+    # drafts the release from what passed.
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -100,6 +103,110 @@ jobs:
           version: v2.14.0
           working-directory: core
 
+  app:
+    name: App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - name: Get packages
+        run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Build for Linux
+        run: flutter build linux --release
+
+  windows:
+    name: Windows
+    # The whole chain on a real Windows: build, install the service with the
+    # installer, reach it from the app over the named pipe, uninstall.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache: false
+      - name: Version
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then version=${GITHUB_REF_NAME#v}; else version=0.0.0.$GITHUB_RUN_NUMBER; fi
+          echo "SORA_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Test the core on Windows
+        working-directory: core
+        shell: bash
+        run: go test ./...
+      - name: Build the core
+        working-directory: core
+        shell: bash
+        run: CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.buildVersion=$SORA_VERSION" -o ../dist/windows/sora-core.exe ./cmd/sora-core
+      - name: Fetch and verify the engines
+        shell: bash
+        run: packaging/engines/fetch.sh windows-amd64 dist/windows/engines
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+      - name: Build the app
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build windows --release --dart-define=SORA_VERSION=${{ env.SORA_VERSION }}
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ env.SORA_VERSION }} packaging\windows\sora.iss
+      - name: Install silently and check the service
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\Sora-Setup-*.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install.log' -Wait
+          # A service reports StartPending before Running; give it time.
+          for ($i = 0; $i -lt 30; $i++) {
+            $service = Get-Service SoraCore -ErrorAction SilentlyContinue
+            if ($service -and $service.Status -eq 'Running') { break }
+            Start-Sleep -Seconds 1
+          }
+          if (-not $service -or $service.Status -ne 'Running') {
+            Get-Content install.log -Tail 20
+            sc.exe qc SoraCore
+            sc.exe query SoraCore
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'SoraCore' } -MaxEvents 5 -ErrorAction SilentlyContinue | Format-List TimeCreated, Message
+            Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager' } -MaxEvents 5 | Format-List TimeCreated, Message
+            & "${env:ProgramFiles}\Sora\core\sora-core.exe" -check -data-dir "${env:ProgramData}\Sora" -engines-dir "${env:ProgramFiles}\Sora\core\engines"
+            throw "SoraCore is not running"
+          }
+      - name: The app reaches the installed core over the pipe
+        working-directory: app
+        env:
+          SORA_CORE_LIVE: "1"
+          SORA_CORE_ENGINES: sing-box,xray,mihomo
+        run: flutter test test/live_core_test.dart
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          Start-Process "${env:ProgramFiles}\Sora\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait
+          Start-Sleep -Seconds 3
+          if (Get-Service SoraCore -ErrorAction SilentlyContinue) { throw "the service outlived the uninstaller" }
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sora-windows-x64
+          path: dist/Sora-Setup-*.exe
+          if-no-files-found: error
+
   linux-packages:
     name: Linux packages
     # zapret is C linked against the distribution's netfilter libraries, so
@@ -119,13 +226,18 @@ jobs:
         with:
           go-version-file: core/go.mod
           cache: false
+      - name: Version
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then version=${GITHUB_REF_NAME#v}; else version=0.0.0~$GITHUB_RUN_NUMBER; fi
+          echo "SORA_VERSION=$version" >> "$GITHUB_ENV"
       - name: Install nfpm
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Build the core
         working-directory: core
-        run: CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o ../dist/sora-core ./cmd/sora-core
+        run: CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.buildVersion=$SORA_VERSION" -o ../dist/sora-core ./cmd/sora-core
       - name: Fetch and verify the engines
         run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
       - name: Build zapret
@@ -133,19 +245,59 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libcap-dev libnetfilter-queue-dev libnfnetlink-dev libmnl-dev zlib1g-dev
           packaging/zapret/build.sh dist/engines
+      # Flutter publishes no Linux SDK for arm64 hosts, so the desktop app is
+      # packaged for amd64 only; the core and engines are built for both.
+      - uses: subosito/flutter-action@v2
+        if: matrix.arch == 'amd64'
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+      - name: Build the app
+        if: matrix.arch == 'amd64'
+        working-directory: app
+        run: |
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev
+          flutter pub get
+          flutter build linux --release --dart-define=SORA_VERSION=${{ env.SORA_VERSION }}
       - name: Package
         env:
           SORA_ARCH: ${{ matrix.arch }}
-          SORA_VERSION: 0.0.0~${{ github.run_number }}
         run: |
-          for packager in deb rpm archlinux; do
-            nfpm package --config packaging/linux/nfpm.yaml --packager "$packager" --target dist/
+          configs=(packaging/linux/nfpm.yaml)
+          if [ "$SORA_ARCH" = amd64 ]; then configs+=(packaging/linux/nfpm-app.yaml); fi
+          for config in "${configs[@]}"; do
+            for packager in deb rpm archlinux; do
+              nfpm package --config "$config" --packager "$packager" --target dist/
+            done
           done
       - uses: actions/upload-artifact@v6
         with:
-          name: sora-core-linux-${{ matrix.arch }}
+          name: sora-linux-${{ matrix.arch }}
           path: |
             dist/*.deb
             dist/*.rpm
             dist/*.pkg.tar.zst
           if-no-files-found: error
+
+  release:
+    name: Release draft
+    # Only a version tag gets here, and only after every check above passed on
+    # it. The draft is published by hand once its notes are written.
+    if: github.ref_type == 'tag'
+    needs: [workflow, proto, go, app, windows, linux-packages]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: sora-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "Sora ${GITHUB_REF_NAME#v}" --notes ""

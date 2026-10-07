@@ -100,7 +100,21 @@ func (e *Engine) Connections(ctx context.Context) ([]engine.Connection, error) {
 		return nil, err
 	}
 	list, err := c.ListConnections(ctx)
-	return list, e.Redactor().Err(err)
+	if err != nil {
+		return nil, e.Redactor().Err(err)
+	}
+	// The engine names a chain by its own names; the interface knows the
+	// plan's, so it can show the server a person picked by the name they see.
+	if names := e.PlanNames(); names != nil {
+		for i := range list {
+			for j, hop := range list[i].Chain {
+				if id, ok := names[hop]; ok {
+					list[i].Chain[j] = id
+				}
+			}
+		}
+	}
+	return list, nil
 }
 
 // CloseConnection drops one live connection.

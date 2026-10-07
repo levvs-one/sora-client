@@ -28,6 +28,9 @@ type Runtime struct {
 	HomeDir string
 	// LocalPort is the loopback mixed (HTTP and SOCKS5) listener of the tunnel.
 	LocalPort int
+	// LocalProxy reports whether the plan opens LocalPort, so a driver whose
+	// engine has no controller can judge a start by the listener.
+	LocalProxy bool
 	// ControlAddr is host:port of the loopback controller or metrics endpoint.
 	ControlAddr string
 	// Secret authorizes the controller. A loopback port is reachable by every
@@ -58,7 +61,26 @@ type Driver interface {
 // PrivateController is implemented by a Driver whose engine can serve its
 // controller on a unix socket or a named pipe instead of a loopback port.
 type PrivateController interface {
-	ControlAddress(rt Runtime) (string, error)
+	// ControlAddress returns the controller address of one start. private
+	// is set when the plan forbids a controller other programs could find;
+	// an empty address means the engine runs without a controller.
+	ControlAddress(rt Runtime, private bool) (string, error)
+}
+
+// Router is implemented by a Driver whose engine creates a tun adapter but no
+// routes into it. Route runs after every start of a tun plan, restarts
+// included, because a restarted engine recreates its adapter and the routes
+// through the old one are gone; Unroute runs once the engine stops for good.
+type Router interface {
+	Route(ctx context.Context, p *engine.Plan) error
+	Unroute(ctx context.Context) error
+}
+
+// Namer is implemented by a Driver whose engine addresses outbounds and groups
+// by names of its own. PlanNames maps each engine name back to the plan id or
+// group name, the way the renderer assigned them.
+type Namer interface {
+	PlanNames(p *engine.Plan) map[string]string
 }
 
 // LogParser is implemented by a Driver that knows the output format of its
@@ -208,6 +230,18 @@ func (s *Supervisor) Plan() *engine.Plan {
 	return s.plan
 }
 
+// PlanNames maps the engine's names of the running plan back to plan ids and
+// group names. It is nil when the driver names things by plan id already or
+// nothing runs.
+func (s *Supervisor) PlanNames() map[string]string {
+	n, ok := s.driver.(Namer)
+	p := s.Plan()
+	if !ok || p == nil {
+		return nil
+	}
+	return n.PlanNames(p)
+}
+
 // Validate renders the plan and lets the engine binary judge it.
 func (s *Supervisor) Validate(ctx context.Context, p *engine.Plan) error {
 	if err := s.admit(p); err != nil {
@@ -304,7 +338,8 @@ func (s *Supervisor) reload(ctx context.Context, rt Runtime, p *engine.Plan) err
 
 // start brings the engine up from nothing and begins supervision.
 func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
-	rt, err := s.reserve()
+	rt, err := s.reserve(p.PrivateControl)
+	rt.LocalProxy = p.LocalProxy.Enabled
 	if err != nil {
 		return err
 	}
@@ -324,8 +359,14 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 		return err
 	}
 	reported, err := s.waitReady(ctx, rt, proc)
+	if err == nil && p.Tun.Enabled {
+		if r, ok := s.driver.(Router); ok {
+			err = r.Route(ctx, p)
+		}
+	}
 	if err != nil {
 		_ = proc.Stop(context.WithoutCancel(ctx), s.cfg.StopGrace)
+		s.unroute(context.WithoutCancel(ctx))
 		return err
 	}
 
@@ -358,7 +399,7 @@ func (s *Supervisor) logLine(line string) {
 }
 
 // reserve picks the ports and the secret of one start.
-func (s *Supervisor) reserve() (Runtime, error) {
+func (s *Supervisor) reserve(privateControl bool) (Runtime, error) {
 	local := s.cfg.LocalPort
 	if local == 0 {
 		free, err := FreePort()
@@ -383,7 +424,7 @@ func (s *Supervisor) reserve() (Runtime, error) {
 		if err := os.MkdirAll(rt.HomeDir, 0o700); err != nil {
 			return Runtime{}, err
 		}
-		addr, err := private.ControlAddress(rt)
+		addr, err := private.ControlAddress(rt, privateControl)
 		if err != nil {
 			return Runtime{}, err
 		}
@@ -442,6 +483,7 @@ func (s *Supervisor) watch(proc *Process) {
 		return
 	}
 	if !s.budget.Allow() {
+		s.unroute(context.WithoutCancel(s.ctx))
 		s.setState(engine.StateFailed)
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: masked,
 			Message: fmt.Sprintf("more than %d restarts within %s", s.cfg.RestartBudget, s.cfg.RestartWindow)})
@@ -477,8 +519,21 @@ func (s *Supervisor) Stop(ctx context.Context) error {
 	if proc != nil {
 		err = proc.Stop(ctx, s.cfg.StopGrace)
 	}
+	s.unroute(ctx)
 	s.setState(engine.StateStopped)
 	return s.redactor.Err(err)
+}
+
+// unroute removes what Route installed; the error is logged, because the stop
+// that calls it must finish either way.
+func (s *Supervisor) unroute(ctx context.Context) {
+	r, ok := s.driver.(Router)
+	if !ok {
+		return
+	}
+	if err := r.Unroute(ctx); err != nil && s.cfg.Logs != nil {
+		s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+	}
 }
 
 // Close stops the engine and releases the supervision context.

@@ -39,6 +39,22 @@ type driver struct{}
 
 func (driver) Kind() engine.Kind { return engine.KindMihomo }
 
+// PlanNames inverts the names buildProxies and the groups were given.
+func (driver) PlanNames(p *engine.Plan) map[string]string {
+	byID, _, err := buildProxies(p)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]string, len(byID)+len(p.Groups))
+	for id, name := range byID {
+		out[name] = id
+	}
+	for _, g := range p.Groups {
+		out[sanitizeName(g.Name, "")] = g.Name
+	}
+	return out
+}
+
 func (driver) Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	text, err := Render(p, Runtime{
 		HomeDir: rt.HomeDir, ControllerAddr: rt.ControlAddr, Secret: rt.Secret,

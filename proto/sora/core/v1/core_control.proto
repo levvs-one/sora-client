@@ -104,6 +104,9 @@ message SessionPlan {
   repeated GroupSpec groups = 11;
   // Since 1.3. A routing preset applied after the routes above.
   RoutingOptions routing = 12;
+  // Since 1.3. Resolves and connects over IPv6 as well; off resolves IPv4
+  // only, which avoids leaks on networks where IPv6 bypasses the tunnel.
+  bool ipv6 = 13;
 }
 
 // GroupSpec is one group of outbounds.
@@ -175,7 +178,14 @@ message OutboundSpec {
 }
 message Endpoint { string host = 1; uint32 port = 2; }
 message CredentialsRef { string reference = 1; }
+// RoutingRule sends a destination to an outbound, a group, "direct" or
+// "reject". The destination is "domain:" (the site and everything under it),
+// "full:", "geosite:", "geoip:", "ruleset:", "process:" (a program by name,
+// since 1.3), a network such as "203.0.113.0/24", or a port.
 message RoutingRule { string destination = 1; string outbound_id = 2; }
+// DnsPolicy names the resolvers of the session. A tun session that names none
+// uses DNS over HTTPS to 1.1.1.1 and 8.8.8.8, since the adapter carries every
+// lookup of the machine.
 message DnsPolicy { repeated string servers = 1; bool block_private = 2; }
 message BypassSettings { bool enabled = 1; repeated string rules = 2; }
 enum TunnelMode { TUNNEL_MODE_UNSPECIFIED = 0; TUNNEL_MODE_SYSTEM = 1; TUNNEL_MODE_APPLICATION = 2; }
@@ -281,7 +291,15 @@ message SetKillSwitchRequest { ApiVersion api_version = 1; string request_id = 2
 message SetKillSwitchResponse { bool enabled = 1; SoraError error = 2; }
 message DiagnosticReport { repeated string lines = 1; }
 message HandshakeRequest { ApiVersion client_version = 1; }
-message HandshakeResponse { ApiVersion negotiated_version = 1; SoraError error = 2; }
+message HandshakeResponse {
+  ApiVersion negotiated_version = 1;
+  SoraError error = 2;
+  // Since 1.3. The token the other calls present. The transport admits only
+  // the core's own account, the service group and the person in the active
+  // local session, so whoever reaches Handshake may hold it; a system
+  // installation keeps the token file where that person cannot read it.
+  bytes control_authenticator = 3;
+}
 
 // PutSecretRequest hands one piece of credential material to the core. The
 // interface keeps the material only until the call is confirmed; the core keeps

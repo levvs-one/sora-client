@@ -1,14 +1,3 @@
-# Sora Legacy
-/legacy/v2rayN/.vs/
-/legacy/v2rayN/v2rayN/bin/
-/legacy/v2rayN/v2rayN/obj/
-/legacy/v2rayN/packages/
-/legacy/v2rayN/v2rayUpgrade/bin/
-/legacy/v2rayN/v2rayUpgrade/obj/
-/legacy/stage/
-/legacy/installer-output/
-/legacy/outputs/
-/legacy/artifacts/
 .vs/
 *.user
 *.pdb
@@ -57,3 +46,6 @@ key.properties
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# Written by flutter pub get because android/ exists; the Android app is not set up yet.
+/app/android/app/

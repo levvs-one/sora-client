@@ -1,0 +1,288 @@
+{
+  "@@locale": "ru",
+  "stateOff": "Не подключено",
+  "stateConnecting": "Подключение",
+  "stateConnected": "Подключено",
+  "stateReconnecting": "Переподключение",
+  "stateDisconnecting": "Отключение",
+  "stateFailed": "Не подключено",
+  "coreMissing": "Служба Sora не отвечает",
+  "serverAuto": "Самый быстрый",
+  "serverBypass": "Без сервера",
+  "addSubscription": "Добавить подписку",
+  "servers": "Серверы",
+  "settings": "Настройки",
+  "subscription": "Подписка",
+  "subscriptionLink": "Ссылка на подписку",
+  "add": "Добавить",
+  "refresh": "Обновить",
+  "rename": "Переименовать",
+  "delete": "Удалить",
+  "cancel": "Отмена",
+  "save": "Сохранить",
+  "name": "Название",
+  "deleteSubscription": "Удалить «{name}»?",
+  "@deleteSubscription": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "routes": "Маршруты",
+  "presetGlobal": "Всё через VPN",
+  "presetRu": "Россия напрямую",
+  "presetIr": "Иран напрямую",
+  "presetCn": "Китай напрямую",
+  "blockAds": "Блокировать рекламу",
+  "killSwitch": "Интернет только через VPN",
+  "engine": "Ядро",
+  "engineAuto": "Авто",
+  "animations": "Анимации",
+  "logs": "Журнал",
+  "about": "О приложении",
+  "logsAll": "Все",
+  "logsImportant": "Важное",
+  "logsErrors": "Ошибки",
+  "search": "Поиск",
+  "export": "Сохранить в файл",
+  "clear": "Очистить",
+  "logsEmpty": "Здесь пусто",
+  "appVersion": "Версия {version}",
+  "@appVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "notInstalled": "Не установлено",
+  "sourceCode": "Исходный код",
+  "license": "Лицензия",
+  "usage": "{used} из {total}",
+  "@usage": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "until": "до {date}",
+  "@until": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "expired": "Срок истёк",
+  "milliseconds": "{n} мс",
+  "@milliseconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "bytesB": "{n} Б",
+  "@bytesB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesKB": "{n} КБ",
+  "@bytesKB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesMB": "{n} МБ",
+  "@bytesMB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesGB": "{n} ГБ",
+  "@bytesGB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesTB": "{n} ТБ",
+  "@bytesTB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "errGeneric": "Что-то пошло не так",
+  "errCore": "Служба Sora не отвечает",
+  "errAuth": "Нет доступа к службе Sora",
+  "errVersion": "Обновите Sora: приложение и служба разных версий",
+  "errBusy": "Подождите, предыдущая команда ещё выполняется",
+  "errEngineMissing": "Не найдено ядро для этого сервера",
+  "errEngineStart": "Ядро не запустилось",
+  "errEngineStopped": "Ядро остановилось",
+  "errTunnel": "Нет прав на создание VPN-подключения",
+  "errServers": "Сервер настроен с ошибкой",
+  "errNetwork": "Нет связи с сервером",
+  "errTimeout": "Сервер не ответил вовремя",
+  "errFirewall": "Не удалось включить блокировку интернета без VPN",
+  "errSubFetch": "Не удалось загрузить подписку",
+  "errSubFormat": "Это не ссылка на подписку",
+  "errSubEmpty": "В подписке нет серверов",
+  "errSubDuplicate": "Эта подписка уже добавлена",
+  "errSubLimit": "Слишком много подписок",
+  "errSubScheme": "Нужна ссылка, начинающаяся с https://",
+  "errSecretStore": "Хранилище Sora повреждено или недоступно",
+  "errNoServers": "Добавьте подписку, чтобы подключиться",
+  "exportText": "Текст",
+  "connections": "Соединения",
+  "close": "Закрыть",
+  "chainDirect": "Напрямую",
+  "chainBlocked": "Заблокировано",
+  "theme": "Тема",
+  "themeSystem": "Как в системе",
+  "themeLight": "Светлая",
+  "themeDark": "Тёмная",
+  "language": "Язык",
+  "languageSystem": "Как в системе",
+  "sectionConnection": "Подключение",
+  "sectionNoServer": "Без сервера",
+  "sectionPing": "Пинг",
+  "sectionLog": "Диагностика",
+  "ipv6": "IPv6",
+  "dns": "DNS",
+  "dnsAuto": "Авто",
+  "dnsHint": "Адреса через запятую",
+  "fragment": "Фрагментация TLS",
+  "fragmentPackets": "Что дробить",
+  "fragmentLength": "Размер частей",
+  "fragmentInterval": "Пауза между частями",
+  "byDefault": "По умолчанию",
+  "rangeHint": "Например, 100-200",
+  "splitPos": "Места разбиения",
+  "splitPosHint": "Например, 1, midsld",
+  "disorder": "Менять порядок частей",
+  "tlsRecord": "Делить TLS-запись",
+  "tlsRecordNo": "Нет",
+  "tlsRecordSni": "По имени сайта",
+  "tlsRecordFirst": "После первого байта",
+  "hostCase": "Менять регистр Host",
+  "probeMethod": "Способ",
+  "probeAuto": "Авто",
+  "probeEngine": "Через ядро",
+  "probeConnect": "Только соединение",
+  "probeUrl": "Адрес проверки",
+  "probeTimeout": "Ожидание",
+  "seconds": "{n} с",
+  "subscriptions": "Подписки",
+  "subscriptionSettings": "Настройки",
+  "userAgent": "User-Agent",
+  "autoUpdate": "Обновлять автоматически",
+  "updateInterval": "Как часто",
+  "intervalProvider": "Как просит провайдер",
+  "hours": "{n} ч",
+  "updateNow": "Обновить сейчас",
+  "logLevel": "Что записывать",
+  "levelDebug": "Всё",
+  "levelInfo": "Обычное",
+  "levelWarning": "Важное",
+  "levelError": "Только ошибки",
+  "recordDestinations": "Записывать адреса сайтов",
+  "reset": "Сбросить настройки",
+  "resetConfirm": "Сбросить все настройки?",
+  "resetAction": "Сбросить",
+  "invalidValue": "Такое значение не подойдёт",
+  "@seconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@hours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "website": "Сайт провайдера",
+  "support": "Поддержка",
+  "controlPortQuestion": "{engine} управляется через порт на этом компьютере. Другие программы смогут заметить, что VPN включён.",
+  "chooseEngine": "Выбрать {engine}",
+  "@controlPortQuestion": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "@chooseEngine": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "rules": "Свои правила",
+  "ruleAdd": "Новое правило",
+  "ruleHint": "Сайт, IP или программа",
+  "ruleDirect": "Напрямую",
+  "ruleProxy": "Через VPN",
+  "ruleBlock": "Блокировать",
+  "failover": "Переключаться при сбое",
+  "connectOnStart": "Подключаться при запуске",
+  "expiresIn": "{name}: подписка закончится через {days, plural, =0{несколько часов} one{# день} few{# дня} other{# дней}}",
+  "trafficLow": "{name}: осталось {left}",
+  "ruleInvalid": "Не похоже на сайт, IP или программу",
+  "@expiresIn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "@trafficLow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOrdered": "{count, plural, one{# сервер} few{# сервера} other{# серверов}}, по очереди",
+  "groupBest": "{count, plural, one{# сервер} few{# сервера} other{# серверов}}, самый быстрый",
+  "@groupOrdered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@groupBest": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

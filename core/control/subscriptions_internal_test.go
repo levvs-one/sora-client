@@ -69,6 +69,7 @@ func bookServer(t *testing.T, dir string, fetcher Fetcher) (*Server, *secret.Sto
 		t.Fatal(err)
 	}
 	sessions := session.NewManager(session.ManagerConfig{
+		TunUp: func(context.Context, string) error { return nil },
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) {
 			return nil, errors.New("subscription tests start no session")
 		},

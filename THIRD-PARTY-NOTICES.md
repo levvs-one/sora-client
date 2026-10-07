@@ -1,34 +1,31 @@
 # Сторонние компоненты
 
-| Компонент | Версия | Лицензия | Исходный выпуск | SHA-256 исполняемого файла |
-|---|---:|---|---|---|
-| v2rayN | 5.39 | GPL-3.0 | https://github.com/2dust/v2rayN/tree/529b6613e9193206277b2c2bfc3430ff17663f57 | — |
-| Xray-core | 25.9.11 win7-32 | MPL-2.0 | https://github.com/XTLS/Xray-core/releases/tag/v25.9.11 | `0F611E1DEB746BB295DE2344A3D1E668F39FDB1818515F631277B1425CE51AB1` |
-| Xray-core release archive | 25.9.11 win7-32 | MPL-2.0 | тот же выпуск | `B23ACCCC3F9BD2591911C31EDB994C117F43C661F4A0CA06CBEEED4465D9C38A` |
-| sing-box | 1.12.12 legacy win7-386 | GPL-3.0-or-later | https://github.com/SagerNet/sing-box/releases/tag/v1.12.12 | `E9FDD8B543D494B41923D5D4660E65AC380A14DDDD4D45E7379BE4CCED92D0E1` |
-| tun2proxy | 0.7.16 win7-i686 | MIT | https://github.com/tun2proxy/tun2proxy/releases/tag/v0.7.16 | `DD769D0AC9BD0826B0BFB52C44E8DA87CBDCFB5B1AD9CD45D1B1691D1743D011` |
-| tun2proxy DLL | 0.7.16 win7-i686 | MIT | тот же выпуск | `97001928B30F627C00AD1B128B4EA3F5E0500B2A701E18A4431CE19BAFAAE409` |
-| tun2proxy udpgw | 0.7.16 win7-i686 | MIT | тот же выпуск | `203CDF3E78A277B37685E77B02AC04593B52473F8F485532B1312F9121FAC56C` |
-| Wintun | 0.14.1 x86 | собственная лицензия WireGuard LLC | https://www.wintun.net/ | `D694FA46AB4CFEBCB2632D094C7AA97278EEF2F8052438621766D863AE98A931` |
-| .NET Framework Runtime | 4.8 offline | Microsoft | https://dotnet.microsoft.com/download/dotnet-framework/net48 | `0A3A390C47E639D0F7FC65B21195FEE6B7F65B066F80F70C60FAB191D14B7E40` |
-| Windows 7 SHA-2 update | KB3033929 x86 | Microsoft | https://www.microsoft.com/download/details.aspx?id=46078 | `246C300A6AE6DCA99453F6839745AC0015953528A7065BED1B015F91B80CF64D` |
-| Phosphor Icons | Core, Bold | MIT | https://github.com/phosphor-icons/core | PNG-ресурсы в `Assets/Phosphor` |
-| Country Flags | svg-country-flags 1.2.10 | Public Domain | https://github.com/hampusborgos/country-flags | PNG-ресурсы в `Assets/Flags`; архив `2576650B4568C8EE1A2A6DDAA45C0246BE16735F229BB40B1A0A6F40424E5213` |
-| Markdig | 1.3.2 | BSD-2-Clause | https://github.com/xoofx/markdig/releases/tag/1.3.2 | NuGet-зависимость для безопасного разбора Markdown |
+Что Sora ставит вместе с собой. Движки скачиваются с выпусков их авторов и
+сверяются по SHA-256 из [`packaging/engines/engines.lock`](packaging/engines/engines.lock);
+Sora их не изменяет.
 
-Тексты лицензий Xray, sing-box, tun2proxy, Wintun, Phosphor Icons и распространяемых NuGet-зависимостей устанавливаются в каталог `licenses`. Уведомление об источнике флагов распространяется вместе с ресурсами в `Assets/Flags/NOTICE.txt`. Точное соответствие NuGet-пакетов лицензиям находится в `licenses/nuget/ATTRIBUTIONS.md`.
+## Движки
 
-## Новый клиент: компоненты пакетов Linux
+| Компонент | Версия | Где | Лицензия | Исходный код |
+| --- | --- | --- | --- | --- |
+| sing-box | 1.14.2 | Linux, Windows | GPL-3.0-or-later с условием автора о названии | https://github.com/SagerNet/sing-box/tree/v1.14.2 |
+| Xray-core | 26.3.27 | Linux, Windows | MPL-2.0 | https://github.com/XTLS/Xray-core/tree/v26.3.27 |
+| mihomo | 1.19.32 | Linux, Windows (сборка compatible) | GPL-3.0 | https://github.com/MetaCubeX/mihomo/tree/v1.19.32 |
+| zapret (tpws, nfqws) | 72.1 | Linux | MIT, © bol-van | [`third_party/zapret`](third_party/zapret) |
 
-| Компонент | Версия | Лицензия | Источник | SHA-256 |
-|---|---|---|---|---|
-| sing-box | 1.14.2 | GPL-3.0-or-later | https://github.com/SagerNet/sing-box/releases/tag/v1.14.2 | см. `packaging/engines/engines.lock` |
-| Xray-core | 26.3.27 | MPL-2.0 | https://github.com/XTLS/Xray-core/releases/tag/v26.3.27 | см. `packaging/engines/engines.lock` |
-| mihomo | 1.19.32 | GPL-3.0 | https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.32 | см. `packaging/engines/engines.lock` |
-| zapret (tpws, nfqws) | 72.13 | MIT, © 2016-2024 bol-van | https://github.com/bol-van/zapret/releases/tag/v72.13 | архив исходников `04696a1b6fe766e35cd6426555520c79d5052a759cdf4d7724a1f46eba4670f6` |
+## Приложение
 
-Исходники zapret лежат в `third_party/zapret` без изменений, вместе с лицензией
-автора. Три файла с переводами строк CRLF в архиве (`tpws/socks.h`,
-`tpws/epoll-shim/src/fix.c`, `docs/wireguard_iproute_openwrt.txt`) хранятся с LF:
-так требует `.gitattributes` самого zapret, содержимое не меняется (`third_party/zapret/docs/LICENSE.txt`); пакет ставит её в
-`/usr/share/licenses/sora-core/zapret-LICENSE.txt`.
+| Компонент | Версия | Лицензия |
+| --- | --- | --- |
+| Flutter и Dart | 3.47.6 | BSD-3-Clause |
+| Inter | 4.1 | SIL Open Font License 1.1 |
+| grpc | 5.1.0 | Apache-2.0 |
+| retry | 3.1.2 | Apache-2.0 |
+| cupertino_icons | 2.0.0 | MIT |
+| protobuf, fixnum, http2, intl, ffi | 6.1.0, 1.1.1, 2.3.1, 0.20.3, 2.2.0 | BSD-3-Clause |
+| shared_preferences, file_selector, url_launcher | 2.5.6, 1.1.0, 6.3.3 | BSD-3-Clause |
+| win32 | 6.4.0 | BSD-3-Clause |
+
+Тексты лицензий: GPL-3.0 — файл `LICENSE` рядом с этим; Inter — `Inter-LICENSE.txt`;
+zapret — `zapret-LICENSE.txt` в пакете ядра для Linux. Остальные лежат в исходном
+коде компонентов по ссылкам выше и на pub.dev.

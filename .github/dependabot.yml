@@ -33,10 +33,3 @@ updates:
       actions:
         patterns: ['*']
     labels: ['dependencies', 'ci']
-
-  - package-ecosystem: nuget
-    directory: /legacy/v2rayN
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 3
-    labels: ['dependencies', 'legacy']

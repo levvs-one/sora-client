@@ -107,7 +107,7 @@ func bound(n int) uint32 {
 	switch {
 	case n < 0:
 		return 0
-	case n > math.MaxUint32:
+	case int64(n) > math.MaxUint32:
 		return math.MaxUint32
 	}
 	return uint32(n)

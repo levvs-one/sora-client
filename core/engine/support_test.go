@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -119,4 +120,15 @@ func mustVersion(t *testing.T, s string) Version {
 		t.Fatal(err)
 	}
 	return v
+}
+
+func TestAProfileHidesItsCredentials(t *testing.T) {
+	o := Outbound{ID: "p", Protocol: ProtocolXrayProfile, Profile: []byte(`{"outbounds":[{"settings":{"vnext":[{"users":[{"id":"9f1c2d3e-aaaa-bbbb-cccc-0123456789ab"}]}]},
+		"streamSettings":{"realitySettings":{"publicKey":"pubkey-value-123","shortId":"shortid42"}}}]}`)}
+	secrets := o.Secrets()
+	for _, want := range []string{"9f1c2d3e-aaaa-bbbb-cccc-0123456789ab", "pubkey-value-123", "shortid42"} {
+		if !slices.Contains(secrets, want) {
+			t.Errorf("%q is not masked: %v", want, secrets)
+		}
+	}
 }

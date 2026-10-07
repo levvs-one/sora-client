@@ -64,14 +64,14 @@ var Catalog = map[Kind]Capabilities{
 		Protocols: map[Protocol]bool{
 			ProtocolVLESS: true, ProtocolVMess: true, ProtocolTrojan: true,
 			ProtocolShadowsocks: true, ProtocolHysteria2: true, ProtocolWireGuard: true,
-			ProtocolSOCKS5: true, ProtocolHTTP: true, ProtocolDirect: true,
+			ProtocolSOCKS5: true, ProtocolHTTP: true, ProtocolDirect: true, ProtocolXrayProfile: true,
 		},
 		Features: map[Feature]bool{
-			// Xray has a tun inbound but no automatic routes; tun sessions go to
-			// sing-box or mihomo, which own the routing table themselves.
+			// Xray's tun inbound has no routes of its own; the core installs
+			// them where engine/tunroute can (see catalog_*.go).
 			FeatureURLTest: true, FeatureLoadBalance: true, FeatureLatencyTest: true,
 			FeatureGeoData: true, FeatureTLSFragment: true,
-			FeatureXHTTP: true, FeatureVLESSEncrypt: true,
+			FeatureXHTTP: true, FeatureVLESSEncrypt: true, FeaturePrivateControl: true,
 		},
 	},
 }
@@ -82,6 +82,12 @@ var Catalog = map[Kind]Capabilities{
 // Xray carries what nobody else does (XHTTP, VLESS Encryption). mihomo is the
 // most complete rule engine and carries fallback groups and providers.
 var DefaultPreference = []Kind{KindSingBox, KindXray, KindMihomo}
+
+// PrivatePreference is the order for a plan that allows no controller other
+// programs could find. mihomo comes before Xray there: it keeps its controller
+// on a private socket, and with it the connection center and the counters,
+// while Xray runs without one.
+var PrivatePreference = []Kind{KindSingBox, KindMihomo, KindXray}
 
 // ErrNoEngine reports that no available engine carries an outbound or a plan.
 var ErrNoEngine = errors.New("engine: no available engine carries this")

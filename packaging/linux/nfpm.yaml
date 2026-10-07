@@ -68,6 +68,8 @@ contents:
     dst: /usr/share/polkit-1/actions/io.github.levvs-one.sora.policy
   - src: ./LICENSE
     dst: /usr/share/licenses/sora-core/LICENSE
+  - src: ./THIRD-PARTY-NOTICES.md
+    dst: /usr/share/licenses/sora-core/THIRD-PARTY-NOTICES.md
 
 scripts:
   postinstall: ./packaging/linux/scripts/postinstall.sh

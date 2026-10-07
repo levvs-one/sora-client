@@ -357,7 +357,7 @@ func TestSessionReportsEngineEventsInTheJournal(t *testing.T) {
 func TestKillSwitchFollowsTheSession(t *testing.T) {
 	eng, guard := newFakeEngine(), &fakeGuard{}
 	cfg := testConfig(eng, guard)
-	cfg.Settings = Settings{KillSwitch: true, SystemProxy: true, TunnelMode: "system", Bypass: []string{"localhost"}}
+	cfg.Settings = Settings{KillSwitch: true, TunnelMode: "system", Bypass: []string{"localhost"}}
 	session, err := New(cfg)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -366,7 +366,7 @@ func TestKillSwitchFollowsTheSession(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 	status := session.Status()
-	if !status.KillSwitch || !status.SystemProxy || status.TunnelMode != "system" {
+	if !status.KillSwitch || status.TunnelMode != "system" {
 		t.Errorf("status = %+v, want the requested settings", status)
 	}
 	if err := session.SetKillSwitch(context.Background(), false); err != nil {

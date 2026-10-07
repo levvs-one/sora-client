@@ -70,19 +70,22 @@ func TestPlatformFirewallRefusesAnEngineWithoutAUser(t *testing.T) {
 		// -1 and the kill switch must still start.
 		t.Skip("the engine is matched by user id on Linux only")
 	}
-	if _, err := guard.PlatformFirewall(-1, nil); err == nil {
+	if _, err := guard.PlatformFirewall(guard.FirewallOptions{EngineUID: -1}); err == nil {
 		t.Error("a kill switch accepted an engine without a user id")
 	}
 }
 
 func TestPlatformFirewallIsUsable(t *testing.T) {
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "linux":
 		// On Linux the platform firewall is the nftables table: arming it needs
 		// root and changes the firewall of the machine running the tests. The
 		// ruleset itself is covered by the rendering tests in this file.
 		t.Skip("the Linux kill switch is nftables; arming it in a test would change this machine")
+	case "windows":
+		t.Skip("the Windows kill switch blocks for real; firewall_windows_test.go checks what it lets through")
 	}
-	firewall, err := guard.PlatformFirewall(1000, nil)
+	firewall, err := guard.PlatformFirewall(guard.FirewallOptions{EngineUID: 1000})
 	if err != nil {
 		t.Fatalf("PlatformFirewall() error = %v", err)
 	}

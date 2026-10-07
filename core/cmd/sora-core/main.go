@@ -179,8 +179,6 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	manager := session.NewManager(session.ManagerConfig{
 		Factory:  factory,
 		Guard:    system,
-		Backoff:  engine.Backoff{Initial: time.Second, Max: time.Minute, Factor: 2},
-		Budget:   func() *engine.RestartBudget { return engine.NewRestartBudget(5, 10*time.Minute, nil) },
 		Redactor: redactor,
 		Network:  session.NetworkFingerprint,
 	})

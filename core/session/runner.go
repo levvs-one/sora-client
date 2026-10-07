@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,12 +41,6 @@ type Config struct {
 	Journal *Journal
 	// JournalCapacity is the history size of a journal the session creates.
 	JournalCapacity int
-	// Backoff schedules reconnect attempts. engine.DefaultBackoff is used when
-	// it is the zero value.
-	Backoff engine.Backoff
-	// RestartBudget limits reconnects inside its window. A budget of five
-	// attempts per ten minutes is used when it is nil.
-	RestartBudget *engine.RestartBudget
 	// StatsInterval samples the engine counters.
 	StatsInterval time.Duration
 	// StopGrace bounds the engine shutdown.
@@ -112,10 +107,13 @@ type Session struct {
 	// leave a rule behind and a later Stop cannot remove a rule the session
 	// never installed.
 	guardApplied bool
-	engineSub    func()
-	ctx          context.Context
-	cancel       context.CancelFunc
-	done         chan struct{}
+	// guardMu lets one change of the guard run at a time: a kill switch
+	// turned on and the restore of a stopping session never interleave.
+	guardMu   sync.Mutex
+	engineSub func()
+	ctx       context.Context
+	cancel    context.CancelFunc
+	done      chan struct{}
 }
 
 // New builds a session that is not started yet. Start does the work, so a caller
@@ -142,12 +140,6 @@ func New(cfg Config) (*Session, error) {
 	}
 	if cfg.NetworkInterval <= 0 {
 		cfg.NetworkInterval = DefaultNetworkInterval
-	}
-	if cfg.Backoff.Initial <= 0 {
-		cfg.Backoff = engine.DefaultBackoff()
-	}
-	if cfg.RestartBudget == nil {
-		cfg.RestartBudget = engine.NewRestartBudget(5, 10*time.Minute, nil)
 	}
 	if cfg.TunUp == nil {
 		cfg.TunUp = interfaceUp
@@ -308,26 +300,42 @@ func (s *Session) Stop(ctx context.Context) error {
 // belongs to another program, which is why the state is tracked instead of
 // assumed.
 func (s *Session) restoreGuard(ctx context.Context) error {
+	s.guardMu.Lock()
+	defer s.guardMu.Unlock()
 	s.mu.Lock()
-	if !s.guardApplied {
-		s.mu.Unlock()
+	applied := s.guardApplied
+	s.mu.Unlock()
+	if !applied {
 		return nil
 	}
+	if err := s.guard.Restore(ctx); err != nil {
+		// What could not be lifted is still this session's, and the next
+		// restore tries again.
+		return err
+	}
+	s.mu.Lock()
 	s.guardApplied = false
 	s.mu.Unlock()
-	return s.guard.Restore(ctx)
+	return nil
 }
 
 // SetKillSwitch turns the kill switch on or off while the session runs. Turning
 // it on takes effect immediately, because the moment it protects is exactly the
 // moment the engine is not answering.
+//
+// It runs one at a time with the restore of a stopping session, so a switch
+// turned on while the session ends cannot be armed after the restore. Turning
+// it off is allowed after a failure too: a failed session keeps the block on,
+// which is the point of it, until the person lifts it.
 func (s *Session) SetKillSwitch(ctx context.Context, enabled bool) error {
+	s.guardMu.Lock()
+	defer s.guardMu.Unlock()
 	s.mu.Lock()
-	if s.state.terminal() {
+	if s.stopping || (enabled && s.state.terminal()) || (!enabled && s.state == StateDisconnected) {
 		state := s.state
 		s.mu.Unlock()
 		return errs.Newf(errs.CodeFailedPrecondition, errs.KeySessionRequired,
-			"session: cannot arm the kill switch while %s", state)
+			"session: cannot change the kill switch while %s", state)
 	}
 	settings := s.settingsLocked()
 	settings.KillSwitch = enabled
@@ -405,7 +413,6 @@ func (s *Session) supervise(events <-chan engine.Event) {
 		network = looks.C
 	}
 
-	attempt := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -421,10 +428,19 @@ func (s *Session) supervise(events <-chan engine.Event) {
 				return
 			}
 			s.publishEngineEvent(ev)
+			// The supervisor of the engine restarts it inside its own budget;
+			// the session tells what is happening and never starts a second
+			// process of its own, which would fight the first for its port.
 			switch ev.Kind {
 			case engine.EventEngineDown:
-				if s.reconnect(ctx, &attempt) {
-					return
+				reason, key := errs.CodeUnavailable, errs.KeyEngineStopped
+				if ev.Err != nil {
+					reason, key = errs.CodeOf(ev.Err), errs.KeyOf(ev.Err)
+				}
+				s.setStateReconnecting(reason, key, 0)
+			case engine.EventState:
+				if ev.State == engine.StateRunning && s.State() == StateReconnecting {
+					s.setState(StateConnected, errs.Code(""), errs.Key(""), "")
 				}
 			case engine.EventFatal:
 				s.fail(errs.Newf(errs.CodeUnavailable, errs.KeyEngineStopped,
@@ -435,41 +451,6 @@ func (s *Session) supervise(events <-chan engine.Event) {
 	}
 }
 
-// reconnect retries the plan inside the restart budget. It reports whether the
-// supervision loop must end, which happens when the session is stopping, when
-// the budget is spent, or when a retry is no longer wanted.
-func (s *Session) reconnect(ctx context.Context, attempt *int) bool {
-	for {
-		if ctx.Err() != nil {
-			return true
-		}
-		if !s.cfg.RestartBudget.Allow() {
-			s.fail(errs.Newf(errs.CodeUnavailable, errs.KeyEngineRestartSpent,
-				"session: the engine kept failing inside the restart budget"))
-			return true
-		}
-		delay := s.cfg.Backoff.Delay(*attempt)
-		*attempt++
-		s.setStateReconnecting(errs.CodeUnavailable, errs.KeyEngineStopped, delay)
-
-		if err := s.cfg.Backoff.Wait(ctx, *attempt-1); err != nil {
-			return true
-		}
-		if err := s.eng.Apply(ctx, s.cfg.Plan); err != nil {
-			s.log.Append(Event{
-				Kind:   EventError,
-				Reason: errs.CodeUnavailable,
-				Key:    errs.KeyEngineStartFailed,
-				Detail: s.mask(err.Error()),
-			})
-			continue
-		}
-		*attempt = 0
-		s.setState(StateConnected, errs.Code(""), errs.Key(""), "")
-		return false
-	}
-}
-
 // publishEngineEvent turns one engine event into a journal event. The engine
 // already redacts its own output; the session masks once more, because a
 // redactor only knows what it was told.
@@ -477,7 +458,9 @@ func (s *Session) publishEngineEvent(ev engine.Event) {
 	out := Event{Kind: EventLog, Detail: s.mask(ev.Message)}
 	switch ev.Kind {
 	case engine.EventState:
-		out.Kind = EventState
+		// The engine's own states are a log line: the session's state is the
+		// one a client shows, and an engine state is not one of them.
+		out.Detail = s.mask(strings.TrimSpace(string(ev.State) + " " + ev.Message))
 	case engine.EventCounters:
 		out.Kind = EventCounters
 		out.Counters = Counters{

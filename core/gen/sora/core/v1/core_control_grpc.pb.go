@@ -31,6 +31,7 @@ const (
 	CoreControl_ExportDiagnostics_FullMethodName   = "/sora.core.v1.CoreControl/ExportDiagnostics"
 	CoreControl_SetKillSwitch_FullMethodName       = "/sora.core.v1.CoreControl/SetKillSwitch"
 	CoreControl_Handshake_FullMethodName           = "/sora.core.v1.CoreControl/Handshake"
+	CoreControl_GetAbout_FullMethodName            = "/sora.core.v1.CoreControl/GetAbout"
 	CoreControl_QueryLogs_FullMethodName           = "/sora.core.v1.CoreControl/QueryLogs"
 	CoreControl_WatchLogs_FullMethodName           = "/sora.core.v1.CoreControl/WatchLogs"
 	CoreControl_ExportLogs_FullMethodName          = "/sora.core.v1.CoreControl/ExportLogs"
@@ -66,6 +67,9 @@ type CoreControlClient interface {
 	ExportDiagnostics(ctx context.Context, in *ExportDiagnosticsRequest, opts ...grpc.CallOption) (*ExportDiagnosticsResponse, error)
 	SetKillSwitch(ctx context.Context, in *SetKillSwitchRequest, opts ...grpc.CallOption) (*SetKillSwitchResponse, error)
 	Handshake(ctx context.Context, in *HandshakeRequest, opts ...grpc.CallOption) (*HandshakeResponse, error)
+	// Since 1.3. What the "About" screen shows about the core. Nothing in it is
+	// personal, so it needs no authenticator.
+	GetAbout(ctx context.Context, in *GetAboutRequest, opts ...grpc.CallOption) (*GetAboutResponse, error)
 	// Since 1.3. The log center: one bounded in-memory record of the core and
 	// every engine. Every call needs the control authenticator, because the
 	// record and the connection list describe where a person goes.
@@ -235,6 +239,16 @@ func (c *coreControlClient) Handshake(ctx context.Context, in *HandshakeRequest,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HandshakeResponse)
 	err := c.cc.Invoke(ctx, CoreControl_Handshake_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) GetAbout(ctx context.Context, in *GetAboutRequest, opts ...grpc.CallOption) (*GetAboutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAboutResponse)
+	err := c.cc.Invoke(ctx, CoreControl_GetAbout_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -427,6 +441,9 @@ type CoreControlServer interface {
 	ExportDiagnostics(context.Context, *ExportDiagnosticsRequest) (*ExportDiagnosticsResponse, error)
 	SetKillSwitch(context.Context, *SetKillSwitchRequest) (*SetKillSwitchResponse, error)
 	Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error)
+	// Since 1.3. What the "About" screen shows about the core. Nothing in it is
+	// personal, so it needs no authenticator.
+	GetAbout(context.Context, *GetAboutRequest) (*GetAboutResponse, error)
 	// Since 1.3. The log center: one bounded in-memory record of the core and
 	// every engine. Every call needs the control authenticator, because the
 	// record and the connection list describe where a person goes.
@@ -499,6 +516,9 @@ func (UnimplementedCoreControlServer) SetKillSwitch(context.Context, *SetKillSwi
 }
 func (UnimplementedCoreControlServer) Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
+func (UnimplementedCoreControlServer) GetAbout(context.Context, *GetAboutRequest) (*GetAboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAbout not implemented")
 }
 func (UnimplementedCoreControlServer) QueryLogs(context.Context, *QueryLogsRequest) (*QueryLogsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryLogs not implemented")
@@ -764,6 +784,24 @@ func _CoreControl_Handshake_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CoreControlServer).Handshake(ctx, req.(*HandshakeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_GetAbout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAboutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).GetAbout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_GetAbout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).GetAbout(ctx, req.(*GetAboutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1070,6 +1108,10 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Handshake",
 			Handler:    _CoreControl_Handshake_Handler,
+		},
+		{
+			MethodName: "GetAbout",
+			Handler:    _CoreControl_GetAbout_Handler,
 		},
 		{
 			MethodName: "QueryLogs",

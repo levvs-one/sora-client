@@ -69,6 +69,10 @@ class CoreControlClient extends $grpc.Client {
       '/sora.core.v1.CoreControl/Handshake',
       ($0.HandshakeRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.HandshakeResponse.fromBuffer(value));
+  static final _$getAbout = $grpc.ClientMethod<$0.GetAboutRequest, $0.GetAboutResponse>(
+      '/sora.core.v1.CoreControl/GetAbout',
+      ($0.GetAboutRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.GetAboutResponse.fromBuffer(value));
   static final _$queryLogs = $grpc.ClientMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
       '/sora.core.v1.CoreControl/QueryLogs',
       ($0.QueryLogsRequest value) => value.writeToBuffer(),
@@ -182,6 +186,10 @@ class CoreControlClient extends $grpc.Client {
 
   $grpc.ResponseFuture<$0.HandshakeResponse> handshake($0.HandshakeRequest request, {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$handshake, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetAboutResponse> getAbout($0.GetAboutRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$getAbout, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.QueryLogsResponse> queryLogs($0.QueryLogsRequest request, {$grpc.CallOptions? options}) {
@@ -334,6 +342,13 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.HandshakeRequest.fromBuffer(value),
         ($0.HandshakeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetAboutRequest, $0.GetAboutResponse>(
+        'GetAbout',
+        getAbout_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetAboutRequest.fromBuffer(value),
+        ($0.GetAboutResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
         'QueryLogs',
         queryLogs_Pre,
@@ -489,6 +504,10 @@ abstract class CoreControlServiceBase extends $grpc.Service {
     return handshake(call, await request);
   }
 
+  $async.Future<$0.GetAboutResponse> getAbout_Pre($grpc.ServiceCall call, $async.Future<$0.GetAboutRequest> request) async {
+    return getAbout(call, await request);
+  }
+
   $async.Future<$0.QueryLogsResponse> queryLogs_Pre($grpc.ServiceCall call, $async.Future<$0.QueryLogsRequest> request) async {
     return queryLogs(call, await request);
   }
@@ -561,6 +580,7 @@ abstract class CoreControlServiceBase extends $grpc.Service {
   $async.Future<$0.ExportDiagnosticsResponse> exportDiagnostics($grpc.ServiceCall call, $0.ExportDiagnosticsRequest request);
   $async.Future<$0.SetKillSwitchResponse> setKillSwitch($grpc.ServiceCall call, $0.SetKillSwitchRequest request);
   $async.Future<$0.HandshakeResponse> handshake($grpc.ServiceCall call, $0.HandshakeRequest request);
+  $async.Future<$0.GetAboutResponse> getAbout($grpc.ServiceCall call, $0.GetAboutRequest request);
   $async.Future<$0.QueryLogsResponse> queryLogs($grpc.ServiceCall call, $0.QueryLogsRequest request);
   $async.Stream<$0.LogEntry> watchLogs($grpc.ServiceCall call, $0.WatchLogsRequest request);
   $async.Future<$0.ExportLogsResponse> exportLogs($grpc.ServiceCall call, $0.ExportLogsRequest request);

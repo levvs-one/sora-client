@@ -7029,6 +7029,372 @@ class WatchSubscriptionsRequest extends $pb.GeneratedMessage {
   void clearControlAuthenticator() => clearField(2);
 }
 
+class GetAboutRequest extends $pb.GeneratedMessage {
+  factory GetAboutRequest({
+    ApiVersion? apiVersion,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    return $result;
+  }
+  GetAboutRequest._() : super();
+  factory GetAboutRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetAboutRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetAboutRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetAboutRequest clone() => GetAboutRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetAboutRequest copyWith(void Function(GetAboutRequest) updates) => super.copyWith((message) => updates(message as GetAboutRequest)) as GetAboutRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetAboutRequest create() => GetAboutRequest._();
+  GetAboutRequest createEmptyInstance() => create();
+  static $pb.PbList<GetAboutRequest> createRepeated() => $pb.PbList<GetAboutRequest>();
+  @$core.pragma('dart2js:noInline')
+  static GetAboutRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetAboutRequest>(create);
+  static GetAboutRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+}
+
+class GetAboutResponse extends $pb.GeneratedMessage {
+  factory GetAboutResponse({
+    About? about,
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (about != null) {
+      $result.about = about;
+    }
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  GetAboutResponse._() : super();
+  factory GetAboutResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetAboutResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetAboutResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<About>(1, _omitFieldNames ? '' : 'about', subBuilder: About.create)
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetAboutResponse clone() => GetAboutResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetAboutResponse copyWith(void Function(GetAboutResponse) updates) => super.copyWith((message) => updates(message as GetAboutResponse)) as GetAboutResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetAboutResponse create() => GetAboutResponse._();
+  GetAboutResponse createEmptyInstance() => create();
+  static $pb.PbList<GetAboutResponse> createRepeated() => $pb.PbList<GetAboutResponse>();
+  @$core.pragma('dart2js:noInline')
+  static GetAboutResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetAboutResponse>(create);
+  static GetAboutResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  About get about => $_getN(0);
+  @$pb.TagNumber(1)
+  set about(About v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasAbout() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAbout() => clearField(1);
+  @$pb.TagNumber(1)
+  About ensureAbout() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
+}
+
+/// About describes the running core.
+class About extends $pb.GeneratedMessage {
+  factory About({
+    $core.String? coreVersion,
+    $core.String? commit,
+    $1.Timestamp? commitTime,
+    ApiVersion? contract,
+    $core.String? platform,
+    $core.String? goVersion,
+    $core.Iterable<EngineBuild>? engines,
+    $core.String? license,
+    $core.String? sourceUrl,
+  }) {
+    final $result = create();
+    if (coreVersion != null) {
+      $result.coreVersion = coreVersion;
+    }
+    if (commit != null) {
+      $result.commit = commit;
+    }
+    if (commitTime != null) {
+      $result.commitTime = commitTime;
+    }
+    if (contract != null) {
+      $result.contract = contract;
+    }
+    if (platform != null) {
+      $result.platform = platform;
+    }
+    if (goVersion != null) {
+      $result.goVersion = goVersion;
+    }
+    if (engines != null) {
+      $result.engines.addAll(engines);
+    }
+    if (license != null) {
+      $result.license = license;
+    }
+    if (sourceUrl != null) {
+      $result.sourceUrl = sourceUrl;
+    }
+    return $result;
+  }
+  About._() : super();
+  factory About.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory About.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'About', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'coreVersion')
+    ..aOS(2, _omitFieldNames ? '' : 'commit')
+    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'commitTime', subBuilder: $1.Timestamp.create)
+    ..aOM<ApiVersion>(4, _omitFieldNames ? '' : 'contract', subBuilder: ApiVersion.create)
+    ..aOS(5, _omitFieldNames ? '' : 'platform')
+    ..aOS(6, _omitFieldNames ? '' : 'goVersion')
+    ..pc<EngineBuild>(7, _omitFieldNames ? '' : 'engines', $pb.PbFieldType.PM, subBuilder: EngineBuild.create)
+    ..aOS(8, _omitFieldNames ? '' : 'license')
+    ..aOS(9, _omitFieldNames ? '' : 'sourceUrl')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  About clone() => About()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  About copyWith(void Function(About) updates) => super.copyWith((message) => updates(message as About)) as About;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static About create() => About._();
+  About createEmptyInstance() => create();
+  static $pb.PbList<About> createRepeated() => $pb.PbList<About>();
+  @$core.pragma('dart2js:noInline')
+  static About getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<About>(create);
+  static About? _defaultInstance;
+
+  /// The release version, or "dev" for a build that was not stamped.
+  @$pb.TagNumber(1)
+  $core.String get coreVersion => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set coreVersion($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasCoreVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCoreVersion() => clearField(1);
+
+  /// The commit the core was built from and when, where the build recorded it.
+  @$pb.TagNumber(2)
+  $core.String get commit => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set commit($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasCommit() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCommit() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $1.Timestamp get commitTime => $_getN(2);
+  @$pb.TagNumber(3)
+  set commitTime($1.Timestamp v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasCommitTime() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCommitTime() => clearField(3);
+  @$pb.TagNumber(3)
+  $1.Timestamp ensureCommitTime() => $_ensure(2);
+
+  /// The contract the core serves.
+  @$pb.TagNumber(4)
+  ApiVersion get contract => $_getN(3);
+  @$pb.TagNumber(4)
+  set contract(ApiVersion v) { setField(4, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasContract() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearContract() => clearField(4);
+  @$pb.TagNumber(4)
+  ApiVersion ensureContract() => $_ensure(3);
+
+  /// For example "linux/amd64".
+  @$pb.TagNumber(5)
+  $core.String get platform => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set platform($core.String v) { $_setString(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasPlatform() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPlatform() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get goVersion => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set goVersion($core.String v) { $_setString(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasGoVersion() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearGoVersion() => clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.List<EngineBuild> get engines => $_getList(6);
+
+  /// SPDX identifier.
+  @$pb.TagNumber(8)
+  $core.String get license => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set license($core.String v) { $_setString(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasLicense() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLicense() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get sourceUrl => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set sourceUrl($core.String v) { $_setString(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasSourceUrl() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSourceUrl() => clearField(9);
+}
+
+/// EngineBuild is one engine as this machine has it.
+class EngineBuild extends $pb.GeneratedMessage {
+  factory EngineBuild({
+    $core.String? kind,
+    $core.bool? installed,
+    $core.String? version,
+  }) {
+    final $result = create();
+    if (kind != null) {
+      $result.kind = kind;
+    }
+    if (installed != null) {
+      $result.installed = installed;
+    }
+    if (version != null) {
+      $result.version = version;
+    }
+    return $result;
+  }
+  EngineBuild._() : super();
+  factory EngineBuild.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory EngineBuild.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'EngineBuild', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'kind')
+    ..aOB(2, _omitFieldNames ? '' : 'installed')
+    ..aOS(3, _omitFieldNames ? '' : 'version')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  EngineBuild clone() => EngineBuild()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  EngineBuild copyWith(void Function(EngineBuild) updates) => super.copyWith((message) => updates(message as EngineBuild)) as EngineBuild;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static EngineBuild create() => EngineBuild._();
+  EngineBuild createEmptyInstance() => create();
+  static $pb.PbList<EngineBuild> createRepeated() => $pb.PbList<EngineBuild>();
+  @$core.pragma('dart2js:noInline')
+  static EngineBuild getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<EngineBuild>(create);
+  static EngineBuild? _defaultInstance;
+
+  /// sing-box, xray or mihomo.
+  @$pb.TagNumber(1)
+  $core.String get kind => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set kind($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get installed => $_getBF(1);
+  @$pb.TagNumber(2)
+  set installed($core.bool v) { $_setBool(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasInstalled() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearInstalled() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get version => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set version($core.String v) { $_setString(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearVersion() => clearField(3);
+}
+
 /// BypassStrategy is how zapret reshapes a handshake. Positions are a number
 /// of bytes, negative from the end, or a marker (method, host, endhost, sld,
 /// midsld, endsld, sniext) with an optional +N or -N.

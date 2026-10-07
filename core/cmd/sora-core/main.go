@@ -15,11 +15,14 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/levvs-one/sora-client/core/control"
 	"github.com/levvs-one/sora-client/core/diagnostics"
@@ -203,6 +206,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		Prober:        probe.New(probe.Config{}),
 		Measurer:      measurer,
 		Logs:          center,
+		About:         app.about,
 		Fetcher:       subscription.New(subscription.Options{}),
 	})
 	if err != nil {
@@ -252,6 +256,38 @@ func protectorFor(opts Options, log *slog.Logger) secret.Protector {
 		"problem", errs.Detail(err),
 		"consequence", "the master key is protected by file permissions instead")
 	return secret.FileProtector{}
+}
+
+// about describes this build for the "About" screen of the interface.
+func (a *App) about() *corev1.About {
+	out := &corev1.About{
+		CoreVersion: buildVersion,
+		Platform:    runtime.GOOS + "/" + runtime.GOARCH,
+		GoVersion:   runtime.Version(),
+		License:     "GPL-3.0-only",
+		SourceUrl:   "https://github.com/levvs-one/sora-client",
+	}
+	// The Go toolchain records the commit of a build made from a git checkout.
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				out.Commit = setting.Value
+			case "vcs.time":
+				if at, err := time.Parse(time.RFC3339, setting.Value); err == nil {
+					out.CommitTime = timestamppb.New(at)
+				}
+			}
+		}
+	}
+	if a.engines != nil {
+		for _, engine := range a.engines.Availability() {
+			out.Engines = append(out.Engines, &corev1.EngineBuild{
+				Kind: string(engine.Kind), Installed: engine.Usable, Version: engine.Version.String(),
+			})
+		}
+	}
+	return out
 }
 
 // source feeds the diagnostics collector from the running core.

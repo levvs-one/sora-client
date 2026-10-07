@@ -17,6 +17,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -290,4 +291,64 @@ func fetchAs(ctx context.Context, local int, user, password, target string) (str
 		return "", fmt.Errorf("status %d", resp.StatusCode)
 	}
 	return string(body), err
+}
+
+// TestBypassCarriesTrafficThroughZapret sends a request through a bypass
+// outbound on every engine: the engine hands it to a real tpws, which reaches
+// the target directly. tpws refuses loopback and private destinations by
+// design, so the target is a public endpoint and the test needs the network.
+// SORA_TPWS_BIN names a tpws built from third_party/zapret.
+func TestBypassCarriesTrafficThroughZapret(t *testing.T) {
+	dir, tpws := os.Getenv("SORA_ENGINES_DIR"), os.Getenv("SORA_TPWS_BIN")
+	if dir == "" || tpws == "" {
+		t.Skip("set SORA_ENGINES_DIR and SORA_TPWS_BIN")
+	}
+	engines := t.TempDir()
+	for _, name := range []string{"sing-box", "xray", "mihomo", "geoip.dat", "geosite.dat"} {
+		if err := os.Symlink(filepath.Join(dir, name), filepath.Join(engines, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(tpws, filepath.Join(engines, "tpws")); err != nil {
+		t.Fatal(err)
+	}
+	center := logs.New(logs.Settings{CaptureLevel: logs.LevelDebug})
+
+	for _, kind := range []engine.Kind{engine.KindSingBox, engine.KindXray, engine.KindMihomo} {
+		t.Run(string(kind), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			local := port(t)
+			reg := registry.Discover(ctx, engines, supervise.Config{HomeDir: t.TempDir(), LocalPort: local, StartTimeout: 10 * time.Second, Logs: center})
+			plan := &engine.Plan{
+				SessionID: "bypass", Engines: []engine.Kind{kind}, LocalProxy: engine.LocalProxy{Enabled: true},
+				Outbounds: []engine.Outbound{{ID: "zapret", Protocol: engine.ProtocolBypass,
+					Bypass: &engine.BypassStrategy{SplitPos: []string{"1", "midsld"}, Disorder: true, HostCase: true}}},
+				Rules:   []engine.Rule{{Type: engine.RuleMatchAll, Target: "zapret"}},
+				Options: engine.Options{LogLevel: "warning", TestURL: engine.TestURLProduction},
+			}
+			eng, err := reg.Factory()(ctx, plan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = eng.Close() }()
+			if err := eng.Apply(ctx, plan); err != nil {
+				t.Fatalf("Apply: %v", err)
+			}
+			proxy, _ := url.Parse("http://127.0.0.1:" + strconv.Itoa(local))
+			client := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{Proxy: http.ProxyURL(proxy)}}
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, engine.TestURLProduction, nil)
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("request through %s and tpws: %v", kind, err)
+			}
+			_ = resp.Body.Close()
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("request through %s and tpws answered %d", kind, resp.StatusCode)
+			}
+			if len(center.Query(logs.Filter{Sources: []string{"zapret"}}, 0, 0).Entries) == 0 {
+				t.Error("tpws wrote nothing to the log center")
+			}
+		})
+	}
 }

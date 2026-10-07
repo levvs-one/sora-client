@@ -102,11 +102,17 @@ jobs:
 
   linux-packages:
     name: Linux packages
-    runs-on: ubuntu-latest
+    # zapret is C linked against the distribution's netfilter libraries, so
+    # each architecture is built natively on its own runner.
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
@@ -119,9 +125,14 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Build the core
         working-directory: core
-        run: CGO_ENABLED=0 GOARCH=${{ matrix.arch }} go build -trimpath -ldflags '-s -w' -o ../dist/sora-core ./cmd/sora-core
+        run: CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o ../dist/sora-core ./cmd/sora-core
       - name: Fetch and verify the engines
         run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
+      - name: Build zapret
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libnetfilter-queue-dev libnfnetlink-dev libmnl-dev zlib1g-dev
+          packaging/zapret/build.sh dist/engines
       - name: Package
         env:
           SORA_ARCH: ${{ matrix.arch }}

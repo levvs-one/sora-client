@@ -46,6 +46,7 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Fatalf("NewAuthenticator() error = %v", err)
 	}
 	manager := session.NewManager(session.ManagerConfig{
+		TunUp:   noAdapter,
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
 	})
 	plane, err := control.New(control.Config{

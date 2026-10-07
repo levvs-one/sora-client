@@ -208,6 +208,11 @@ type DNS struct {
 	HijackTun        []string
 }
 
+// TunDevice is the adapter a Sora session brings up. It has a name of its own,
+// so it never collides with an adapter another program owns, and so the core
+// can see whether the engine really brought it up.
+const TunDevice = "sora0"
+
 // Tun is the virtual network interface setup of the plan.
 type Tun struct {
 	Enabled          bool

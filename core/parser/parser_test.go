@@ -7,12 +7,19 @@ import (
 )
 
 func TestParseLinks(t *testing.T) {
-	tests := []struct{ name, input, protocol string }{
-		{"vless", "vless://123e4567-e89b-12d3-a456-426614174000@example.com:443?security=tls&type=ws&path=%2F#🇩🇪%20Berlin", "vless"},
-		{"trojan", "trojan://secret@example.com:443?sni=example.com#Trojan", "trojan"},
-		{"shadowsocks", "ss://YWVzLTI1Ni1nY206cGFzcw@example.com:8388#SS", "ss"},
-		{"hysteria2", "hysteria2://secret@example.com:443?sni=example.com#H2", "hysteria2"},
-		{"tuic", "tuic://123e4567-e89b-12d3-a456-426614174000:pass@example.com:443", "tuic"},
+	// The protocol is the engine's name for it, whatever the scheme of the
+	// link, and the security says what the link meant when it did not say.
+	tests := []struct{ name, input, protocol, security string }{
+		{"vless", "vless://123e4567-e89b-12d3-a456-426614174000@example.com:443?security=tls&type=ws&path=%2F#🇩🇪%20Berlin", "vless", "tls"},
+		{"vless plain", "vless://123e4567-e89b-12d3-a456-426614174000@example.com:443", "vless", "none"},
+		{"trojan", "trojan://secret@example.com:443?sni=example.com#Trojan", "trojan", "tls"},
+		{"shadowsocks", "ss://YWVzLTI1Ni1nY206cGFzcw@example.com:8388#SS", "shadowsocks", "none"},
+		{"hysteria2", "hysteria2://secret@example.com:443?sni=example.com#H2", "hysteria2", "tls"},
+		{"hy2", "hy2://secret@example.com:443#H2", "hysteria2", "tls"},
+		{"tuic", "tuic://123e4567-e89b-12d3-a456-426614174000:pass@example.com:443", "tuic", "tls"},
+		{"socks", "socks://user:pass@example.com:1080", "socks5", "none"},
+		{"socks5", "socks5://example.com:1080", "socks5", "none"},
+		{"https", "https://user:pass@example.com:443", "http", "tls"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -20,7 +27,7 @@ func TestParseLinks(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(r.Servers) != 1 || r.Servers[0].Protocol != tt.protocol {
+			if len(r.Servers) != 1 || r.Servers[0].Protocol != tt.protocol || r.Servers[0].Security != tt.security {
 				t.Fatalf("unexpected result: %#v", r)
 			}
 		})

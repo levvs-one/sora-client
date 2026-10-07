@@ -295,6 +295,7 @@ const SessionPlan$json = {
     {'1': 'local_proxy', '3': 10, '4': 1, '5': 11, '6': '.sora.core.v1.LocalProxy', '10': 'localProxy'},
     {'1': 'groups', '3': 11, '4': 3, '5': 11, '6': '.sora.core.v1.GroupSpec', '10': 'groups'},
     {'1': 'routing', '3': 12, '4': 1, '5': 11, '6': '.sora.core.v1.RoutingOptions', '10': 'routing'},
+    {'1': 'ipv6', '3': 13, '4': 1, '5': 8, '10': 'ipv6'},
   ],
 };
 
@@ -312,7 +313,7 @@ final $typed_data.Uint8List sessionPlanDescriptor =
         'xvd2VkEjkKC2xvY2FsX3Byb3h5GAogASgLMhguc29yYS5jb3JlLnYxLkxvY2FsUHJveHlSCmxv'
         'Y2FsUHJveHkSLwoGZ3JvdXBzGAsgAygLMhcuc29yYS5jb3JlLnYxLkdyb3VwU3BlY1IGZ3JvdX'
         'BzEjYKB3JvdXRpbmcYDCABKAsyHC5zb3JhLmNvcmUudjEuUm91dGluZ09wdGlvbnNSB3JvdXRp'
-        'bmc=');
+        'bmcSEgoEaXB2NhgNIAEoCFIEaXB2Ng==');
 
 @$core.Deprecated('Use groupSpecDescriptor instead')
 const GroupSpec$json = {

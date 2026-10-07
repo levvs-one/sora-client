@@ -104,6 +104,9 @@ message SessionPlan {
   repeated GroupSpec groups = 11;
   // Since 1.3. A routing preset applied after the routes above.
   RoutingOptions routing = 12;
+  // Since 1.3. Resolves and connects over IPv6 as well; off resolves IPv4
+  // only, which avoids leaks on networks where IPv6 bypasses the tunnel.
+  bool ipv6 = 13;
 }
 
 // GroupSpec is one group of outbounds.

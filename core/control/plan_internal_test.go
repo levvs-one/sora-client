@@ -295,3 +295,21 @@ func TestTunPlanGetsResolversWhenItNamesNone(t *testing.T) {
 		t.Fatalf("a proxy plan resolves through the system unless asked: %+v", p.DNS)
 	}
 }
+
+func TestPlanCarriesTheIPv6Choice(t *testing.T) {
+	in := &corev1.SessionPlan{
+		TunnelMode: corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
+		Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Options.IPv6 {
+		t.Fatal("IPv6 is off unless asked for")
+	}
+	in.Ipv6 = true
+	if p, _ = planFromProto(in, "s", nil); !p.Options.IPv6 {
+		t.Fatal("the IPv6 choice must reach the engine options")
+	}
+}

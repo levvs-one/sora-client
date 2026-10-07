@@ -1573,73 +1573,26 @@ final $typed_data.Uint8List watchSubscriptionsRequestDescriptor = $convert.base6
     '5jb3JlLnYxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9y'
     'GAIgASgMUhRjb250cm9sQXV0aGVudGljYXRvcg==');
 
-@$core.Deprecated('Use getAboutRequestDescriptor instead')
-const GetAboutRequest$json = {
-  '1': 'GetAboutRequest',
+@$core.Deprecated('Use bypassStrategyDescriptor instead')
+const BypassStrategy$json = {
+  '1': 'BypassStrategy',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'split_pos', '3': 1, '4': 3, '5': 9, '10': 'splitPos'},
+    {'1': 'disorder', '3': 2, '4': 1, '5': 8, '10': 'disorder'},
+    {'1': 'oob', '3': 3, '4': 1, '5': 8, '10': 'oob'},
+    {'1': 'tls_record', '3': 4, '4': 1, '5': 9, '10': 'tlsRecord'},
+    {'1': 'host_case', '3': 5, '4': 1, '5': 8, '10': 'hostCase'},
+    {'1': 'domain_case', '3': 6, '4': 1, '5': 8, '10': 'domainCase'},
+    {'1': 'method_eol', '3': 7, '4': 1, '5': 8, '10': 'methodEol'},
   ],
 };
 
-/// Descriptor for `GetAboutRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getAboutRequestDescriptor = $convert.base64Decode(
-    'Cg9HZXRBYm91dFJlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLmNvcmUudjEuQX'
-    'BpVmVyc2lvblIKYXBpVmVyc2lvbg==');
-
-@$core.Deprecated('Use getAboutResponseDescriptor instead')
-const GetAboutResponse$json = {
-  '1': 'GetAboutResponse',
-  '2': [
-    {'1': 'about', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.About', '10': 'about'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
-  ],
-};
-
-/// Descriptor for `GetAboutResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getAboutResponseDescriptor = $convert.base64Decode(
-    'ChBHZXRBYm91dFJlc3BvbnNlEikKBWFib3V0GAEgASgLMhMuc29yYS5jb3JlLnYxLkFib3V0Ug'
-    'VhYm91dBItCgVlcnJvchgCIAEoCzIXLnNvcmEuY29yZS52MS5Tb3JhRXJyb3JSBWVycm9y');
-
-@$core.Deprecated('Use aboutDescriptor instead')
-const About$json = {
-  '1': 'About',
-  '2': [
-    {'1': 'core_version', '3': 1, '4': 1, '5': 9, '10': 'coreVersion'},
-    {'1': 'commit', '3': 2, '4': 1, '5': 9, '10': 'commit'},
-    {'1': 'commit_time', '3': 3, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'commitTime'},
-    {'1': 'contract', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'contract'},
-    {'1': 'platform', '3': 5, '4': 1, '5': 9, '10': 'platform'},
-    {'1': 'go_version', '3': 6, '4': 1, '5': 9, '10': 'goVersion'},
-    {'1': 'engines', '3': 7, '4': 3, '5': 11, '6': '.sora.core.v1.EngineBuild', '10': 'engines'},
-    {'1': 'license', '3': 8, '4': 1, '5': 9, '10': 'license'},
-    {'1': 'source_url', '3': 9, '4': 1, '5': 9, '10': 'sourceUrl'},
-  ],
-};
-
-/// Descriptor for `About`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List aboutDescriptor = $convert.base64Decode(
-    'CgVBYm91dBIhCgxjb3JlX3ZlcnNpb24YASABKAlSC2NvcmVWZXJzaW9uEhYKBmNvbW1pdBgCIA'
-    'EoCVIGY29tbWl0EjsKC2NvbW1pdF90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVz'
-    'dGFtcFIKY29tbWl0VGltZRI0Cghjb250cmFjdBgEIAEoCzIYLnNvcmEuY29yZS52MS5BcGlWZX'
-    'JzaW9uUghjb250cmFjdBIaCghwbGF0Zm9ybRgFIAEoCVIIcGxhdGZvcm0SHQoKZ29fdmVyc2lv'
-    'bhgGIAEoCVIJZ29WZXJzaW9uEjMKB2VuZ2luZXMYByADKAsyGS5zb3JhLmNvcmUudjEuRW5naW'
-    '5lQnVpbGRSB2VuZ2luZXMSGAoHbGljZW5zZRgIIAEoCVIHbGljZW5zZRIdCgpzb3VyY2VfdXJs'
-    'GAkgASgJUglzb3VyY2VVcmw=');
-
-@$core.Deprecated('Use engineBuildDescriptor instead')
-const EngineBuild$json = {
-  '1': 'EngineBuild',
-  '2': [
-    {'1': 'kind', '3': 1, '4': 1, '5': 9, '10': 'kind'},
-    {'1': 'installed', '3': 2, '4': 1, '5': 8, '10': 'installed'},
-    {'1': 'version', '3': 3, '4': 1, '5': 9, '10': 'version'},
-  ],
-};
-
-/// Descriptor for `EngineBuild`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List engineBuildDescriptor = $convert.base64Decode(
-    'CgtFbmdpbmVCdWlsZBISCgRraW5kGAEgASgJUgRraW5kEhwKCWluc3RhbGxlZBgCIAEoCFIJaW'
-    '5zdGFsbGVkEhgKB3ZlcnNpb24YAyABKAlSB3ZlcnNpb24=');
+/// Descriptor for `BypassStrategy`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List bypassStrategyDescriptor = $convert.base64Decode(
+    'Cg5CeXBhc3NTdHJhdGVneRIbCglzcGxpdF9wb3MYASADKAlSCHNwbGl0UG9zEhoKCGRpc29yZG'
+    'VyGAIgASgIUghkaXNvcmRlchIQCgNvb2IYAyABKAhSA29vYhIdCgp0bHNfcmVjb3JkGAQgASgJ'
+    'Ugl0bHNSZWNvcmQSGwoJaG9zdF9jYXNlGAUgASgIUghob3N0Q2FzZRIfCgtkb21haW5fY2FzZR'
+    'gGIAEoCFIKZG9tYWluQ2FzZRIdCgptZXRob2RfZW9sGAcgASgIUgltZXRob2RFb2w=');
 
 @$core.Deprecated('Use getRoutingPresetsRequestDescriptor instead')
 const GetRoutingPresetsRequest$json = {

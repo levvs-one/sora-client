@@ -114,14 +114,15 @@ func (g *Guard) Restore(ctx context.Context) error {
 	g.restoring = true
 	defer func() { g.restoring = false }()
 
-	var err error
 	if g.applied.KillSwitch {
-		if disarm := g.firewall.Disarm(ctx); disarm != nil {
-			err = errs.Wrap(disarm, errs.CodeInternal, errs.KeyGuardRestoreFailed)
+		if err := g.firewall.Disarm(ctx); err != nil {
+			// The block is still in force: the guard keeps knowing it, so the
+			// next restore or the next session lifts it.
+			return errs.Wrap(err, errs.CodeInternal, errs.KeyGuardRestoreFailed)
 		}
 	}
 	g.applied = session.Settings{}
-	return err
+	return nil
 }
 
 // Current reports the settings the guard believes are in force.

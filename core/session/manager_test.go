@@ -16,8 +16,6 @@ func testManager(t *testing.T, guard Guard) (*Manager, *fakeEngine) {
 	manager := NewManager(ManagerConfig{
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return eng, nil },
 		Guard:   guard,
-		Backoff: engine.Backoff{Initial: time.Millisecond, Max: time.Millisecond, Factor: 1, Rand: func() float64 { return 0 }},
-		Budget:  func() *engine.RestartBudget { return engine.NewRestartBudget(2, time.Minute, nil) },
 	})
 	return manager, eng
 }

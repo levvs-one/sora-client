@@ -153,7 +153,9 @@ class Desktop with WindowListener {
   Future<void> quit({bool disconnect = true}) async {
     _closing = true;
     _dropping = disconnect;
-    if (disconnect && sora.phase != Phase.off && sora.phase != Phase.offline) await sora.disconnect();
+    // Off may still be a failed session that keeps its kill switch on: the
+    // core is asked to end it all the same.
+    if (disconnect && sora.phase != Phase.offline) await sora.disconnect();
     await (_proxyWork = _proxyWork.then((_) => _syncProxy()).catchError((Object _) {}));
     for (final watch in _watches) {
       await watch.cancel();

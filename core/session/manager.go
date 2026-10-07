@@ -25,12 +25,6 @@ type ManagerConfig struct {
 	Guard Guard
 	// JournalCapacity is the history size of each session journal.
 	JournalCapacity int
-	// Backoff schedules reconnect attempts.
-	Backoff engine.Backoff
-	// Budget builds the restart budget of one session. Each session gets its
-	// own budget: a budget shared between sessions would let the attempts of a
-	// session that failed ten minutes ago block the next connection.
-	Budget func() *engine.RestartBudget
 	// StatsInterval samples the engine counters.
 	StatsInterval time.Duration
 	// StopGrace bounds the engine shutdown.
@@ -74,17 +68,8 @@ func NewManager(cfg ManagerConfig) *Manager {
 	if cfg.StopGrace <= 0 {
 		cfg.StopGrace = DefaultStopGrace
 	}
-	if cfg.Backoff.Initial <= 0 {
-		cfg.Backoff = engine.DefaultBackoff()
-	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
-	}
-	if cfg.Budget == nil {
-		now := cfg.Now
-		cfg.Budget = func() *engine.RestartBudget {
-			return engine.NewRestartBudget(5, 10*time.Minute, now)
-		}
 	}
 	if cfg.Guard == nil {
 		cfg.Guard = NoopGuard{}
@@ -125,8 +110,6 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 		Engine:        built,
 		Guard:         m.cfg.Guard,
 		Journal:       NewJournal(m.cfg.JournalCapacity),
-		Backoff:       m.cfg.Backoff,
-		RestartBudget: m.cfg.Budget(),
 		StatsInterval: m.cfg.StatsInterval,
 		StopGrace:     m.cfg.StopGrace,
 		Redactor:      m.cfg.Redactor,
@@ -192,8 +175,14 @@ func (m *Manager) Current() *Session {
 // GetStatus even after the session has ended.
 func (m *Manager) Status() Status {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.last
+	current, last := m.current, m.last
+	m.mu.Unlock()
+	// A running session answers with what it is now: one that failed or is
+	// reconnecting since it started must not still read as connected.
+	if current != nil {
+		return current.Status()
+	}
+	return last
 }
 
 // Shutdown stops everything and returns once the machine is back to normal. The

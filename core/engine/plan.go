@@ -1,5 +1,7 @@
 package engine
 
+import "encoding/json"
+
 // Limits mirror the sora.core.v1 contract. A plan that exceeds them is
 // rejected before any engine sees it.
 const (
@@ -31,7 +33,11 @@ const (
 	// ProtocolBypass reaches sites directly, with the TLS and HTTP handshake
 	// reshaped by zapret so that DPI does not recognise the site. No server.
 	ProtocolBypass Protocol = "bypass"
-	ProtocolDirect Protocol = "direct"
+	// ProtocolXrayProfile is a whole Xray configuration a provider wrote for
+	// one server: its outbounds, balancers and routing run as written, inside
+	// the frame of the session. Only Xray carries it.
+	ProtocolXrayProfile Protocol = "xray-profile"
+	ProtocolDirect      Protocol = "direct"
 )
 
 // GroupType is how the engine chooses between the members of a group.
@@ -116,6 +122,9 @@ type Outbound struct {
 	Amnezia *AmneziaWG
 	// Bypass is the strategy of a bypass outbound.
 	Bypass *BypassStrategy
+	// Profile is the Xray configuration of an xray-profile outbound. It holds
+	// the provider's credentials, so it is secret as a whole.
+	Profile json.RawMessage
 	// Addresses are the interface addresses of a WireGuard outbound, in CIDR
 	// form. A WireGuard tunnel cannot carry traffic without them.
 	Addresses []string

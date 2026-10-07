@@ -1,10 +1,14 @@
 package control
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"strconv"
@@ -107,6 +111,13 @@ func credentialDocument(spec parser.OutboundSpec) ([]byte, error) {
 	}
 	if spec.AllowInsecure {
 		values["insecure"] = "1"
+	}
+	if profile := spec.Options["profile"]; profile != "" {
+		packed, err := packProfile(profile)
+		if err != nil {
+			return nil, err
+		}
+		values["xray_profile"] = packed
 	}
 	for key, value := range values {
 		if value == "" {
@@ -440,6 +451,13 @@ func applyCredential(outbound *engine.Outbound, values map[string]string) error 
 		// and the plan validation names the outbound that cannot connect.
 		_ = json.Unmarshal([]byte(peers), &outbound.Peers)
 	}
+	if packed := values["xray_profile"]; packed != "" {
+		profile, err := unpackProfile(packed)
+		if err != nil {
+			return err
+		}
+		outbound.Profile = profile
+	}
 	if raw := values["amneziawg"]; raw != "" {
 		awg, err := amneziaFrom(raw)
 		if err != nil {
@@ -705,4 +723,36 @@ func outboundToProto(spec parser.OutboundSpec, reference string) *corev1.Outboun
 		Endpoint:    &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
 		Credentials: &corev1.CredentialsRef{Reference: reference},
 	}
+}
+
+// A profile is a whole configuration, tens of kilobytes with the provider's
+// rule lists, and a secret stores at most 64 KiB; compressed it is a few.
+func packProfile(profile string) (string, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	if _, err := w.Write([]byte(profile)); err != nil {
+		return "", errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+	}
+	if err := w.Close(); err != nil {
+		return "", errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+	}
+	return base64.StdEncoding.EncodeToString(b.Bytes()), nil
+}
+
+// unpackProfile reverses packProfile; a profile larger than the limit of a
+// plan is refused rather than read into memory whole.
+func unpackProfile(packed string) (json.RawMessage, error) {
+	raw, err := base64.StdEncoding.DecodeString(packed)
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanOutbounds)
+	}
+	r, err := gzip.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanOutbounds)
+	}
+	profile, err := io.ReadAll(io.LimitReader(r, MaxPlanBytes+1))
+	if err != nil || len(profile) > MaxPlanBytes {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanOutbounds, "control: a stored Xray profile is unreadable or too large")
+	}
+	return profile, nil
 }

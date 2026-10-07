@@ -313,3 +313,18 @@ func TestPlanCarriesTheIPv6Choice(t *testing.T) {
 		t.Fatal("the IPv6 choice must reach the engine options")
 	}
 }
+
+func TestAProfileSurvivesTheVault(t *testing.T) {
+	profile := `{"remarks":"x","outbounds":[{"protocol":"vless","tag":"proxy"}],"routing":{"rules":[]}}`
+	packed, err := packProfile(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := unpackProfile(packed)
+	if err != nil || string(back) != profile {
+		t.Fatalf("round trip = %q, %v", back, err)
+	}
+	if _, err := unpackProfile("not base64"); err == nil {
+		t.Fatal("an unreadable profile must be refused")
+	}
+}

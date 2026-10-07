@@ -20,6 +20,7 @@ const (
 	tagDNS      = "dns-out"
 	tagFragment = "fragment"
 	tagInbound  = "mixed-in"
+	tagTun      = "tun-in"
 )
 
 type obj map[string]any
@@ -66,6 +67,9 @@ func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error)
 	if p == nil {
 		return nil, errors.New("xray: nil plan")
 	}
+	if len(p.Outbounds) == 1 && p.Outbounds[0].Protocol == engine.ProtocolXrayProfile {
+		return renderProfile(p, rt)
+	}
 	r := renderer{plan: p, sel: sel, tags: map[string]string{}, groups: map[string]engine.Group{}, byGroup: map[string]string{}}
 	for i, o := range p.Outbounds {
 		r.tags[o.ID] = outboundTag(i)
@@ -86,6 +90,25 @@ func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error)
 		return nil, err
 	}
 
+	inbounds := sessionInbounds(p, rt)
+	cfg := obj{"inbounds": inbounds, "outbounds": outbounds, "routing": routing, "dns": dns}
+	frame(cfg, p, rt)
+	if subjects := r.observed(); len(subjects) > 0 {
+		cfg["observatory"] = obj{
+			"subjectSelector":   subjects,
+			"probeURL":          orDefault(p.Options.TestURL, rt.ProbeURL),
+			"probeInterval":     "1m",
+			"enableConcurrency": true,
+		}
+	}
+	return json.Marshal(cfg)
+}
+
+// sessionInbounds are the ways into the session: the tun adapter and the local
+// proxy, whichever the plan asks for. A profile from a subscription brings
+// inbounds of its own; they are dropped for these, so a provider never opens a
+// listener on the machine.
+func sessionInbounds(p *engine.Plan, rt supervise.Runtime) []obj {
 	listen := "127.0.0.1"
 	if p.Options.AllowLAN {
 		listen = "0.0.0.0"
@@ -105,30 +128,33 @@ func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error)
 			"sniffing": obj{"enabled": true, "destOverride": []string{"http", "tls", "quic"}, "routeOnly": true},
 		})
 	}
-	cfg := obj{
-		"log":       obj{"loglevel": logLevel(p.Options.LogLevel)},
-		"inbounds":  inbounds,
-		"outbounds": outbounds,
-		"routing":   routing,
-		"dns":       dns,
-		// Stats and the metrics listener feed Counters and the latency of
-		// automatic groups. The listener is loopback only.
-		"stats": obj{},
-		"policy": obj{"system": obj{
-			"statsInboundUplink": true, "statsInboundDownlink": true,
-			"statsOutboundUplink": true, "statsOutboundDownlink": true,
-		}},
-		"metrics": obj{"tag": "metrics", "listen": rt.ControlAddr},
+	if p.Tun.Enabled {
+		// Xray creates the adapter (an MTU of zero takes its 1500); the core
+		// routes into it (see Route).
+		// Sniffing recovers the site name, so rules by domain hold for traffic
+		// that arrives as bare packets.
+		inbounds = append(inbounds, obj{
+			"tag": tagTun, "protocol": "tun",
+			"settings": obj{"name": orDefault(p.Tun.DeviceName, engine.TunDevice), "MTU": p.Tun.MTU},
+			"sniffing": obj{"enabled": true, "destOverride": []string{"http", "tls", "quic"}, "routeOnly": true},
+		})
 	}
-	if subjects := r.observed(); len(subjects) > 0 {
-		cfg["observatory"] = obj{
-			"subjectSelector":   subjects,
-			"probeURL":          orDefault(p.Options.TestURL, rt.ProbeURL),
-			"probeInterval":     "1m",
-			"enableConcurrency": true,
-		}
+	return inbounds
+}
+
+// frame adds what the core owns in every configuration: the log at the
+// session's level, and the stats and metrics listener that feed Counters and
+// the latency of automatic groups. The listener is loopback only.
+func frame(cfg obj, p *engine.Plan, rt supervise.Runtime) {
+	cfg["log"] = obj{"loglevel": logLevel(p.Options.LogLevel)}
+	cfg["stats"] = obj{}
+	cfg["policy"] = obj{"system": obj{
+		"statsInboundUplink": true, "statsInboundDownlink": true,
+		"statsOutboundUplink": true, "statsOutboundDownlink": true,
+	}}
+	if rt.ControlAddr != "" {
+		cfg["metrics"] = obj{"tag": "metrics", "listen": rt.ControlAddr}
 	}
-	return json.Marshal(cfg)
 }
 
 func outboundTag(i int) string { return fmt.Sprintf("o%04d", i+1) }
@@ -363,6 +389,11 @@ func (r *renderer) observed() []string {
 
 func (r *renderer) routing() (obj, error) {
 	var rules []obj
+	if r.plan.Tun.Enabled {
+		// The core sends every DNS query of the machine into the adapter;
+		// Xray answers them itself, through the resolvers of the plan.
+		rules = append(rules, obj{"inboundTag": []string{tagTun}, "network": "udp", "port": "53", "outboundTag": tagDNS})
+	}
 	final := obj{"network": "tcp,udp", "outboundTag": tagDirect}
 	for _, rule := range r.plan.Rules {
 		field, tag, err := r.target(rule.Target, 0)
@@ -490,13 +521,22 @@ func RenderProbe(outbounds []engine.Outbound, ports []int) ([]byte, error) {
 	rendered := make([]obj, 0, len(outbounds))
 	rules := make([]obj, 0, len(outbounds))
 	for i, o := range outbounds {
+		in := "in-" + strconv.Itoa(i+1)
+		inbounds = append(inbounds, obj{"tag": in, "protocol": "socks", "listen": "127.0.0.1", "port": ports[i]})
+		if o.Protocol == engine.ProtocolXrayProfile {
+			obs, first, err := probeProfile(o, i)
+			if err != nil {
+				return nil, err
+			}
+			rendered = append(rendered, obs...)
+			rules = append(rules, obj{"inboundTag": []string{in}, "outboundTag": first})
+			continue
+		}
 		r.tags[o.ID] = outboundTag(i)
 		ob, err := r.outbound(o)
 		if err != nil {
 			return nil, err
 		}
-		in := "in-" + strconv.Itoa(i+1)
-		inbounds = append(inbounds, obj{"tag": in, "protocol": "socks", "listen": "127.0.0.1", "port": ports[i]})
 		rendered = append(rendered, ob)
 		rules = append(rules, obj{"inboundTag": []string{in}, "outboundTag": r.tags[o.ID]})
 	}

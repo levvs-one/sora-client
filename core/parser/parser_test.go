@@ -77,3 +77,35 @@ func BenchmarkParseBase64Subscription(b *testing.B) {
 		_, _ = (LinkParser{}).Parse([]byte(encoded))
 	}
 }
+
+// A JSON subscription of whole Xray configurations, the shape Remnawave serves
+// to advanced clients, becomes one profile per configuration.
+func TestXrayConfigurationsBecomeProfiles(t *testing.T) {
+	config := func(name string) string {
+		return `{"remarks":"` + name + `","inbounds":[{"listen":"127.0.0.1","port":10808,"protocol":"socks"}],
+		"outbounds":[{"tag":"proxy","protocol":"vless","settings":{"vnext":[{"address":"185.92.222.239","port":443,
+		"users":[{"id":"123e4567-e89b-12d3-a456-426614174000","encryption":"none"}]}]},
+		"streamSettings":{"network":"xhttp","security":"reality","realitySettings":{"publicKey":"k","shortId":"s"}}},
+		{"protocol":"freedom","tag":"direct"}],"routing":{"rules":[{"domain":["domain:openai.com"],"outboundTag":"proxy"}]}}`
+	}
+	r, err := (LinkParser{}).Parse([]byte("[" + config("🇳🇱 Нидерланды") + "," + config("Авто") + "]"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Servers) != 2 {
+		t.Fatalf("servers = %d, report %+v", len(r.Servers), r.Report)
+	}
+	a, b := r.Servers[0], r.Servers[1]
+	if a.Protocol != "xray-profile" || a.DisplayName != "🇳🇱 Нидерланды" || a.Host != "185.92.222.239" || a.Port != 443 {
+		t.Fatalf("profile = %+v", a)
+	}
+	if a.Transport != "xhttp" || a.Security != "reality" || a.CountryCode != "🇳🇱" {
+		t.Fatalf("transport, security and country come from the profile: %+v", a)
+	}
+	if a.Options["profile"] == "" {
+		t.Fatal("the configuration travels whole")
+	}
+	if a.StableKey() == b.StableKey() {
+		t.Fatal("two profiles on one server must keep two identities")
+	}
+}

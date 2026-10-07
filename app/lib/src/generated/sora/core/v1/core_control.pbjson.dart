@@ -13,24 +13,6 @@ import 'dart:convert' as $convert;
 import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
 
-@$core.Deprecated('Use groupTypeDescriptor instead')
-const GroupType$json = {
-  '1': 'GroupType',
-  '2': [
-    {'1': 'GROUP_TYPE_UNSPECIFIED', '2': 0},
-    {'1': 'GROUP_TYPE_SELECT', '2': 1},
-    {'1': 'GROUP_TYPE_URL_TEST', '2': 2},
-    {'1': 'GROUP_TYPE_FALLBACK', '2': 3},
-    {'1': 'GROUP_TYPE_LOAD_BALANCE', '2': 4},
-  ],
-};
-
-/// Descriptor for `GroupType`. Decode as a `google.protobuf.EnumDescriptorProto`.
-final $typed_data.Uint8List groupTypeDescriptor = $convert.base64Decode(
-    'CglHcm91cFR5cGUSGgoWR1JPVVBfVFlQRV9VTlNQRUNJRklFRBAAEhUKEUdST1VQX1RZUEVfU0'
-    'VMRUNUEAESFwoTR1JPVVBfVFlQRV9VUkxfVEVTVBACEhcKE0dST1VQX1RZUEVfRkFMTEJBQ0sQ'
-    'AxIbChdHUk9VUF9UWVBFX0xPQURfQkFMQU5DRRAE');
-
 @$core.Deprecated('Use tunnelModeDescriptor instead')
 const TunnelMode$json = {
   '1': 'TunnelMode',
@@ -291,8 +273,6 @@ const SessionPlan$json = {
     {'1': 'engines', '3': 8, '4': 3, '5': 9, '10': 'engines'},
     {'1': 'network_control_allowed', '3': 9, '4': 1, '5': 8, '10': 'networkControlAllowed'},
     {'1': 'local_proxy', '3': 10, '4': 1, '5': 11, '6': '.sora.core.v1.LocalProxy', '10': 'localProxy'},
-    {'1': 'groups', '3': 11, '4': 3, '5': 11, '6': '.sora.core.v1.GroupSpec', '10': 'groups'},
-    {'1': 'routing', '3': 12, '4': 1, '5': 11, '6': '.sora.core.v1.RoutingOptions', '10': 'routing'},
   ],
 };
 
@@ -308,45 +288,7 @@ final $typed_data.Uint8List sessionPlanDescriptor = $convert.base64Decode(
     '52MS5BbnRpQ2Vuc29yc2hpcFIOYW50aUNlbnNvcnNoaXASGAoHZW5naW5lcxgIIAMoCVIHZW5n'
     'aW5lcxI2ChduZXR3b3JrX2NvbnRyb2xfYWxsb3dlZBgJIAEoCFIVbmV0d29ya0NvbnRyb2xBbG'
     'xvd2VkEjkKC2xvY2FsX3Byb3h5GAogASgLMhguc29yYS5jb3JlLnYxLkxvY2FsUHJveHlSCmxv'
-    'Y2FsUHJveHkSLwoGZ3JvdXBzGAsgAygLMhcuc29yYS5jb3JlLnYxLkdyb3VwU3BlY1IGZ3JvdX'
-    'BzEjYKB3JvdXRpbmcYDCABKAsyHC5zb3JhLmNvcmUudjEuUm91dGluZ09wdGlvbnNSB3JvdXRp'
-    'bmc=');
-
-@$core.Deprecated('Use groupSpecDescriptor instead')
-const GroupSpec$json = {
-  '1': 'GroupSpec',
-  '2': [
-    {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
-    {'1': 'type', '3': 2, '4': 1, '5': 14, '6': '.sora.core.v1.GroupType', '10': 'type'},
-    {'1': 'members', '3': 3, '4': 3, '5': 9, '10': 'members'},
-    {'1': 'test_url', '3': 4, '4': 1, '5': 9, '10': 'testUrl'},
-    {'1': 'test_interval', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'testInterval'},
-    {'1': 'tolerance_ms', '3': 6, '4': 1, '5': 13, '10': 'toleranceMs'},
-  ],
-};
-
-/// Descriptor for `GroupSpec`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List groupSpecDescriptor = $convert.base64Decode(
-    'CglHcm91cFNwZWMSEgoEbmFtZRgBIAEoCVIEbmFtZRIrCgR0eXBlGAIgASgOMhcuc29yYS5jb3'
-    'JlLnYxLkdyb3VwVHlwZVIEdHlwZRIYCgdtZW1iZXJzGAMgAygJUgdtZW1iZXJzEhkKCHRlc3Rf'
-    'dXJsGAQgASgJUgd0ZXN0VXJsEj4KDXRlc3RfaW50ZXJ2YWwYBSABKAsyGS5nb29nbGUucHJvdG'
-    '9idWYuRHVyYXRpb25SDHRlc3RJbnRlcnZhbBIhCgx0b2xlcmFuY2VfbXMYBiABKA1SC3RvbGVy'
-    'YW5jZU1z');
-
-@$core.Deprecated('Use routingOptionsDescriptor instead')
-const RoutingOptions$json = {
-  '1': 'RoutingOptions',
-  '2': [
-    {'1': 'preset', '3': 1, '4': 1, '5': 9, '10': 'preset'},
-    {'1': 'proxy_target', '3': 2, '4': 1, '5': 9, '10': 'proxyTarget'},
-    {'1': 'block_ads', '3': 3, '4': 1, '5': 8, '10': 'blockAds'},
-  ],
-};
-
-/// Descriptor for `RoutingOptions`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List routingOptionsDescriptor = $convert.base64Decode(
-    'Cg5Sb3V0aW5nT3B0aW9ucxIWCgZwcmVzZXQYASABKAlSBnByZXNldBIhCgxwcm94eV90YXJnZX'
-    'QYAiABKAlSC3Byb3h5VGFyZ2V0EhsKCWJsb2NrX2FkcxgDIAEoCFIIYmxvY2tBZHM=');
+    'Y2FsUHJveHk=');
 
 @$core.Deprecated('Use localProxyDescriptor instead')
 const LocalProxy$json = {
@@ -1640,48 +1582,6 @@ const EngineBuild$json = {
 final $typed_data.Uint8List engineBuildDescriptor = $convert.base64Decode(
     'CgtFbmdpbmVCdWlsZBISCgRraW5kGAEgASgJUgRraW5kEhwKCWluc3RhbGxlZBgCIAEoCFIJaW'
     '5zdGFsbGVkEhgKB3ZlcnNpb24YAyABKAlSB3ZlcnNpb24=');
-
-@$core.Deprecated('Use getRoutingPresetsRequestDescriptor instead')
-const GetRoutingPresetsRequest$json = {
-  '1': 'GetRoutingPresetsRequest',
-  '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-  ],
-};
-
-/// Descriptor for `GetRoutingPresetsRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getRoutingPresetsRequestDescriptor = $convert.base64Decode(
-    'ChhHZXRSb3V0aW5nUHJlc2V0c1JlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLm'
-    'NvcmUudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbg==');
-
-@$core.Deprecated('Use getRoutingPresetsResponseDescriptor instead')
-const GetRoutingPresetsResponse$json = {
-  '1': 'GetRoutingPresetsResponse',
-  '2': [
-    {'1': 'presets', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.RoutingPreset', '10': 'presets'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
-  ],
-};
-
-/// Descriptor for `GetRoutingPresetsResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getRoutingPresetsResponseDescriptor = $convert.base64Decode(
-    'ChlHZXRSb3V0aW5nUHJlc2V0c1Jlc3BvbnNlEjUKB3ByZXNldHMYASADKAsyGy5zb3JhLmNvcm'
-    'UudjEuUm91dGluZ1ByZXNldFIHcHJlc2V0cxItCgVlcnJvchgCIAEoCzIXLnNvcmEuY29yZS52'
-    'MS5Tb3JhRXJyb3JSBWVycm9y');
-
-@$core.Deprecated('Use routingPresetDescriptor instead')
-const RoutingPreset$json = {
-  '1': 'RoutingPreset',
-  '2': [
-    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
-    {'1': 'direct', '3': 2, '4': 3, '5': 9, '10': 'direct'},
-  ],
-};
-
-/// Descriptor for `RoutingPreset`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List routingPresetDescriptor = $convert.base64Decode(
-    'Cg1Sb3V0aW5nUHJlc2V0Eg4KAmlkGAEgASgJUgJpZBIWCgZkaXJlY3QYAiADKAlSBmRpcmVjdA'
-    '==');
 
 @$core.Deprecated('Use bypassStrategyDescriptor instead')
 const BypassStrategy$json = {

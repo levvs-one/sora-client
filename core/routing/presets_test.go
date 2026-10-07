@@ -100,3 +100,16 @@ func TestEveryEngineAcceptsEveryPreset(t *testing.T) {
 		}
 	}
 }
+
+func TestATargetWithoutAPresetStillCarriesTheRest(t *testing.T) {
+	rules, err := Apply(nil, Options{ProxyTarget: "proxy"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rules) != 1 || rules[0].Type != engine.RuleMatchAll || rules[0].Target != "proxy" {
+		t.Fatalf("rules = %+v: the rest must go to the target, not direct", rules)
+	}
+	if rules, _ := Apply(nil, Options{}); len(rules) != 0 {
+		t.Fatalf("a plan without routing options gets no rules: %+v", rules)
+	}
+}

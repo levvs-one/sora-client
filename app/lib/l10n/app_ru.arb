@@ -219,5 +219,23 @@
         "type": "int"
       }
     }
+  },
+  "website": "Сайт провайдера",
+  "support": "Поддержка",
+  "controlPortQuestion": "{engine} управляется через порт на этом компьютере. Другие программы смогут заметить, что VPN включён.",
+  "chooseEngine": "Выбрать {engine}",
+  "@controlPortQuestion": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "@chooseEngine": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -889,6 +889,30 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Такое значение не подойдёт'**
   String get invalidValue;
+
+  /// No description provided for @website.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт провайдера'**
+  String get website;
+
+  /// No description provided for @support.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поддержка'**
+  String get support;
+
+  /// No description provided for @controlPortQuestion.
+  ///
+  /// In ru, this message translates to:
+  /// **'{engine} управляется через порт на этом компьютере. Другие программы смогут заметить, что VPN включён.'**
+  String controlPortQuestion(String engine);
+
+  /// No description provided for @chooseEngine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать {engine}'**
+  String chooseEngine(String engine);
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

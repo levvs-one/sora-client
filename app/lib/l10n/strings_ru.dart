@@ -431,4 +431,20 @@ class SRu extends S {
 
   @override
   String get invalidValue => 'Такое значение не подойдёт';
+
+  @override
+  String get website => 'Сайт провайдера';
+
+  @override
+  String get support => 'Поддержка';
+
+  @override
+  String controlPortQuestion(String engine) {
+    return '$engine управляется через порт на этом компьютере. Другие программы смогут заметить, что VPN включён.';
+  }
+
+  @override
+  String chooseEngine(String engine) {
+    return 'Выбрать $engine';
+  }
 }

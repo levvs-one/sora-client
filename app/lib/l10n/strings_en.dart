@@ -431,4 +431,20 @@ class SEn extends S {
 
   @override
   String get invalidValue => 'This value will not work';
+
+  @override
+  String get website => 'Provider website';
+
+  @override
+  String get support => 'Support';
+
+  @override
+  String controlPortQuestion(String engine) {
+    return '$engine is controlled through a port on this computer. Other programs will be able to tell that a VPN is on.';
+  }
+
+  @override
+  String chooseEngine(String engine) {
+    return 'Choose $engine';
+  }
 }

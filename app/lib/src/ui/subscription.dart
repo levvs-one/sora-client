@@ -125,6 +125,24 @@ class SubscriptionScreen extends StatelessWidget {
               ),
           ],
         ),
+        if (state.info.announce.trim().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+            child: LinkedText(state.info.announce.trim(), style: Styles.secondary.copyWith(color: palette.ink)),
+          ),
+        if (state.info.webPageUrl.isNotEmpty || state.info.supportUrl.isNotEmpty)
+          Group(
+            children: [
+              if (state.info.webPageUrl.isNotEmpty)
+                LinkTile(
+                  title: s.website,
+                  value: Uri.tryParse(state.info.webPageUrl)?.host,
+                  onTap: () => openLink(state.info.webPageUrl),
+                ),
+              if (state.info.supportUrl.isNotEmpty)
+                LinkTile(title: s.support, onTap: () => openLink(state.info.supportUrl)),
+            ],
+          ),
         Group(
           children: [
             Tile(

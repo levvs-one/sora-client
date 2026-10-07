@@ -76,6 +76,35 @@ void main() {
       expect(plan.groups, isEmpty);
     });
 
+    test('a profile runs alone, and the fastest of profiles is picked when there is nothing else', () {
+      final profiles = [
+        OutboundSpec(id: 'p1', displayName: 'NL', protocol: 'xray-profile'),
+        OutboundSpec(id: 'p2', displayName: 'DE', protocol: 'xray-profile'),
+      ];
+      final picked = buildPlan(servers: [...servers, ...profiles], choice: 'p2', settings: settings);
+      expect(picked.outbounds.map((o) => o.id), ['p2']);
+      expect(picked.groups, isEmpty);
+      expect(picked.routing.proxyTarget, 'p2');
+
+      final mixed = buildPlan(servers: [...servers, ...profiles], choice: 'auto', settings: settings);
+      expect(mixed.outbounds.map((o) => o.id), ['a', 'b'], reason: 'the fastest is chosen among ordinary servers');
+      expect(mixed.groups.single.members, ['a', 'b']);
+
+      final onlyProfiles = buildPlan(
+        servers: profiles,
+        choice: 'auto',
+        settings: settings,
+        latency: {'p1': 300, 'p2': 70},
+      );
+      expect(onlyProfiles.outbounds.single.id, 'p2');
+    });
+
+    test('a control port is asked for only when the person allowed one', () {
+      expect(buildPlan(servers: servers, choice: 'auto', settings: settings).networkControlAllowed, isFalse);
+      settings.controlPort = true;
+      expect(buildPlan(servers: servers, choice: 'auto', settings: settings).networkControlAllowed, isTrue);
+    });
+
     test('group names never collide with server ids', () {
       expect(Sora.autoGroup, isNot(anyOf('a', 'b')));
       expect(Sora.autoGroup.startsWith('sora:'), isTrue);

@@ -75,5 +75,9 @@
   "errSubScheme": "The link must start with https://",
   "errSecretStore": "Sora storage is damaged or unavailable",
   "errNoServers": "Add a subscription to connect",
-  "exportText": "Text"
+  "exportText": "Text",
+  "connections": "Connections",
+  "close": "Close",
+  "chainDirect": "Direct",
+  "chainBlocked": "Blocked"
 }

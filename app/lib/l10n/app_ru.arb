@@ -148,5 +148,9 @@
   "errSubScheme": "Нужна ссылка, начинающаяся с https://",
   "errSecretStore": "Хранилище Sora повреждено или недоступно",
   "errNoServers": "Добавьте подписку, чтобы подключиться",
-  "exportText": "Текст"
+  "exportText": "Текст",
+  "connections": "Соединения",
+  "close": "Закрыть",
+  "chainDirect": "Напрямую",
+  "chainBlocked": "Заблокировано"
 }

@@ -256,4 +256,16 @@ class SEn extends S {
 
   @override
   String get exportText => 'Text';
+
+  @override
+  String get connections => 'Connections';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get chainDirect => 'Direct';
+
+  @override
+  String get chainBlocked => 'Blocked';
 }

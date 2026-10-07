@@ -129,7 +129,13 @@ class Sora extends ChangeNotifier {
       ConnectionStateValue.CONNECTION_STATE_VALUE_RECONNECTING => Phase.reconnecting,
       _ => Phase.off,
     };
-    sessionId = phase == Phase.off || state.sessionId.isEmpty ? null : state.sessionId;
+    // Events of a session carry its state without its id, so an empty id
+    // keeps the one already known; only the end of the session clears it.
+    if (phase == Phase.off) {
+      sessionId = null;
+    } else if (state.sessionId.isNotEmpty) {
+      sessionId = state.sessionId;
+    }
     since = state.hasChangedAt() ? state.changedAt.toDateTime() : null;
     if (report &&
         state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&

@@ -61,6 +61,13 @@ type PrivateController interface {
 	ControlAddress(rt Runtime) (string, error)
 }
 
+// Namer is implemented by a Driver whose engine addresses outbounds and groups
+// by names of its own. PlanNames maps each engine name back to the plan id or
+// group name, the way the renderer assigned them.
+type Namer interface {
+	PlanNames(p *engine.Plan) map[string]string
+}
+
 // LogParser is implemented by a Driver that knows the output format of its
 // engine. A line it cannot read is recorded as it is, at info level.
 type LogParser interface {
@@ -206,6 +213,18 @@ func (s *Supervisor) Plan() *engine.Plan {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.plan
+}
+
+// PlanNames maps the engine's names of the running plan back to plan ids and
+// group names. It is nil when the driver names things by plan id already or
+// nothing runs.
+func (s *Supervisor) PlanNames() map[string]string {
+	n, ok := s.driver.(Namer)
+	p := s.Plan()
+	if !ok || p == nil {
+		return nil
+	}
+	return n.PlanNames(p)
 }
 
 // Validate renders the plan and lets the engine binary judge it.

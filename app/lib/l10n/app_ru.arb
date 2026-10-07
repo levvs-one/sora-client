@@ -284,5 +284,49 @@
         "type": "int"
       }
     }
-  }
+  },
+  "tunnelMode": "Режим",
+  "tunnelTun": "Весь трафик",
+  "tunnelProxy": "Системный прокси",
+  "proxyAddress": "Адрес прокси",
+  "copied": "Скопировано",
+  "launchAtLogin": "Запускать вместе с системой",
+  "closeToTray": "Сворачивать в трей при закрытии",
+  "notifications": "Уведомления",
+  "trayOpen": "Открыть Sora",
+  "trayConnect": "Подключить",
+  "trayDisconnect": "Отключить",
+  "trayServer": "Сервер",
+  "trayQuit": "Выйти из Sora",
+  "trayTooltip": "Sora: {state}",
+  "@trayTooltip": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "trayTooltipServer": "Sora: {state}, {server}",
+  "@trayTooltipServer": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      },
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeInTray": "Sora осталась в трее",
+  "noticeInTrayBody": "Выйти можно из меню значка",
+  "noticeLost": "Соединение прервалось",
+  "noticeLostBody": "Sora переподключается",
+  "noticeRestored": "Снова подключено",
+  "noticeFailed": "Не удалось подключиться",
+  "noticeBackup": "Основной сервер не ответил, работает запасной",
+  "noticeNext": "Сервер не ответил, работает следующий",
+  "noticeSubscription": "Подписка",
+  "importTitle": "Добавить подписку?",
+  "importSealed": "Эта ссылка зашифрована для Happ, прочитать её может только Happ. Попросите у провайдера обычную ссылку на подписку.",
+  "understood": "Понятно"
 }

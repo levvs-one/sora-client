@@ -516,4 +516,90 @@ class SRu extends S {
     );
     return '$_temp0, самый быстрый';
   }
+
+  @override
+  String get tunnelMode => 'Режим';
+
+  @override
+  String get tunnelTun => 'Весь трафик';
+
+  @override
+  String get tunnelProxy => 'Системный прокси';
+
+  @override
+  String get proxyAddress => 'Адрес прокси';
+
+  @override
+  String get copied => 'Скопировано';
+
+  @override
+  String get launchAtLogin => 'Запускать вместе с системой';
+
+  @override
+  String get closeToTray => 'Сворачивать в трей при закрытии';
+
+  @override
+  String get notifications => 'Уведомления';
+
+  @override
+  String get trayOpen => 'Открыть Sora';
+
+  @override
+  String get trayConnect => 'Подключить';
+
+  @override
+  String get trayDisconnect => 'Отключить';
+
+  @override
+  String get trayServer => 'Сервер';
+
+  @override
+  String get trayQuit => 'Выйти из Sora';
+
+  @override
+  String trayTooltip(String state) {
+    return 'Sora: $state';
+  }
+
+  @override
+  String trayTooltipServer(String state, String server) {
+    return 'Sora: $state, $server';
+  }
+
+  @override
+  String get noticeInTray => 'Sora осталась в трее';
+
+  @override
+  String get noticeInTrayBody => 'Выйти можно из меню значка';
+
+  @override
+  String get noticeLost => 'Соединение прервалось';
+
+  @override
+  String get noticeLostBody => 'Sora переподключается';
+
+  @override
+  String get noticeRestored => 'Снова подключено';
+
+  @override
+  String get noticeFailed => 'Не удалось подключиться';
+
+  @override
+  String get noticeBackup => 'Основной сервер не ответил, работает запасной';
+
+  @override
+  String get noticeNext => 'Сервер не ответил, работает следующий';
+
+  @override
+  String get noticeSubscription => 'Подписка';
+
+  @override
+  String get importTitle => 'Добавить подписку?';
+
+  @override
+  String get importSealed =>
+      'Эта ссылка зашифрована для Happ, прочитать её может только Happ. Попросите у провайдера обычную ссылку на подписку.';
+
+  @override
+  String get understood => 'Понятно';
 }

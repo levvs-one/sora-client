@@ -179,10 +179,13 @@ func (w *WFP) install(session *wf.Session) error {
 	); err != nil {
 		return err
 	}
+	// The servers' multicast group: the rule is IPv6 only, and port 546 on its
+	// own would let any program reach any address on 547.
 	if err := permit("DHCPv6",
 		udp,
 		&wf.Match{Field: wf.FieldIPLocalPort, Op: wf.MatchTypeEqual, Value: uint16(546)},
 		&wf.Match{Field: wf.FieldIPRemotePort, Op: wf.MatchTypeEqual, Value: uint16(547)},
+		&wf.Match{Field: wf.FieldIPRemoteAddress, Op: wf.MatchTypeEqual, Value: netip.MustParsePrefix("ff02::1:2/128")},
 	); err != nil {
 		return err
 	}

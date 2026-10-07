@@ -175,10 +175,11 @@ class Settings {
   bool get notifications => _store.getBool('notifications') ?? true;
   set notifications(bool value) => _store.setBool('notifications', value);
 
-  /// The system proxy as it was before Sora pointed it at the core, kept
-  /// until it is put back, so a crash in between cannot lose it.
+  /// The system proxy as it was before Sora pointed it at the core, and where
+  /// Sora pointed it, kept until it is put back, so a crash in between cannot
+  /// lose it. Written and awaited before the proxy changes.
   String get proxySnapshot => _store.getString('proxySnapshot') ?? '';
-  set proxySnapshot(String value) => _store.setString('proxySnapshot', value);
+  Future<void> saveProxySnapshot(String value) => _store.setString('proxySnapshot', value);
 
   /// The first close to the tray says where Sora went; later ones do not.
   bool get trayHintShown => _store.getBool('trayHintShown') ?? false;
@@ -190,7 +191,7 @@ class Settings {
     // the next disconnect could not put it back.
     final snapshot = proxySnapshot;
     await _store.clear();
-    if (snapshot.isNotEmpty) proxySnapshot = snapshot;
+    if (snapshot.isNotEmpty) await saveProxySnapshot(snapshot);
     await _migrate();
   }
 }

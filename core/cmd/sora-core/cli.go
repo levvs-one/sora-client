@@ -33,7 +33,18 @@ type flags struct {
 }
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	// Started by the Windows service manager, the core answers it instead of
+	// a console; everywhere else this returns at once.
+	if handled, err := runService(os.Args[1:]); handled {
+		if err != nil {
+			os.Exit(1)
+		}
+		return
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := run(ctx, os.Args[1:])
+	stop()
+	if err != nil {
 		// The exit code is what a script reads, so it says what kind of failure
 		// this was; the key says which one, and the detail says in one line why.
 		code := 1
@@ -45,7 +56,7 @@ func main() {
 	}
 }
 
-func run(arguments []string) error {
+func run(ctx context.Context, arguments []string) error {
 	set := flag.NewFlagSet("sora-core", flag.ContinueOnError)
 	var f flags
 	set.StringVar(&f.dataDir, "data-dir", defaultDataDir(), "where the token, the secrets and the engine state live")
@@ -68,8 +79,6 @@ func run(arguments []string) error {
 		return nil
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	logger, err := newLogger(f.logLevel)
 	if err != nil {
 		return err

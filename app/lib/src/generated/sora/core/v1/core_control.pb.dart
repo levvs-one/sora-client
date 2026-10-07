@@ -675,6 +675,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     LocalProxy? localProxy,
     $core.Iterable<GroupSpec>? groups,
     RoutingOptions? routing,
+    $core.bool? ipv6,
   }) {
     final result = SessionPlan._();
     if (tunnelMode != null) result.tunnelMode = tunnelMode;
@@ -689,6 +690,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     if (localProxy != null) result.localProxy = localProxy;
     if (groups != null) result.groups.addAll(groups);
     if (routing != null) result.routing = routing;
+    if (ipv6 != null) result.ipv6 = ipv6;
     return result;
   }
 
@@ -715,6 +717,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     ..aOM<LocalProxy>(10, _omitFieldNames ? '' : 'localProxy', subBuilder: LocalProxy.$_createMessage)
     ..pPM<GroupSpec>(11, _omitFieldNames ? '' : 'groups', subBuilder: GroupSpec.$_createMessage)
     ..aOM<RoutingOptions>(12, _omitFieldNames ? '' : 'routing', subBuilder: RoutingOptions.$_createMessage)
+    ..aOB(13, _omitFieldNames ? '' : 'ipv6')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -842,6 +845,17 @@ class SessionPlan extends $pb.GeneratedMessage {
   void clearRouting() => $_clearField(12);
   @$pb.TagNumber(12)
   RoutingOptions ensureRouting() => $_ensure(11);
+
+  /// Since 1.3. Resolves and connects over IPv6 as well; off resolves IPv4
+  /// only, which avoids leaks on networks where IPv6 bypasses the tunnel.
+  @$pb.TagNumber(13)
+  $core.bool get ipv6 => $_getBF(12);
+  @$pb.TagNumber(13)
+  set ipv6($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasIpv6() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearIpv6() => $_clearField(13);
 }
 
 /// GroupSpec is one group of outbounds.

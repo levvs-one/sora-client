@@ -48,6 +48,8 @@ WizardBackImageFile=art\back-light.png,art\back-light@2x.png
 WizardBackImageFileDynamicDark=art\back-dark.png,art\back-dark@2x.png
 WizardImageFile=
 WizardSmallImageFile=
+WizardImageFileDynamicDark=
+WizardSmallImageFileDynamicDark=
 
 [Languages]
 Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
@@ -123,6 +125,14 @@ begin
   Result := not RegKeyExists(HKEY_CLASSES_ROOT, 'happ');
   if not Result and RegQueryStringValue(HKEY_CLASSES_ROOT, 'happ\shell\open\command', '', Command) then
     Result := Pos(Lowercase(ExpandConstant('{app}\sora.exe')), Lowercase(Command)) > 0;
+end;
+
+// The page of choices is the last before the copying starts, so its button
+// says what it does.
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = wpSelectTasks then
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
 end;
 
 // An upgrade replaces the core while the service holds it open, so the

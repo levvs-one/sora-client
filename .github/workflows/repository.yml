@@ -185,7 +185,8 @@ jobs:
             $shot = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
             [System.Drawing.Graphics]::FromImage($shot).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
             $shot.Save("screenshots\installer-$($look.name).png")
-            Stop-Process -Id $wizard.Id -Force
+            # The wizard is a child of the setup stub; the whole tree goes.
+            taskkill /T /F /PID $wizard.Id | Out-Null
             Start-Sleep -Seconds 2
           }
           Set-ItemProperty $theme AppsUseLightTheme 1 -Type DWord

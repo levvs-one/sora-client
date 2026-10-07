@@ -11,7 +11,8 @@ maintainer: Sora <levvs.one@gmail.com>
 description: |
   Sora core service: one core over sing-box, Xray-core and mihomo that runs
   each connection on the engine able to carry it, with a kill switch, a log
-  center and engine control that no other application can reach.
+  center and engine control that no other application can reach. Includes
+  zapret (tpws, nfqws) by bol-van for DPI bypass without a server.
 vendor: Sora
 homepage: https://github.com/levvs-one/sora-client
 license: GPL-3.0-only
@@ -20,11 +21,13 @@ depends:
   - nftables
 overrides:
   deb:
+    depends: [nftables, libnetfilter-queue1]
     recommends: [polkitd]
   rpm:
+    depends: [nftables, libnetfilter_queue]
     recommends: [polkit]
   archlinux:
-    depends: [nftables, polkit]
+    depends: [nftables, polkit, libnetfilter_queue]
 
 contents:
   - src: ./dist/sora-core
@@ -43,6 +46,18 @@ contents:
     dst: /usr/lib/sora/engines/geoip.dat
   - src: ./dist/engines/geosite.dat
     dst: /usr/lib/sora/engines/geosite.dat
+  # zapret by bol-van (MIT), built from third_party/zapret unchanged.
+  - src: ./dist/engines/tpws
+    dst: /usr/lib/sora/engines/tpws
+    file_info: {mode: 0755}
+  - src: ./dist/engines/nfqws
+    dst: /usr/lib/sora/engines/nfqws
+    file_info: {mode: 0755}
+  - src: ./dist/engines/zapret/fake/
+    dst: /usr/lib/sora/engines/zapret/fake
+    type: tree
+  - src: ./third_party/zapret/docs/LICENSE.txt
+    dst: /usr/share/licenses/sora-core/zapret-LICENSE.txt
   - src: ./service/linux/sora-core.service
     dst: /usr/lib/systemd/system/sora-core.service
   - src: ./service/linux/sora.sysusers

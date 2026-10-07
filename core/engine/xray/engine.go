@@ -389,24 +389,35 @@ func measureBatch(ctx context.Context, cfg supervise.Config, batch []engine.Outb
 	return nil
 }
 
-// timeThrough times one request through a loopback SOCKS port.
+// timeThrough times a request through a loopback SOCKS port the way a person
+// feels it: a first request opens the tunnel and the TLS session to the test
+// address, and the second, over the same connection, is the one timed. A
+// single cold request mostly measures handshakes — of the proxy, of REALITY or
+// XHTTP, of TLS — and reads several times slower than the server is.
 func timeThrough(ctx context.Context, port int, opts engine.MeasureOptions) (time.Duration, error) {
 	proxy := &url.URL{Scheme: "socks5h", Host: "127.0.0.1:" + strconv.Itoa(port)}
-	client := &http.Client{Timeout: opts.Timeout, Transport: &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true}}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, opts.URL, nil)
-	if err != nil {
-		return 0, err
+	transport := &http.Transport{Proxy: http.ProxyURL(proxy), MaxIdleConnsPerHost: 1}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Timeout: opts.Timeout, Transport: transport}
+	var timed time.Duration
+	for range 2 {
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, opts.URL, nil)
+		if err != nil {
+			return 0, err
+		}
+		start := time.Now()
+		resp, err := client.Do(req)
+		if err != nil {
+			return 0, fmt.Errorf("xray: latency test failed: %w", err)
+		}
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode >= 500 {
+			return 0, fmt.Errorf("xray: latency test answered %d", resp.StatusCode)
+		}
+		timed = time.Since(start)
 	}
-	start := time.Now()
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("xray: latency test failed: %w", err)
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode >= 500 {
-		return 0, fmt.Errorf("xray: latency test answered %d", resp.StatusCode)
-	}
-	return time.Since(start), nil
+	return timed, nil
 }
 
 func waitListening(ctx context.Context, proc *supervise.Process, port int) error {

@@ -28,3 +28,15 @@ func TestPlanNamesLeadBackToPlanIDs(t *testing.T) {
 		t.Errorf("two servers with one display name must keep two engine names: %v", names)
 	}
 }
+
+func TestAGroupKeepsItsOwnTestAddress(t *testing.T) {
+	byID := map[string]string{"a": "a"}
+	grp, err := buildGroup(engine.Group{Name: "g", Type: engine.GroupFallback, Outbounds: []string{"a"}, URL: "http://own.example/204"}, byID, "http://plan.example/204")
+	if err != nil || grp.URL != "http://own.example/204" {
+		t.Fatalf("url = %q, %v", grp.URL, err)
+	}
+	grp, _ = buildGroup(engine.Group{Name: "g", Type: engine.GroupFallback, Outbounds: []string{"a"}}, byID, "http://plan.example/204")
+	if grp.URL != "http://plan.example/204" {
+		t.Fatalf("without its own, the plan's: %q", grp.URL)
+	}
+}

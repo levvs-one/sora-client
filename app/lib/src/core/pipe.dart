@@ -142,6 +142,56 @@ class _Pipe {
   }
 }
 
+/// NtReadFile and NtWriteFile answer with the status of the call itself, and
+/// a call that waited leaves its status in the IO_STATUS_BLOCK, which is the
+/// head of the OVERLAPPED. Nothing depends on GetLastError: read through the
+/// win32 package in these isolates it was sometimes 0 for a read that was
+/// only pending, and a working line was taken for a closed one.
+typedef _NtIoNative = Int32 Function(
+  Pointer<Void> file,
+  Pointer<Void> event,
+  Pointer<Void> apc,
+  Pointer<Void> apcContext,
+  Pointer<OVERLAPPED> status,
+  Pointer<Uint8> buffer,
+  Uint32 length,
+  Pointer<Int64> offset,
+  Pointer<Uint32> key,
+);
+typedef _NtIo = int Function(
+  Pointer<Void>,
+  Pointer<Void>,
+  Pointer<Void>,
+  Pointer<Void>,
+  Pointer<OVERLAPPED>,
+  Pointer<Uint8>,
+  int,
+  Pointer<Int64>,
+  Pointer<Uint32>,
+);
+final _ntdll = DynamicLibrary.open('ntdll.dll');
+final _ntReadFile = _ntdll.lookupFunction<_NtIoNative, _NtIo>('NtReadFile');
+final _ntWriteFile = _ntdll.lookupFunction<_NtIoNative, _NtIo>('NtWriteFile');
+const _statusPending = 0x103;
+
+/// Starts one read or write and waits for it. Answers the bytes it moved, or
+/// null when the line is over: the core closed its end, or [_Pipe.close]
+/// cancelled the call.
+int? _transfer(_NtIo call, HANDLE file, HANDLE event, Pointer<OVERLAPPED> block, Pointer<Uint8> buffer, int length) {
+  // A pipe has no position; the offset is there because the call takes one,
+  // and it is the zeroed Offset fields of the OVERLAPPED.
+  final offset = Pointer<Int64>.fromAddress(block.address + 16);
+  var status = call(file.cast(), event.cast(), nullptr, nullptr, block, buffer, length, offset, nullptr);
+  if (status == _statusPending) {
+    // A wait that fails leaves the call running in the buffer and the block:
+    // the line cannot be used again, so it is over.
+    if (WaitForSingleObject(event, INFINITE).value != WAIT_OBJECT_0) return null;
+    status = block.ref.Internal.toSigned(32);
+  }
+  // Errors and warnings have the high bit set.
+  return status < 0 ? null : block.ref.InternalHigh;
+}
+
 /// Reads until the pipe closes, sending each chunk to the main isolate and a
 /// null at the end.
 void _readLoop((int, SendPort) args) {
@@ -150,24 +200,22 @@ void _readLoop((int, SendPort) args) {
   const size = 64 * 1024;
   final buffer = calloc<Uint8>(size);
   final overlapped = calloc<OVERLAPPED>();
-  final transferred = calloc<Uint32>();
   final event = CreateEvent(null, true, false, null).value;
   overlapped.ref.hEvent = event;
   try {
-    while (true) {
-      final read = ReadFile(handle, buffer, size, null, overlapped);
-      if (!read.value && read.error != ERROR_IO_PENDING) break;
-      final done = GetOverlappedResult(handle, overlapped, transferred, true);
-      if (!done.value || transferred.value == 0) break;
-      out.send(TransferableTypedData.fromList([Uint8List.fromList(buffer.asTypedList(transferred.value))]));
+    // Without an event no call can be waited for: the line is over at once.
+    while (event.isValid) {
+      final read = _transfer(_ntReadFile, handle, event, overlapped, buffer, size);
+      if (read == null) break;
+      if (read == 0) continue;
+      out.send(TransferableTypedData.fromList([Uint8List.fromList(buffer.asTypedList(read))]));
     }
   } finally {
     out.send(null);
     CloseHandle(event);
     calloc
       ..free(buffer)
-      ..free(overlapped)
-      ..free(transferred);
+      ..free(overlapped);
   }
 }
 
@@ -178,16 +226,13 @@ void _writeLoop((int, SendPort) args) {
   final inbox = ReceivePort();
   ready.send(inbox.sendPort);
   final overlapped = calloc<OVERLAPPED>();
-  final transferred = calloc<Uint32>();
   final event = CreateEvent(null, true, false, null).value;
   overlapped.ref.hEvent = event;
   inbox.listen((message) {
-    if (message is! TransferableTypedData) {
+    if (message is! TransferableTypedData || !event.isValid) {
       inbox.close();
       CloseHandle(event);
-      calloc
-        ..free(overlapped)
-        ..free(transferred);
+      calloc.free(overlapped);
       return;
     }
     final bytes = message.materialize().asUint8List();
@@ -196,10 +241,9 @@ void _writeLoop((int, SendPort) args) {
       buffer.asTypedList(bytes.length).setAll(0, bytes);
       var sent = 0;
       while (sent < bytes.length) {
-        final write = WriteFile(handle, buffer + sent, bytes.length - sent, null, overlapped);
-        if (!write.value && write.error != ERROR_IO_PENDING) return;
-        if (!GetOverlappedResult(handle, overlapped, transferred, true).value) return;
-        sent += transferred.value;
+        final written = _transfer(_ntWriteFile, handle, event, overlapped, buffer + sent, bytes.length - sent);
+        if (written == null) return;
+        sent += written;
       }
     } finally {
       calloc.free(buffer);

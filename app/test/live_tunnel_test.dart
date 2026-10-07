@@ -121,9 +121,11 @@ void main() {
       final took = await connect(TunnelMode.TUNNEL_MODE_APPLICATION);
       // ignore: avoid_print
       print('proxy mode connected in ${took.inMilliseconds} ms');
-      final saved = await proxy.apply(local.host, local.port);
+      final saved = await proxy.read();
+      await proxy.point(local.host, local.port);
       try {
         expect(await setting(), contains('0x1'));
+        expect(await proxy.pointsAt(local.host, local.port), isTrue);
         // .NET takes the system proxy of WinINet, as browsers do.
         final web = await Process.run('powershell.exe', [
           '-NoProfile',

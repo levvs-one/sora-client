@@ -31,9 +31,19 @@ const ownSchemes = ['sora', 'happ'];
 /// sing-box://import-remote-profile?url=<url>#<name>
 /// ```
 ///
-/// The subscription itself must be http or https. Anything else is null.
+/// The subscription itself must be http or https. Anything else is null,
+/// a broken percent-encoding included: the link comes from anywhere.
 ImportLink? parseImportLink(String text) {
-  final link = text.trim();
+  try {
+    return _parse(text.trim());
+  } on FormatException {
+    return null;
+  } on ArgumentError {
+    return null;
+  }
+}
+
+ImportLink? _parse(String link) {
   final colon = link.indexOf('://');
   if (colon <= 0) return null;
   final scheme = link.substring(0, colon).toLowerCase();

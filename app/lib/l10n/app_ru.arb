@@ -1,0 +1,152 @@
+{
+  "@@locale": "ru",
+  "stateOff": "Не подключено",
+  "stateConnecting": "Подключение",
+  "stateConnected": "Подключено",
+  "stateReconnecting": "Переподключение",
+  "stateDisconnecting": "Отключение",
+  "stateFailed": "Не подключено",
+  "coreMissing": "Служба Sora не отвечает",
+  "serverAuto": "Самый быстрый",
+  "serverBypass": "Без сервера",
+  "addSubscription": "Добавить подписку",
+  "servers": "Серверы",
+  "settings": "Настройки",
+  "subscription": "Подписка",
+  "subscriptionLink": "Ссылка на подписку",
+  "add": "Добавить",
+  "refresh": "Обновить",
+  "rename": "Переименовать",
+  "delete": "Удалить",
+  "cancel": "Отмена",
+  "save": "Сохранить",
+  "name": "Название",
+  "deleteSubscription": "Удалить «{name}»?",
+  "@deleteSubscription": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "routes": "Маршруты",
+  "presetGlobal": "Всё через VPN",
+  "presetRu": "Россия напрямую",
+  "presetIr": "Иран напрямую",
+  "presetCn": "Китай напрямую",
+  "blockAds": "Блокировать рекламу",
+  "killSwitch": "Интернет только через VPN",
+  "engine": "Ядро",
+  "engineAuto": "Авто",
+  "animations": "Анимации",
+  "logs": "Журнал",
+  "about": "О приложении",
+  "logsAll": "Все",
+  "logsImportant": "Важное",
+  "logsErrors": "Ошибки",
+  "search": "Поиск",
+  "export": "Сохранить в файл",
+  "clear": "Очистить",
+  "logsEmpty": "Здесь пусто",
+  "appVersion": "Версия {version}",
+  "@appVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "notInstalled": "Не установлено",
+  "sourceCode": "Исходный код",
+  "license": "Лицензия",
+  "usage": "{used} из {total}",
+  "@usage": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "until": "до {date}",
+  "@until": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "expired": "Срок истёк",
+  "milliseconds": "{n} мс",
+  "@milliseconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "bytesB": "{n} Б",
+  "@bytesB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesKB": "{n} КБ",
+  "@bytesKB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesMB": "{n} МБ",
+  "@bytesMB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesGB": "{n} ГБ",
+  "@bytesGB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "bytesTB": "{n} ТБ",
+  "@bytesTB": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "errGeneric": "Что-то пошло не так",
+  "errCore": "Служба Sora не отвечает",
+  "errAuth": "Нет доступа к службе Sora",
+  "errVersion": "Обновите Sora: приложение и служба разных версий",
+  "errBusy": "Подождите, предыдущая команда ещё выполняется",
+  "errEngineMissing": "Не найдено ядро для этого сервера",
+  "errEngineStart": "Ядро не запустилось",
+  "errEngineStopped": "Ядро остановилось",
+  "errTunnel": "Нет прав на создание VPN-подключения",
+  "errServers": "Сервер настроен с ошибкой",
+  "errNetwork": "Нет связи с сервером",
+  "errTimeout": "Сервер не ответил вовремя",
+  "errFirewall": "Не удалось включить блокировку интернета без VPN",
+  "errSubFetch": "Не удалось загрузить подписку",
+  "errSubFormat": "Это не ссылка на подписку",
+  "errSubEmpty": "В подписке нет серверов",
+  "errSubDuplicate": "Эта подписка уже добавлена",
+  "errSubLimit": "Слишком много подписок",
+  "errSubScheme": "Нужна ссылка, начинающаяся с https://",
+  "errSecretStore": "Хранилище Sora повреждено или недоступно",
+  "errNoServers": "Добавьте подписку, чтобы подключиться",
+  "exportText": "Текст"
+}

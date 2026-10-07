@@ -87,7 +87,7 @@ class Sora extends ChangeNotifier {
         if (!dropped.isCompleted && CoreFailure.from(error).key == CoreFailure.unavailable.key) dropped.complete();
       };
       try {
-        await _readStatus();
+        await _readStatus(report: false);
         _watchSubscriptions();
         _watchSession();
         notifyListeners();
@@ -113,13 +113,16 @@ class Sora extends ChangeNotifier {
     _subscriptionWatch = _sessionWatch = null;
   }
 
-  Future<void> _readStatus() async {
+  /// Reads where the session is. [report] shows a failure the state carries;
+  /// on opening it is off, because a failure from before the window opened is
+  /// not news to whoever just opened it.
+  Future<void> _readStatus({bool report = true}) async {
     final link = _link!;
     final answer = await link.stub.getStatus(GetStatusRequest(apiVersion: apiVersion));
-    _applyState(answer.status.connection);
+    _applyState(answer.status.connection, report: report);
   }
 
-  void _applyState(ConnectionState state) {
+  void _applyState(ConnectionState state, {bool report = true}) {
     phase = switch (state.value) {
       ConnectionStateValue.CONNECTION_STATE_VALUE_CONNECTING => Phase.connecting,
       ConnectionStateValue.CONNECTION_STATE_VALUE_CONNECTED => Phase.connected,
@@ -128,7 +131,8 @@ class Sora extends ChangeNotifier {
     };
     sessionId = phase == Phase.off || state.sessionId.isEmpty ? null : state.sessionId;
     since = state.hasChangedAt() ? state.changedAt.toDateTime() : null;
-    if (state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
+    if (report &&
+        state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
         state.reason != SoraErrorCode.SORA_ERROR_CODE_UNSPECIFIED) {
       // The answer of the call that failed names the cause better than the
       // code the state carries, so it is kept when there is one.

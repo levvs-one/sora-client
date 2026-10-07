@@ -22,8 +22,15 @@ const pipeName = `\\.\pipe\sora-core-v1`
 func ListenAddress() string { return pipeName }
 
 // pipeSecurityDescriptor builds the access list of the pipe: the local system,
-// the administrators and the account this core runs as. Everyone else is refused
-// by the kernel before a single byte of the protocol is read.
+// the administrators, the account this core runs as, and the person signed in at
+// the machine. Everyone else — services, network logons, other sessions' batch
+// jobs — is refused by the kernel before a single byte of the protocol is read.
+//
+// The interactive users are what lets the interface in at all: the core runs as
+// LocalSystem, and the person's token under UAC carries the administrators group
+// as deny-only, so without them nobody at the machine could connect. They get
+// read and write, not full control; this is the Windows counterpart of the
+// active-session rule on Linux.
 //
 // The descriptor is assembled from the process token rather than written out as a
 // constant. The string that circulates for named pipes and ends up in many
@@ -55,7 +62,7 @@ func pipeSecurityDescriptor() (string, error) {
 		return "", errs.Newf(errs.CodeInternal, errs.KeyPermissionDenied,
 			"ipc: the account of this process has no security identifier")
 	}
-	return "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;" + entry.User.Sid.String() + ")", nil
+	return "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;" + entry.User.Sid.String() + ")(A;;GRGW;;;IU)", nil
 }
 
 // listenLocal opens a named pipe. A pipe has no leftover to remove: it exists only

@@ -7,7 +7,7 @@
 #   packaging/engines/fetch.sh amd64|arm64 <destination>
 set -euo pipefail
 
-arch=${1:?architecture: amd64 or arm64}
+arch=${1:?architecture: amd64, arm64, windows-amd64 or win7-386}
 dest=${2:?destination directory}
 lock="$(dirname "$0")/engines.lock"
 work=$(mktemp -d)
@@ -21,6 +21,19 @@ while read -r engine line_arch digest url; do
 	file="$work/$(basename "$url")"
 	curl --fail --location --silent --show-error --retry 3 --proto '=https' --output "$file" "$url"
 	echo "$digest  $file" | sha256sum --check --quiet --strict
+	if [[ "$arch" == windows-* || "$arch" == win7-* ]]; then
+		# Every Windows build is a zip with one executable named after its
+		# engine; Xray's also carries the geo databases.
+		unzip -o -q "$file" -d "$work/$engine"
+		exe=$(find "$work/$engine" -iname "${engine}*.exe" ! -iname 'wxray.exe' | head -1)
+		[[ -n "$exe" ]] || { echo "engines.lock: no executable in $(basename "$url")" >&2; exit 1; }
+		install -m 0755 "$exe" "$dest/$engine.exe"
+		if [[ "$engine" == xray ]]; then
+			install -m 0644 "$work/xray/geoip.dat" "$work/xray/geosite.dat" "$dest/"
+		fi
+		echo "$engine $arch: verified"
+		continue
+	fi
 	case "$engine" in
 	sing-box)
 		tar --extract --gzip --file "$file" --directory "$work" --wildcards '*/sing-box'

@@ -68,8 +68,8 @@ var Catalog = map[Kind]Capabilities{
 		},
 		Features: map[Feature]bool{
 			// Xray's tun inbound has no routes of its own; the core installs
-			// them (see engine/tunroute).
-			FeatureTun: true, FeatureURLTest: true, FeatureLoadBalance: true, FeatureLatencyTest: true,
+			// them where engine/tunroute can (see catalog_*.go).
+			FeatureURLTest: true, FeatureLoadBalance: true, FeatureLatencyTest: true,
 			FeatureGeoData: true, FeatureTLSFragment: true,
 			FeatureXHTTP: true, FeatureVLESSEncrypt: true, FeaturePrivateControl: true,
 		},

@@ -23,9 +23,20 @@ class ServersScreen extends StatefulWidget {
 }
 
 class _ServersScreenState extends State<ServersScreen> {
+  /// Above this many servers a search field helps more than it costs.
+  static const _searchFrom = 12;
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _search.addListener(() => setState(() {}));
     // Latency is what people choose by, so it is measured on arrival.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(SoraScope.read(context).probe());
@@ -37,6 +48,7 @@ class _ServersScreenState extends State<ServersScreen> {
     final sora = SoraScope.of(context);
     final s = S.of(context);
     final palette = Palette.of(context);
+    final query = _search.text.trim().toLowerCase();
     return Screen(
       title: s.servers,
       actions: [
@@ -48,25 +60,53 @@ class _ServersScreenState extends State<ServersScreen> {
         RoundButton(icon: CupertinoIcons.plus, label: s.addSubscription, onTap: () => showSubscriptionSheet(context)),
       ],
       children: [
-        Group(
-          children: [
-            _ServerRow(id: 'auto', name: s.serverAuto),
-            _ServerRow(id: 'bypass', name: s.serverBypass),
-          ],
-        ),
+        if (sora.servers.length > _searchFrom)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: CupertinoSearchTextField(
+              controller: _search,
+              placeholder: s.search,
+              style: Styles.body.copyWith(color: palette.ink),
+              placeholderStyle: Styles.body.copyWith(color: palette.ink3),
+              backgroundColor: palette.field,
+              borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+              itemColor: palette.ink3,
+            ),
+          ),
+        if (query.isEmpty)
+          Group(
+            children: [
+              _ServerRow(id: 'auto', name: s.serverAuto),
+              _ServerRow(id: 'bypass', name: s.serverBypass),
+              if (sora.subscriptions.isEmpty)
+                Tile(
+                  title: s.addSubscription,
+                  onTap: () => showSubscriptionSheet(context),
+                  trailing: Icon(CupertinoIcons.plus, size: 18, color: palette.ink),
+                ),
+            ],
+          ),
         for (final subscription in sora.subscriptions) ...[
-          _SubscriptionHeader(state: subscription),
-          if (subscription.outbounds.isNotEmpty)
+          if (query.isEmpty) _SubscriptionHeader(state: subscription),
+          if (_matching(subscription.outbounds, query) case final shown when shown.isNotEmpty)
             Group(
-              children: [for (final o in subscription.outbounds) _ServerRow(id: o.id, name: o.displayName)],
+              children: [for (final o in shown) _ServerRow(id: o.id, name: o.displayName)],
             )
-          else
+          else if (query.isEmpty)
             const SizedBox(height: 20),
         ],
       ],
     );
   }
 }
+
+List<OutboundSpec> _matching(List<OutboundSpec> servers, String query) => query.isEmpty
+    ? servers
+    : [
+        for (final o in servers)
+          if (o.displayName.toLowerCase().contains(query)) o,
+      ];
 
 class _ServerRow extends StatelessWidget {
   const _ServerRow({required this.id, required this.name});

@@ -84,7 +84,10 @@ func Apply(user []engine.Rule, opts Options) ([]engine.Rule, error) {
 	if slices.ContainsFunc(user, func(r engine.Rule) bool { return r.Type == engine.RuleMatchAll }) {
 		return out, nil
 	}
-	if opts.Preset == "" && !opts.BlockAds {
+	// A plan that names a target sends the rest there even without a preset:
+	// without a final rule every engine goes direct, which for a person who
+	// picked a server is traffic outside the tunnel.
+	if opts.Preset == "" && !opts.BlockAds && opts.ProxyTarget == "" {
 		return out, nil
 	}
 	if opts.ProxyTarget == "" {

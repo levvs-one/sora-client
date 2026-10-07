@@ -14,8 +14,8 @@ import 'dart:core' as $core;
 import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 
-import '../../../google/protobuf/duration.pb.dart' as $2;
-import '../../../google/protobuf/timestamp.pb.dart' as $1;
+import '../../../google/protobuf/duration.pb.dart' as $1;
+import '../../../google/protobuf/timestamp.pb.dart' as $2;
 import 'core_control.pbenum.dart';
 
 export 'core_control.pbenum.dart';
@@ -672,6 +672,8 @@ class SessionPlan extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? engines,
     $core.bool? networkControlAllowed,
     LocalProxy? localProxy,
+    $core.Iterable<GroupSpec>? groups,
+    RoutingOptions? routing,
   }) {
     final $result = create();
     if (tunnelMode != null) {
@@ -704,6 +706,12 @@ class SessionPlan extends $pb.GeneratedMessage {
     if (localProxy != null) {
       $result.localProxy = localProxy;
     }
+    if (groups != null) {
+      $result.groups.addAll(groups);
+    }
+    if (routing != null) {
+      $result.routing = routing;
+    }
     return $result;
   }
   SessionPlan._() : super();
@@ -721,6 +729,8 @@ class SessionPlan extends $pb.GeneratedMessage {
     ..pPS(8, _omitFieldNames ? '' : 'engines')
     ..aOB(9, _omitFieldNames ? '' : 'networkControlAllowed')
     ..aOM<LocalProxy>(10, _omitFieldNames ? '' : 'localProxy', subBuilder: LocalProxy.create)
+    ..pc<GroupSpec>(11, _omitFieldNames ? '' : 'groups', $pb.PbFieldType.PM, subBuilder: GroupSpec.create)
+    ..aOM<RoutingOptions>(12, _omitFieldNames ? '' : 'routing', subBuilder: RoutingOptions.create)
     ..hasRequiredFields = false
   ;
 
@@ -833,6 +843,227 @@ class SessionPlan extends $pb.GeneratedMessage {
   void clearLocalProxy() => clearField(10);
   @$pb.TagNumber(10)
   LocalProxy ensureLocalProxy() => $_ensure(9);
+
+  /// Since 1.3. Groups the user picks a server in, or the core picks one for
+  /// them. A rule, a group member and the routing target may name a group.
+  @$pb.TagNumber(11)
+  $core.List<GroupSpec> get groups => $_getList(10);
+
+  /// Since 1.3. A routing preset applied after the routes above.
+  @$pb.TagNumber(12)
+  RoutingOptions get routing => $_getN(11);
+  @$pb.TagNumber(12)
+  set routing(RoutingOptions v) { setField(12, v); }
+  @$pb.TagNumber(12)
+  $core.bool hasRouting() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearRouting() => clearField(12);
+  @$pb.TagNumber(12)
+  RoutingOptions ensureRouting() => $_ensure(11);
+}
+
+/// GroupSpec is one group of outbounds.
+class GroupSpec extends $pb.GeneratedMessage {
+  factory GroupSpec({
+    $core.String? name,
+    GroupType? type,
+    $core.Iterable<$core.String>? members,
+    $core.String? testUrl,
+    $1.Duration? testInterval,
+    $core.int? toleranceMs,
+  }) {
+    final $result = create();
+    if (name != null) {
+      $result.name = name;
+    }
+    if (type != null) {
+      $result.type = type;
+    }
+    if (members != null) {
+      $result.members.addAll(members);
+    }
+    if (testUrl != null) {
+      $result.testUrl = testUrl;
+    }
+    if (testInterval != null) {
+      $result.testInterval = testInterval;
+    }
+    if (toleranceMs != null) {
+      $result.toleranceMs = toleranceMs;
+    }
+    return $result;
+  }
+  GroupSpec._() : super();
+  factory GroupSpec.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GroupSpec.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GroupSpec', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..e<GroupType>(2, _omitFieldNames ? '' : 'type', $pb.PbFieldType.OE, defaultOrMaker: GroupType.GROUP_TYPE_UNSPECIFIED, valueOf: GroupType.valueOf, enumValues: GroupType.values)
+    ..pPS(3, _omitFieldNames ? '' : 'members')
+    ..aOS(4, _omitFieldNames ? '' : 'testUrl')
+    ..aOM<$1.Duration>(5, _omitFieldNames ? '' : 'testInterval', subBuilder: $1.Duration.create)
+    ..a<$core.int>(6, _omitFieldNames ? '' : 'toleranceMs', $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GroupSpec clone() => GroupSpec()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GroupSpec copyWith(void Function(GroupSpec) updates) => super.copyWith((message) => updates(message as GroupSpec)) as GroupSpec;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GroupSpec create() => GroupSpec._();
+  GroupSpec createEmptyInstance() => create();
+  static $pb.PbList<GroupSpec> createRepeated() => $pb.PbList<GroupSpec>();
+  @$core.pragma('dart2js:noInline')
+  static GroupSpec getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GroupSpec>(create);
+  static GroupSpec? _defaultInstance;
+
+  /// Unique among the groups and different from every outbound id.
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => clearField(1);
+
+  @$pb.TagNumber(2)
+  GroupType get type => $_getN(1);
+  @$pb.TagNumber(2)
+  set type(GroupType v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasType() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearType() => clearField(2);
+
+  /// Outbound ids or names of other groups, in display order.
+  @$pb.TagNumber(3)
+  $core.List<$core.String> get members => $_getList(2);
+
+  /// How automatic groups measure their members; empty uses the core default.
+  @$pb.TagNumber(4)
+  $core.String get testUrl => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set testUrl($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasTestUrl() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearTestUrl() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $1.Duration get testInterval => $_getN(4);
+  @$pb.TagNumber(5)
+  set testInterval($1.Duration v) { setField(5, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasTestInterval() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTestInterval() => clearField(5);
+  @$pb.TagNumber(5)
+  $1.Duration ensureTestInterval() => $_ensure(4);
+
+  /// url-test switches only when another member is faster by this much.
+  @$pb.TagNumber(6)
+  $core.int get toleranceMs => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set toleranceMs($core.int v) { $_setUnsignedInt32(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasToleranceMs() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearToleranceMs() => clearField(6);
+}
+
+/// RoutingOptions apply a preset after the routes of the plan; see
+/// GetRoutingPresets for what each preset sends direct.
+class RoutingOptions extends $pb.GeneratedMessage {
+  factory RoutingOptions({
+    $core.String? preset,
+    $core.String? proxyTarget,
+    $core.bool? blockAds,
+  }) {
+    final $result = create();
+    if (preset != null) {
+      $result.preset = preset;
+    }
+    if (proxyTarget != null) {
+      $result.proxyTarget = proxyTarget;
+    }
+    if (blockAds != null) {
+      $result.blockAds = blockAds;
+    }
+    return $result;
+  }
+  RoutingOptions._() : super();
+  factory RoutingOptions.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory RoutingOptions.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'RoutingOptions', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'preset')
+    ..aOS(2, _omitFieldNames ? '' : 'proxyTarget')
+    ..aOB(3, _omitFieldNames ? '' : 'blockAds')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  RoutingOptions clone() => RoutingOptions()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  RoutingOptions copyWith(void Function(RoutingOptions) updates) => super.copyWith((message) => updates(message as RoutingOptions)) as RoutingOptions;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RoutingOptions create() => RoutingOptions._();
+  RoutingOptions createEmptyInstance() => create();
+  static $pb.PbList<RoutingOptions> createRepeated() => $pb.PbList<RoutingOptions>();
+  @$core.pragma('dart2js:noInline')
+  static RoutingOptions getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RoutingOptions>(create);
+  static RoutingOptions? _defaultInstance;
+
+  /// A preset id from GetRoutingPresets; empty applies none.
+  @$pb.TagNumber(1)
+  $core.String get preset => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set preset($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasPreset() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPreset() => clearField(1);
+
+  /// The outbound or group everything the routes and the preset leave goes to.
+  @$pb.TagNumber(2)
+  $core.String get proxyTarget => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set proxyTarget($core.String v) { $_setString(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasProxyTarget() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearProxyTarget() => clearField(2);
+
+  /// Rejects advertising and tracking domains before anything else.
+  @$pb.TagNumber(3)
+  $core.bool get blockAds => $_getBF(2);
+  @$pb.TagNumber(3)
+  set blockAds($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasBlockAds() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBlockAds() => clearField(3);
 }
 
 /// LocalProxy is a listener other applications on the machine can use. Any of
@@ -1670,8 +1901,8 @@ class ConnectionState extends $pb.GeneratedMessage {
     ConnectionStateValue? value,
     $core.String? sessionId,
     SoraErrorCode? reason,
-    $1.Timestamp? changedAt,
-    $2.Duration? retryAfter,
+    $2.Timestamp? changedAt,
+    $1.Duration? retryAfter,
   }) {
     final $result = create();
     if (value != null) {
@@ -1699,8 +1930,8 @@ class ConnectionState extends $pb.GeneratedMessage {
     ..e<ConnectionStateValue>(1, _omitFieldNames ? '' : 'value', $pb.PbFieldType.OE, defaultOrMaker: ConnectionStateValue.CONNECTION_STATE_VALUE_UNSPECIFIED, valueOf: ConnectionStateValue.valueOf, enumValues: ConnectionStateValue.values)
     ..aOS(2, _omitFieldNames ? '' : 'sessionId')
     ..e<SoraErrorCode>(3, _omitFieldNames ? '' : 'reason', $pb.PbFieldType.OE, defaultOrMaker: SoraErrorCode.SORA_ERROR_CODE_UNSPECIFIED, valueOf: SoraErrorCode.valueOf, enumValues: SoraErrorCode.values)
-    ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'changedAt', subBuilder: $1.Timestamp.create)
-    ..aOM<$2.Duration>(5, _omitFieldNames ? '' : 'retryAfter', subBuilder: $2.Duration.create)
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'changedAt', subBuilder: $2.Timestamp.create)
+    ..aOM<$1.Duration>(5, _omitFieldNames ? '' : 'retryAfter', subBuilder: $1.Duration.create)
     ..hasRequiredFields = false
   ;
 
@@ -1753,26 +1984,26 @@ class ConnectionState extends $pb.GeneratedMessage {
   void clearReason() => clearField(3);
 
   @$pb.TagNumber(4)
-  $1.Timestamp get changedAt => $_getN(3);
+  $2.Timestamp get changedAt => $_getN(3);
   @$pb.TagNumber(4)
-  set changedAt($1.Timestamp v) { setField(4, v); }
+  set changedAt($2.Timestamp v) { setField(4, v); }
   @$pb.TagNumber(4)
   $core.bool hasChangedAt() => $_has(3);
   @$pb.TagNumber(4)
   void clearChangedAt() => clearField(4);
   @$pb.TagNumber(4)
-  $1.Timestamp ensureChangedAt() => $_ensure(3);
+  $2.Timestamp ensureChangedAt() => $_ensure(3);
 
   @$pb.TagNumber(5)
-  $2.Duration get retryAfter => $_getN(4);
+  $1.Duration get retryAfter => $_getN(4);
   @$pb.TagNumber(5)
-  set retryAfter($2.Duration v) { setField(5, v); }
+  set retryAfter($1.Duration v) { setField(5, v); }
   @$pb.TagNumber(5)
   $core.bool hasRetryAfter() => $_has(4);
   @$pb.TagNumber(5)
   void clearRetryAfter() => clearField(5);
   @$pb.TagNumber(5)
-  $2.Duration ensureRetryAfter() => $_ensure(4);
+  $1.Duration ensureRetryAfter() => $_ensure(4);
 }
 
 enum CoreEvent_Payload {
@@ -1790,7 +2021,7 @@ class CoreEvent extends $pb.GeneratedMessage {
   factory CoreEvent({
     $fixnum.Int64? sequence,
     $core.String? sessionId,
-    $1.Timestamp? emittedAt,
+    $2.Timestamp? emittedAt,
     StateChanged? stateChanged,
     StatsTick? statsTick,
     BypassStrategyChanged? bypassStrategyChanged,
@@ -1850,7 +2081,7 @@ class CoreEvent extends $pb.GeneratedMessage {
     ..oo(0, [4, 5, 6, 7, 8, 9, 10])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(2, _omitFieldNames ? '' : 'sessionId')
-    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'emittedAt', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(3, _omitFieldNames ? '' : 'emittedAt', subBuilder: $2.Timestamp.create)
     ..aOM<StateChanged>(4, _omitFieldNames ? '' : 'stateChanged', subBuilder: StateChanged.create)
     ..aOM<StatsTick>(5, _omitFieldNames ? '' : 'statsTick', subBuilder: StatsTick.create)
     ..aOM<BypassStrategyChanged>(6, _omitFieldNames ? '' : 'bypassStrategyChanged', subBuilder: BypassStrategyChanged.create)
@@ -1904,15 +2135,15 @@ class CoreEvent extends $pb.GeneratedMessage {
   void clearSessionId() => clearField(2);
 
   @$pb.TagNumber(3)
-  $1.Timestamp get emittedAt => $_getN(2);
+  $2.Timestamp get emittedAt => $_getN(2);
   @$pb.TagNumber(3)
-  set emittedAt($1.Timestamp v) { setField(3, v); }
+  set emittedAt($2.Timestamp v) { setField(3, v); }
   @$pb.TagNumber(3)
   $core.bool hasEmittedAt() => $_has(2);
   @$pb.TagNumber(3)
   void clearEmittedAt() => clearField(3);
   @$pb.TagNumber(3)
-  $1.Timestamp ensureEmittedAt() => $_ensure(2);
+  $2.Timestamp ensureEmittedAt() => $_ensure(2);
 
   @$pb.TagNumber(4)
   StateChanged get stateChanged => $_getN(3);
@@ -2737,12 +2968,12 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
 class SubscriptionInfo extends $pb.GeneratedMessage {
   factory SubscriptionInfo({
     $core.String? title,
-    $2.Duration? updateInterval,
+    $1.Duration? updateInterval,
     $core.bool? hasUsage,
     $fixnum.Int64? uploadBytes,
     $fixnum.Int64? downloadBytes,
     $fixnum.Int64? totalBytes,
-    $1.Timestamp? expire,
+    $2.Timestamp? expire,
     $core.String? webPageUrl,
     $core.String? supportUrl,
     $core.String? announce,
@@ -2786,12 +3017,12 @@ class SubscriptionInfo extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SubscriptionInfo', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'title')
-    ..aOM<$2.Duration>(2, _omitFieldNames ? '' : 'updateInterval', subBuilder: $2.Duration.create)
+    ..aOM<$1.Duration>(2, _omitFieldNames ? '' : 'updateInterval', subBuilder: $1.Duration.create)
     ..aOB(3, _omitFieldNames ? '' : 'hasUsage')
     ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'uploadBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'downloadBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'totalBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
-    ..aOM<$1.Timestamp>(7, _omitFieldNames ? '' : 'expire', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(7, _omitFieldNames ? '' : 'expire', subBuilder: $2.Timestamp.create)
     ..aOS(8, _omitFieldNames ? '' : 'webPageUrl')
     ..aOS(9, _omitFieldNames ? '' : 'supportUrl')
     ..aOS(10, _omitFieldNames ? '' : 'announce')
@@ -2830,15 +3061,15 @@ class SubscriptionInfo extends $pb.GeneratedMessage {
 
   /// How often the provider asks to be fetched; unset when it did not say.
   @$pb.TagNumber(2)
-  $2.Duration get updateInterval => $_getN(1);
+  $1.Duration get updateInterval => $_getN(1);
   @$pb.TagNumber(2)
-  set updateInterval($2.Duration v) { setField(2, v); }
+  set updateInterval($1.Duration v) { setField(2, v); }
   @$pb.TagNumber(2)
   $core.bool hasUpdateInterval() => $_has(1);
   @$pb.TagNumber(2)
   void clearUpdateInterval() => clearField(2);
   @$pb.TagNumber(2)
-  $2.Duration ensureUpdateInterval() => $_ensure(1);
+  $1.Duration ensureUpdateInterval() => $_ensure(1);
 
   /// Whether the provider sent traffic figures at all.
   @$pb.TagNumber(3)
@@ -2880,15 +3111,15 @@ class SubscriptionInfo extends $pb.GeneratedMessage {
 
   /// Unset when the subscription does not expire.
   @$pb.TagNumber(7)
-  $1.Timestamp get expire => $_getN(6);
+  $2.Timestamp get expire => $_getN(6);
   @$pb.TagNumber(7)
-  set expire($1.Timestamp v) { setField(7, v); }
+  set expire($2.Timestamp v) { setField(7, v); }
   @$pb.TagNumber(7)
   $core.bool hasExpire() => $_has(6);
   @$pb.TagNumber(7)
   void clearExpire() => clearField(7);
   @$pb.TagNumber(7)
-  $1.Timestamp ensureExpire() => $_ensure(6);
+  $2.Timestamp ensureExpire() => $_ensure(6);
 
   /// https, http or tg links only.
   @$pb.TagNumber(8)
@@ -4052,7 +4283,7 @@ class SoraError extends $pb.GeneratedMessage {
     $core.String? detailRedacted,
     $core.bool? retryable,
     $core.String? requestId,
-    $2.Duration? retryAfter,
+    $1.Duration? retryAfter,
   }) {
     final $result = create();
     if (code != null) {
@@ -4085,7 +4316,7 @@ class SoraError extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'detailRedacted')
     ..aOB(4, _omitFieldNames ? '' : 'retryable')
     ..aOS(5, _omitFieldNames ? '' : 'requestId')
-    ..aOM<$2.Duration>(6, _omitFieldNames ? '' : 'retryAfter', subBuilder: $2.Duration.create)
+    ..aOM<$1.Duration>(6, _omitFieldNames ? '' : 'retryAfter', subBuilder: $1.Duration.create)
     ..hasRequiredFields = false
   ;
 
@@ -4156,15 +4387,15 @@ class SoraError extends $pb.GeneratedMessage {
   void clearRequestId() => clearField(5);
 
   @$pb.TagNumber(6)
-  $2.Duration get retryAfter => $_getN(5);
+  $1.Duration get retryAfter => $_getN(5);
   @$pb.TagNumber(6)
-  set retryAfter($2.Duration v) { setField(6, v); }
+  set retryAfter($1.Duration v) { setField(6, v); }
   @$pb.TagNumber(6)
   $core.bool hasRetryAfter() => $_has(5);
   @$pb.TagNumber(6)
   void clearRetryAfter() => clearField(6);
   @$pb.TagNumber(6)
-  $2.Duration ensureRetryAfter() => $_ensure(5);
+  $1.Duration ensureRetryAfter() => $_ensure(5);
 }
 
 /// LogEntry is one record. The message is masked of credentials, and of the
@@ -4172,7 +4403,7 @@ class SoraError extends $pb.GeneratedMessage {
 class LogEntry extends $pb.GeneratedMessage {
   factory LogEntry({
     $fixnum.Int64? sequence,
-    $1.Timestamp? time,
+    $2.Timestamp? time,
     LogLevel? level,
     $core.String? source,
     $core.String? message,
@@ -4205,7 +4436,7 @@ class LogEntry extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'LogEntry', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
-    ..aOM<$1.Timestamp>(2, _omitFieldNames ? '' : 'time', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(2, _omitFieldNames ? '' : 'time', subBuilder: $2.Timestamp.create)
     ..e<LogLevel>(3, _omitFieldNames ? '' : 'level', $pb.PbFieldType.OE, defaultOrMaker: LogLevel.LOG_LEVEL_UNSPECIFIED, valueOf: LogLevel.valueOf, enumValues: LogLevel.values)
     ..aOS(4, _omitFieldNames ? '' : 'source')
     ..aOS(5, _omitFieldNames ? '' : 'message')
@@ -4244,15 +4475,15 @@ class LogEntry extends $pb.GeneratedMessage {
   void clearSequence() => clearField(1);
 
   @$pb.TagNumber(2)
-  $1.Timestamp get time => $_getN(1);
+  $2.Timestamp get time => $_getN(1);
   @$pb.TagNumber(2)
-  set time($1.Timestamp v) { setField(2, v); }
+  set time($2.Timestamp v) { setField(2, v); }
   @$pb.TagNumber(2)
   $core.bool hasTime() => $_has(1);
   @$pb.TagNumber(2)
   void clearTime() => clearField(2);
   @$pb.TagNumber(2)
-  $1.Timestamp ensureTime() => $_ensure(1);
+  $2.Timestamp ensureTime() => $_ensure(1);
 
   @$pb.TagNumber(3)
   LogLevel get level => $_getN(2);
@@ -4301,8 +4532,8 @@ class LogFilter extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? sources,
     $core.String? contains,
     $core.String? pattern,
-    $1.Timestamp? since,
-    $1.Timestamp? until,
+    $2.Timestamp? since,
+    $2.Timestamp? until,
   }) {
     final $result = create();
     if (minLevel != null) {
@@ -4334,8 +4565,8 @@ class LogFilter extends $pb.GeneratedMessage {
     ..pPS(2, _omitFieldNames ? '' : 'sources')
     ..aOS(3, _omitFieldNames ? '' : 'contains')
     ..aOS(4, _omitFieldNames ? '' : 'pattern')
-    ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'since', subBuilder: $1.Timestamp.create)
-    ..aOM<$1.Timestamp>(6, _omitFieldNames ? '' : 'until', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(5, _omitFieldNames ? '' : 'since', subBuilder: $2.Timestamp.create)
+    ..aOM<$2.Timestamp>(6, _omitFieldNames ? '' : 'until', subBuilder: $2.Timestamp.create)
     ..hasRequiredFields = false
   ;
 
@@ -4393,26 +4624,26 @@ class LogFilter extends $pb.GeneratedMessage {
   void clearPattern() => clearField(4);
 
   @$pb.TagNumber(5)
-  $1.Timestamp get since => $_getN(4);
+  $2.Timestamp get since => $_getN(4);
   @$pb.TagNumber(5)
-  set since($1.Timestamp v) { setField(5, v); }
+  set since($2.Timestamp v) { setField(5, v); }
   @$pb.TagNumber(5)
   $core.bool hasSince() => $_has(4);
   @$pb.TagNumber(5)
   void clearSince() => clearField(5);
   @$pb.TagNumber(5)
-  $1.Timestamp ensureSince() => $_ensure(4);
+  $2.Timestamp ensureSince() => $_ensure(4);
 
   @$pb.TagNumber(6)
-  $1.Timestamp get until => $_getN(5);
+  $2.Timestamp get until => $_getN(5);
   @$pb.TagNumber(6)
-  set until($1.Timestamp v) { setField(6, v); }
+  set until($2.Timestamp v) { setField(6, v); }
   @$pb.TagNumber(6)
   $core.bool hasUntil() => $_has(5);
   @$pb.TagNumber(6)
   void clearUntil() => clearField(6);
   @$pb.TagNumber(6)
-  $1.Timestamp ensureUntil() => $_ensure(5);
+  $2.Timestamp ensureUntil() => $_ensure(5);
 }
 
 class QueryLogsRequest extends $pb.GeneratedMessage {
@@ -5655,7 +5886,7 @@ class Connection extends $pb.GeneratedMessage {
     $core.Iterable<$core.String>? chain,
     $fixnum.Int64? upload,
     $fixnum.Int64? download,
-    $1.Timestamp? start,
+    $2.Timestamp? start,
   }) {
     final $result = create();
     if (id != null) {
@@ -5704,7 +5935,7 @@ class Connection extends $pb.GeneratedMessage {
     ..pPS(7, _omitFieldNames ? '' : 'chain')
     ..a<$fixnum.Int64>(8, _omitFieldNames ? '' : 'upload', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(9, _omitFieldNames ? '' : 'download', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
-    ..aOM<$1.Timestamp>(10, _omitFieldNames ? '' : 'start', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'start', subBuilder: $2.Timestamp.create)
     ..hasRequiredFields = false
   ;
 
@@ -5808,15 +6039,15 @@ class Connection extends $pb.GeneratedMessage {
   void clearDownload() => clearField(9);
 
   @$pb.TagNumber(10)
-  $1.Timestamp get start => $_getN(9);
+  $2.Timestamp get start => $_getN(9);
   @$pb.TagNumber(10)
-  set start($1.Timestamp v) { setField(10, v); }
+  set start($2.Timestamp v) { setField(10, v); }
   @$pb.TagNumber(10)
   $core.bool hasStart() => $_has(9);
   @$pb.TagNumber(10)
   void clearStart() => clearField(10);
   @$pb.TagNumber(10)
-  $1.Timestamp ensureStart() => $_ensure(9);
+  $2.Timestamp ensureStart() => $_ensure(9);
 }
 
 class ListConnectionsRequest extends $pb.GeneratedMessage {
@@ -6113,7 +6344,7 @@ class SubscriptionSettings extends $pb.GeneratedMessage {
     $core.String? name,
     $core.String? userAgent,
     $core.bool? autoUpdate,
-    $2.Duration? updateInterval,
+    $1.Duration? updateInterval,
   }) {
     final $result = create();
     if (id != null) {
@@ -6146,7 +6377,7 @@ class SubscriptionSettings extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'name')
     ..aOS(4, _omitFieldNames ? '' : 'userAgent')
     ..aOB(5, _omitFieldNames ? '' : 'autoUpdate')
-    ..aOM<$2.Duration>(6, _omitFieldNames ? '' : 'updateInterval', subBuilder: $2.Duration.create)
+    ..aOM<$1.Duration>(6, _omitFieldNames ? '' : 'updateInterval', subBuilder: $1.Duration.create)
     ..hasRequiredFields = false
   ;
 
@@ -6224,15 +6455,15 @@ class SubscriptionSettings extends $pb.GeneratedMessage {
   /// Overrides the interval the provider asks for; unset follows the provider,
   /// and 24 hours when the provider did not say. At least one hour.
   @$pb.TagNumber(6)
-  $2.Duration get updateInterval => $_getN(5);
+  $1.Duration get updateInterval => $_getN(5);
   @$pb.TagNumber(6)
-  set updateInterval($2.Duration v) { setField(6, v); }
+  set updateInterval($1.Duration v) { setField(6, v); }
   @$pb.TagNumber(6)
   $core.bool hasUpdateInterval() => $_has(5);
   @$pb.TagNumber(6)
   void clearUpdateInterval() => clearField(6);
   @$pb.TagNumber(6)
-  $2.Duration ensureUpdateInterval() => $_ensure(5);
+  $1.Duration ensureUpdateInterval() => $_ensure(5);
 }
 
 /// SubscriptionState is a subscription as the core holds it.
@@ -6241,8 +6472,8 @@ class SubscriptionState extends $pb.GeneratedMessage {
     SubscriptionSettings? settings,
     SubscriptionInfo? info,
     $core.Iterable<OutboundSpec>? outbounds,
-    $1.Timestamp? lastUpdate,
-    $1.Timestamp? nextUpdate,
+    $2.Timestamp? lastUpdate,
+    $2.Timestamp? nextUpdate,
     SoraError? lastError,
     $core.bool? updating,
     $core.bool? deleted,
@@ -6286,8 +6517,8 @@ class SubscriptionState extends $pb.GeneratedMessage {
     ..aOM<SubscriptionSettings>(1, _omitFieldNames ? '' : 'settings', subBuilder: SubscriptionSettings.create)
     ..aOM<SubscriptionInfo>(2, _omitFieldNames ? '' : 'info', subBuilder: SubscriptionInfo.create)
     ..pc<OutboundSpec>(3, _omitFieldNames ? '' : 'outbounds', $pb.PbFieldType.PM, subBuilder: OutboundSpec.create)
-    ..aOM<$1.Timestamp>(4, _omitFieldNames ? '' : 'lastUpdate', subBuilder: $1.Timestamp.create)
-    ..aOM<$1.Timestamp>(5, _omitFieldNames ? '' : 'nextUpdate', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(4, _omitFieldNames ? '' : 'lastUpdate', subBuilder: $2.Timestamp.create)
+    ..aOM<$2.Timestamp>(5, _omitFieldNames ? '' : 'nextUpdate', subBuilder: $2.Timestamp.create)
     ..aOM<SoraError>(6, _omitFieldNames ? '' : 'lastError', subBuilder: SoraError.create)
     ..aOB(7, _omitFieldNames ? '' : 'updating')
     ..aOB(8, _omitFieldNames ? '' : 'deleted')
@@ -6342,26 +6573,26 @@ class SubscriptionState extends $pb.GeneratedMessage {
   $core.List<OutboundSpec> get outbounds => $_getList(2);
 
   @$pb.TagNumber(4)
-  $1.Timestamp get lastUpdate => $_getN(3);
+  $2.Timestamp get lastUpdate => $_getN(3);
   @$pb.TagNumber(4)
-  set lastUpdate($1.Timestamp v) { setField(4, v); }
+  set lastUpdate($2.Timestamp v) { setField(4, v); }
   @$pb.TagNumber(4)
   $core.bool hasLastUpdate() => $_has(3);
   @$pb.TagNumber(4)
   void clearLastUpdate() => clearField(4);
   @$pb.TagNumber(4)
-  $1.Timestamp ensureLastUpdate() => $_ensure(3);
+  $2.Timestamp ensureLastUpdate() => $_ensure(3);
 
   @$pb.TagNumber(5)
-  $1.Timestamp get nextUpdate => $_getN(4);
+  $2.Timestamp get nextUpdate => $_getN(4);
   @$pb.TagNumber(5)
-  set nextUpdate($1.Timestamp v) { setField(5, v); }
+  set nextUpdate($2.Timestamp v) { setField(5, v); }
   @$pb.TagNumber(5)
   $core.bool hasNextUpdate() => $_has(4);
   @$pb.TagNumber(5)
   void clearNextUpdate() => clearField(5);
   @$pb.TagNumber(5)
-  $1.Timestamp ensureNextUpdate() => $_ensure(4);
+  $2.Timestamp ensureNextUpdate() => $_ensure(4);
 
   /// The failure of the last attempt; unset after a success.
   @$pb.TagNumber(6)
@@ -7154,7 +7385,7 @@ class About extends $pb.GeneratedMessage {
   factory About({
     $core.String? coreVersion,
     $core.String? commit,
-    $1.Timestamp? commitTime,
+    $2.Timestamp? commitTime,
     ApiVersion? contract,
     $core.String? platform,
     $core.String? goVersion,
@@ -7199,7 +7430,7 @@ class About extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'About', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'coreVersion')
     ..aOS(2, _omitFieldNames ? '' : 'commit')
-    ..aOM<$1.Timestamp>(3, _omitFieldNames ? '' : 'commitTime', subBuilder: $1.Timestamp.create)
+    ..aOM<$2.Timestamp>(3, _omitFieldNames ? '' : 'commitTime', subBuilder: $2.Timestamp.create)
     ..aOM<ApiVersion>(4, _omitFieldNames ? '' : 'contract', subBuilder: ApiVersion.create)
     ..aOS(5, _omitFieldNames ? '' : 'platform')
     ..aOS(6, _omitFieldNames ? '' : 'goVersion')
@@ -7251,15 +7482,15 @@ class About extends $pb.GeneratedMessage {
   void clearCommit() => clearField(2);
 
   @$pb.TagNumber(3)
-  $1.Timestamp get commitTime => $_getN(2);
+  $2.Timestamp get commitTime => $_getN(2);
   @$pb.TagNumber(3)
-  set commitTime($1.Timestamp v) { setField(3, v); }
+  set commitTime($2.Timestamp v) { setField(3, v); }
   @$pb.TagNumber(3)
   $core.bool hasCommitTime() => $_has(2);
   @$pb.TagNumber(3)
   void clearCommitTime() => clearField(3);
   @$pb.TagNumber(3)
-  $1.Timestamp ensureCommitTime() => $_ensure(2);
+  $2.Timestamp ensureCommitTime() => $_ensure(2);
 
   /// The contract the core serves.
   @$pb.TagNumber(4)
@@ -7393,6 +7624,179 @@ class EngineBuild extends $pb.GeneratedMessage {
   $core.bool hasVersion() => $_has(2);
   @$pb.TagNumber(3)
   void clearVersion() => clearField(3);
+}
+
+class GetRoutingPresetsRequest extends $pb.GeneratedMessage {
+  factory GetRoutingPresetsRequest({
+    ApiVersion? apiVersion,
+  }) {
+    final $result = create();
+    if (apiVersion != null) {
+      $result.apiVersion = apiVersion;
+    }
+    return $result;
+  }
+  GetRoutingPresetsRequest._() : super();
+  factory GetRoutingPresetsRequest.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetRoutingPresetsRequest.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetRoutingPresetsRequest', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetRoutingPresetsRequest clone() => GetRoutingPresetsRequest()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetRoutingPresetsRequest copyWith(void Function(GetRoutingPresetsRequest) updates) => super.copyWith((message) => updates(message as GetRoutingPresetsRequest)) as GetRoutingPresetsRequest;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetRoutingPresetsRequest create() => GetRoutingPresetsRequest._();
+  GetRoutingPresetsRequest createEmptyInstance() => create();
+  static $pb.PbList<GetRoutingPresetsRequest> createRepeated() => $pb.PbList<GetRoutingPresetsRequest>();
+  @$core.pragma('dart2js:noInline')
+  static GetRoutingPresetsRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetRoutingPresetsRequest>(create);
+  static GetRoutingPresetsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion v) { setField(1, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+}
+
+class GetRoutingPresetsResponse extends $pb.GeneratedMessage {
+  factory GetRoutingPresetsResponse({
+    $core.Iterable<RoutingPreset>? presets,
+    SoraError? error,
+  }) {
+    final $result = create();
+    if (presets != null) {
+      $result.presets.addAll(presets);
+    }
+    if (error != null) {
+      $result.error = error;
+    }
+    return $result;
+  }
+  GetRoutingPresetsResponse._() : super();
+  factory GetRoutingPresetsResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory GetRoutingPresetsResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetRoutingPresetsResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..pc<RoutingPreset>(1, _omitFieldNames ? '' : 'presets', $pb.PbFieldType.PM, subBuilder: RoutingPreset.create)
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  GetRoutingPresetsResponse clone() => GetRoutingPresetsResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  GetRoutingPresetsResponse copyWith(void Function(GetRoutingPresetsResponse) updates) => super.copyWith((message) => updates(message as GetRoutingPresetsResponse)) as GetRoutingPresetsResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetRoutingPresetsResponse create() => GetRoutingPresetsResponse._();
+  GetRoutingPresetsResponse createEmptyInstance() => create();
+  static $pb.PbList<GetRoutingPresetsResponse> createRepeated() => $pb.PbList<GetRoutingPresetsResponse>();
+  @$core.pragma('dart2js:noInline')
+  static GetRoutingPresetsResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetRoutingPresetsResponse>(create);
+  static GetRoutingPresetsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<RoutingPreset> get presets => $_getList(0);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
+}
+
+/// RoutingPreset is one preset; the interface names it by id in its own words.
+class RoutingPreset extends $pb.GeneratedMessage {
+  factory RoutingPreset({
+    $core.String? id,
+    $core.Iterable<$core.String>? direct,
+  }) {
+    final $result = create();
+    if (id != null) {
+      $result.id = id;
+    }
+    if (direct != null) {
+      $result.direct.addAll(direct);
+    }
+    return $result;
+  }
+  RoutingPreset._() : super();
+  factory RoutingPreset.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory RoutingPreset.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'RoutingPreset', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..pPS(2, _omitFieldNames ? '' : 'direct')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  RoutingPreset clone() => RoutingPreset()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  RoutingPreset copyWith(void Function(RoutingPreset) updates) => super.copyWith((message) => updates(message as RoutingPreset)) as RoutingPreset;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RoutingPreset create() => RoutingPreset._();
+  RoutingPreset createEmptyInstance() => create();
+  static $pb.PbList<RoutingPreset> createRepeated() => $pb.PbList<RoutingPreset>();
+  @$core.pragma('dart2js:noInline')
+  static RoutingPreset getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RoutingPreset>(create);
+  static RoutingPreset? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => clearField(1);
+
+  /// Destinations sent direct, in the destination form of RoutingRule, for
+  /// example "geosite:category-ru" or "geoip:ru".
+  @$pb.TagNumber(2)
+  $core.List<$core.String> get direct => $_getList(1);
 }
 
 /// BypassStrategy is how zapret reshapes a handshake. Positions are a number

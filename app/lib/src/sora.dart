@@ -220,13 +220,7 @@ class Sora extends ChangeNotifier {
       final answer = await link.stub.connect(
         ConnectRequest(
           apiVersion: apiVersion,
-          sessionPlan: buildPlan(
-            servers: servers,
-            choice: selected,
-            preset: settings.preset,
-            blockAds: settings.blockAds,
-            engine: settings.engine,
-          ),
+          sessionPlan: buildPlan(servers: servers, choice: selected, settings: settings),
           controlAuthenticator: link.token,
         ),
       );
@@ -279,20 +273,17 @@ class Sora extends ChangeNotifier {
     await _replan();
   }
 
-  Future<void> setPreset(String preset) async {
-    settings.preset = preset;
+  /// Changes settings. A change that alters the plan applies at once while
+  /// connected; a change of looks only redraws.
+  Future<void> change(void Function(Settings) apply, {bool replan = true}) async {
+    apply(settings);
     notifyListeners();
-    await _replan();
+    if (replan) await _replan();
   }
 
-  Future<void> setBlockAds(bool value) async {
-    settings.blockAds = value;
-    notifyListeners();
-    await _replan();
-  }
-
-  Future<void> setEngine(String engine) async {
-    settings.engine = engine;
+  /// Forgets every choice and starts from the defaults again.
+  Future<void> reset() async {
+    await settings.reset();
     notifyListeners();
     await _replan();
   }
@@ -311,11 +302,6 @@ class Sora extends ChangeNotifier {
       failure = CoreFailure.from(error);
       notifyListeners();
     }
-  }
-
-  void setAnimations(bool value) {
-    settings.animations = value;
-    notifyListeners();
   }
 
   /// Saves a new subscription; the core fetches it and announces the servers
@@ -347,6 +333,15 @@ class Sora extends ChangeNotifier {
       ..url = '';
     final answer = await link.stub.saveSubscription(
       SaveSubscriptionRequest(apiVersion: apiVersion, controlAuthenticator: link.token, settings: settings),
+    );
+    if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+  });
+
+  /// Saves what the person chose for a subscription; the link stays as stored.
+  Future<CoreFailure?> saveSubscription(SubscriptionSettings chosen) => _call(() async {
+    final link = _link!;
+    final answer = await link.stub.saveSubscription(
+      SaveSubscriptionRequest(apiVersion: apiVersion, controlAuthenticator: link.token, settings: chosen..url = ''),
     );
     if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
   });
@@ -392,7 +387,21 @@ class Sora extends ChangeNotifier {
     probing = true;
     notifyListeners();
     try {
-      await for (final r in link.stub.probeServers(ProbeServersRequest(apiVersion: apiVersion, outbounds: all))) {
+      await for (final r in link.stub.probeServers(
+        ProbeServersRequest(
+          apiVersion: apiVersion,
+          outbounds: all,
+          options: ProbeOptions(
+            method: switch (settings.probeMethod) {
+              'engine' => ProbeMethod.PROBE_METHOD_ENGINE,
+              'connect' => ProbeMethod.PROBE_METHOD_CONNECT,
+              _ => ProbeMethod.PROBE_METHOD_UNSPECIFIED,
+            },
+            url: settings.probeUrl,
+            timeoutMs: settings.probeTimeout,
+          ),
+        ),
+      )) {
         latency[r.serverId] = r.reachable ? r.latencyMs : null;
         notifyListeners();
       }
@@ -431,27 +440,32 @@ class Sora extends ChangeNotifier {
 /// The plan for a connection: every server, and what carries the traffic the
 /// routing preset does not send direct. [choice] is "auto" for the fastest
 /// server, picked by the core, "bypass" for no server at all, or a server id.
-SessionPlan buildPlan({
-  required List<OutboundSpec> servers,
-  required String choice,
-  required String preset,
-  required bool blockAds,
-  required String engine,
-}) {
+SessionPlan buildPlan({required List<OutboundSpec> servers, required String choice, required Settings settings}) {
   final plan = SessionPlan(
     tunnelMode: TunnelMode.TUNNEL_MODE_SYSTEM,
-    engines: [if (engine.isNotEmpty) engine],
-    routing: RoutingOptions(preset: preset, blockAds: blockAds),
+    engines: [if (settings.engine.isNotEmpty) settings.engine],
+    routing: RoutingOptions(preset: settings.preset, blockAds: settings.blockAds),
+    ipv6: settings.ipv6,
+    dnsPolicy: DnsPolicy(servers: settings.dns),
+    antiCensorship: AntiCensorship(
+      tlsFragment: settings.fragment,
+      fragmentPackets: settings.fragmentPackets,
+      fragmentLength: settings.fragmentLength,
+      fragmentInterval: settings.fragmentInterval,
+    ),
   );
   if (choice == 'bypass') {
-    // zapret's tpws carries every connection directly, with the handshake
-    // split the way the interop test runs real traffic through it.
     plan.outbounds.add(
       OutboundSpec(
         id: Sora.bypassId,
         displayName: 'zapret',
         protocol: 'bypass',
-        bypass: BypassStrategy(splitPos: ['1', 'midsld'], disorder: true, hostCase: true),
+        bypass: BypassStrategy(
+          splitPos: settings.splitPos,
+          disorder: settings.disorder,
+          tlsRecord: settings.tlsRecord,
+          hostCase: settings.hostCase,
+        ),
       ),
     );
     plan.routing.proxyTarget = Sora.bypassId;

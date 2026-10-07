@@ -152,5 +152,72 @@
   "connections": "Соединения",
   "close": "Закрыть",
   "chainDirect": "Напрямую",
-  "chainBlocked": "Заблокировано"
+  "chainBlocked": "Заблокировано",
+  "theme": "Тема",
+  "themeSystem": "Как в системе",
+  "themeLight": "Светлая",
+  "themeDark": "Тёмная",
+  "language": "Язык",
+  "languageSystem": "Как в системе",
+  "sectionConnection": "Подключение",
+  "sectionNoServer": "Без сервера",
+  "sectionPing": "Пинг",
+  "sectionLog": "Диагностика",
+  "ipv6": "IPv6",
+  "dns": "DNS",
+  "dnsAuto": "Авто",
+  "dnsHint": "Адреса через запятую",
+  "fragment": "Фрагментация TLS",
+  "fragmentPackets": "Что дробить",
+  "fragmentLength": "Размер частей",
+  "fragmentInterval": "Пауза между частями",
+  "byDefault": "По умолчанию",
+  "rangeHint": "Например, 100-200",
+  "splitPos": "Места разбиения",
+  "splitPosHint": "Например, 1, midsld",
+  "disorder": "Менять порядок частей",
+  "tlsRecord": "Делить TLS-запись",
+  "tlsRecordNo": "Нет",
+  "tlsRecordSni": "По имени сайта",
+  "tlsRecordFirst": "После первого байта",
+  "hostCase": "Менять регистр Host",
+  "probeMethod": "Способ",
+  "probeAuto": "Авто",
+  "probeEngine": "Через ядро",
+  "probeConnect": "Только соединение",
+  "probeUrl": "Адрес проверки",
+  "probeTimeout": "Ожидание",
+  "seconds": "{n} с",
+  "subscriptions": "Подписки",
+  "subscriptionSettings": "Настройки",
+  "userAgent": "User-Agent",
+  "autoUpdate": "Обновлять автоматически",
+  "updateInterval": "Как часто",
+  "intervalProvider": "Как просит провайдер",
+  "hours": "{n} ч",
+  "updateNow": "Обновить сейчас",
+  "logLevel": "Что записывать",
+  "levelDebug": "Всё",
+  "levelInfo": "Обычное",
+  "levelWarning": "Важное",
+  "levelError": "Только ошибки",
+  "recordDestinations": "Записывать адреса сайтов",
+  "reset": "Сбросить настройки",
+  "resetConfirm": "Сбросить все настройки?",
+  "resetAction": "Сбросить",
+  "invalidValue": "Такое значение не подойдёт",
+  "@seconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "@hours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  }
 }

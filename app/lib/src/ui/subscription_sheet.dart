@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../l10n/strings.dart';
-import '../core/link.dart';
 import '../design/theme.dart';
 import '../sora.dart';
 import 'kit.dart';
@@ -24,21 +23,25 @@ Future<void> showSubscriptionSheet(BuildContext context) async {
     action: s.add,
     initial: text.startsWith('https://') && !text.contains('\n') ? text : '',
     keyboard: TextInputType.url,
-    submit: sora.addSubscription,
+    submit: (url) async {
+      final failure = await sora.addSubscription(url);
+      return failure == null ? null : describe(s, failure);
+    },
   );
 }
 
 /// A small sheet with one field and one action, centred over the window and
 /// grown out of it the way a Mac sheet appears. [submit] answers with the
-/// failure to show under the field, or null to close.
+/// words to show under the field, or null to close.
 Future<void> showFieldSheet(
   BuildContext context, {
   required String title,
   required String hint,
   required String action,
-  required Future<CoreFailure?> Function(String) submit,
+  required Future<String?> Function(String) submit,
   String initial = '',
   TextInputType keyboard = TextInputType.text,
+  bool allowEmpty = false,
 }) {
   final motion = Motion.enabled(context);
   return showGeneralDialog<void>(
@@ -47,8 +50,15 @@ Future<void> showFieldSheet(
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Palette.of(context).scrim,
     transitionDuration: motion ? Motion.medium : Duration.zero,
-    pageBuilder: (_, _, _) =>
-        _FieldSheet(title: title, hint: hint, action: action, submit: submit, initial: initial, keyboard: keyboard),
+    pageBuilder: (_, _, _) => _FieldSheet(
+      title: title,
+      hint: hint,
+      action: action,
+      submit: submit,
+      initial: initial,
+      keyboard: keyboard,
+      allowEmpty: allowEmpty,
+    ),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Motion.curve, reverseCurve: Curves.easeIn);
       return FadeTransition(
@@ -67,14 +77,18 @@ class _FieldSheet extends StatefulWidget {
     required this.submit,
     required this.initial,
     required this.keyboard,
+    required this.allowEmpty,
   });
 
   final String title;
   final String hint;
   final String action;
-  final Future<CoreFailure?> Function(String) submit;
+  final Future<String?> Function(String) submit;
   final String initial;
   final TextInputType keyboard;
+
+  /// An empty value means "use the default" rather than nothing at all.
+  final bool allowEmpty;
 
   @override
   State<_FieldSheet> createState() => _FieldSheetState();
@@ -82,7 +96,7 @@ class _FieldSheet extends StatefulWidget {
 
 class _FieldSheetState extends State<_FieldSheet> {
   late final _field = TextEditingController(text: widget.initial);
-  CoreFailure? _failure;
+  String? _failure;
   bool _busy = false;
 
   @override
@@ -99,7 +113,7 @@ class _FieldSheetState extends State<_FieldSheet> {
 
   Future<void> _go() async {
     final value = _field.text.trim();
-    if (value.isEmpty || _busy) return;
+    if (_busy) return;
     setState(() => _busy = true);
     final failure = await widget.submit(value);
     if (!mounted) return;
@@ -159,7 +173,7 @@ class _FieldSheetState extends State<_FieldSheet> {
                         ? const SizedBox(width: double.infinity)
                         : Padding(
                             padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
-                            child: Text(describe(s, _failure!), style: Styles.caption.copyWith(color: palette.danger)),
+                            child: Text(_failure!, style: Styles.caption.copyWith(color: palette.danger)),
                           ),
                   ),
                   const SizedBox(height: 18),
@@ -168,7 +182,7 @@ class _FieldSheetState extends State<_FieldSheet> {
                     builder: (context, _) => PrimaryButton(
                       label: widget.action,
                       busy: _busy,
-                      onTap: _field.text.trim().isEmpty ? null : () => unawaited(_go()),
+                      onTap: _field.text.trim().isEmpty && !widget.allowEmpty ? null : () => unawaited(_go()),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -178,7 +192,7 @@ class _FieldSheetState extends State<_FieldSheet> {
                     child: SizedBox(
                       height: 44,
                       child: Center(
-                        child: Text(s.cancel, style: Styles.body.copyWith(color: palette.ink2)),
+                        child: Text(s.cancel, style: Styles.body.copyWith(color: palette.ink)),
                       ),
                     ),
                   ),

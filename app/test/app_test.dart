@@ -19,8 +19,17 @@ void main() {
   ];
 
   group('plan', () {
+    late Settings settings;
+    setUp(() async {
+      SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+      settings = await Settings.load();
+    });
+
     test('the fastest server is a url-test group the routing points at', () {
-      final plan = buildPlan(servers: servers, choice: 'auto', preset: 'ru', blockAds: true, engine: '');
+      settings
+        ..preset = 'ru'
+        ..blockAds = true;
+      final plan = buildPlan(servers: servers, choice: 'auto', settings: settings);
       expect(plan.tunnelMode, TunnelMode.TUNNEL_MODE_SYSTEM);
       expect(plan.outbounds.map((o) => o.id), ['a', 'b']);
       expect(plan.groups.single.name, Sora.autoGroup);
@@ -30,19 +39,39 @@ void main() {
       expect(plan.routing.preset, 'ru');
       expect(plan.routing.blockAds, isTrue);
       expect(plan.engines, isEmpty, reason: 'an empty preference lets the core choose');
+      expect(plan.dnsPolicy.servers, isEmpty, reason: 'no resolvers take the core defaults');
+      expect(plan.ipv6, isFalse);
+      expect(plan.antiCensorship.tlsFragment, isFalse);
     });
 
-    test('a picked server is the target, with no group', () {
-      final plan = buildPlan(servers: servers, choice: 'b', preset: 'global', blockAds: false, engine: 'xray');
+    test('a picked server is the target, with no group, and the advanced choices travel', () {
+      settings
+        ..engine = 'xray'
+        ..ipv6 = true
+        ..dns = ['https://1.1.1.1/dns-query']
+        ..fragment = true
+        ..fragmentLength = '100-200';
+      final plan = buildPlan(servers: servers, choice: 'b', settings: settings);
       expect(plan.groups, isEmpty);
       expect(plan.routing.proxyTarget, 'b');
       expect(plan.engines, ['xray']);
+      expect(plan.ipv6, isTrue);
+      expect(plan.dnsPolicy.servers, ['https://1.1.1.1/dns-query']);
+      expect(plan.antiCensorship.tlsFragment, isTrue);
+      expect(plan.antiCensorship.fragmentLength, '100-200');
     });
 
-    test('no server carries everything through zapret and nothing else', () {
-      final plan = buildPlan(servers: servers, choice: 'bypass', preset: 'ru', blockAds: true, engine: '');
-      expect(plan.outbounds.single.protocol, 'bypass');
-      expect(plan.outbounds.single.bypass.splitPos, isNotEmpty);
+    test('no server carries everything through zapret with the chosen strategy', () {
+      settings
+        ..splitPos = ['2', 'sniext+1']
+        ..disorder = false
+        ..tlsRecord = 'sniext';
+      final plan = buildPlan(servers: servers, choice: 'bypass', settings: settings);
+      final bypass = plan.outbounds.single;
+      expect(bypass.protocol, 'bypass');
+      expect(bypass.bypass.splitPos, ['2', 'sniext+1']);
+      expect(bypass.bypass.disorder, isFalse);
+      expect(bypass.bypass.tlsRecord, 'sniext');
       expect(plan.routing.proxyTarget, Sora.bypassId);
       expect(plan.groups, isEmpty);
     });
@@ -64,6 +93,17 @@ void main() {
       expect(settings.animations, isTrue);
       expect(settings.engine, isEmpty);
       expect(['global', 'ru', 'ir', 'cn'], contains(settings.preset));
+    });
+
+    test('reset forgets every choice', () async {
+      final settings = await Settings.load();
+      settings
+        ..theme = 'dark'
+        ..fragment = true;
+      await Future<void>.delayed(Duration.zero);
+      await settings.reset();
+      expect(settings.theme, 'system');
+      expect(settings.fragment, isFalse);
     });
 
     test('a stored choice survives a restart', () async {

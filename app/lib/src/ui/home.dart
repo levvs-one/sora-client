@@ -252,7 +252,7 @@ class _ElapsedState extends State<_Elapsed> {
     final text = d.inHours > 0
         ? '${d.inHours}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}'
         : '${two(d.inMinutes)}:${two(d.inSeconds % 60)}';
-    return Text(text, style: Styles.figures(Styles.bodyStrong).copyWith(color: Palette.of(context).ink2));
+    return Text(text, style: Styles.figures(Styles.bodyStrong).copyWith(color: Palette.of(context).ink));
   }
 }
 
@@ -300,7 +300,7 @@ class _ServerCard extends StatelessWidget {
                 ),
               ),
               if (!empty && ms != null) ...[
-                Text(s.milliseconds(ms), style: Styles.figures(Styles.secondary).copyWith(color: palette.ink2)),
+                Text(s.milliseconds(ms), style: Styles.figures(Styles.secondary).copyWith(color: palette.ink)),
                 const SizedBox(width: 10),
               ],
               Icon(

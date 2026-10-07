@@ -176,7 +176,7 @@ class _LogsScreenState extends State<LogsScreen> {
           ? const SizedBox()
           : _entries.isEmpty
           ? Center(
-              child: Text(s.logsEmpty, style: Styles.secondary.copyWith(color: palette.ink3)),
+              child: Text(s.logsEmpty, style: Styles.secondary.copyWith(color: palette.ink)),
             )
           : SelectionArea(
               child: ListView.builder(
@@ -233,7 +233,7 @@ class _Entry extends StatelessWidget {
     final color = switch (entry.level) {
       LogLevel.LOG_LEVEL_ERROR => palette.danger,
       LogLevel.LOG_LEVEL_WARNING => palette.ink,
-      _ => palette.ink2,
+      _ => palette.ink,
     };
     final meta = [
       _time.format(entry.time.toDateTime().toLocal()),
@@ -245,7 +245,7 @@ class _Entry extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(meta, style: Styles.figures(Styles.caption).copyWith(color: palette.ink3)),
+          Text(meta, style: Styles.figures(Styles.caption).copyWith(color: palette.ink)),
           const SizedBox(height: 2),
           Text(entry.message, style: Styles.secondary.copyWith(color: color)),
         ],

@@ -117,7 +117,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           ? const SizedBox()
           : shown.isEmpty
           ? Center(
-              child: Text(s.logsEmpty, style: Styles.secondary.copyWith(color: palette.ink3)),
+              child: Text(s.logsEmpty, style: Styles.secondary.copyWith(color: palette.ink)),
             )
           : ListView.builder(
               padding: const EdgeInsets.only(bottom: 24),
@@ -163,7 +163,7 @@ class _Row extends StatelessWidget {
       if (c.process.isNotEmpty) c.process,
       if (c.chain.isNotEmpty) _carrier(s, SoraScope.read(context), c.chain.last),
       '↑ ${formatBytes(s, c.upload, locale)}  ↓ ${formatBytes(s, c.download, locale)}',
-    ].join(' · ');
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -181,11 +181,13 @@ class _Row extends StatelessWidget {
                     style: Styles.body.copyWith(color: palette.ink),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Styles.figures(Styles.caption).copyWith(color: palette.ink2),
+                  // Space, not punctuation, keeps the facts apart.
+                  Wrap(
+                    spacing: 14,
+                    children: [
+                      for (final fact in detail)
+                        Text(fact, style: Styles.figures(Styles.caption).copyWith(color: palette.ink)),
+                    ],
                   ),
                 ],
               ),

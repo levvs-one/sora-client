@@ -185,11 +185,105 @@ class Group extends StatelessWidget {
   }
 }
 
+/// The name of a group of settings: dark and in sentence case, set close to
+/// its group and far from the one before, so it reads as a label of what
+/// follows rather than a banner.
+class Heading extends StatelessWidget {
+  const Heading(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+    child: Text(text, style: Styles.bodyStrong.copyWith(color: Palette.of(context).ink)),
+  );
+}
+
+/// Asks before something that cannot be undone: the question, the action in
+/// red, and a way out. Answers true when the person goes ahead.
+Future<bool> confirm(BuildContext context, {required String question, required String action}) async {
+  final s = S.of(context);
+  final palette = Palette.of(context);
+  final yes = await showGeneralDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: palette.scrim,
+    transitionDuration: Motion.enabled(context) ? Motion.medium : Duration.zero,
+    transitionBuilder: (context, animation, _, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Motion.curve);
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(scale: Tween(begin: 0.94, end: 1.0).animate(curved), child: child),
+      );
+    },
+    pageBuilder: (context, _, _) => Center(
+      child: Material(
+        color: palette.raised,
+        elevation: 24,
+        shadowColor: palette.shadow,
+        borderRadius: BorderRadius.circular(26),
+        child: SizedBox(
+          width: 320,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  question,
+                  textAlign: TextAlign.center,
+                  style: Styles.bodyStrong.copyWith(color: palette.ink),
+                ),
+                const SizedBox(height: 20),
+                Pressable(
+                  onTap: () => Navigator.of(context).pop(true),
+                  radius: 26,
+                  wash: false,
+                  child: Container(
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: palette.danger, borderRadius: BorderRadius.circular(26)),
+                    child: Text(action, style: Styles.bodyStrong.copyWith(color: Colors.white)),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Pressable(
+                  onTap: () => Navigator.of(context).pop(false),
+                  radius: 22,
+                  child: SizedBox(
+                    height: 44,
+                    child: Center(
+                      child: Text(s.cancel, style: Styles.body.copyWith(color: palette.ink)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  return yes ?? false;
+}
+
 /// One row: a title, an optional detail under it, and what goes on the right.
 class Tile extends StatelessWidget {
-  const Tile({super.key, required this.title, this.detail, this.trailing, this.onTap, this.detailColor});
+  const Tile({
+    super.key,
+    required this.title,
+    this.detail,
+    this.trailing,
+    this.onTap,
+    this.detailColor,
+    this.titleColor,
+  });
 
   final String title;
+  final Color? titleColor;
   final String? detail;
   final Color? detailColor;
   final Widget? trailing;
@@ -215,14 +309,14 @@ class Tile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Styles.body.copyWith(color: palette.ink),
+                      style: Styles.body.copyWith(color: titleColor ?? palette.ink),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (detail != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: Text(detail!, style: Styles.caption.copyWith(color: detailColor ?? palette.ink2)),
+                        child: Text(detail!, style: Styles.caption.copyWith(color: detailColor ?? palette.ink)),
                       ),
                   ],
                 ),
@@ -302,7 +396,7 @@ class ChoiceTile<T> extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(choices[value] ?? '', style: Styles.secondary.copyWith(color: palette.ink2)),
+            Text(choices[value] ?? '', style: Styles.secondary.copyWith(color: palette.ink)),
             const SizedBox(width: 6),
             Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: palette.ink3),
           ],
@@ -329,7 +423,7 @@ class LinkTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (value != null) Text(value!, style: Styles.secondary.copyWith(color: palette.ink2)),
+          if (value != null) Text(value!, style: Styles.secondary.copyWith(color: palette.ink)),
           const SizedBox(width: 6),
           Icon(CupertinoIcons.chevron_right, size: 15, color: palette.ink3),
         ],
@@ -387,10 +481,7 @@ class Segments<T> extends StatelessWidget {
                       child: MouseRegion(
                         cursor: SystemMouseCursors.click,
                         child: Center(
-                          child: Text(
-                            choices[key]!,
-                            style: Styles.caption.copyWith(color: key == value ? palette.ink : palette.ink2),
-                          ),
+                          child: Text(choices[key]!, style: Styles.caption.copyWith(color: palette.ink)),
                         ),
                       ),
                     ),

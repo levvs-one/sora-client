@@ -12,7 +12,11 @@ class Settings {
   /// step to [_migrate], so a stored file from any earlier release still reads.
   static const format = 1;
 
-  static const _keys = {'format', 'server', 'preset', 'blockAds', 'killSwitch', 'engine', 'animations'};
+  static const _keys = {
+    'format', 'server', 'preset', 'blockAds', 'killSwitch', 'engine', 'animations', 'theme', 'language', //
+    'fragment', 'fragmentPackets', 'fragmentLength', 'fragmentInterval', 'ipv6', 'dns', //
+    'probeMethod', 'probeUrl', 'probeTimeout', 'splitPos', 'disorder', 'tlsRecord', 'hostCase',
+  };
 
   final SharedPreferencesWithCache _store;
 
@@ -66,4 +70,61 @@ class Settings {
 
   bool get animations => _store.getBool('animations') ?? true;
   set animations(bool value) => _store.setBool('animations', value);
+
+  /// system, light or dark.
+  String get theme => _store.getString('theme') ?? 'system';
+  set theme(String value) => _store.setString('theme', value);
+
+  /// system, or a language code the interface has strings for.
+  String get language => _store.getString('language') ?? 'system';
+  set language(String value) => _store.setString('language', value);
+
+  /// Splits the TLS ClientHello of proxy connections; empty values take the
+  /// core defaults (tlshello, segment lengths and pauses of its choice).
+  bool get fragment => _store.getBool('fragment') ?? false;
+  set fragment(bool value) => _store.setBool('fragment', value);
+  String get fragmentPackets => _store.getString('fragmentPackets') ?? '';
+  set fragmentPackets(String value) => _store.setString('fragmentPackets', value);
+  String get fragmentLength => _store.getString('fragmentLength') ?? '';
+  set fragmentLength(String value) => _store.setString('fragmentLength', value);
+  String get fragmentInterval => _store.getString('fragmentInterval') ?? '';
+  set fragmentInterval(String value) => _store.setString('fragmentInterval', value);
+
+  bool get ipv6 => _store.getBool('ipv6') ?? false;
+  set ipv6(bool value) => _store.setBool('ipv6', value);
+
+  /// Resolvers of the session; empty takes the core defaults.
+  List<String> get dns => _store.getStringList('dns') ?? const [];
+  set dns(List<String> value) => _store.setStringList('dns', value);
+
+  /// auto (through an engine where one carries the server), engine or connect.
+  String get probeMethod => _store.getString('probeMethod') ?? 'auto';
+  set probeMethod(String value) => _store.setString('probeMethod', value);
+
+  /// Empty takes the core's test address.
+  String get probeUrl => _store.getString('probeUrl') ?? '';
+  set probeUrl(String value) => _store.setString('probeUrl', value);
+
+  /// Milliseconds; zero takes the core default.
+  int get probeTimeout => _store.getInt('probeTimeout') ?? 0;
+  set probeTimeout(int value) => _store.setInt('probeTimeout', value);
+
+  /// zapret's handshake reshaping for "no server". The defaults are the
+  /// strategy the interop test runs real traffic through.
+  List<String> get splitPos => _store.getStringList('splitPos') ?? const ['1', 'midsld'];
+  set splitPos(List<String> value) => _store.setStringList('splitPos', value);
+  bool get disorder => _store.getBool('disorder') ?? true;
+  set disorder(bool value) => _store.setBool('disorder', value);
+
+  /// Where to split the TLS ClientHello into two records; empty does not split.
+  String get tlsRecord => _store.getString('tlsRecord') ?? '';
+  set tlsRecord(String value) => _store.setString('tlsRecord', value);
+  bool get hostCase => _store.getBool('hostCase') ?? true;
+  set hostCase(bool value) => _store.setBool('hostCase', value);
+
+  /// Forgets every choice; the next read gives the defaults again.
+  Future<void> reset() async {
+    await _store.clear();
+    await _migrate();
+  }
 }

@@ -11,6 +11,7 @@ import '../design/theme.dart';
 import '../generated/sora/core/v1/core_control.pb.dart';
 import '../sora.dart';
 import 'kit.dart';
+import 'subscription.dart';
 import 'subscription_sheet.dart';
 
 /// Every server of every subscription, with the two choices that need none:
@@ -53,7 +54,7 @@ class _ServersScreenState extends State<ServersScreen> {
       title: s.servers,
       actions: [
         if (sora.probing)
-          SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink2))
+          SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
         else
           RoundButton(icon: CupertinoIcons.arrow_clockwise, label: s.refresh, onTap: sora.probe),
         const SizedBox(width: 4),
@@ -133,7 +134,7 @@ class _ServerRow extends StatelessWidget {
             child: Text(
               !measured ? '' : (ms == null ? '—' : s.milliseconds(ms)),
               key: ValueKey(ms ?? (measured ? -1 : -2)),
-              style: Styles.figures(Styles.secondary).copyWith(color: palette.ink2),
+              style: Styles.figures(Styles.secondary).copyWith(color: palette.ink),
             ),
           ),
           const SizedBox(width: 12),
@@ -165,23 +166,28 @@ class _SubscriptionHeader extends StatelessWidget {
     final s = S.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
     final info = state.info;
-    final parts = <String>[];
+    final facts = <String>[];
     var alarm = false;
     if (info.hasUsage) {
       final used = formatBytes(s, info.uploadBytes + info.downloadBytes, locale);
-      parts.add(info.totalBytes == Int64.ZERO ? used : s.usage(used, formatBytes(s, info.totalBytes, locale)));
+      facts.add(info.totalBytes == Int64.ZERO ? used : s.usage(used, formatBytes(s, info.totalBytes, locale)));
     }
     if (info.hasExpire()) {
       final expire = info.expire.toDateTime().toLocal();
       if (expire.isBefore(DateTime.now())) {
-        parts.add(s.expired);
+        facts.add(s.expired);
         alarm = true;
       } else {
-        parts.add(s.until(DateFormat.MMMMd(locale).format(expire)));
+        facts.add(s.until(DateFormat.MMMMd(locale).format(expire)));
       }
     }
     final error = state.hasLastError() && state.lastError.userMessageKey.isNotEmpty;
-    final detail = error ? describe(s, CoreFailure(state.lastError.userMessageKey)) : parts.join(' · ');
+    if (error) {
+      facts
+        ..clear()
+        ..add(describe(s, CoreFailure(state.lastError.userMessageKey)));
+    }
+    final factStyle = Styles.caption.copyWith(color: error || alarm ? palette.danger : palette.ink);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 6, 4, 10),
@@ -197,19 +203,17 @@ class _SubscriptionHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Styles.bodyStrong.copyWith(color: palette.ink),
                 ),
-                if (detail.isNotEmpty)
+                if (facts.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      detail,
-                      style: Styles.caption.copyWith(color: error || alarm ? palette.danger : palette.ink2),
-                    ),
+                    // Space, not punctuation, keeps the facts apart.
+                    child: Wrap(spacing: 14, children: [for (final f in facts) Text(f, style: factStyle)]),
                   ),
               ],
             ),
           ),
           if (state.updating)
-            SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink2))
+            SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
           else
             MenuAnchor(
               alignmentOffset: const Offset(-150, 4),
@@ -217,19 +221,10 @@ class _SubscriptionHeader extends StatelessWidget {
                 _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
                 _item(
                   context,
-                  s.rename,
-                  () => unawaited(
-                    showFieldSheet(
-                      context,
-                      title: s.rename,
-                      hint: s.name,
-                      action: s.save,
-                      initial: state.settings.name.isEmpty ? state.displayName : state.settings.name,
-                      submit: (name) => sora.renameSubscription(state, name),
-                    ),
-                  ),
+                  s.subscriptionSettings,
+                  () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
                 ),
-                _item(context, s.delete, () => unawaited(_confirmDelete(context)), danger: true),
+                _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
               ],
               builder: (context, controller, _) => RoundButton(
                 icon: CupertinoIcons.ellipsis,
@@ -255,74 +250,14 @@ class _SubscriptionHeader extends StatelessWidget {
       child: Text(label, style: Styles.secondary.copyWith(color: danger ? palette.danger : palette.ink)),
     );
   }
+}
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final sora = SoraScope.read(context);
-    final s = S.of(context);
-    final palette = Palette.of(context);
-    final yes = await showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: palette.scrim,
-      transitionDuration: Motion.enabled(context) ? Motion.medium : Duration.zero,
-      transitionBuilder: (context, animation, _, child) {
-        final curved = CurvedAnimation(parent: animation, curve: Motion.curve);
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(scale: Tween(begin: 0.94, end: 1.0).animate(curved), child: child),
-        );
-      },
-      pageBuilder: (context, _, _) => Center(
-        child: Material(
-          color: palette.raised,
-          elevation: 24,
-          shadowColor: palette.shadow,
-          borderRadius: BorderRadius.circular(26),
-          child: SizedBox(
-            width: 320,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 24, 22, 14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    s.deleteSubscription(state.displayName),
-                    textAlign: TextAlign.center,
-                    style: Styles.bodyStrong.copyWith(color: palette.ink),
-                  ),
-                  const SizedBox(height: 20),
-                  Pressable(
-                    onTap: () => Navigator.of(context).pop(true),
-                    radius: 26,
-                    wash: false,
-                    child: Container(
-                      height: 52,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(color: palette.danger, borderRadius: BorderRadius.circular(26)),
-                      child: Text(s.delete, style: Styles.bodyStrong.copyWith(color: Colors.white)),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Pressable(
-                    onTap: () => Navigator.of(context).pop(false),
-                    radius: 22,
-                    child: SizedBox(
-                      height: 44,
-                      child: Center(
-                        child: Text(s.cancel, style: Styles.body.copyWith(color: palette.ink2)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    if (yes ?? false) await sora.deleteSubscription(state.settings.id);
+/// Asks, then deletes a subscription and its servers.
+Future<void> deleteSubscription(BuildContext context, SubscriptionState state) async {
+  final sora = SoraScope.read(context);
+  final s = S.of(context);
+  if (await confirm(context, question: s.deleteSubscription(state.displayName), action: s.delete)) {
+    await sora.deleteSubscription(state.settings.id);
   }
 }
 

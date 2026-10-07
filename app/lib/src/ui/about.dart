@@ -58,7 +58,7 @@ class _AboutScreenState extends State<AboutScreen> {
               const SizedBox(height: 18),
               Text('Sora', style: Styles.title.copyWith(color: palette.ink)),
               const SizedBox(height: 4),
-              Text(s.appVersion(appVersion), style: Styles.secondary.copyWith(color: palette.ink2)),
+              Text(s.appVersion(appVersion), style: Styles.secondary.copyWith(color: palette.ink)),
             ],
           ),
         ),
@@ -89,5 +89,5 @@ class _AboutScreenState extends State<AboutScreen> {
   }
 
   Widget _value(BuildContext context, String text) =>
-      Text(text, style: Styles.secondary.copyWith(color: Palette.of(context).ink2));
+      Text(text, style: Styles.secondary.copyWith(color: Palette.of(context).ink));
 }

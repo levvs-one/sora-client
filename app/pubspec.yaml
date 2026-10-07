@@ -13,22 +13,28 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  app_links: ^7.2.2
   cupertino_icons: ^2.0.0
+  dbus: ^0.7.15
   ffi: ^2.2.0
   file_selector: ^1.1.0
   fixnum: ^1.1.1
   flutter:
     sdk: flutter
+  flutter_local_notifications: ^22.3.1
   flutter_localizations:
     sdk: flutter
   grpc: ^5.1.0
   http2: ^2.3.1
   intl: any
+  nativeapi: ^0.3.0
   protobuf: ^6.1.0
   retry: ^3.1.2
   shared_preferences: ^2.5.6
+  tray_manager: ^0.7.0
   url_launcher: ^6.3.3
   win32: ^6.4.0
+  window_manager: ^0.5.2
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -51,6 +57,8 @@ dev_dependencies:
 flutter:
   uses-material-design: false
   generate: true
+  assets:
+    - assets/tray/
   fonts:
     - family: Inter
       fonts:

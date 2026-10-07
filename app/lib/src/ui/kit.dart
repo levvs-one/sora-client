@@ -206,7 +206,15 @@ class Heading extends StatelessWidget {
 
 /// Asks before something that cannot be undone: the question, the action in
 /// red, and a way out. Answers true when the person goes ahead.
-Future<bool> confirm(BuildContext context, {required String question, required String action}) async {
+/// [destructive] paints the action as one that cannot be undone; without
+/// [cancellable] the dialog only tells something and has its one button.
+Future<bool> confirm(
+  BuildContext context, {
+  required String question,
+  required String action,
+  bool destructive = true,
+  bool cancellable = true,
+}) async {
   final s = S.of(context);
   final palette = Palette.of(context);
   final yes = await showGeneralDialog<bool>(
@@ -249,21 +257,30 @@ Future<bool> confirm(BuildContext context, {required String question, required S
                   child: Container(
                     height: 52,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: palette.danger, borderRadius: BorderRadius.circular(26)),
-                    child: Text(action, style: Styles.bodyStrong.copyWith(color: Colors.white)),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Pressable(
-                  onTap: () => Navigator.of(context).pop(false),
-                  radius: 22,
-                  child: SizedBox(
-                    height: 44,
-                    child: Center(
-                      child: Text(s.cancel, style: Styles.body.copyWith(color: palette.ink)),
+                    decoration: BoxDecoration(
+                      color: destructive ? palette.danger : palette.ink,
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                    child: Text(
+                      action,
+                      style: Styles.bodyStrong.copyWith(color: destructive ? Colors.white : palette.raised),
                     ),
                   ),
                 ),
+                if (cancellable) ...[
+                  const SizedBox(height: 4),
+                  Pressable(
+                    onTap: () => Navigator.of(context).pop(false),
+                    radius: 22,
+                    child: SizedBox(
+                      height: 44,
+                      child: Center(
+                        child: Text(s.cancel, style: Styles.body.copyWith(color: palette.ink)),
+                      ),
+                    ),
+                  ),
+                ] else
+                  const SizedBox(height: 8),
               ],
             ),
           ),

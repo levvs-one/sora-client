@@ -59,3 +59,27 @@ func TestFetchSubscriptionCarriesTheUserAgentAndThePanelInfo(t *testing.T) {
 		t.Fatalf("response = %v", got)
 	}
 }
+
+func TestGetAboutFillsTheContractAndNeedsNoToken(t *testing.T) {
+	auth, err := control.NewAuthenticator(testToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := control.New(control.Config{
+		Version: control.Version{Major: 1, Minor: 3, MinSupportedMinor: 1}, Authenticator: auth,
+		Sessions: session.NewManager(session.ManagerConfig{
+			Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
+		}),
+		About: func() *corev1.About {
+			return &corev1.About{CoreVersion: "0.3.0", Engines: []*corev1.EngineBuild{{Kind: "xray", Installed: true, Version: "26.3.27"}}}
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := server.GetAbout(context.Background(), &corev1.GetAboutRequest{ApiVersion: clientVersion()})
+	if err != nil || got.GetAbout().GetCoreVersion() != "0.3.0" || got.GetAbout().GetContract().GetMinor() != 3 ||
+		got.GetAbout().GetEngines()[0].GetVersion() != "26.3.27" {
+		t.Fatalf("GetAbout = %v, %v", got, err)
+	}
+}

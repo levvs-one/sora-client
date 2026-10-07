@@ -29,18 +29,68 @@ OutputBaseFilename=Sora-Setup-{#AppVersion}-x64
 SetupIconFile=..\..\app\windows\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\sora.exe
 UninstallDisplayName=Sora
-LicenseFile=..\..\LICENSE
 Compression=lzma2/ultra64
 SolidCompression=yes
-WizardStyle=modern
 CloseApplications=yes
+; One page and a button: the choices, Install, the progress, Open Sora. The
+; place is Program Files, and an upgrade keeps where an earlier Sora went. The
+; GPL asks for no acceptance, so there is no licence page; the text is
+; installed next to the program.
+DisableWelcomePage=yes
+DisableDirPage=yes
+DisableReadyPage=yes
+; The language of Windows, without asking, where Sora speaks it.
+ShowLanguageDialog=auto
+; Windows 11 controls, light or dark as Windows is, on Sora's own ground: the
+; Apple Intelligence glow along the top edge and nothing at the side.
+WizardStyle=modern dynamic windows11 includetitlebar
+WizardBackImageFile=art\back-light.png,art\back-light@2x.png
+WizardBackImageFileDynamicDark=art\back-dark.png,art\back-dark@2x.png
+WizardImageFile=
+WizardSmallImageFile=
 
 [Languages]
 Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "en"; MessagesFile: "compiler:Default.isl"
 
+[Messages]
+ru.WizardSelectTasks=Sora
+en.WizardSelectTasks=Sora
+ru.SelectTasksDesc=Всё готово к установке
+en.SelectTasksDesc=Ready to install
+ru.SelectTasksLabel2=Sora встанет службой и будет жить в трее рядом с часами.
+en.SelectTasksLabel2=Sora installs as a service and lives in the tray by the clock.
+ru.FinishedHeadingLabel=Sora установлена
+en.FinishedHeadingLabel=Sora is installed
+ru.FinishedLabelNoIcons=Значок Sora — в трее рядом с часами.
+en.FinishedLabelNoIcons=Sora's icon is in the tray by the clock.
+ru.FinishedLabel=Значок Sora — в трее рядом с часами.
+en.FinishedLabel=Sora's icon is in the tray by the clock.
+
+[CustomMessages]
+ru.HappLinks=Открывать в Sora ссылки happ:// от провайдеров
+en.HappLinks=Open happ:// links from providers in Sora
+ru.Links=Ссылки:
+en.Links=Links:
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+; Only where nothing opens happ:// yet: Sora does not take the links of an
+; installed Happ, and removing Sora then leaves Happ's registration alone.
+Name: "happlinks"; Description: "{cm:HappLinks}"; GroupDescription: "{cm:Links}"; Check: HappLinksFree
+
+[Registry]
+; sora:// opens the import of a subscription in the running Sora.
+Root: HKA; Subkey: "Software\Classes\sora"; ValueType: string; ValueData: "URL:Sora"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\sora"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\sora\DefaultIcon"; ValueType: string; ValueData: """{app}\sora.exe"",0"
+Root: HKA; Subkey: "Software\Classes\sora\shell\open\command"; ValueType: string; ValueData: """{app}\sora.exe"" ""%1"""
+Root: HKA; Subkey: "Software\Classes\happ"; ValueType: string; ValueData: "URL:Happ link"; Flags: uninsdeletekey; Tasks: happlinks
+Root: HKA; Subkey: "Software\Classes\happ"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Tasks: happlinks
+Root: HKA; Subkey: "Software\Classes\happ\shell\open\command"; ValueType: string; ValueData: """{app}\sora.exe"" ""%1"""; Tasks: happlinks
+; The app adds itself to the start with the system; removing Sora removes that
+; entry rather than leave one pointing at nothing.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "io.github.levvs_one.sora"; Flags: uninsdeletevalue dontcreatekey
 
 [Files]
 Source: "..\..\app\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
@@ -64,6 +114,17 @@ Filename: "{app}\sora.exe"; Description: "{cm:LaunchProgram,Sora}"; Flags: nowai
 Filename: "{app}\core\sora-core.exe"; Parameters: "-uninstall-service"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveSoraCore"
 
 [Code]
+// happ:// is free when nothing opens it, or when it is Sora's own from an
+// earlier install.
+function HappLinksFree: Boolean;
+var
+  Command: String;
+begin
+  Result := not RegKeyExists(HKEY_CLASSES_ROOT, 'happ');
+  if not Result and RegQueryStringValue(HKEY_CLASSES_ROOT, 'happ\shell\open\command', '', Command) then
+    Result := Pos(Lowercase(ExpandConstant('{app}\sora.exe')), Lowercase(Command)) > 0;
+end;
+
 // An upgrade replaces the core while the service holds it open, so the
 // service stops first; with no service installed this does nothing.
 function PrepareToInstall(var NeedsRestart: Boolean): String;

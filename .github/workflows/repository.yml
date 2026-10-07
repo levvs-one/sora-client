@@ -167,8 +167,28 @@ jobs:
       - name: Build the installer
         shell: pwsh
         run: |
-          choco install innosetup --no-progress -y
+          choco install innosetup --version 6.7.1 --no-progress -y
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ env.SORA_VERSION }} packaging\windows\sora.iss
+      - name: Screenshots of the installer
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          $setup = Get-ChildItem dist\Sora-Setup-*.exe | Select-Object -First 1
+          $theme = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+          New-Item -Force $theme | Out-Null
+          foreach ($look in @(@{ name = 'light'; value = 1 }, @{ name = 'dark'; value = 0 })) {
+            Set-ItemProperty $theme AppsUseLightTheme $look.value -Type DWord
+            $wizard = Start-Process $setup.FullName -ArgumentList '/LANG=ru' -PassThru
+            Start-Sleep -Seconds 8
+            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $shot = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+            [System.Drawing.Graphics]::FromImage($shot).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+            $shot.Save("screenshots\installer-$($look.name).png")
+            Stop-Process -Id $wizard.Id -Force
+            Start-Sleep -Seconds 2
+          }
+          Set-ItemProperty $theme AppsUseLightTheme 1 -Type DWord
       - name: Install silently and check the service
         shell: pwsh
         run: |
@@ -195,6 +215,48 @@ jobs:
           SORA_CORE_LIVE: "1"
           SORA_CORE_ENGINES: sing-box,xray,mihomo
         run: flutter test test/live_core_test.dart
+      - name: Real traffic through the tunnel and the system proxy
+        # A VLESS server on this machine, Xray from the installed engines; its
+        # access log shows the traffic reached it through Sora.
+        working-directory: app
+        shell: pwsh
+        run: |
+          $id = '7c0a5d3e-1f2b-4c3d-8e9f-0a1b2c3d4e5f'
+          $log = "$env:RUNNER_TEMP\vless-access.log"
+          $config = @{
+            log = @{ access = $log; loglevel = 'warning' }
+            inbounds = @(@{ listen = '127.0.0.1'; port = 20001; protocol = 'vless'; settings = @{ clients = @(@{ id = $id }); decryption = 'none' } })
+            outbounds = @(@{ protocol = 'freedom' })
+          }
+          $config | ConvertTo-Json -Depth 8 | Set-Content "$env:RUNNER_TEMP\vless.json"
+          $server = Start-Process "${env:ProgramFiles}\Sora\core\engines\xray.exe" -ArgumentList 'run', '-c', "$env:RUNNER_TEMP\vless.json" -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 2
+          $env:SORA_TUNNEL_LIVE = "vless://$id@127.0.0.1:20001?type=tcp&security=none&encryption=none#local"
+          $env:SORA_TUNNEL_LOG = $log
+          try {
+            flutter test test/live_tunnel_test.dart
+            if ($LASTEXITCODE -ne 0) { throw "the live tunnel test failed" }
+          } finally {
+            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+            Get-Content $log -Tail 20 -ErrorAction SilentlyContinue
+          }
+      - name: Screenshot of the app
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $app = Start-Process "${env:ProgramFiles}\Sora\sora.exe" -PassThru
+          Start-Sleep -Seconds 10
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $shot = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($shot).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $shot.Save("screenshots\app.png")
+          Stop-Process -Id $app.Id -Force
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: windows-screenshots
+          path: screenshots
+          if-no-files-found: ignore
       - name: Uninstall
         shell: pwsh
         run: |

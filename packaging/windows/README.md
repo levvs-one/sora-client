@@ -1,7 +1,7 @@
 # packaging/windows
 
 Установщик Sora для Windows 10 (1809) и 11, x64: приложение, ядро с движками и
-служба `SoraCore`. Собирается [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+служба `SoraCore`. Собирается [Inno Setup 6.7](https://jrsoftware.org/isinfo.php) или новее
 из `sora.iss`.
 
 - Ядро регистрирует себя службой само (`sora-core.exe -install-service`):

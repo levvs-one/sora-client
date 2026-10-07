@@ -9,11 +9,13 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/parser"
+	"github.com/levvs-one/sora-client/core/routing"
 )
 
 // Limits of one request, taken from the comments of the contract. They are
@@ -155,7 +157,7 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		// Engines always run at debug level and the log center drops what is
 		// below its capture level, so changing the level takes effect at once on
 		// every engine, without a restart that would cut the user's connections.
-		Options: engine.Options{Mode: "rule", LogLevel: "debug", Fragment: engine.Fragment{
+		Options: engine.Options{Mode: "rule", LogLevel: "debug", TestURL: engine.TestURLProduction, Fragment: engine.Fragment{
 			Enabled:  defences.GetTlsFragment(),
 			Packets:  defences.GetFragmentPackets(),
 			Length:   defences.GetFragmentLength(),
@@ -199,6 +201,14 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanTunnel,
 			"control: the plan does not say which tunnel it wants")
 	}
+	groups, err := groupsFromProto(in.GetGroups(), seen)
+	if err != nil {
+		return nil, err
+	}
+	plan.Groups = groups
+	for _, g := range groups {
+		seen[g.Name] = struct{}{}
+	}
 	// The rules of the contract carry only a destination and a target, which is
 	// what a client can express without knowing the grammar of an engine. The
 	// type is derived from the shape of the destination so that one rule means
@@ -214,6 +224,19 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		}
 		plan.Rules = append(plan.Rules, rule)
 	}
+	routingOpts := in.GetRouting()
+	if target := routingOpts.GetProxyTarget(); target != "" {
+		if _, ok := seen[target]; !ok {
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanUnknownTarget,
+				"control: the routing target %q is not an outbound or a group of this plan", target)
+		}
+	}
+	plan.Rules, err = routing.Apply(plan.Rules, routing.Options{
+		Preset: routingOpts.GetPreset(), ProxyTarget: routingOpts.GetProxyTarget(), BlockAds: routingOpts.GetBlockAds(),
+	})
+	if err != nil {
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
+	}
 	plan.DNS = dnsFromProto(in.GetDnsPolicy())
 	if err := checkDNS(plan.DNS); err != nil {
 		return nil, err
@@ -227,6 +250,59 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid)
 	}
 	return plan, nil
+}
+
+// groupTypes maps the contract's group types onto the plan's.
+var groupTypes = map[corev1.GroupType]engine.GroupType{
+	corev1.GroupType_GROUP_TYPE_SELECT:       engine.GroupSelect,
+	corev1.GroupType_GROUP_TYPE_URL_TEST:     engine.GroupURLTest,
+	corev1.GroupType_GROUP_TYPE_FALLBACK:     engine.GroupFallback,
+	corev1.GroupType_GROUP_TYPE_LOAD_BALANCE: engine.GroupLoadBalance,
+}
+
+// groupsFromProto converts the groups of a plan. Members are checked once all
+// group names are known, because a group may contain a group listed after it;
+// cycles are refused by the plan check.
+func groupsFromProto(in []*corev1.GroupSpec, outbounds map[string]struct{}) ([]engine.Group, error) {
+	if len(in) > engine.MaxGroups {
+		return nil, errs.Newf(errs.CodeResourceExhausted, errs.KeyPlanTooLarge,
+			"control: the plan carries %d groups, the limit is %d", len(in), engine.MaxGroups)
+	}
+	names := make(map[string]struct{}, len(in))
+	out := make([]engine.Group, 0, len(in))
+	for _, spec := range in {
+		name := strings.TrimSpace(spec.GetName())
+		kind, ok := groupTypes[spec.GetType()]
+		switch {
+		case name == "":
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid, "control: a group has no name")
+		case !ok:
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid, "control: group %q has no type", name)
+		}
+		if _, clash := outbounds[name]; clash {
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid, "control: group %q has the id of an outbound", name)
+		}
+		if _, dup := names[name]; dup {
+			return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid, "control: two groups are named %q", name)
+		}
+		names[name] = struct{}{}
+		group := engine.Group{Name: name, Type: kind, Outbounds: spec.GetMembers(), URL: spec.GetTestUrl(), Tolerance: int(min(spec.GetToleranceMs(), 60000))}
+		if d := spec.GetTestInterval(); d != nil {
+			group.Interval = int(min(max(d.AsDuration(), time.Minute), 24*time.Hour) / time.Second)
+		}
+		out = append(out, group)
+	}
+	for _, g := range out {
+		for _, member := range g.Outbounds {
+			_, isOutbound := outbounds[member]
+			_, isGroup := names[member]
+			if !isOutbound && !isGroup && !isBuiltInTarget(member) {
+				return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanGroupsInvalid,
+					"control: group %q names %q, which is not in this plan", g.Name, member)
+			}
+		}
+	}
+	return out, nil
 }
 
 // isBuiltInTarget reports whether a rule may point at a destination that the

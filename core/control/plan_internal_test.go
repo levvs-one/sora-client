@@ -1,9 +1,15 @@
 package control
 
 import (
+	"context"
+	"os"
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/engine/registry"
+	"github.com/levvs-one/sora-client/core/engine/supervise"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/parser"
 )
@@ -155,6 +161,87 @@ func TestPlanKeepsEngineControlAndTheLocalProxyPrivate(t *testing.T) {
 	}
 	if _, err := planFromProto(base(corev1.TunnelMode_TUNNEL_MODE_SYSTEM, &corev1.LocalProxy{Enabled: true, Username: "me"}), "s", nil); err == nil {
 		t.Error("half a login must be refused")
+	}
+}
+
+func TestPlanCarriesGroupsAndAppliesThePreset(t *testing.T) {
+	in := &corev1.SessionPlan{
+		TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+		Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}, {Id: "b", Protocol: "direct"}},
+		Groups: []*corev1.GroupSpec{
+			{Name: "Proxy", Type: corev1.GroupType_GROUP_TYPE_SELECT, Members: []string{"Auto", "a", "b"}},
+			{Name: "Auto", Type: corev1.GroupType_GROUP_TYPE_URL_TEST, Members: []string{"a", "b"}},
+		},
+		Routes:  []*corev1.RoutingRule{{Destination: "domain:example.org", OutboundId: "b"}},
+		Routing: &corev1.RoutingOptions{Preset: "ru", ProxyTarget: "Proxy", BlockAds: true},
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Groups) != 2 || p.Groups[0].Outbounds[0] != "Auto" {
+		t.Fatalf("groups = %+v: a group may hold a group listed after it", p.Groups)
+	}
+	if p.Rules[0].Value != "example.org" || p.Rules[1].Target != "reject" {
+		t.Fatalf("the user's route first, then the ad block: %+v", p.Rules[:2])
+	}
+	if last := p.Rules[len(p.Rules)-1]; last.Type != engine.RuleMatchAll || last.Target != "Proxy" {
+		t.Fatalf("the rest goes to the group: %+v", last)
+	}
+
+	for name, mutate := range map[string]func(*corev1.SessionPlan){
+		"cycle":            func(sp *corev1.SessionPlan) { sp.Groups[1].Members = []string{"Proxy"} },
+		"unknown member":   func(sp *corev1.SessionPlan) { sp.Groups[1].Members = []string{"ghost"} },
+		"group named a":    func(sp *corev1.SessionPlan) { sp.Groups[1].Name = "a" },
+		"unknown target":   func(sp *corev1.SessionPlan) { sp.Routing.ProxyTarget = "ghost" },
+		"unknown preset":   func(sp *corev1.SessionPlan) { sp.Routing.Preset = "mars" },
+		"type not set":     func(sp *corev1.SessionPlan) { sp.Groups[0].Type = corev1.GroupType_GROUP_TYPE_UNSPECIFIED },
+		"duplicate groups": func(sp *corev1.SessionPlan) { sp.Groups[1].Name = "Proxy" },
+	} {
+		broken := proto.Clone(in).(*corev1.SessionPlan)
+		mutate(broken)
+		if _, err := planFromProto(broken, "s", nil); err == nil {
+			t.Errorf("%s must be refused", name)
+		}
+	}
+}
+
+// TestEveryEngineAcceptsAPlanWithGroupsAndAPreset follows a contract plan with
+// a select group, an automatic group and a preset to each engine's validator.
+func TestEveryEngineAcceptsAPlanWithGroupsAndAPreset(t *testing.T) {
+	dir := os.Getenv("SORA_ENGINES_DIR")
+	if dir == "" {
+		t.Skip("set SORA_ENGINES_DIR to a directory with sing-box, xray, mihomo and the geo databases")
+	}
+	ctx := context.Background()
+	reg := registry.Discover(ctx, dir, supervise.Config{HomeDir: t.TempDir()})
+	for _, kind := range []string{"sing-box", "xray", "mihomo"} {
+		t.Run(kind, func(t *testing.T) {
+			in := &corev1.SessionPlan{
+				TunnelMode: corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
+				Engines:    []string{kind},
+				// sing-box and Xray are controlled over loopback ports only.
+				NetworkControlAllowed: kind != "mihomo",
+				Outbounds:             []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}, {Id: "b", Protocol: "direct"}},
+				Groups: []*corev1.GroupSpec{
+					{Name: "Proxy", Type: corev1.GroupType_GROUP_TYPE_SELECT, Members: []string{"Auto", "a", "b"}},
+					{Name: "Auto", Type: corev1.GroupType_GROUP_TYPE_URL_TEST, Members: []string{"a", "b"}},
+				},
+				Routing: &corev1.RoutingOptions{Preset: "ru", ProxyTarget: "Proxy", BlockAds: true},
+			}
+			p, err := planFromProto(in, "s", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			eng, err := reg.Factory()(ctx, p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = eng.Close() }()
+			if err := eng.Validate(ctx, p); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

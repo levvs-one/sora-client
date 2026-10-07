@@ -32,6 +32,7 @@ const (
 	CoreControl_SetKillSwitch_FullMethodName       = "/sora.core.v1.CoreControl/SetKillSwitch"
 	CoreControl_Handshake_FullMethodName           = "/sora.core.v1.CoreControl/Handshake"
 	CoreControl_GetAbout_FullMethodName            = "/sora.core.v1.CoreControl/GetAbout"
+	CoreControl_GetRoutingPresets_FullMethodName   = "/sora.core.v1.CoreControl/GetRoutingPresets"
 	CoreControl_QueryLogs_FullMethodName           = "/sora.core.v1.CoreControl/QueryLogs"
 	CoreControl_WatchLogs_FullMethodName           = "/sora.core.v1.CoreControl/WatchLogs"
 	CoreControl_ExportLogs_FullMethodName          = "/sora.core.v1.CoreControl/ExportLogs"
@@ -70,6 +71,8 @@ type CoreControlClient interface {
 	// Since 1.3. What the "About" screen shows about the core. Nothing in it is
 	// personal, so it needs no authenticator.
 	GetAbout(ctx context.Context, in *GetAboutRequest, opts ...grpc.CallOption) (*GetAboutResponse, error)
+	// Since 1.3. The routing presets and what each of them sends direct.
+	GetRoutingPresets(ctx context.Context, in *GetRoutingPresetsRequest, opts ...grpc.CallOption) (*GetRoutingPresetsResponse, error)
 	// Since 1.3. The log center: one bounded in-memory record of the core and
 	// every engine. Every call needs the control authenticator, because the
 	// record and the connection list describe where a person goes.
@@ -249,6 +252,16 @@ func (c *coreControlClient) GetAbout(ctx context.Context, in *GetAboutRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAboutResponse)
 	err := c.cc.Invoke(ctx, CoreControl_GetAbout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreControlClient) GetRoutingPresets(ctx context.Context, in *GetRoutingPresetsRequest, opts ...grpc.CallOption) (*GetRoutingPresetsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRoutingPresetsResponse)
+	err := c.cc.Invoke(ctx, CoreControl_GetRoutingPresets_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +457,8 @@ type CoreControlServer interface {
 	// Since 1.3. What the "About" screen shows about the core. Nothing in it is
 	// personal, so it needs no authenticator.
 	GetAbout(context.Context, *GetAboutRequest) (*GetAboutResponse, error)
+	// Since 1.3. The routing presets and what each of them sends direct.
+	GetRoutingPresets(context.Context, *GetRoutingPresetsRequest) (*GetRoutingPresetsResponse, error)
 	// Since 1.3. The log center: one bounded in-memory record of the core and
 	// every engine. Every call needs the control authenticator, because the
 	// record and the connection list describe where a person goes.
@@ -519,6 +534,9 @@ func (UnimplementedCoreControlServer) Handshake(context.Context, *HandshakeReque
 }
 func (UnimplementedCoreControlServer) GetAbout(context.Context, *GetAboutRequest) (*GetAboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAbout not implemented")
+}
+func (UnimplementedCoreControlServer) GetRoutingPresets(context.Context, *GetRoutingPresetsRequest) (*GetRoutingPresetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRoutingPresets not implemented")
 }
 func (UnimplementedCoreControlServer) QueryLogs(context.Context, *QueryLogsRequest) (*QueryLogsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryLogs not implemented")
@@ -802,6 +820,24 @@ func _CoreControl_GetAbout_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CoreControlServer).GetAbout(ctx, req.(*GetAboutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreControl_GetRoutingPresets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRoutingPresetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).GetRoutingPresets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_GetRoutingPresets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).GetRoutingPresets(ctx, req.(*GetRoutingPresetsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1112,6 +1148,10 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAbout",
 			Handler:    _CoreControl_GetAbout_Handler,
+		},
+		{
+			MethodName: "GetRoutingPresets",
+			Handler:    _CoreControl_GetRoutingPresets_Handler,
 		},
 		{
 			MethodName: "QueryLogs",

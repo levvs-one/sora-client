@@ -13,6 +13,27 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 
+class GroupType extends $pb.ProtobufEnum {
+  static const GroupType GROUP_TYPE_UNSPECIFIED = GroupType._(0, _omitEnumNames ? '' : 'GROUP_TYPE_UNSPECIFIED');
+  static const GroupType GROUP_TYPE_SELECT = GroupType._(1, _omitEnumNames ? '' : 'GROUP_TYPE_SELECT');
+  static const GroupType GROUP_TYPE_URL_TEST = GroupType._(2, _omitEnumNames ? '' : 'GROUP_TYPE_URL_TEST');
+  static const GroupType GROUP_TYPE_FALLBACK = GroupType._(3, _omitEnumNames ? '' : 'GROUP_TYPE_FALLBACK');
+  static const GroupType GROUP_TYPE_LOAD_BALANCE = GroupType._(4, _omitEnumNames ? '' : 'GROUP_TYPE_LOAD_BALANCE');
+
+  static const $core.List<GroupType> values = <GroupType> [
+    GROUP_TYPE_UNSPECIFIED,
+    GROUP_TYPE_SELECT,
+    GROUP_TYPE_URL_TEST,
+    GROUP_TYPE_FALLBACK,
+    GROUP_TYPE_LOAD_BALANCE,
+  ];
+
+  static final $core.Map<$core.int, GroupType> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static GroupType? valueOf($core.int value) => _byValue[value];
+
+  const GroupType._($core.int v, $core.String n) : super(v, n);
+}
+
 class TunnelMode extends $pb.ProtobufEnum {
   static const TunnelMode TUNNEL_MODE_UNSPECIFIED = TunnelMode._(0, _omitEnumNames ? '' : 'TUNNEL_MODE_UNSPECIFIED');
   static const TunnelMode TUNNEL_MODE_SYSTEM = TunnelMode._(1, _omitEnumNames ? '' : 'TUNNEL_MODE_SYSTEM');

@@ -249,7 +249,10 @@ class Sora extends ChangeNotifier {
     } else if (phase == Phase.connected && _lostAnnounced) {
       _lostAnnounced = false;
       _emit(const ConnectionRestored());
-    } else if (phase == Phase.off && state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED && !_stopping) {
+    } else if (before != Phase.off &&
+        phase == Phase.off &&
+        state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
+        !_stopping) {
       _lostAnnounced = false;
       _emit(ConnectionFailed(failure ?? CoreFailure(_keyOfCode(state.reason))));
     }
@@ -279,7 +282,8 @@ class Sora extends ChangeNotifier {
   }
 
   /// Follows the running session, replacing the watch of an earlier one.
-  void _watchSession() {
+  /// Events from before [since] are history: state to show, not news.
+  void _watchSession({DateTime? since}) {
     unawaited(_sessionWatch?.cancel());
     _sessionWatch = null;
     final link = _link, id = sessionId;
@@ -289,9 +293,9 @@ class Sora extends ChangeNotifier {
       if (_link == link) unawaited(_readStatus().then((_) => notifyListeners(), onError: _drop));
     }
 
-    // A watch starts with the history of the session; what happened before it
-    // opened is state to show, not news to announce or to act on again.
-    final opened = DateTime.now().subtract(const Duration(seconds: 1));
+    // A watch starts with the history of the session; what happened before
+    // [since] is state to show, not news to announce or to act on again.
+    final opened = (since ?? DateTime.now()).subtract(const Duration(seconds: 1));
     final stream = link.stub.watchEvents(WatchEventsRequest(apiVersion: apiVersion, sessionId: id));
     _sessionWatch = stream.listen(
       (event) {
@@ -339,6 +343,9 @@ class Sora extends ChangeNotifier {
     if (!retry) _memberSpare = entry == null ? 0 : entry.members.length - 1;
     phase = Phase.connecting;
     notifyListeners();
+    // Whatever the session does from here is news, however long the calls
+    // below take before the watch opens.
+    final started = DateTime.now();
     try {
       final answer = await link.stub.connect(
         ConnectRequest(apiVersion: apiVersion, sessionPlan: plan, controlAuthenticator: link.token),
@@ -351,7 +358,7 @@ class Sora extends ChangeNotifier {
         );
         if (kill.hasError()) failure = CoreFailure(kill.error.userMessageKey);
       }
-      _watchSession();
+      _watchSession(since: started);
       // The person picked another server while this one was coming up.
       if (selected != choice && phase == Phase.connected) unawaited(connect());
     } catch (error) {

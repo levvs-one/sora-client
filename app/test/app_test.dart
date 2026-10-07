@@ -241,6 +241,10 @@ void main() {
       expect(splitRole('Нидерланды · запасной'), ('Нидерланды', Role.backup));
       expect(splitRole('🇳🇱 Netherlands [backup]'), ('🇳🇱 Netherlands', Role.backup));
       expect(splitRole('Germany - primary'), ('Germany', Role.main));
+      expect(splitRole('Белые списки · main'), ('Белые списки', Role.main));
+      expect(splitRole('Белые списки: РЕЗЕРВНЫЙ'), ('Белые списки', Role.backup));
+      expect(splitRole('Netherlands (Fallback)'), ('Netherlands', Role.backup));
+      expect(splitRole('Германия — главный'), ('Германия', Role.main));
       expect(splitRole('Белые списки +'), ('Белые списки +', null));
       expect(splitRole('Main'), ('Main', null), reason: 'a name that is only a role keeps it');
     });

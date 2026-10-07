@@ -7,12 +7,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/engine/bypass"
 	"github.com/levvs-one/sora-client/core/engine/mihomo"
 	"github.com/levvs-one/sora-client/core/engine/singbox"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
@@ -49,6 +51,8 @@ type Registry struct {
 	preference []engine.Kind
 	// base is the configuration every engine instance starts from.
 	base supervise.Config
+	// tpws is zapret's proxy for bypass outbounds; empty when not installed.
+	tpws string
 
 	mu   sync.Mutex
 	last engine.Selection
@@ -60,6 +64,12 @@ type Registry struct {
 // instance starts from; each engine gets its own directory under base.HomeDir.
 func Discover(ctx context.Context, enginesDir string, base supervise.Config) *Registry {
 	r := &Registry{binaries: map[engine.Kind]supervise.Binary{}, preference: engine.DefaultPreference, base: base}
+	if enginesDir != "" {
+		candidate := filepath.Join(enginesDir, "tpws")
+		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() && info.Mode().Perm()&0o111 != 0 { //nolint:gosec // the engines directory is set by the service, not by a client
+			r.tpws = candidate
+		}
+	}
 	for _, kind := range engine.DefaultPreference {
 		b, err := drivers[kind].prober.Discover(ctx, enginesDir)
 		if err != nil {
@@ -137,7 +147,13 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 		if err != nil {
 			return nil, err
 		}
-		sel, err := engine.SelectEngine(p, r.availability, order)
+		withBypass := bypass.Has(p)
+		if withBypass && r.tpws == "" {
+			return nil, errors.New("registry: bypass outbounds need zapret's tpws in the engines directory")
+		}
+		// Bypass outbounds reach the engine as SOCKS5 outbounds to tpws, so
+		// the engine is chosen for that plan.
+		sel, err := engine.SelectEngine(bypass.Rewrite(p, nil), r.availability, order)
 		r.mu.Lock()
 		r.last = sel
 		r.mu.Unlock()
@@ -147,7 +163,11 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 		cfg := r.base
 		cfg.Binary = r.binaries[sel.Kind]
 		cfg.HomeDir = filepath.Join(r.base.HomeDir, string(sel.Kind))
-		return drivers[sel.Kind].build(cfg)
+		built, err := drivers[sel.Kind].build(cfg)
+		if err != nil || !withBypass {
+			return built, err
+		}
+		return bypass.Wrap(built, r.tpws, filepath.Join(r.base.HomeDir, "zapret"), r.base.Logs), nil
 	}
 }
 

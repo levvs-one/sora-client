@@ -19,6 +19,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/singbox"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 	"github.com/levvs-one/sora-client/core/engine/xray"
+	"github.com/levvs-one/sora-client/core/errs"
 )
 
 // measureFunc times a real request through every outbound with one engine.
@@ -148,8 +149,11 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 			return nil, err
 		}
 		withBypass := bypass.Has(p)
+		// Both refusals below are about what is installed, not about the
+		// plan, so they carry the key the interface explains as a missing engine.
 		if withBypass && r.tpws == "" {
-			return nil, errors.New("registry: bypass outbounds need zapret's tpws in the engines directory")
+			return nil, errs.Newf(errs.CodeFailedPrecondition, errs.KeyEngineBinaryMissing,
+				"registry: bypass outbounds need zapret's tpws in the engines directory")
 		}
 		// Bypass outbounds reach the engine as SOCKS5 outbounds to tpws, so
 		// the engine is chosen for that plan.
@@ -158,7 +162,7 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 		r.last = sel
 		r.mu.Unlock()
 		if err != nil {
-			return nil, err
+			return nil, errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyEngineBinaryMissing)
 		}
 		cfg := r.base
 		cfg.Binary = r.binaries[sel.Kind]

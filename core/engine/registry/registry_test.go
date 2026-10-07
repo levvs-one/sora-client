@@ -9,6 +9,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/enginetest"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/errs"
 )
 
 // TestFactoryPicksTheEngineThatCarriesThePlan needs all three engines in one
@@ -105,5 +106,21 @@ func TestMeasureRoutesEachServerToAnEngine(t *testing.T) {
 				t.Errorf("xhttp must be measured by the first engine that carries it, %s: %+v", want, m)
 			}
 		})
+	}
+}
+
+func TestAPlanNoInstalledEngineCarriesSaysSo(t *testing.T) {
+	r := &Registry{}
+	_, err := r.Factory()(context.Background(), &engine.Plan{Outbounds: []engine.Outbound{
+		{ID: "z", Protocol: engine.ProtocolBypass, Bypass: &engine.BypassStrategy{SplitPos: []string{"1"}}},
+	}})
+	if errs.KeyOf(err) != errs.KeyEngineBinaryMissing {
+		t.Fatalf("err = %v, key %q: a missing tpws is a missing engine", err, errs.KeyOf(err))
+	}
+	_, err = r.Factory()(context.Background(), &engine.Plan{Outbounds: []engine.Outbound{
+		{ID: "a", Protocol: engine.ProtocolVLESS, Server: "example.com", Port: 443},
+	}})
+	if errs.KeyOf(err) != errs.KeyEngineBinaryMissing {
+		t.Fatalf("err = %v, key %q: no installed engine is a missing engine", err, errs.KeyOf(err))
 	}
 }

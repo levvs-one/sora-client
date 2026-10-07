@@ -979,6 +979,18 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Не похоже на сайт, IP или программу'**
   String get ruleInvalid;
+
+  /// No description provided for @groupOrdered.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{# сервер} few{# сервера} other{# серверов}}, по очереди'**
+  String groupOrdered(int count);
+
+  /// No description provided for @groupBest.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{# сервер} few{# сервера} other{# серверов}}, самый быстрый'**
+  String groupBest(int count);
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

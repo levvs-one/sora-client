@@ -485,4 +485,16 @@ class SEn extends S {
 
   @override
   String get ruleInvalid => 'This does not look like a site, an IP or a program';
+
+  @override
+  String groupOrdered(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '# servers', one: '# server');
+    return '$_temp0, in turn';
+  }
+
+  @override
+  String groupBest(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '# servers', one: '# server');
+    return '$_temp0, the fastest';
+  }
 }

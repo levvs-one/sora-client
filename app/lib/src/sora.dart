@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart' hide ConnectionState;
 
 import 'core/link.dart';
 import 'generated/sora/core/v1/core_control.pbgrpc.dart';
+import 'groups.dart';
 import 'rules.dart';
 import 'settings.dart';
 
@@ -23,10 +24,16 @@ class Sora extends ChangeNotifier {
   static const autoGroup = 'sora:auto';
   static const bypassId = 'sora:bypass';
   static const failoverGroup = 'sora:failover';
+  static const entryGroup = 'sora:group';
 
   CoreLink? _link;
   bool _disposed = false;
   bool _startedOnce = false;
+
+  /// The profile of a named group the session runs, and how many other
+  /// members are left to try when it fails.
+  String? _member;
+  int _memberSpare = 0;
   StreamSubscription<SubscriptionState>? _subscriptionWatch;
   StreamSubscription<CoreEvent>? _sessionWatch;
 
@@ -62,11 +69,13 @@ class Sora extends ChangeNotifier {
   String get selected {
     final chosen = settings.server;
     if (chosen == 'auto' || chosen == 'bypass') return chosen;
+    if (chosen.startsWith(groupPrefix)) return entryOf(chosen, _subscriptions.values) != null ? chosen : 'auto';
     return servers.any((o) => o.id == chosen) ? chosen : 'auto';
   }
 
-  String nameOf(String id) =>
-      servers.firstWhere((o) => o.id == id, orElse: () => OutboundSpec(displayName: id)).displayName;
+  String nameOf(String id) => id.startsWith(groupPrefix)
+      ? entryOf(id, _subscriptions.values)?.name ?? id
+      : servers.firstWhere((o) => o.id == id, orElse: () => OutboundSpec(displayName: id)).displayName;
 
   bool get busy => phase == Phase.connecting || phase == Phase.disconnecting;
 
@@ -151,6 +160,17 @@ class Sora extends ChangeNotifier {
     since = state.hasChangedAt() ? state.changedAt.toDateTime() : null;
     if (report &&
         state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
+        _member != null &&
+        _memberSpare > 0) {
+      // The profile in use failed: mark it unreachable and run the next one
+      // of its group, the way the core moves along a fallback group.
+      latency[_member!] = null;
+      _memberSpare--;
+      Future.microtask(() => connect(retry: true));
+      return;
+    }
+    if (report &&
+        state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
         state.reason != SoraErrorCode.SORA_ERROR_CODE_UNSPECIFIED) {
       // The answer of the call that failed names the cause better than the
       // code the state carries, so it is kept when there is one.
@@ -217,7 +237,9 @@ class Sora extends ChangeNotifier {
     }
   }
 
-  Future<void> connect() async {
+  /// [retry] is set when a failed member of a named group hands over to the
+  /// next one: the count of members left to try then carries on.
+  Future<void> connect({bool retry = false}) async {
     final link = _link;
     if (link == null) return;
     failure = null;
@@ -226,15 +248,18 @@ class Sora extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final choice = selected;
+    final entry = choice.startsWith(groupPrefix) ? entryOf(choice, _subscriptions.values) : null;
+    final plan = buildPlan(servers: servers, choice: choice, settings: settings, latency: latency, entry: entry);
+    // A group of profiles runs one member at a time; remember which, so a
+    // failure can move to the next.
+    _member = entry != null && entry.members.any(isProfile) ? plan.outbounds.single.id : null;
+    if (!retry) _memberSpare = entry == null ? 0 : entry.members.length - 1;
     phase = Phase.connecting;
     notifyListeners();
     try {
       final answer = await link.stub.connect(
-        ConnectRequest(
-          apiVersion: apiVersion,
-          sessionPlan: buildPlan(servers: servers, choice: selected, settings: settings, latency: latency),
-          controlAuthenticator: link.token,
-        ),
+        ConnectRequest(apiVersion: apiVersion, sessionPlan: plan, controlAuthenticator: link.token),
       );
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
       _applyState(answer.status.connection);
@@ -462,6 +487,7 @@ SessionPlan buildPlan({
   required String choice,
   required Settings settings,
   Map<String, int?> latency = const {},
+  Entry? entry,
 }) {
   final plan = SessionPlan(
     tunnelMode: TunnelMode.TUNNEL_MODE_SYSTEM,
@@ -516,6 +542,36 @@ SessionPlan buildPlan({
     for (final o in servers)
       if (!isProfile(o)) o,
   ];
+  if (entry != null && entry.members.any(isProfile)) {
+    // Profiles cannot share one engine, so of a named group of them the
+    // interface runs one: the first main one that answers, or the fastest.
+    choice = pickMember(entry, latency).id;
+  } else if (entry != null) {
+    // Servers of one name: the core keeps them as a group. Roles order them
+    // where the engine has fallback groups (mihomo); elsewhere the main ones
+    // alone are measured against each other.
+    final fallback = entry.ordered && (settings.engine.isEmpty || settings.engine == 'mihomo');
+    final members = fallback
+        ? entry.byRole
+        : entry.ordered
+        ? [
+            for (final o in entry.members)
+              if (entry.roles[o.id] == Role.main) o,
+          ]
+        : entry.members;
+    plan.outbounds.addAll(ordinary);
+    plan.groups.add(
+      GroupSpec(
+        name: Sora.entryGroup,
+        type: fallback ? GroupType.GROUP_TYPE_FALLBACK : GroupType.GROUP_TYPE_URL_TEST,
+        members: [for (final o in members.isEmpty ? entry.members : members) o.id],
+        toleranceMs: fallback ? 0 : 50,
+      ),
+    );
+    plan.routing.proxyTarget = Sora.entryGroup;
+    addRules(Sora.entryGroup);
+    return plan;
+  }
   final picked = profiles.where((o) => o.id == choice).firstOrNull;
   if (picked != null || (choice == 'auto' && ordinary.isEmpty && profiles.isNotEmpty)) {
     final profile = picked ?? _fastest(profiles, latency);
@@ -557,6 +613,19 @@ SessionPlan buildPlan({
   }
   addRules(plan.routing.proxyTarget);
   return plan;
+}
+
+/// The member of a named group to run: the first that has not been measured
+/// as unreachable — in role order when the names carry roles, otherwise the
+/// fastest.
+OutboundSpec pickMember(Entry entry, Map<String, int?> latency) {
+  bool down(OutboundSpec o) => latency.containsKey(o.id) && latency[o.id] == null;
+  if (entry.ordered) return entry.byRole.firstWhere((o) => !down(o), orElse: () => entry.byRole.first);
+  final up = [
+    for (final o in entry.members)
+      if (!down(o)) o,
+  ];
+  return _fastest(up.isEmpty ? entry.members : up, latency);
 }
 
 /// Whether a server is a whole Xray configuration from a JSON subscription.

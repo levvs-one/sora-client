@@ -492,4 +492,28 @@ class SRu extends S {
 
   @override
   String get ruleInvalid => 'Не похоже на сайт, IP или программу';
+
+  @override
+  String groupOrdered(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# серверов',
+      few: '# сервера',
+      one: '# сервер',
+    );
+    return '$_temp0, по очереди';
+  }
+
+  @override
+  String groupBest(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# серверов',
+      few: '# сервера',
+      one: '# сервер',
+    );
+    return '$_temp0, самый быстрый';
+  }
 }

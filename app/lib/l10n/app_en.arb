@@ -147,5 +147,7 @@
   "connectOnStart": "Connect on start",
   "expiresIn": "{name}: the subscription ends in {days, plural, =0{a few hours} one{# day} other{# days}}",
   "trafficLow": "{name}: {left} left",
-  "ruleInvalid": "This does not look like a site, an IP or a program"
+  "ruleInvalid": "This does not look like a site, an IP or a program",
+  "groupOrdered": "{count, plural, one{# server} other{# servers}}, in turn",
+  "groupBest": "{count, plural, one{# server} other{# servers}}, the fastest"
 }

@@ -11,6 +11,7 @@ import '../core/link.dart';
 import '../design/glow.dart';
 import '../design/logo.dart';
 import '../design/theme.dart';
+import '../groups.dart';
 import '../sora.dart';
 import 'kit.dart';
 import 'servers.dart';
@@ -276,7 +277,9 @@ class _ServerCard extends StatelessWidget {
             'bypass' => s.serverBypass,
             _ => sora.nameOf(selected),
           };
-    final ms = sora.latency[selected];
+    // A named group shows the latency of the member it would run.
+    final group = selected.startsWith(groupPrefix) ? entryOf(selected, sora.subscriptions) : null;
+    final ms = sora.latency[group == null ? selected : pickMember(group, sora.latency).id];
     return AnimatedOpacity(
       opacity: offline ? 0.4 : 1,
       duration: Motion.of(context, Motion.medium),

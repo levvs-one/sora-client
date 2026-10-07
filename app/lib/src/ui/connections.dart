@@ -205,6 +205,7 @@ String _carrier(S s, Sora sora, String hop) => switch (hop) {
   'direct' || 'DIRECT' => s.chainDirect,
   'reject' || 'REJECT' || 'block' => s.chainBlocked,
   Sora.autoGroup => s.serverAuto,
+  Sora.entryGroup => sora.nameOf(sora.selected),
   Sora.bypassId => s.serverBypass,
   _ => sora.nameOf(hop),
 };

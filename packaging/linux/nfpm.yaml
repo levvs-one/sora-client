@@ -17,17 +17,19 @@ vendor: Sora
 homepage: https://github.com/levvs-one/sora-client
 license: GPL-3.0-only
 
+# tpws and nfqws link zlib, nfqws also libnetfilter_queue; libcap is used for
+# its header only.
 depends:
   - nftables
 overrides:
   deb:
-    depends: [nftables, libnetfilter-queue1]
+    depends: [nftables, libnetfilter-queue1, zlib1g]
     recommends: [polkitd]
   rpm:
-    depends: [nftables, libnetfilter_queue]
+    depends: [nftables, libnetfilter_queue, zlib]
     recommends: [polkit]
   archlinux:
-    depends: [nftables, polkit, libnetfilter_queue]
+    depends: [nftables, polkit, libnetfilter_queue, zlib]
 
 contents:
   - src: ./dist/sora-core

@@ -131,7 +131,7 @@ jobs:
       - name: Build zapret
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq libnetfilter-queue-dev libnfnetlink-dev libmnl-dev zlib1g-dev
+          sudo apt-get install -y -qq libcap-dev libnetfilter-queue-dev libnfnetlink-dev libmnl-dev zlib1g-dev
           packaging/zapret/build.sh dist/engines
       - name: Package
         env:

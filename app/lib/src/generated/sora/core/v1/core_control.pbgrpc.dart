@@ -73,6 +73,10 @@ class CoreControlClient extends $grpc.Client {
       '/sora.core.v1.CoreControl/GetAbout',
       ($0.GetAboutRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.GetAboutResponse.fromBuffer(value));
+  static final _$getRoutingPresets = $grpc.ClientMethod<$0.GetRoutingPresetsRequest, $0.GetRoutingPresetsResponse>(
+      '/sora.core.v1.CoreControl/GetRoutingPresets',
+      ($0.GetRoutingPresetsRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.GetRoutingPresetsResponse.fromBuffer(value));
   static final _$queryLogs = $grpc.ClientMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
       '/sora.core.v1.CoreControl/QueryLogs',
       ($0.QueryLogsRequest value) => value.writeToBuffer(),
@@ -190,6 +194,10 @@ class CoreControlClient extends $grpc.Client {
 
   $grpc.ResponseFuture<$0.GetAboutResponse> getAbout($0.GetAboutRequest request, {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$getAbout, request, options: options);
+  }
+
+  $grpc.ResponseFuture<$0.GetRoutingPresetsResponse> getRoutingPresets($0.GetRoutingPresetsRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$getRoutingPresets, request, options: options);
   }
 
   $grpc.ResponseFuture<$0.QueryLogsResponse> queryLogs($0.QueryLogsRequest request, {$grpc.CallOptions? options}) {
@@ -349,6 +357,13 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.GetAboutRequest.fromBuffer(value),
         ($0.GetAboutResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetRoutingPresetsRequest, $0.GetRoutingPresetsResponse>(
+        'GetRoutingPresets',
+        getRoutingPresets_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetRoutingPresetsRequest.fromBuffer(value),
+        ($0.GetRoutingPresetsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
         'QueryLogs',
         queryLogs_Pre,
@@ -508,6 +523,10 @@ abstract class CoreControlServiceBase extends $grpc.Service {
     return getAbout(call, await request);
   }
 
+  $async.Future<$0.GetRoutingPresetsResponse> getRoutingPresets_Pre($grpc.ServiceCall call, $async.Future<$0.GetRoutingPresetsRequest> request) async {
+    return getRoutingPresets(call, await request);
+  }
+
   $async.Future<$0.QueryLogsResponse> queryLogs_Pre($grpc.ServiceCall call, $async.Future<$0.QueryLogsRequest> request) async {
     return queryLogs(call, await request);
   }
@@ -581,6 +600,7 @@ abstract class CoreControlServiceBase extends $grpc.Service {
   $async.Future<$0.SetKillSwitchResponse> setKillSwitch($grpc.ServiceCall call, $0.SetKillSwitchRequest request);
   $async.Future<$0.HandshakeResponse> handshake($grpc.ServiceCall call, $0.HandshakeRequest request);
   $async.Future<$0.GetAboutResponse> getAbout($grpc.ServiceCall call, $0.GetAboutRequest request);
+  $async.Future<$0.GetRoutingPresetsResponse> getRoutingPresets($grpc.ServiceCall call, $0.GetRoutingPresetsRequest request);
   $async.Future<$0.QueryLogsResponse> queryLogs($grpc.ServiceCall call, $0.QueryLogsRequest request);
   $async.Stream<$0.LogEntry> watchLogs($grpc.ServiceCall call, $0.WatchLogsRequest request);
   $async.Future<$0.ExportLogsResponse> exportLogs($grpc.ServiceCall call, $0.ExportLogsRequest request);

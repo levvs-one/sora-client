@@ -1330,6 +1330,191 @@ final $typed_data.Uint8List closeConnectionResponseDescriptor = $convert.base64D
     'ChdDbG9zZUNvbm5lY3Rpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS52MS'
     '5Tb3JhRXJyb3JSBWVycm9y');
 
+@$core.Deprecated('Use subscriptionSettingsDescriptor instead')
+const SubscriptionSettings$json = {
+  '1': 'SubscriptionSettings',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'url', '3': 2, '4': 1, '5': 9, '10': 'url'},
+    {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'user_agent', '3': 4, '4': 1, '5': 9, '10': 'userAgent'},
+    {'1': 'auto_update', '3': 5, '4': 1, '5': 8, '10': 'autoUpdate'},
+    {'1': 'update_interval', '3': 6, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'updateInterval'},
+  ],
+};
+
+/// Descriptor for `SubscriptionSettings`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List subscriptionSettingsDescriptor = $convert.base64Decode(
+    'ChRTdWJzY3JpcHRpb25TZXR0aW5ncxIOCgJpZBgBIAEoCVICaWQSEAoDdXJsGAIgASgJUgN1cm'
+    'wSEgoEbmFtZRgDIAEoCVIEbmFtZRIdCgp1c2VyX2FnZW50GAQgASgJUgl1c2VyQWdlbnQSHwoL'
+    'YXV0b191cGRhdGUYBSABKAhSCmF1dG9VcGRhdGUSQgoPdXBkYXRlX2ludGVydmFsGAYgASgLMh'
+    'kuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uUg51cGRhdGVJbnRlcnZhbA==');
+
+@$core.Deprecated('Use subscriptionStateDescriptor instead')
+const SubscriptionState$json = {
+  '1': 'SubscriptionState',
+  '2': [
+    {'1': 'settings', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionSettings', '10': 'settings'},
+    {'1': 'info', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionInfo', '10': 'info'},
+    {'1': 'outbounds', '3': 3, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
+    {'1': 'last_update', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'lastUpdate'},
+    {'1': 'next_update', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'nextUpdate'},
+    {'1': 'last_error', '3': 6, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'lastError'},
+    {'1': 'updating', '3': 7, '4': 1, '5': 8, '10': 'updating'},
+    {'1': 'deleted', '3': 8, '4': 1, '5': 8, '10': 'deleted'},
+    {'1': 'display_name', '3': 9, '4': 1, '5': 9, '10': 'displayName'},
+  ],
+};
+
+/// Descriptor for `SubscriptionState`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List subscriptionStateDescriptor = $convert.base64Decode(
+    'ChFTdWJzY3JpcHRpb25TdGF0ZRI+CghzZXR0aW5ncxgBIAEoCzIiLnNvcmEuY29yZS52MS5TdW'
+    'JzY3JpcHRpb25TZXR0aW5nc1IIc2V0dGluZ3MSMgoEaW5mbxgCIAEoCzIeLnNvcmEuY29yZS52'
+    'MS5TdWJzY3JpcHRpb25JbmZvUgRpbmZvEjgKCW91dGJvdW5kcxgDIAMoCzIaLnNvcmEuY29yZS'
+    '52MS5PdXRib3VuZFNwZWNSCW91dGJvdW5kcxI7CgtsYXN0X3VwZGF0ZRgEIAEoCzIaLmdvb2ds'
+    'ZS5wcm90b2J1Zi5UaW1lc3RhbXBSCmxhc3RVcGRhdGUSOwoLbmV4dF91cGRhdGUYBSABKAsyGi'
+    '5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpuZXh0VXBkYXRlEjYKCmxhc3RfZXJyb3IYBiAB'
+    'KAsyFy5zb3JhLmNvcmUudjEuU29yYUVycm9yUglsYXN0RXJyb3ISGgoIdXBkYXRpbmcYByABKA'
+    'hSCHVwZGF0aW5nEhgKB2RlbGV0ZWQYCCABKAhSB2RlbGV0ZWQSIQoMZGlzcGxheV9uYW1lGAkg'
+    'ASgJUgtkaXNwbGF5TmFtZQ==');
+
+@$core.Deprecated('Use saveSubscriptionRequestDescriptor instead')
+const SaveSubscriptionRequest$json = {
+  '1': 'SaveSubscriptionRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'settings', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionSettings', '10': 'settings'},
+  ],
+};
+
+/// Descriptor for `SaveSubscriptionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List saveSubscriptionRequestDescriptor = $convert.base64Decode(
+    'ChdTYXZlU3Vic2NyaXB0aW9uUmVxdWVzdBI5CgthcGlfdmVyc2lvbhgBIAEoCzIYLnNvcmEuY2'
+    '9yZS52MS5BcGlWZXJzaW9uUgphcGlWZXJzaW9uEjMKFWNvbnRyb2xfYXV0aGVudGljYXRvchgC'
+    'IAEoDFIUY29udHJvbEF1dGhlbnRpY2F0b3ISPgoIc2V0dGluZ3MYAyABKAsyIi5zb3JhLmNvcm'
+    'UudjEuU3Vic2NyaXB0aW9uU2V0dGluZ3NSCHNldHRpbmdz');
+
+@$core.Deprecated('Use saveSubscriptionResponseDescriptor instead')
+const SaveSubscriptionResponse$json = {
+  '1': 'SaveSubscriptionResponse',
+  '2': [
+    {'1': 'state', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionState', '10': 'state'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `SaveSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List saveSubscriptionResponseDescriptor = $convert.base64Decode(
+    'ChhTYXZlU3Vic2NyaXB0aW9uUmVzcG9uc2USNQoFc3RhdGUYASABKAsyHy5zb3JhLmNvcmUudj'
+    'EuU3Vic2NyaXB0aW9uU3RhdGVSBXN0YXRlEi0KBWVycm9yGAIgASgLMhcuc29yYS5jb3JlLnYx'
+    'LlNvcmFFcnJvclIFZXJyb3I=');
+
+@$core.Deprecated('Use listSubscriptionsRequestDescriptor instead')
+const ListSubscriptionsRequest$json = {
+  '1': 'ListSubscriptionsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+  ],
+};
+
+/// Descriptor for `ListSubscriptionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSubscriptionsRequestDescriptor = $convert.base64Decode(
+    'ChhMaXN0U3Vic2NyaXB0aW9uc1JlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLm'
+    'NvcmUudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbhIzChVjb250cm9sX2F1dGhlbnRpY2F0b3IY'
+    'AiABKAxSFGNvbnRyb2xBdXRoZW50aWNhdG9y');
+
+@$core.Deprecated('Use listSubscriptionsResponseDescriptor instead')
+const ListSubscriptionsResponse$json = {
+  '1': 'ListSubscriptionsResponse',
+  '2': [
+    {'1': 'subscriptions', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.SubscriptionState', '10': 'subscriptions'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `ListSubscriptionsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSubscriptionsResponseDescriptor = $convert.base64Decode(
+    'ChlMaXN0U3Vic2NyaXB0aW9uc1Jlc3BvbnNlEkUKDXN1YnNjcmlwdGlvbnMYASADKAsyHy5zb3'
+    'JhLmNvcmUudjEuU3Vic2NyaXB0aW9uU3RhdGVSDXN1YnNjcmlwdGlvbnMSLQoFZXJyb3IYAiAB'
+    'KAsyFy5zb3JhLmNvcmUudjEuU29yYUVycm9yUgVlcnJvcg==');
+
+@$core.Deprecated('Use deleteSubscriptionRequestDescriptor instead')
+const DeleteSubscriptionRequest$json = {
+  '1': 'DeleteSubscriptionRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'id', '3': 3, '4': 1, '5': 9, '10': 'id'},
+  ],
+};
+
+/// Descriptor for `DeleteSubscriptionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteSubscriptionRequestDescriptor = $convert.base64Decode(
+    'ChlEZWxldGVTdWJzY3JpcHRpb25SZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS'
+    '5jb3JlLnYxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9y'
+    'GAIgASgMUhRjb250cm9sQXV0aGVudGljYXRvchIOCgJpZBgDIAEoCVICaWQ=');
+
+@$core.Deprecated('Use deleteSubscriptionResponseDescriptor instead')
+const DeleteSubscriptionResponse$json = {
+  '1': 'DeleteSubscriptionResponse',
+  '2': [
+    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `DeleteSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteSubscriptionResponseDescriptor = $convert.base64Decode(
+    'ChpEZWxldGVTdWJzY3JpcHRpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS'
+    '52MS5Tb3JhRXJyb3JSBWVycm9y');
+
+@$core.Deprecated('Use refreshSubscriptionRequestDescriptor instead')
+const RefreshSubscriptionRequest$json = {
+  '1': 'RefreshSubscriptionRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'id', '3': 3, '4': 1, '5': 9, '10': 'id'},
+  ],
+};
+
+/// Descriptor for `RefreshSubscriptionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List refreshSubscriptionRequestDescriptor = $convert.base64Decode(
+    'ChpSZWZyZXNoU3Vic2NyaXB0aW9uUmVxdWVzdBI5CgthcGlfdmVyc2lvbhgBIAEoCzIYLnNvcm'
+    'EuY29yZS52MS5BcGlWZXJzaW9uUgphcGlWZXJzaW9uEjMKFWNvbnRyb2xfYXV0aGVudGljYXRv'
+    'chgCIAEoDFIUY29udHJvbEF1dGhlbnRpY2F0b3ISDgoCaWQYAyABKAlSAmlk');
+
+@$core.Deprecated('Use refreshSubscriptionResponseDescriptor instead')
+const RefreshSubscriptionResponse$json = {
+  '1': 'RefreshSubscriptionResponse',
+  '2': [
+    {'1': 'state', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionState', '10': 'state'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `RefreshSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List refreshSubscriptionResponseDescriptor = $convert.base64Decode(
+    'ChtSZWZyZXNoU3Vic2NyaXB0aW9uUmVzcG9uc2USNQoFc3RhdGUYASABKAsyHy5zb3JhLmNvcm'
+    'UudjEuU3Vic2NyaXB0aW9uU3RhdGVSBXN0YXRlEi0KBWVycm9yGAIgASgLMhcuc29yYS5jb3Jl'
+    'LnYxLlNvcmFFcnJvclIFZXJyb3I=');
+
+@$core.Deprecated('Use watchSubscriptionsRequestDescriptor instead')
+const WatchSubscriptionsRequest$json = {
+  '1': 'WatchSubscriptionsRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+  ],
+};
+
+/// Descriptor for `WatchSubscriptionsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List watchSubscriptionsRequestDescriptor = $convert.base64Decode(
+    'ChlXYXRjaFN1YnNjcmlwdGlvbnNSZXF1ZXN0EjkKC2FwaV92ZXJzaW9uGAEgASgLMhguc29yYS'
+    '5jb3JlLnYxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9y'
+    'GAIgASgMUhRjb250cm9sQXV0aGVudGljYXRvcg==');
+
 @$core.Deprecated('Use bypassStrategyDescriptor instead')
 const BypassStrategy$json = {
   '1': 'BypassStrategy',

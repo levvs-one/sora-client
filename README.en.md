@@ -9,8 +9,8 @@ the core picks the transport the network lets through, keeps nothing on the mach
 that could give the user away, and explains every failure in plain words.
 
 The client runs on Linux (.deb, .rpm and Arch packages) and on Windows 10 and 11
-(an installer). Android is in progress. The previous client, Sora Legacy, lives in
-[`legacy`](legacy/README.md).
+(an installer). Android is in progress. The previous client, Sora Legacy, lives on the
+[`legacy`](https://github.com/levvs-one/sora-client/tree/legacy) branch.
 
 ## What the app does
 
@@ -37,6 +37,37 @@ The client runs on Linux (.deb, .rpm and Arch packages) and on Windows 10 and 11
 - Simple settings first, fine ones below: engine, IPv6, DNS, TLS fragmentation, how
   latency is measured, how often subscriptions update. Light and dark, Russian and
   English, animations can be turned off.
+
+## For providers: steering through server names
+
+Sora reads an ordinary subscription — the same link Happ, v2rayN and Hiddify open.
+Nothing has to be added to the panel: Sora understands server names.
+
+**Same name, one line.** Servers of one subscription that share a name are one
+entry in Sora. The fastest that answered carries the traffic; a server that did not
+answer the measurement is never picked.
+
+**A role at the end of the name sets the order.** The main ones first, the backups
+when the main ones do not answer.
+
+| Name in the subscription | In Sora |
+| --- | --- |
+| `Netherlands (main)` | **Netherlands**: traffic goes here |
+| `Netherlands (backup)` | …and here when the main one does not answer |
+| `Germany`, `Germany` | **Germany**: the faster of the two |
+| `Белые списки · основной`, `Белые списки · запасной` | **Белые списки**: the same order in Russian |
+
+Main: `main`, `primary`, `основной`, `главный`. Backup: `backup`, `reserve`,
+`fallback`, `запасной`, `резерв`, `резервный`. Case does not matter; brackets, a
+dash, a dot or a colon may come before the word. A server without a role in a group
+that has roles is a backup.
+
+mihomo keeps the order by role, and with the engine chosen automatically Sora runs
+the group on it. With the engine pinned to sing-box or Xray only the main ones run —
+the fastest of them. Profiles of an Xray JSON subscription switch in the app: the
+next one takes over when the current one does not come up.
+
+Other clients show the same servers one by one, under the same readable names.
 
 ## What the core does
 
@@ -133,7 +164,6 @@ Design notes: [core](docs/architecture/core.md), [engines](docs/architecture/eng
 | [`app`](app/README.md) | The Flutter application for Windows, Linux, Android and Android TV |
 | [`service`](service) | Installation and lifecycle of the core service on Windows and Linux |
 | [`packaging`](packaging/README.md) | Installers and packages |
-| [`legacy`](legacy/README.md) | Sora Legacy for Windows 7–11 |
 
 ## Platforms
 
@@ -142,7 +172,7 @@ Design notes: [core](docs/architecture/core.md), [engines](docs/architecture/eng
 | Linux x64 | app and core: .deb, .rpm and Arch packages ([packaging/linux](packaging/linux/README.md)) |
 | Linux ARM64 | core (Flutter publishes no Linux SDK for ARM64) |
 | Windows 10 1809+ and 11, x64 | app, core as a service, installer ([packaging/windows](packaging/windows/README.md)) |
-| Windows 7 SP1, x32 | in progress: the core and engines build; the interface needs a build of its own, Flutter does not support Windows 7 |
+| Windows 7 SP1, x32 | Sora Legacy on the [`legacy`](https://github.com/levvs-one/sora-client/tree/legacy) branch; the new core and engines already build for Windows 7, the interface needs a build of its own — Flutter does not support Windows 7 |
 | Android, Android TV | in progress |
 
 ## Building the core

@@ -48,6 +48,7 @@ Source: "..\..\dist\windows\sora-core.exe"; DestDir: "{app}\core"; Flags: ignore
 Source: "..\..\dist\windows\engines\*"; DestDir: "{app}\core\engines"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\app\assets\fonts\Inter-LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Sora"; Filename: "{app}\sora.exe"

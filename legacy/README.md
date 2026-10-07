@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/levvs-one/sora-client/releases/latest"><strong>Скачать последнюю версию</strong></a>
+  <a href="https://github.com/levvs-one/sora-client/actions/workflows/legacy.yml?query=branch%3Alegacy"><strong>Сборки ветки legacy</strong></a>
   &nbsp;·&nbsp;
   <a href="https://t.me/sora_client">Telegram</a>
 </p>
@@ -28,11 +28,11 @@ Sora принимает HTTPS-подписки, отдельные ссылки 
 
 ## Установка
 
-1. Открой [последний релиз](https://github.com/levvs-one/sora-client/releases/latest).
-2. Скачай установщик для своей версии Windows и запусти его.
+1. Открой [сборки ветки legacy](https://github.com/levvs-one/sora-client/actions/workflows/legacy.yml?query=branch%3Alegacy) и скачай из последней успешной архив для своей версии Windows: `sora-legacy-win7-x86`, `sora-legacy-win8-x86`, `sora-legacy-win10-x86` или `sora-legacy-win11-x86`.
+2. Распакуй архив и запусти `sora_win7.exe` или файл своей версии.
 3. В Sora нажми кнопку добавления и вставь подписку или конфигурацию.
 
-Установщик пока не подписан сертификатом. Перед запуском сверь SHA-256 с файлом контрольных сумм в релизе.
+Сборка не подписана сертификатом. Ветка принимает только исправления безопасности и критических ошибок; новый клиент Sora — в ветке [main](https://github.com/levvs-one/sora-client).
 
 ## Исходный код
 

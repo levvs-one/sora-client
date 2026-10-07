@@ -2,11 +2,12 @@ name: Sora Legacy
 
 on:
   push:
-    branches: [main]
+    branches: [legacy]
     paths:
       - 'legacy/**'
       - '.github/workflows/legacy.yml'
   pull_request:
+    branches: [legacy]
     paths:
       - 'legacy/**'
       - '.github/workflows/legacy.yml'

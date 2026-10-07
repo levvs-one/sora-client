@@ -9,6 +9,7 @@ import '../../l10n/strings.dart';
 import '../core/link.dart';
 import '../design/theme.dart';
 import '../generated/sora/core/v1/core_control.pb.dart';
+import '../groups.dart';
 import '../sora.dart';
 import 'kit.dart';
 import 'subscription.dart';
@@ -90,9 +91,9 @@ class _ServersScreenState extends State<ServersScreen> {
           ),
         for (final subscription in sora.subscriptions) ...[
           if (query.isEmpty) _SubscriptionHeader(state: subscription),
-          if (_matching(subscription.outbounds, query) case final shown when shown.isNotEmpty)
+          if (_matching(entriesOf(subscription), query) case final shown when shown.isNotEmpty)
             Group(
-              children: [for (final o in shown) _ServerRow(id: o.id, name: o.displayName)],
+              children: [for (final e in shown) _ServerRow(id: e.id, name: e.name, entry: e.isGroup ? e : null)],
             )
           else if (query.isEmpty)
             const SizedBox(height: 20),
@@ -102,18 +103,21 @@ class _ServersScreenState extends State<ServersScreen> {
   }
 }
 
-List<OutboundSpec> _matching(List<OutboundSpec> servers, String query) => query.isEmpty
-    ? servers
+List<Entry> _matching(List<Entry> entries, String query) => query.isEmpty
+    ? entries
     : [
-        for (final o in servers)
-          if (o.displayName.toLowerCase().contains(query)) o,
+        for (final e in entries)
+          if (e.name.toLowerCase().contains(query)) e,
       ];
 
 class _ServerRow extends StatelessWidget {
-  const _ServerRow({required this.id, required this.name});
+  const _ServerRow({required this.id, required this.name, this.entry});
 
   final String id;
   final String name;
+
+  /// Set for several servers under one name.
+  final Entry? entry;
 
   @override
   Widget build(BuildContext context) {
@@ -121,10 +125,18 @@ class _ServerRow extends StatelessWidget {
     final palette = Palette.of(context);
     final s = S.of(context);
     final chosen = sora.selected == id;
-    final measured = sora.latency.containsKey(id);
-    final ms = sora.latency[id];
+    // A group shows the latency of the member it would run.
+    final measuredId = entry == null ? id : pickMember(entry!, sora.latency).id;
+    final measured = sora.latency.containsKey(measuredId);
+    final ms = sora.latency[measuredId];
+    final group = entry;
     return Tile(
       title: name,
+      detail: group == null
+          ? null
+          : group.ordered
+          ? s.groupOrdered(group.members.length)
+          : s.groupBest(group.members.length),
       onTap: () => unawaited(sora.select(id)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

@@ -7,6 +7,7 @@ import 'package:sora/l10n/strings_ru.dart';
 import 'package:sora/main.dart';
 import 'package:sora/src/core/link.dart';
 import 'package:sora/src/generated/sora/core/v1/core_control.pb.dart';
+import 'package:sora/src/groups.dart';
 import 'package:sora/src/rules.dart';
 import 'package:sora/src/settings.dart';
 import 'package:sora/src/sora.dart';
@@ -225,5 +226,77 @@ void main() {
     expect(rule.target, RuleTarget.proxy);
     expect(rule.shown, 'telegram');
     expect(UserRule.parse('unknown x'), isNull);
+  });
+
+  group('named groups', () {
+    SubscriptionState sub(List<OutboundSpec> servers) => SubscriptionState(
+      settings: SubscriptionSettings(id: 's1'),
+      outbounds: servers,
+    );
+    OutboundSpec server(String id, String name, [String protocol = 'vless']) =>
+        OutboundSpec(id: id, displayName: name, protocol: protocol);
+
+    test('a role at the end of a name is read in either language and shape', () {
+      expect(splitRole('Нидерланды (основной)'), ('Нидерланды', Role.main));
+      expect(splitRole('Нидерланды · запасной'), ('Нидерланды', Role.backup));
+      expect(splitRole('🇳🇱 Netherlands [backup]'), ('🇳🇱 Netherlands', Role.backup));
+      expect(splitRole('Germany - primary'), ('Germany', Role.main));
+      expect(splitRole('Белые списки +'), ('Белые списки +', null));
+      expect(splitRole('Main'), ('Main', null), reason: 'a name that is only a role keeps it');
+    });
+
+    test('servers sharing a name are one entry; others stay alone', () {
+      final entries = entriesOf(
+        sub([
+          server('a', 'Нидерланды (основной)'),
+          server('b', 'Нидерланды (запасной)'),
+          server('c', 'Германия'),
+          server('d', 'Польша'),
+          server('e', 'Польша'),
+        ]),
+      );
+      expect(entries.map((e) => e.name), ['Нидерланды', 'Германия', 'Польша']);
+      final nl = entries[0], pl = entries[2];
+      expect(nl.isGroup && nl.ordered, isTrue);
+      expect(nl.byRole.map((o) => o.id), ['a', 'b']);
+      expect(pl.isGroup && !pl.ordered, isTrue);
+      expect(entries[1].id, 'c');
+      expect(
+        entryOf(nl.id, [
+          sub([server('a', 'Нидерланды (основной)'), server('b', 'Нидерланды (запасной)')]),
+        ])?.name,
+        'Нидерланды',
+      );
+    });
+
+    test('ordered servers become a fallback group on mihomo, the main ones alone elsewhere', () async {
+      SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+      final settings = await Settings.load();
+      final servers = [server('b', 'NL (backup)'), server('a', 'NL (main)'), server('c', 'DE')];
+      final nl = entriesOf(sub(servers)).first;
+      var plan = buildPlan(servers: servers, choice: nl.id, settings: settings, entry: nl);
+      expect(plan.groups.single.type, GroupType.GROUP_TYPE_FALLBACK);
+      expect(plan.groups.single.members, ['a', 'b'], reason: 'the main one first, whatever the list order');
+      expect(plan.routing.proxyTarget, Sora.entryGroup);
+      settings.engine = 'xray';
+      plan = buildPlan(servers: servers, choice: nl.id, settings: settings, entry: nl);
+      expect(plan.groups.single.type, GroupType.GROUP_TYPE_URL_TEST);
+      expect(plan.groups.single.members, ['a']);
+    });
+
+    test('of profiles one runs: the main one that answers, or the fastest', () async {
+      SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+      final settings = await Settings.load();
+      final ordered = entriesOf(
+        sub([server('m', 'NL (основной)', 'xray-profile'), server('r', 'NL (запасной)', 'xray-profile')]),
+      ).single;
+      expect(pickMember(ordered, {}).id, 'm');
+      expect(pickMember(ordered, {'m': null}).id, 'r', reason: 'a main one measured unreachable is passed over');
+      final plan = buildPlan(servers: ordered.members, choice: ordered.id, settings: settings, entry: ordered);
+      expect(plan.outbounds.single.id, 'm');
+      final best = entriesOf(sub([server('x', 'PL', 'xray-profile'), server('y', 'PL', 'xray-profile')])).single;
+      expect(pickMember(best, {'x': 90, 'y': 40}).id, 'y');
+      expect(pickMember(best, {'x': 90, 'y': null}).id, 'x');
+    });
   });
 }

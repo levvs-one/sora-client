@@ -268,5 +268,21 @@
         "type": "String"
       }
     }
+  },
+  "groupOrdered": "{count, plural, one{# сервер} few{# сервера} other{# серверов}}, по очереди",
+  "groupBest": "{count, plural, one{# сервер} few{# сервера} other{# серверов}}, самый быстрый",
+  "@groupOrdered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@groupBest": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

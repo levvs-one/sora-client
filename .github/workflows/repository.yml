@@ -158,17 +158,35 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libnetfilter-queue-dev libnfnetlink-dev libmnl-dev zlib1g-dev
           packaging/zapret/build.sh dist/engines
+      # Flutter publishes no Linux SDK for arm64 hosts, so the desktop app is
+      # packaged for amd64 only; the core and engines are built for both.
+      - uses: subosito/flutter-action@v2
+        if: matrix.arch == 'amd64'
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+      - name: Build the app
+        if: matrix.arch == 'amd64'
+        working-directory: app
+        run: |
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev
+          flutter pub get
+          flutter build linux --release --dart-define=SORA_VERSION=0.0.0~${{ github.run_number }}
       - name: Package
         env:
           SORA_ARCH: ${{ matrix.arch }}
           SORA_VERSION: 0.0.0~${{ github.run_number }}
         run: |
-          for packager in deb rpm archlinux; do
-            nfpm package --config packaging/linux/nfpm.yaml --packager "$packager" --target dist/
+          configs=(packaging/linux/nfpm.yaml)
+          if [ "$SORA_ARCH" = amd64 ]; then configs+=(packaging/linux/nfpm-app.yaml); fi
+          for config in "${configs[@]}"; do
+            for packager in deb rpm archlinux; do
+              nfpm package --config "$config" --packager "$packager" --target dist/
+            done
           done
       - uses: actions/upload-artifact@v6
         with:
-          name: sora-core-linux-${{ matrix.arch }}
+          name: sora-linux-${{ matrix.arch }}
           path: |
             dist/*.deb
             dist/*.rpm

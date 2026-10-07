@@ -149,7 +149,9 @@ func latency(value int) uint32 {
 	if value <= 0 {
 		return 0
 	}
-	if value > math.MaxUint32 {
+	// Compared as int64: on a 32-bit platform an int never exceeds the limit
+	// and the constant does not fit in an int.
+	if int64(value) > math.MaxUint32 {
 		return math.MaxUint32
 	}
 	return uint32(value)

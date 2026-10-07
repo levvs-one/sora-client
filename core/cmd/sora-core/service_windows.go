@@ -12,7 +12,10 @@ import (
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/eventlog"
 	"golang.org/x/sys/windows/svc/mgr"
+
+	"github.com/levvs-one/sora-client/core/errs"
 )
 
 // serviceName is the name the installer registers the core under.
@@ -27,10 +30,19 @@ func runService(arguments []string) (bool, error) {
 		return false, err
 	}
 	h := &handler{arguments: arguments}
-	if err := svc.Run(serviceName, h); err != nil {
-		return true, err
+	err = svc.Run(serviceName, h)
+	if err == nil {
+		err = h.err
 	}
-	return true, h.err
+	if err != nil {
+		// A service has no console: the reason it stopped goes to the
+		// Windows event log, where a person and a support script look.
+		if log, lerr := eventlog.Open(serviceName); lerr == nil {
+			_ = log.Error(1, "Sora core stopped: "+string(errs.KeyOf(err))+": "+errs.Detail(err))
+			_ = log.Close()
+		}
+	}
+	return true, err
 }
 
 type handler struct {
@@ -116,6 +128,8 @@ func installService(arguments []string) error {
 		return fmt.Errorf("create the service: %w", err)
 	}
 	defer func() { _ = s.Close() }()
+	// The event source may exist from an earlier installation.
+	_ = eventlog.InstallAsEventCreate(serviceName, eventlog.Error|eventlog.Warning|eventlog.Info)
 	restart := mgr.RecoveryAction{Type: mgr.ServiceRestart, Delay: 2 * time.Second}
 	if err := s.SetRecoveryActions([]mgr.RecoveryAction{restart, restart, restart}, uint32((24 * time.Hour).Seconds())); err != nil {
 		return err
@@ -144,6 +158,7 @@ func uninstallService() error {
 	if err := stopService(s); err != nil {
 		return err
 	}
+	_ = eventlog.Remove(serviceName)
 	return s.Delete()
 }
 

@@ -203,10 +203,11 @@ type WireGuardPeer struct {
 }
 
 // StableKey returns the identity of a server across re-imports: protocol,
-// endpoint and credentials, with the sensitive part hashed so the key never
-// carries a password in clear.
+// endpoint, id and user, hashed so the key never carries an id in clear.
 func (o OutboundSpec) StableKey() string {
-	material := o.Protocol + "\x00" + o.Host + "\x00" + strconv.Itoa(int(o.Port)) + "\x00" + o.UUID + "\x00" + o.Password + "\x00" + o.User
+	// The password stays out: protocol, endpoint, id and user tell servers
+	// apart, and a hash of a password is a hash of a password however short.
+	material := o.Protocol + "\x00" + o.Host + "\x00" + strconv.Itoa(int(o.Port)) + "\x00" + o.UUID + "\x00" + o.User
 	// Profiles of one provider often share a server ("Auto" and the country it
 	// balances to) and carry no credential of their own in these fields, so
 	// the name tells them apart. The rest of a profile changes with every

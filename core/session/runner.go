@@ -50,6 +50,11 @@ type Config struct {
 	StatsInterval time.Duration
 	// StopGrace bounds the engine shutdown.
 	StopGrace time.Duration
+	// Network fingerprints the networks of the machine; a connected session
+	// renews its connections when the fingerprint changes. Nil watches nothing.
+	Network func() string
+	// NetworkInterval is how often Network is read.
+	NetworkInterval time.Duration
 	// Settings is filled by the caller before Start: what the session needs to
 	// own on the system while it runs.
 	Settings Settings
@@ -135,6 +140,9 @@ func New(cfg Config) (*Session, error) {
 	if cfg.StopGrace <= 0 {
 		cfg.StopGrace = DefaultStopGrace
 	}
+	if cfg.NetworkInterval <= 0 {
+		cfg.NetworkInterval = DefaultNetworkInterval
+	}
 	if cfg.Backoff.Initial <= 0 {
 		cfg.Backoff = engine.DefaultBackoff()
 	}
@@ -157,11 +165,10 @@ func New(cfg Config) (*Session, error) {
 		log:   cfg.Journal,
 		state: StateDisconnected,
 		status: Status{
-			ChangedAt:   cfg.Now(),
-			KillSwitch:  cfg.Settings.KillSwitch,
-			SystemProxy: cfg.Settings.SystemProxy,
-			Bypass:      append([]string(nil), cfg.Settings.Bypass...),
-			TunnelMode:  cfg.Settings.TunnelMode,
+			ChangedAt:  cfg.Now(),
+			KillSwitch: cfg.Settings.KillSwitch,
+			Bypass:     append([]string(nil), cfg.Settings.Bypass...),
+			TunnelMode: cfg.Settings.TunnelMode,
 		},
 		done: make(chan struct{}),
 	}, nil
@@ -387,6 +394,16 @@ func (s *Session) supervise(events <-chan engine.Event) {
 
 	ticker := time.NewTicker(s.cfg.StatsInterval)
 	defer ticker.Stop()
+	var (
+		watch   *networkWatch
+		network <-chan time.Time
+	)
+	if s.cfg.Network != nil {
+		watch = newNetworkWatch(s.cfg.Network, s.cfg.NetworkInterval)
+		looks := time.NewTicker(s.cfg.NetworkInterval)
+		defer looks.Stop()
+		network = looks.C
+	}
 
 	attempt := 0
 	for {
@@ -395,6 +412,10 @@ func (s *Session) supervise(events <-chan engine.Event) {
 			return
 		case <-ticker.C:
 			s.publishCounters(ctx)
+		case <-network:
+			if why := watch.changed(); why != "" {
+				s.renewConnections(ctx, why)
+			}
 		case ev, ok := <-events:
 			if !ok {
 				return
@@ -552,10 +573,9 @@ func (s *Session) settings() Settings {
 // second lock acquisition on a path that already holds it.
 func (s *Session) settingsLocked() Settings {
 	return Settings{
-		KillSwitch:  s.status.KillSwitch,
-		SystemProxy: s.status.SystemProxy,
-		Bypass:      append([]string(nil), s.status.Bypass...),
-		TunnelMode:  s.status.TunnelMode,
+		KillSwitch: s.status.KillSwitch,
+		Bypass:     append([]string(nil), s.status.Bypass...),
+		TunnelMode: s.status.TunnelMode,
 	}
 }
 
@@ -592,16 +612,15 @@ func (s *Session) setStateLocked(next State, reason errs.Code, key errs.Key, det
 	masked := s.mask(detail)
 	s.state = next
 	s.status = Status{
-		State:       next,
-		SessionID:   s.status.SessionID,
-		Reason:      reason,
-		Key:         key,
-		Detail:      masked,
-		ChangedAt:   s.cfg.Now(),
-		KillSwitch:  s.status.KillSwitch,
-		SystemProxy: s.status.SystemProxy,
-		Bypass:      s.status.Bypass,
-		TunnelMode:  s.status.TunnelMode,
+		State:      next,
+		SessionID:  s.status.SessionID,
+		Reason:     reason,
+		Key:        key,
+		Detail:     masked,
+		ChangedAt:  s.cfg.Now(),
+		KillSwitch: s.status.KillSwitch,
+		Bypass:     s.status.Bypass,
+		TunnelMode: s.status.TunnelMode,
 	}
 	s.log.Append(Event{
 		Kind:   EventState,

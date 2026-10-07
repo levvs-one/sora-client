@@ -991,6 +991,168 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'{count, plural, one{# сервер} few{# сервера} other{# серверов}}, самый быстрый'**
   String groupBest(int count);
+
+  /// No description provided for @tunnelMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Режим'**
+  String get tunnelMode;
+
+  /// No description provided for @tunnelTun.
+  ///
+  /// In ru, this message translates to:
+  /// **'Весь трафик'**
+  String get tunnelTun;
+
+  /// No description provided for @tunnelProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системный прокси'**
+  String get tunnelProxy;
+
+  /// No description provided for @proxyAddress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес прокси'**
+  String get proxyAddress;
+
+  /// No description provided for @copied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировано'**
+  String get copied;
+
+  /// No description provided for @launchAtLogin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запускать вместе с системой'**
+  String get launchAtLogin;
+
+  /// No description provided for @closeToTray.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сворачивать в трей при закрытии'**
+  String get closeToTray;
+
+  /// No description provided for @notifications.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уведомления'**
+  String get notifications;
+
+  /// No description provided for @trayOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть Sora'**
+  String get trayOpen;
+
+  /// No description provided for @trayConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключить'**
+  String get trayConnect;
+
+  /// No description provided for @trayDisconnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключить'**
+  String get trayDisconnect;
+
+  /// No description provided for @trayServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер'**
+  String get trayServer;
+
+  /// No description provided for @trayQuit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти из Sora'**
+  String get trayQuit;
+
+  /// No description provided for @trayTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Sora: {state}'**
+  String trayTooltip(String state);
+
+  /// No description provided for @trayTooltipServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Sora: {state}, {server}'**
+  String trayTooltipServer(String state, String server);
+
+  /// No description provided for @noticeInTray.
+  ///
+  /// In ru, this message translates to:
+  /// **'Sora осталась в трее'**
+  String get noticeInTray;
+
+  /// No description provided for @noticeInTrayBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти можно из меню значка'**
+  String get noticeInTrayBody;
+
+  /// No description provided for @noticeLost.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединение прервалось'**
+  String get noticeLost;
+
+  /// No description provided for @noticeLostBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Sora переподключается'**
+  String get noticeLostBody;
+
+  /// No description provided for @noticeRestored.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снова подключено'**
+  String get noticeRestored;
+
+  /// No description provided for @noticeFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось подключиться'**
+  String get noticeFailed;
+
+  /// No description provided for @noticeBackup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Основной сервер не ответил, работает запасной'**
+  String get noticeBackup;
+
+  /// No description provided for @noticeNext.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер не ответил, работает следующий'**
+  String get noticeNext;
+
+  /// No description provided for @noticeSubscription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подписка'**
+  String get noticeSubscription;
+
+  /// No description provided for @importTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить подписку?'**
+  String get importTitle;
+
+  /// No description provided for @importSealed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта ссылка зашифрована для Happ, прочитать её может только Happ. Попросите у провайдера обычную ссылку на подписку.'**
+  String get importSealed;
+
+  /// No description provided for @understood.
+  ///
+  /// In ru, this message translates to:
+  /// **'Понятно'**
+  String get understood;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

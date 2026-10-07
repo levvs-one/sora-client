@@ -154,4 +154,6 @@ type Connection struct {
 type ConnectionTracker interface {
 	Connections(ctx context.Context) ([]Connection, error)
 	CloseConnection(ctx context.Context, id string) error
+	// CloseConnections drops every live connection at once.
+	CloseConnections(ctx context.Context) error
 }

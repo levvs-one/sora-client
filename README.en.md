@@ -34,6 +34,17 @@ The client runs on Linux (.deb, .rpm and Arch packages) and on Windows 10 and 11
   configurable strategy.
 - **Log center and connection center** one step away, with export and closing any
   connection.
+- **At home on the desktop.** A tray icon with the state, the server and the
+  mode; closing the window keeps Sora in the tray, and it starts with the system
+  without a window. Notices only for what happened out of sight: a drop, a
+  return, a switch to the backup server, a subscription about to end.
+- **Links from a browser or a messenger.** `sora://`, "Add to Happ" buttons
+  (`happ://add`) and the links of v2rayN, Clash, Hiddify and sing-box open the
+  import of a subscription.
+- **All traffic or the system proxy.** TUN carries every program through the
+  adapter; the system proxy mode points the programs that honour it at Sora and
+  puts the old settings back on disconnect. The service brings the tunnel up
+  without asking for administrator rights.
 - Simple settings first, fine ones below: engine, IPv6, DNS, TLS fragmentation, how
   latency is measured, how often subscriptions update. Light and dark, Russian and
   English, animations can be turned off.
@@ -116,8 +127,11 @@ connections with their rule, group chain and traffic, and closes any of them.
 
 **Recovery.** Engines are supervised child processes: a crash restarts the engine
 with backoff inside a restart budget, every system change goes through a guard that
-restores it on every exit path, and on Linux a kill switch built on its own
-nftables table keeps traffic from leaking while the tunnel is down.
+restores it on every exit path, and a kill switch — an nftables table of its own on
+Linux, WFP filters on Windows — keeps traffic from leaking while the tunnel is down.
+When the network changes, a new address arrives or the machine wakes from sleep,
+the session drops the connections left on the old path, so programs reconnect at
+once instead of waiting for a timeout.
 
 ## How it is verified
 
@@ -128,6 +142,9 @@ nftables table keeps traffic from leaking while the tunnel is down.
 | Isolation | without a local proxy in the plan nothing listens; a locked listener refuses a request without its login — on all three engines |
 | Masking | engine output reaches the log center and no credential does |
 | Supervision | a fake engine built from the test binary crashes, gets restarted and exhausts its budget — in CI, with no engine installed |
+| The whole tunnel | in a network namespace the real core brings tun up on every engine, a program of another user gets a page through a VLESS server, and after disconnecting no rule and no adapter is left |
+| Kill switch | the ruleset loads into a real nftables: around the tunnel is refused, through `sora0`, loopback and the local network passes |
+| Windows | in CI on windows-latest the installer sets up the service, the app reaches it over the named pipe, real traffic goes through TUN and through the system proxy to a local VLESS server, the WFP kill switch lets loopback through and blocks an unknown program, and uninstalling removes the service |
 | CI | race detector, builds for Windows, Linux and macOS on amd64 and arm64, golangci-lint, CodeQL, govulncheck, OSV, gitleaks, proto lint and breaking-change checks |
 
 Engine builds verified: sing-box 1.14.2, Xray-core 26.3.27, mihomo 1.19.32.

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -180,6 +181,10 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 			Enabled:    in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
 			AutoRoute:  true,
 			DeviceName: engine.TunDevice,
+			// Windows asks every adapter's resolver at once and takes the first
+			// answer, so lookups leak past the tunnel and race it; the strict
+			// route closes the other adapters to DNS while the tunnel is up.
+			StrictRoute: runtime.GOOS == "windows",
 		},
 		PrivateControl: !in.GetNetworkControlAllowed(),
 	}

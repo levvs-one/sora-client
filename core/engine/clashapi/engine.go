@@ -117,6 +117,15 @@ func (e *Engine) Connections(ctx context.Context) ([]engine.Connection, error) {
 	return list, nil
 }
 
+// CloseConnections drops every live connection.
+func (e *Engine) CloseConnections(ctx context.Context) error {
+	c, err := e.api()
+	if err != nil {
+		return err
+	}
+	return e.Redactor().Err(c.CloseConnections(ctx))
+}
+
 // CloseConnection drops one live connection.
 func (e *Engine) CloseConnection(ctx context.Context, id string) error {
 	c, err := e.api()

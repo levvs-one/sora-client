@@ -59,15 +59,14 @@ func newCollector(t *testing.T, source diagnostics.Source, opts diagnostics.Opti
 func plantedSource() *fakeSource {
 	return &fakeSource{
 		status: session.Status{
-			State:       session.StateConnected,
-			SessionID:   "s_0123456789abcdef",
-			Reason:      errs.CodeUnavailable,
-			Key:         errs.KeyEngineStopped,
-			Detail:      "the engine answered for " + secretValues,
-			ChangedAt:   time.Date(2026, 10, 2, 11, 59, 0, 0, time.UTC),
-			KillSwitch:  true,
-			SystemProxy: true,
-			TunnelMode:  "system",
+			State:      session.StateConnected,
+			SessionID:  "s_0123456789abcdef",
+			Reason:     errs.CodeUnavailable,
+			Key:        errs.KeyEngineStopped,
+			Detail:     "the engine answered for " + secretValues,
+			ChangedAt:  time.Date(2026, 10, 2, 11, 59, 0, 0, time.UTC),
+			KillSwitch: true,
+			TunnelMode: "system",
 		},
 		events: []session.Event{
 			{Kind: session.EventState, State: session.StateConnected, Key: session.KeySelectionChanged},

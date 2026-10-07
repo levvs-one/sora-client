@@ -222,6 +222,12 @@ type DNS struct {
 // can see whether the engine really brought it up.
 const TunDevice = "sora0"
 
+// TunNetworks are the networks the adapter takes its own address from:
+// sing-box is given 172.19.0.1/30, mihomo takes the first address of its fake-ip
+// range, 198.18.0.1/30, and both use fdfe:dcba:9876::1/126 for IPv6. Traffic
+// whose local address is in one of them is traffic through the tunnel.
+var TunNetworks = []string{"172.19.0.0/30", "198.18.0.0/30", "fdfe:dcba:9876::/126"}
+
 // Tun is the virtual network interface setup of the plan.
 type Tun struct {
 	Enabled          bool

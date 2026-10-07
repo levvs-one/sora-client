@@ -12,6 +12,38 @@ import 'settings.dart';
 /// Where the connection is, in the terms the interface shows.
 enum Phase { offline, off, connecting, connected, reconnecting, disconnecting }
 
+/// Something that happened to the connection on its own, worth telling a
+/// person who is not looking at the window.
+sealed class Notice {
+  const Notice();
+}
+
+/// The connection dropped and the core is bringing it back.
+final class ConnectionLost extends Notice {
+  const ConnectionLost();
+}
+
+/// The connection is back after a drop.
+final class ConnectionRestored extends Notice {
+  const ConnectionRestored();
+}
+
+/// The connection ended, or never came up, with [failure].
+final class ConnectionFailed extends Notice {
+  const ConnectionFailed(this.failure);
+
+  final CoreFailure failure;
+}
+
+/// A server of the group [entry] failed and the next one took over;
+/// [backup] when the names said which one is the backup.
+final class ServerSwitched extends Notice {
+  const ServerSwitched(this.entry, {required this.backup});
+
+  final String entry;
+  final bool backup;
+}
+
 /// The state of the app and everything it asks the core to do. Screens read
 /// it through [SoraScope] and rebuild when it notifies.
 class Sora extends ChangeNotifier {
@@ -39,6 +71,21 @@ class Sora extends ChangeNotifier {
 
   /// Ends the current line to the core when a call finds it gone.
   void Function(Object error) _drop = (_) {};
+
+  /// Set while the person ends the session, so its end is not news.
+  bool _stopping = false;
+
+  /// A drop was announced, so the return is worth announcing too.
+  bool _lostAnnounced = false;
+
+  final _notices = StreamController<Notice>.broadcast();
+
+  /// What happened to the connection on its own.
+  Stream<Notice> get notices => _notices.stream;
+
+  /// Where the core's local proxy listens; the system proxy points here in
+  /// the proxy mode. Null until the core said.
+  Endpoint? localProxy;
 
   Phase phase = Phase.offline;
   DateTime? since;
@@ -100,6 +147,8 @@ class Sora extends ChangeNotifier {
       };
       try {
         await _readStatus(report: false);
+        final about = await link.stub.getAbout(GetAboutRequest(apiVersion: apiVersion));
+        localProxy = about.about.hasLocalProxy() ? about.about.localProxy : null;
         _watchSubscriptions();
         _watchSession();
         notifyListeners();
@@ -144,6 +193,7 @@ class Sora extends ChangeNotifier {
   }
 
   void _applyState(ConnectionState state, {bool report = true}) {
+    final before = phase;
     phase = switch (state.value) {
       ConnectionStateValue.CONNECTION_STATE_VALUE_CONNECTING => Phase.connecting,
       ConnectionStateValue.CONNECTION_STATE_VALUE_CONNECTED => Phase.connected,
@@ -166,6 +216,8 @@ class Sora extends ChangeNotifier {
       // of its group, the way the core moves along a fallback group.
       latency[_member!] = null;
       _memberSpare--;
+      final entry = entryOf(settings.server, _subscriptions.values);
+      if (entry != null) _notices.add(ServerSwitched(entry.name, backup: entry.ordered));
       Future.microtask(() => connect(retry: true));
       return;
     }
@@ -175,6 +227,22 @@ class Sora extends ChangeNotifier {
       // The answer of the call that failed names the cause better than the
       // code the state carries, so it is kept when there is one.
       failure ??= CoreFailure(_keyOfCode(state.reason));
+    }
+    if (report) _announce(before, state);
+  }
+
+  /// Tells listeners what the session did on its own: a drop, a return, an
+  /// end nobody asked for.
+  void _announce(Phase before, ConnectionState state) {
+    if (before == Phase.connected && phase == Phase.reconnecting) {
+      _lostAnnounced = true;
+      _notices.add(const ConnectionLost());
+    } else if (phase == Phase.connected && _lostAnnounced) {
+      _lostAnnounced = false;
+      _notices.add(const ConnectionRestored());
+    } else if (phase == Phase.off && state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED && !_stopping) {
+      _lostAnnounced = false;
+      _notices.add(ConnectionFailed(failure ?? CoreFailure(_keyOfCode(state.reason))));
     }
   }
 
@@ -245,6 +313,7 @@ class Sora extends ChangeNotifier {
     failure = null;
     if (selected != 'bypass' && servers.isEmpty) {
       failure = const CoreFailure('app.no_servers');
+      _notices.add(ConnectionFailed(failure!));
       notifyListeners();
       return;
     }
@@ -272,8 +341,9 @@ class Sora extends ChangeNotifier {
       _watchSession();
     } catch (error) {
       failure = CoreFailure.from(error);
-      await _readStatus().catchError((Object _) {});
+      await _readStatus(report: false).catchError((Object _) {});
       if (phase == Phase.connecting) phase = Phase.off;
+      if (phase == Phase.off) _notices.add(ConnectionFailed(failure!));
     }
     notifyListeners();
   }
@@ -283,6 +353,8 @@ class Sora extends ChangeNotifier {
     if (link == null) return;
     failure = null;
     phase = Phase.disconnecting;
+    _stopping = true;
+    _lostAnnounced = false;
     notifyListeners();
     try {
       final answer = await link.stub.disconnect(
@@ -293,6 +365,8 @@ class Sora extends ChangeNotifier {
     } catch (error) {
       failure = CoreFailure.from(error);
       await _readStatus().catchError((Object _) {});
+    } finally {
+      _stopping = false;
     }
     notifyListeners();
   }
@@ -343,7 +417,7 @@ class Sora extends ChangeNotifier {
 
   /// Saves a new subscription; the core fetches it and announces the servers
   /// through the watch. Returns the failure to show next to the field.
-  Future<CoreFailure?> addSubscription(String url) async {
+  Future<CoreFailure?> addSubscription(String url, {String name = ''}) async {
     final link = _link;
     if (link == null) return CoreFailure.unavailable;
     try {
@@ -351,7 +425,7 @@ class Sora extends ChangeNotifier {
         SaveSubscriptionRequest(
           apiVersion: apiVersion,
           controlAuthenticator: link.token,
-          settings: SubscriptionSettings(url: url.trim(), autoUpdate: true),
+          settings: SubscriptionSettings(url: url.trim(), name: name.trim(), autoUpdate: true),
         ),
       );
       if (answer.hasError()) return CoreFailure(answer.error.userMessageKey);
@@ -468,6 +542,7 @@ class Sora extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_notices.close());
     unawaited(_cancelWatches());
     unawaited(_link?.close());
     super.dispose();
@@ -490,7 +565,7 @@ SessionPlan buildPlan({
   Entry? entry,
 }) {
   final plan = SessionPlan(
-    tunnelMode: TunnelMode.TUNNEL_MODE_SYSTEM,
+    tunnelMode: settings.tunnel == 'proxy' ? TunnelMode.TUNNEL_MODE_APPLICATION : TunnelMode.TUNNEL_MODE_SYSTEM,
     engines: [if (settings.engine.isNotEmpty) settings.engine],
     networkControlAllowed: settings.controlPort,
     routing: RoutingOptions(preset: settings.preset, blockAds: settings.blockAds),

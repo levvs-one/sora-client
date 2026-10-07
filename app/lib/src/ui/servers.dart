@@ -312,3 +312,23 @@ String formatBytes(S s, Int64 bytes, String locale) {
     _ => s.bytesTB(number),
   };
 }
+
+/// What a person should know about [sub] before it stops working: it ends
+/// within three days or has a tenth of its traffic left. Null when neither.
+String? subscriptionWarning(S s, SubscriptionState sub, String locale) {
+  const soon = Duration(days: 3);
+  const little = 0.1;
+  final info = sub.info;
+  if (info.hasExpire()) {
+    final left = info.expire.toDateTime().difference(DateTime.now());
+    if (left.isNegative) return '${sub.displayName}: ${s.expired.toLowerCase()}';
+    if (left < soon) return s.expiresIn(sub.displayName, left.inDays);
+  }
+  if (info.hasUsage && info.totalBytes > Int64.ZERO) {
+    final rest = info.totalBytes - info.uploadBytes - info.downloadBytes;
+    if (rest.toDouble() < info.totalBytes.toDouble() * little) {
+      return s.trafficLow(sub.displayName, formatBytes(s, rest < Int64.ZERO ? Int64.ZERO : rest, locale));
+    }
+  }
+  return null;
+}

@@ -7360,6 +7360,7 @@ class About extends $pb.GeneratedMessage {
     $core.Iterable<EngineBuild>? engines,
     $core.String? license,
     $core.String? sourceUrl,
+    Endpoint? localProxy,
   }) {
     final result = About._();
     if (coreVersion != null) result.coreVersion = coreVersion;
@@ -7371,6 +7372,7 @@ class About extends $pb.GeneratedMessage {
     if (engines != null) result.engines.addAll(engines);
     if (license != null) result.license = license;
     if (sourceUrl != null) result.sourceUrl = sourceUrl;
+    if (localProxy != null) result.localProxy = localProxy;
     return result;
   }
 
@@ -7394,6 +7396,7 @@ class About extends $pb.GeneratedMessage {
     ..pPM<EngineBuild>(7, _omitFieldNames ? '' : 'engines', subBuilder: EngineBuild.$_createMessage)
     ..aOS(8, _omitFieldNames ? '' : 'license')
     ..aOS(9, _omitFieldNames ? '' : 'sourceUrl')
+    ..aOM<Endpoint>(10, _omitFieldNames ? '' : 'localProxy', subBuilder: Endpoint.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7497,6 +7500,19 @@ class About extends $pb.GeneratedMessage {
   $core.bool hasSourceUrl() => $_has(8);
   @$pb.TagNumber(9)
   void clearSourceUrl() => $_clearField(9);
+
+  /// Since 1.4. Where the local proxy listens. A session in the application
+  /// tunnel mode opens it, and the interface points the system proxy at it.
+  @$pb.TagNumber(10)
+  Endpoint get localProxy => $_getN(9);
+  @$pb.TagNumber(10)
+  set localProxy(Endpoint value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasLocalProxy() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLocalProxy() => $_clearField(10);
+  @$pb.TagNumber(10)
+  Endpoint ensureLocalProxy() => $_ensure(9);
 }
 
 /// EngineBuild is one engine as this machine has it.

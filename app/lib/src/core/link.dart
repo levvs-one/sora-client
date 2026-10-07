@@ -7,9 +7,9 @@ import 'package:retry/retry.dart';
 import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import 'pipe.dart';
 
-/// The contract this interface speaks: 1.3, and nothing older, because the
-/// subscription book, the log center and the token in Handshake arrived in it.
-final apiVersion = ApiVersion(major: 1, minor: 3, minSupportedMinor: 3);
+/// The contract this interface speaks: 1.4, and nothing older, because the
+/// address of the local proxy the system proxy points at arrived in it.
+final apiVersion = ApiVersion(major: 1, minor: 4, minSupportedMinor: 4);
 
 /// An open line to the core: the channel over its unix socket and the token
 /// the core handed over in Handshake.

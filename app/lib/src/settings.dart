@@ -26,6 +26,12 @@ class Settings {
     'rules',
     'failover',
     'connectOnStart',
+    'tunnel',
+    'launchAtLogin',
+    'closeToTray',
+    'notifications',
+    'proxySnapshot',
+    'trayHintShown',
   };
 
   final SharedPreferencesWithCache _store;
@@ -152,9 +158,39 @@ class Settings {
   bool get connectOnStart => _store.getBool('connectOnStart') ?? false;
   set connectOnStart(bool value) => _store.setBool('connectOnStart', value);
 
+  /// tun carries every program through the adapter; proxy points the system
+  /// proxy at the core and carries the programs that honour it.
+  String get tunnel => _store.getString('tunnel') ?? 'tun';
+  set tunnel(String value) => _store.setString('tunnel', value);
+
+  /// Sora starts with the system, in the tray.
+  bool get launchAtLogin => _store.getBool('launchAtLogin') ?? true;
+  set launchAtLogin(bool value) => _store.setBool('launchAtLogin', value);
+
+  /// Closing the window keeps Sora in the tray instead of quitting.
+  bool get closeToTray => _store.getBool('closeToTray') ?? true;
+  set closeToTray(bool value) => _store.setBool('closeToTray', value);
+
+  /// Notices of what happened while the window was out of sight.
+  bool get notifications => _store.getBool('notifications') ?? true;
+  set notifications(bool value) => _store.setBool('notifications', value);
+
+  /// The system proxy as it was before Sora pointed it at the core, kept
+  /// until it is put back, so a crash in between cannot lose it.
+  String get proxySnapshot => _store.getString('proxySnapshot') ?? '';
+  set proxySnapshot(String value) => _store.setString('proxySnapshot', value);
+
+  /// The first close to the tray says where Sora went; later ones do not.
+  bool get trayHintShown => _store.getBool('trayHintShown') ?? false;
+  set trayHintShown(bool value) => _store.setBool('trayHintShown', value);
+
   /// Forgets every choice; the next read gives the defaults again.
   Future<void> reset() async {
+    // The saved system proxy is the machine's, not a choice: it survives, or
+    // the next disconnect could not put it back.
+    final snapshot = proxySnapshot;
     await _store.clear();
+    if (snapshot.isNotEmpty) proxySnapshot = snapshot;
     await _migrate();
   }
 }

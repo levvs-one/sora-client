@@ -497,4 +497,90 @@ class SEn extends S {
     String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '# servers', one: '# server');
     return '$_temp0, the fastest';
   }
+
+  @override
+  String get tunnelMode => 'Mode';
+
+  @override
+  String get tunnelTun => 'All traffic';
+
+  @override
+  String get tunnelProxy => 'System proxy';
+
+  @override
+  String get proxyAddress => 'Proxy address';
+
+  @override
+  String get copied => 'Copied';
+
+  @override
+  String get launchAtLogin => 'Start with the system';
+
+  @override
+  String get closeToTray => 'Keep in the tray when closed';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get trayOpen => 'Open Sora';
+
+  @override
+  String get trayConnect => 'Connect';
+
+  @override
+  String get trayDisconnect => 'Disconnect';
+
+  @override
+  String get trayServer => 'Server';
+
+  @override
+  String get trayQuit => 'Quit Sora';
+
+  @override
+  String trayTooltip(String state) {
+    return 'Sora: $state';
+  }
+
+  @override
+  String trayTooltipServer(String state, String server) {
+    return 'Sora: $state, $server';
+  }
+
+  @override
+  String get noticeInTray => 'Sora is still in the tray';
+
+  @override
+  String get noticeInTrayBody => 'Quit from the menu of its icon';
+
+  @override
+  String get noticeLost => 'Connection lost';
+
+  @override
+  String get noticeLostBody => 'Sora is reconnecting';
+
+  @override
+  String get noticeRestored => 'Connected again';
+
+  @override
+  String get noticeFailed => 'Couldn\'t connect';
+
+  @override
+  String get noticeBackup => 'The main server didn\'t answer; the backup carries the traffic';
+
+  @override
+  String get noticeNext => 'The server didn\'t answer; the next one carries the traffic';
+
+  @override
+  String get noticeSubscription => 'Subscription';
+
+  @override
+  String get importTitle => 'Add this subscription?';
+
+  @override
+  String get importSealed =>
+      'This link is encrypted for Happ, and only Happ can read it. Ask your provider for the plain subscription link.';
+
+  @override
+  String get understood => 'OK';
 }

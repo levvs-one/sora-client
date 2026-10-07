@@ -39,7 +39,6 @@ func (c *Collector) report() []string {
 		"cause: " + causeOrNone(status),
 		"retry_after: " + durationOrNone(status.RetryAfter),
 		"kill_switch: " + strconv.FormatBool(status.KillSwitch),
-		"system_proxy: " + strconv.FormatBool(status.SystemProxy),
 		"tunnel_mode: " + orNone(status.TunnelMode),
 		"",
 		"[engine]",

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:fixnum/fixnum.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -327,38 +326,13 @@ class _ServerCard extends StatelessWidget {
 class _SubscriptionWarning extends StatelessWidget {
   const _SubscriptionWarning();
 
-  /// How early an ending is mentioned, and how little traffic is "little".
-  static const _soon = Duration(days: 3);
-  static const _little = 0.1;
-
   @override
   Widget build(BuildContext context) {
     final sora = SoraScope.of(context);
     final s = S.of(context);
     final palette = Palette.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
-    String? warning;
-    for (final sub in sora.subscriptions) {
-      final info = sub.info;
-      if (info.hasExpire()) {
-        final left = info.expire.toDateTime().difference(DateTime.now());
-        if (left.isNegative) {
-          warning = '${sub.displayName}: ${s.expired.toLowerCase()}';
-          break;
-        }
-        if (left < _soon) {
-          warning = s.expiresIn(sub.displayName, left.inDays);
-          break;
-        }
-      }
-      if (info.hasUsage && info.totalBytes > Int64.ZERO) {
-        final rest = info.totalBytes - info.uploadBytes - info.downloadBytes;
-        if (rest.toDouble() < info.totalBytes.toDouble() * _little) {
-          warning = s.trafficLow(sub.displayName, formatBytes(s, rest < Int64.ZERO ? Int64.ZERO : rest, locale));
-          break;
-        }
-      }
-    }
+    final warning = sora.subscriptions.map((sub) => subscriptionWarning(s, sub, locale)).nonNulls.firstOrNull;
     return AnimatedSize(
       duration: Motion.of(context, Motion.medium),
       curve: Motion.curve,

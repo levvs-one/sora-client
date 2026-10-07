@@ -10,21 +10,27 @@ import 'kit.dart';
 
 /// Asks for a subscription link. A link already on the clipboard is filled in,
 /// so adding one is usually a single press.
-Future<void> showSubscriptionSheet(BuildContext context) async {
+/// Asks for a subscription link. [link] comes from an import link opened in
+/// a browser or a messenger; without it the clipboard offers one.
+Future<void> showSubscriptionSheet(BuildContext context, {String? link, String name = ''}) async {
   final sora = SoraScope.read(context);
   final s = S.of(context);
-  final clip = await Clipboard.getData(Clipboard.kTextPlain);
-  final text = clip?.text?.trim() ?? '';
+  var initial = link ?? '';
+  if (link == null) {
+    final clip = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = clip?.text?.trim() ?? '';
+    if (text.startsWith('https://') && !text.contains('\n')) initial = text;
+  }
   if (!context.mounted) return;
   await showFieldSheet(
     context,
-    title: s.subscription,
+    title: link == null ? s.subscription : s.importTitle,
     hint: s.subscriptionLink,
     action: s.add,
-    initial: text.startsWith('https://') && !text.contains('\n') ? text : '',
+    initial: initial,
     keyboard: TextInputType.url,
     submit: (url) async {
-      final failure = await sora.addSubscription(url);
+      final failure = await sora.addSubscription(url, name: name);
       return failure == null ? null : describe(s, failure);
     },
   );

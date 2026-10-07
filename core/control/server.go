@@ -38,16 +38,12 @@ import (
 // sessionSettings reads the system settings a session owns from the request.
 //
 // The core decides what the machine needs; the client only says what it asked
-// for. A tunnel mode means the interface wants the system route, and bypass rules
-// mean private destinations must skip the tunnel: everything else is the guard's
-// business, and the guard is the only thing that may change the system.
+// for. Bypass rules mean private destinations must skip the tunnel; the kill
+// switch is the guard's business, and the system proxy is the interface's,
+// which runs as the person it belongs to.
 func sessionSettings(in *corev1.SessionPlan) session.Settings {
-	settings := session.Settings{
-		SystemProxy: in.GetTunnelMode() != corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
-		TunnelMode:  "system",
-	}
+	settings := session.Settings{TunnelMode: "system"}
 	if in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_APPLICATION {
-		settings.SystemProxy = true
 		settings.TunnelMode = "application"
 	}
 	settings.Bypass = append([]string(nil), in.GetBypassSettings().GetRules()...)

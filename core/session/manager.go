@@ -41,6 +41,8 @@ type ManagerConfig struct {
 	Now func() time.Time
 	// TunUp waits for the adapter of a tun plan; see Config.TunUp.
 	TunUp func(ctx context.Context, device string) error
+	// Network fingerprints the networks of the machine; see Config.Network.
+	Network func() string
 }
 
 // Manager owns at most one session. The invariant is simple and absolute: a
@@ -131,6 +133,7 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 		Settings:      settings,
 		Now:           m.cfg.Now,
 		TunUp:         m.cfg.TunUp,
+		Network:       m.cfg.Network,
 	})
 	if err != nil {
 		_ = built.Close()

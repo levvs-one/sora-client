@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
 import '../design/theme.dart';
+import '../desktop/desktop.dart';
 import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import '../settings.dart';
 import '../sora.dart';
@@ -28,6 +30,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   /// The core's log settings; null until read or while the core is away.
   LogSettings? _log;
+
+  /// The proxy address was just copied; the row says so for a moment.
+  bool _copied = false;
 
   // The same grammar the core checks, so a value is refused while the field is
   // still open instead of at the next connection.
@@ -117,6 +122,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final palette = Palette.of(context);
     void set(void Function(Settings) apply, {bool replan = true}) => unawaited(sora.change(apply, replan: replan));
     final log = _log;
+    final desktop = DesktopScope.maybeOf(context);
+    final local = sora.localProxy;
     return Screen(
       title: s.settings,
       children: [
@@ -128,17 +135,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
               choices: {'global': s.presetGlobal, 'ru': s.presetRu, 'ir': s.presetIr, 'cn': s.presetCn},
               onChanged: (v) => set((x) => x.preset = v),
             ),
-            SwitchTile(title: s.blockAds, value: settings.blockAds, onChanged: (v) => set((x) => x.blockAds = v)),
-            SwitchTile(
-              title: s.connectOnStart,
-              value: settings.connectOnStart,
-              onChanged: (v) => set((x) => x.connectOnStart = v, replan: false),
+            ChoiceTile<String>(
+              title: s.tunnelMode,
+              value: settings.tunnel,
+              choices: {'tun': s.tunnelTun, 'proxy': s.tunnelProxy},
+              onChanged: (v) => set((x) => x.tunnel = v),
             ),
+            if (settings.tunnel == 'proxy' && local != null)
+              // Programs that ignore the system proxy, and every program on
+              // a desktop without one, are pointed here by hand.
+              LinkTile(
+                title: s.proxyAddress,
+                value: _copied ? s.copied : '${local.host}:${local.port}',
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: '${local.host}:${local.port}'));
+                  setState(() => _copied = true);
+                  await Future<void>.delayed(const Duration(milliseconds: 1500));
+                  if (mounted) setState(() => _copied = false);
+                },
+              ),
+            SwitchTile(title: s.blockAds, value: settings.blockAds, onChanged: (v) => set((x) => x.blockAds = v)),
             SwitchTile(
               title: s.killSwitch,
               value: settings.killSwitch,
               onChanged: (v) => unawaited(sora.setKillSwitch(v)),
             ),
+          ],
+        ),
+        Group(
+          children: [
+            if (desktop != null)
+              SwitchTile(
+                title: s.launchAtLogin,
+                value: settings.launchAtLogin,
+                onChanged: (v) async {
+                  await sora.change((x) => x.launchAtLogin = v, replan: false);
+                  desktop.syncLaunchAtLogin();
+                },
+              ),
+            SwitchTile(
+              title: s.connectOnStart,
+              value: settings.connectOnStart,
+              onChanged: (v) => set((x) => x.connectOnStart = v, replan: false),
+            ),
+            if (desktop != null) ...[
+              SwitchTile(
+                title: s.closeToTray,
+                value: settings.closeToTray,
+                onChanged: (v) => set((x) => x.closeToTray = v, replan: false),
+              ),
+              SwitchTile(
+                title: s.notifications,
+                value: settings.notifications,
+                onChanged: (v) => set((x) => x.notifications = v, replan: false),
+              ),
+            ],
           ],
         ),
         Group(

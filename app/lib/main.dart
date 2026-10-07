@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,33 +7,40 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/strings.dart';
 import 'src/design/theme.dart';
+import 'src/desktop/desktop.dart';
 import 'src/settings.dart';
 import 'src/sora.dart';
 import 'src/ui/home.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final sora = Sora(await Settings.load());
   unawaited(sora.run());
-  runApp(SoraApp(sora: sora));
+  final navigator = GlobalKey<NavigatorState>();
+  final desktop = Platform.isLinux || Platform.isWindows ? Desktop(sora, navigator) : null;
+  await desktop?.start(hidden: args.contains('--hidden'));
+  runApp(SoraApp(sora: sora, navigator: navigator, desktop: desktop));
 }
 
 class SoraApp extends StatefulWidget {
-  const SoraApp({super.key, required this.sora});
+  const SoraApp({super.key, required this.sora, this.navigator, this.desktop});
 
   final Sora sora;
+  final GlobalKey<NavigatorState>? navigator;
+  final Desktop? desktop;
 
   @override
   State<SoraApp> createState() => _SoraAppState();
 }
 
 class _SoraAppState extends State<SoraApp> {
-  final _navigator = GlobalKey<NavigatorState>();
+  late final _navigator = widget.navigator ?? GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     final sora = widget.sora;
-    return SoraScope(
+    final desktop = widget.desktop;
+    final app = SoraScope(
       sora: sora,
       child: ListenableBuilder(
         listenable: sora,
@@ -70,5 +78,6 @@ class _SoraAppState extends State<SoraApp> {
         ),
       ),
     );
+    return desktop == null ? app : DesktopScope(desktop: desktop, child: app);
   }
 }

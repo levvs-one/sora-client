@@ -43,7 +43,7 @@ import (
 // Version is the contract this build serves. It is the same number the interface
 // checks, and a build that changes the contract changes it here and in the
 // generated code together.
-var Version = control.Version{Major: 1, Minor: 3, MinSupportedMinor: 1}
+var Version = control.Version{Major: 1, Minor: 4, MinSupportedMinor: 1}
 
 // Options is everything a running core needs to know about itself.
 type Options struct {
@@ -161,15 +161,16 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		}
 	}
 
-	firewall, err := guard.PlatformFirewall(os.Getuid(), opts.Bypass)
+	firewall, err := guard.PlatformFirewall(guard.FirewallOptions{
+		EngineUID: os.Getuid(), EnginesDir: opts.EnginesDir, Bypass: opts.Bypass,
+	})
 	if err != nil {
 		_ = store.Close()
 		return nil, err
 	}
 	system, err := guard.New(guard.Options{
-		ProxyAddress: local,
-		EnginePorts:  []uint16{tunnelPort},
-	}, guard.PlatformProxy(), firewall)
+		EnginePorts: []uint16{tunnelPort},
+	}, firewall)
 	if err != nil {
 		_ = store.Close()
 		return nil, err
@@ -181,6 +182,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		Backoff:  engine.Backoff{Initial: time.Second, Max: time.Minute, Factor: 2},
 		Budget:   func() *engine.RestartBudget { return engine.NewRestartBudget(5, 10*time.Minute, nil) },
 		Redactor: redactor,
+		Network:  session.NetworkFingerprint,
 	})
 	app.sessions = manager
 
@@ -269,6 +271,9 @@ func (a *App) about() *corev1.About {
 		GoVersion:   runtime.Version(),
 		License:     "GPL-3.0-only",
 		SourceUrl:   "https://github.com/levvs-one/sora-client",
+	}
+	if port, err := portOf(a.local); err == nil {
+		out.LocalProxy = &corev1.Endpoint{Host: "127.0.0.1", Port: uint32(port)}
 	}
 	// The Go toolchain records the commit of a build made from a git checkout.
 	if info, ok := debug.ReadBuildInfo(); ok {

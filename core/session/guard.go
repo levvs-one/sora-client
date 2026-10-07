@@ -14,8 +14,6 @@ type Settings struct {
 	// KillSwitch blocks traffic that does not belong to the session. It stays
 	// armed while the engine is down, which is the entire reason it exists.
 	KillSwitch bool
-	// SystemProxy points the system proxy settings at the local engine.
-	SystemProxy bool
 	// Bypass lists destinations that must skip the tunnel.
 	Bypass []string
 	// TunnelMode is the tunnel the plan asked for: system, application or none.

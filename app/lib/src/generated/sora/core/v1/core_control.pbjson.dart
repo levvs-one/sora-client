@@ -1633,6 +1633,7 @@ const About$json = {
     {'1': 'engines', '3': 7, '4': 3, '5': 11, '6': '.sora.core.v1.EngineBuild', '10': 'engines'},
     {'1': 'license', '3': 8, '4': 1, '5': 9, '10': 'license'},
     {'1': 'source_url', '3': 9, '4': 1, '5': 9, '10': 'sourceUrl'},
+    {'1': 'local_proxy', '3': 10, '4': 1, '5': 11, '6': '.sora.core.v1.Endpoint', '10': 'localProxy'},
   ],
 };
 
@@ -1644,7 +1645,8 @@ final $typed_data.Uint8List aboutDescriptor =
         'JzaW9uUghjb250cmFjdBIaCghwbGF0Zm9ybRgFIAEoCVIIcGxhdGZvcm0SHQoKZ29fdmVyc2lv'
         'bhgGIAEoCVIJZ29WZXJzaW9uEjMKB2VuZ2luZXMYByADKAsyGS5zb3JhLmNvcmUudjEuRW5naW'
         '5lQnVpbGRSB2VuZ2luZXMSGAoHbGljZW5zZRgIIAEoCVIHbGljZW5zZRIdCgpzb3VyY2VfdXJs'
-        'GAkgASgJUglzb3VyY2VVcmw=');
+        'GAkgASgJUglzb3VyY2VVcmwSNwoLbG9jYWxfcHJveHkYCiABKAsyFi5zb3JhLmNvcmUudjEuRW'
+        '5kcG9pbnRSCmxvY2FsUHJveHk=');
 
 @$core.Deprecated('Use engineBuildDescriptor instead')
 const EngineBuild$json = {

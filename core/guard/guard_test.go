@@ -10,33 +10,8 @@ import (
 	"github.com/levvs-one/sora-client/core/session"
 )
 
-// memoryProxy is a proxy that records what it was told, so the guard can be tested
-// without changing anything on the machine running the tests.
-type memoryProxy struct {
-	applied  []string
-	restores int
-	current  string
-	applyErr error
-}
-
-func (p *memoryProxy) Apply(_ context.Context, address string) error {
-	if p.applyErr != nil {
-		return p.applyErr
-	}
-	p.applied = append(p.applied, address)
-	p.current = address
-	return nil
-}
-
-func (p *memoryProxy) Restore(context.Context) error {
-	p.restores++
-	p.current = ""
-	return nil
-}
-
-func (p *memoryProxy) Current(context.Context) (string, error) { return p.current, nil }
-
-// memoryFirewall is a firewall that records whether it was armed.
+// memoryFirewall is a firewall that records whether it was armed, so the guard
+// can be tested without changing the machine running the tests.
 type memoryFirewall struct {
 	armed   bool
 	arms    int
@@ -64,30 +39,26 @@ func (f *memoryFirewall) Disarm(context.Context) error {
 func (f *memoryFirewall) Armed(context.Context) (bool, error) { return f.armed, nil }
 
 func testOptions() guard.Options {
-	return guard.Options{ProxyAddress: "127.0.0.1:7890", EnginePorts: []uint16{7890, 7891}}
+	return guard.Options{EnginePorts: []uint16{7890, 7891}}
 }
 
 func TestNewRefusesAGuardThatCouldNotWork(t *testing.T) {
-	if _, err := guard.New(guard.Options{EnginePorts: []uint16{7890}}, nil, nil); errs.CodeOf(err) != errs.CodeInvalidArgument {
-		t.Errorf("a guard without a proxy address = %v", err)
-	}
-	if _, err := guard.New(guard.Options{ProxyAddress: "127.0.0.1:7890"}, nil, nil); errs.CodeOf(err) != errs.CodeInvalidArgument {
+	if _, err := guard.New(guard.Options{}, nil); errs.CodeOf(err) != errs.CodeInvalidArgument {
 		t.Errorf("a guard without engine ports = %v", err)
 	}
 }
 
-func TestGuardArmsBeforeItPointsTheProxy(t *testing.T) {
-	proxy, firewall := &memoryProxy{}, &memoryFirewall{}
-	system, err := guard.New(testOptions(), proxy, firewall)
+func TestGuardArmsOnce(t *testing.T) {
+	firewall := &memoryFirewall{}
+	system, err := guard.New(testOptions(), firewall)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	settings := session.Settings{KillSwitch: true, SystemProxy: true, TunnelMode: "system"}
-	if err := system.Apply(context.Background(), settings); err != nil {
-		t.Fatalf("Apply() error = %v", err)
-	}
-	if len(proxy.applied) != 1 || proxy.applied[0] != "127.0.0.1:7890" {
-		t.Errorf("the proxy was pointed at %v", proxy.applied)
+	settings := session.Settings{KillSwitch: true, TunnelMode: "system"}
+	for range 2 {
+		if err := system.Apply(context.Background(), settings); err != nil {
+			t.Fatalf("Apply() error = %v", err)
+		}
 	}
 	if firewall.arms != 1 || !firewall.armed {
 		t.Errorf("the kill switch was armed %d times", firewall.arms)
@@ -95,45 +66,47 @@ func TestGuardArmsBeforeItPointsTheProxy(t *testing.T) {
 	if len(firewall.ports) != 2 {
 		t.Errorf("the kill switch kept %d ports open, want 2", len(firewall.ports))
 	}
+}
 
-	if err := system.Apply(context.Background(), settings); err != nil {
-		t.Fatalf("second Apply() error = %v", err)
+func TestGuardLiftsTheSwitchWhenItIsTurnedOff(t *testing.T) {
+	firewall := &memoryFirewall{}
+	system, err := guard.New(testOptions(), firewall)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
 	}
-	if len(proxy.applied) != 1 {
-		t.Errorf("applying twice pointed the proxy %d times", len(proxy.applied))
+	if err := system.Apply(context.Background(), session.Settings{KillSwitch: true}); err != nil {
+		t.Fatalf("Apply() error = %v", err)
 	}
-	if firewall.arms != 1 {
-		t.Errorf("arming twice added the rule %d times", firewall.arms)
+	if err := system.Apply(context.Background(), session.Settings{}); err != nil {
+		t.Fatalf("Apply() without the switch = %v", err)
+	}
+	if firewall.armed || firewall.disarms != 1 {
+		t.Errorf("turning the switch off: armed=%v disarms=%d", firewall.armed, firewall.disarms)
 	}
 }
 
 func TestGuardRestoresOnlyWhatItArmed(t *testing.T) {
-	proxy, firewall := &memoryProxy{}, &memoryFirewall{}
-	system, err := guard.New(testOptions(), proxy, firewall)
+	firewall := &memoryFirewall{}
+	system, err := guard.New(testOptions(), firewall)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
 	if err := system.Restore(context.Background()); err != nil {
 		t.Fatalf("Restore() without Apply error = %v", err)
 	}
-	if proxy.restores != 0 || firewall.disarms != 0 {
-		t.Errorf("a guard that armed nothing restored something: proxy=%d firewall=%d",
-			proxy.restores, firewall.disarms)
+	if firewall.disarms != 0 {
+		t.Errorf("a guard that armed nothing disarmed %d times", firewall.disarms)
 	}
-
-	if err := system.Apply(context.Background(), session.Settings{KillSwitch: true, SystemProxy: true}); err != nil {
+	if err := system.Apply(context.Background(), session.Settings{KillSwitch: true}); err != nil {
 		t.Fatalf("Apply() error = %v", err)
 	}
 	if err := system.Restore(context.Background()); err != nil {
 		t.Fatalf("Restore() error = %v", err)
 	}
-	if proxy.restores != 1 || firewall.disarms != 1 {
-		t.Errorf("restores: proxy=%d firewall=%d, want one each", proxy.restores, firewall.disarms)
+	if firewall.armed || firewall.disarms != 1 {
+		t.Errorf("after a restore: armed=%v disarms=%d", firewall.armed, firewall.disarms)
 	}
-	if firewall.armed {
-		t.Error("the kill switch is still armed after a restore")
-	}
-	if got := system.Current(); got.KillSwitch || got.SystemProxy {
+	if got := system.Current(); got.KillSwitch {
 		t.Errorf("the guard still reports %+v after a restore", got)
 	}
 	if err := system.Restore(context.Background()); err != nil {
@@ -144,46 +117,25 @@ func TestGuardRestoresOnlyWhatItArmed(t *testing.T) {
 	}
 }
 
-func TestGuardRemovesTheBlockWhenTheProxyFails(t *testing.T) {
-	proxy := &memoryProxy{applyErr: errors.New("the key is locked")}
-	firewall := &memoryFirewall{}
-	system, err := guard.New(testOptions(), proxy, firewall)
+func TestGuardReportsAFirewallThatRefuses(t *testing.T) {
+	firewall := &memoryFirewall{armErr: errors.New("the filtering engine is busy")}
+	system, err := guard.New(testOptions(), firewall)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	err = system.Apply(context.Background(), session.Settings{KillSwitch: true, SystemProxy: true})
-	if errs.KeyOf(err) != errs.KeyGuardProxyFailed {
+	err = system.Apply(context.Background(), session.Settings{KillSwitch: true})
+	if errs.KeyOf(err) != errs.KeyGuardFirewallFail {
 		t.Fatalf("Apply() = %v, key = %q", err, errs.KeyOf(err))
 	}
-	if firewall.armed {
-		t.Error("the kill switch stayed armed although the proxy could not be set, which would cut the machine off")
-	}
-}
-
-func TestGuardArmsOnlyWhatWasAskedFor(t *testing.T) {
-	proxy, firewall := &memoryProxy{}, &memoryFirewall{}
-	system, err := guard.New(testOptions(), proxy, firewall)
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
-	}
-	if err := system.Apply(context.Background(), session.Settings{SystemProxy: true}); err != nil {
-		t.Fatalf("Apply() error = %v", err)
-	}
-	if firewall.arms != 0 {
-		t.Error("the guard armed a kill switch nobody asked for")
-	}
-	if err := system.Restore(context.Background()); err != nil {
-		t.Fatalf("Restore() error = %v", err)
-	}
-	if firewall.disarms != 0 {
-		t.Error("the guard removed a kill switch it never armed")
+	if system.Current().KillSwitch {
+		t.Error("the guard reports a switch that was never armed")
 	}
 }
 
 func testContext() context.Context { return context.Background() }
 
 func TestGuardNameIsStable(t *testing.T) {
-	system, err := guard.New(testOptions(), nil, nil)
+	system, err := guard.New(testOptions(), nil)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

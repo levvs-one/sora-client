@@ -33,6 +33,11 @@ func (e *trackingEngine) CloseConnection(_ context.Context, id string) error {
 	return nil
 }
 
+func (e *trackingEngine) CloseConnections(context.Context) error {
+	e.closed = append(e.closed, "*")
+	return nil
+}
+
 func newLogServer(t *testing.T, eng engine.Engine) (*control.Server, *logs.Center, *secret.Store) {
 	t.Helper()
 	store, err := secret.Open(t.TempDir(), secret.Options{Protector: secret.FileProtector{}})

@@ -513,6 +513,9 @@ message About {
   // SPDX identifier.
   string license = 8;
   string source_url = 9;
+  // Since 1.4. Where the local proxy listens. A session in the application
+  // tunnel mode opens it, and the interface points the system proxy at it.
+  Endpoint local_proxy = 10;
 }
 // EngineBuild is one engine as this machine has it.
 message EngineBuild {

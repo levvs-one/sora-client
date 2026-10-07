@@ -89,6 +89,6 @@ func (n *Nftables) apply(ctx context.Context, ruleset string) error {
 // PlatformFirewall returns the kill switch this platform has. Linux blocks traffic
 // with its own table; the other platforms are handled by the caller, because a
 // correct mechanism there is not the same problem.
-func PlatformFirewall(engineUID int, bypass []string) (Firewall, error) {
-	return NewNftables(engineUID, bypass)
+func PlatformFirewall(opts FirewallOptions) (Firewall, error) {
+	return NewNftables(opts.EngineUID, opts.Bypass)
 }

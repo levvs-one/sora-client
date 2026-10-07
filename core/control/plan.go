@@ -594,6 +594,7 @@ var rulePrefixes = map[engine.RuleType]string{
 	engine.RuleRuleSet:      "ruleset:",
 	engine.RuleDomainSuffix: "domain:",
 	engine.RuleDomain:       "full:",
+	engine.RuleProcess:      "process:",
 }
 
 // ruleTypeOf derives the rule type from the shape of a destination.
@@ -609,6 +610,8 @@ func ruleTypeOf(destination string) engine.RuleType {
 		return engine.RuleDomainSuffix
 	case strings.HasPrefix(destination, "full:"):
 		return engine.RuleDomain
+	case strings.HasPrefix(destination, "process:"):
+		return engine.RuleProcess
 	case strings.Contains(destination, "/"):
 		return engine.RuleIPCIDR
 	case strings.Contains(destination, ":"):

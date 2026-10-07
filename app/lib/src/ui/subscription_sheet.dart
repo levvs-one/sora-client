@@ -42,6 +42,7 @@ Future<void> showFieldSheet(
   String initial = '',
   TextInputType keyboard = TextInputType.text,
   bool allowEmpty = false,
+  Widget? extra,
 }) {
   final motion = Motion.enabled(context);
   return showGeneralDialog<void>(
@@ -58,6 +59,7 @@ Future<void> showFieldSheet(
       initial: initial,
       keyboard: keyboard,
       allowEmpty: allowEmpty,
+      extra: extra,
     ),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Motion.curve, reverseCurve: Curves.easeIn);
@@ -78,6 +80,7 @@ class _FieldSheet extends StatefulWidget {
     required this.initial,
     required this.keyboard,
     required this.allowEmpty,
+    this.extra,
   });
 
   final String title;
@@ -89,6 +92,9 @@ class _FieldSheet extends StatefulWidget {
 
   /// An empty value means "use the default" rather than nothing at all.
   final bool allowEmpty;
+
+  /// A choice that belongs with the value, under the field.
+  final Widget? extra;
 
   @override
   State<_FieldSheet> createState() => _FieldSheetState();
@@ -166,6 +172,7 @@ class _FieldSheetState extends State<_FieldSheet> {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                     ),
                   ),
+                  if (widget.extra != null) ...[const SizedBox(height: 12), widget.extra!],
                   AnimatedSize(
                     duration: Motion.of(context, Motion.fast),
                     curve: Motion.curve,

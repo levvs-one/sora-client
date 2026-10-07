@@ -15,7 +15,17 @@ class Settings {
   static const _keys = {
     'format', 'server', 'preset', 'blockAds', 'killSwitch', 'engine', 'animations', 'theme', 'language', //
     'fragment', 'fragmentPackets', 'fragmentLength', 'fragmentInterval', 'ipv6', 'dns', //
-    'probeMethod', 'probeUrl', 'probeTimeout', 'splitPos', 'disorder', 'tlsRecord', 'hostCase', 'controlPort',
+    'probeMethod',
+    'probeUrl',
+    'probeTimeout',
+    'splitPos',
+    'disorder',
+    'tlsRecord',
+    'hostCase',
+    'controlPort',
+    'rules',
+    'failover',
+    'connectOnStart',
   };
 
   final SharedPreferencesWithCache _store;
@@ -127,6 +137,20 @@ class Settings {
   /// one other programs can find, so it is off until the person agrees.
   bool get controlPort => _store.getBool('controlPort') ?? false;
   set controlPort(bool value) => _store.setBool('controlPort', value);
+
+  /// The person's own rules, each "target destination" where target is
+  /// direct, proxy or block and destination is in the contract's form, for
+  /// example "direct domain:bank.ru" or "proxy process:telegram-desktop".
+  List<String> get rules => _store.getStringList('rules') ?? const [];
+  set rules(List<String> value) => _store.setStringList('rules', value);
+
+  /// When the picked server stops answering, the fastest other one carries
+  /// the traffic until it comes back.
+  bool get failover => _store.getBool('failover') ?? true;
+  set failover(bool value) => _store.setBool('failover', value);
+
+  bool get connectOnStart => _store.getBool('connectOnStart') ?? false;
+  set connectOnStart(bool value) => _store.setBool('connectOnStart', value);
 
   /// Forgets every choice; the next read gives the defaults again.
   Future<void> reset() async {

@@ -7,6 +7,7 @@ import 'package:sora/l10n/strings_ru.dart';
 import 'package:sora/main.dart';
 import 'package:sora/src/core/link.dart';
 import 'package:sora/src/generated/sora/core/v1/core_control.pb.dart';
+import 'package:sora/src/rules.dart';
 import 'package:sora/src/settings.dart';
 import 'package:sora/src/sora.dart';
 import 'package:sora/src/ui/kit.dart';
@@ -105,6 +106,28 @@ void main() {
       expect(buildPlan(servers: servers, choice: 'auto', settings: settings).networkControlAllowed, isTrue);
     });
 
+    test('the person\'s rules come first, and failover keeps the picked server first', () {
+      settings
+        ..rules = ['direct domain:bank.ru', 'proxy process:telegram', 'block 203.0.113.0/24']
+        ..failover = true;
+      final plan = buildPlan(servers: servers, choice: 'b', settings: settings, latency: {'a': 40, 'b': 90});
+      expect(plan.groups.single.name, Sora.failoverGroup);
+      expect(plan.groups.single.type, GroupType.GROUP_TYPE_FALLBACK);
+      expect(plan.groups.single.members, ['b', 'a']);
+      expect(plan.routing.proxyTarget, Sora.failoverGroup);
+      expect(plan.routes.map((r) => '${r.destination}>${r.outboundId}'), [
+        'domain:bank.ru>direct',
+        'process:telegram>${Sora.failoverGroup}',
+        '203.0.113.0/24>reject',
+      ]);
+      settings.engine = 'sing-box';
+      expect(
+        buildPlan(servers: servers, choice: 'b', settings: settings).groups,
+        isEmpty,
+        reason: 'only mihomo has fallback groups; a pinned engine keeps the picked server alone',
+      );
+    });
+
     test('group names never collide with server ids', () {
       expect(Sora.autoGroup, isNot(anyOf('a', 'b')));
       expect(Sora.autoGroup.startsWith('sora:'), isTrue);
@@ -184,5 +207,23 @@ void main() {
     expect(find.text(SRu().coreMissing), findsOneWidget);
     expect(find.text(SRu().addSubscription), findsOneWidget);
     sora.dispose();
+  });
+
+  test('what a person types becomes a rule', () {
+    expect(UserRule.destinationOf('bank.ru'), 'domain:bank.ru');
+    expect(UserRule.destinationOf('*.Bank.RU'), 'domain:bank.ru');
+    expect(UserRule.destinationOf('https://www.youtube.com/watch?v=1'), 'domain:www.youtube.com');
+    expect(UserRule.destinationOf('1.2.3.4'), '1.2.3.4/32');
+    expect(UserRule.destinationOf('10.0.0.0/8'), '10.0.0.0/8');
+    expect(UserRule.destinationOf('2001:db8::1'), '2001:db8::1/128');
+    expect(UserRule.destinationOf('telegram-desktop'), 'process:telegram-desktop');
+    expect(UserRule.destinationOf('Telegram.exe'), 'process:Telegram.exe', reason: 'Windows names programs with .exe');
+    for (final bad in ['', 'two words', '10.0.0.0/40', 'bad_host.ru']) {
+      expect(UserRule.destinationOf(bad), isNull, reason: bad);
+    }
+    final rule = UserRule.parse('proxy process:telegram')!;
+    expect(rule.target, RuleTarget.proxy);
+    expect(rule.shown, 'telegram');
+    expect(UserRule.parse('unknown x'), isNull);
   });
 }

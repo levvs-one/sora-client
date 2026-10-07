@@ -328,3 +328,18 @@ func TestAProfileSurvivesTheVault(t *testing.T) {
 		t.Fatal("an unreadable profile must be refused")
 	}
 }
+
+func TestARuleCanNameAProgram(t *testing.T) {
+	in := &corev1.SessionPlan{
+		TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+		Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+		Routes:     []*corev1.RoutingRule{{Destination: "process:telegram-desktop", OutboundId: "direct"}},
+	}
+	p, err := planFromProto(in, "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := p.Rules[0]; r.Type != engine.RuleProcess || r.Value != "telegram-desktop" {
+		t.Fatalf("rule = %+v", r)
+	}
+}

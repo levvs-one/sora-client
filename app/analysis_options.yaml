@@ -1,5 +1,8 @@
 include: package:flutter_lints/flutter.yaml
 
+formatter:
+  page_width: 120
+
 analyzer:
   language:
     strict-casts: true
@@ -9,6 +12,9 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "lib/src/generated/**"
+    - build/**
+    - android/**
+    - linux/**
 
 linter:
   rules:

@@ -58,9 +58,7 @@ class CoreControlClient extends $grpc.Client {
     $0.WatchEventsRequest request, {
     $grpc.CallOptions? options,
   }) {
-    return $createStreamingCall(
-        _$watchEvents, $async.Stream.fromIterable([request]),
-        options: options);
+    return $createStreamingCall(_$watchEvents, $async.Stream.fromIterable([request]), options: options);
   }
 
   $grpc.ResponseFuture<$0.ParseImportResponse> parseImport(
@@ -81,9 +79,7 @@ class CoreControlClient extends $grpc.Client {
     $0.ProbeServersRequest request, {
     $grpc.CallOptions? options,
   }) {
-    return $createStreamingCall(
-        _$probeServers, $async.Stream.fromIterable([request]),
-        options: options);
+    return $createStreamingCall(_$probeServers, $async.Stream.fromIterable([request]), options: options);
   }
 
   $grpc.ResponseFuture<$0.GetStatsResponse> getStats(
@@ -152,9 +148,7 @@ class CoreControlClient extends $grpc.Client {
     $0.WatchLogsRequest request, {
     $grpc.CallOptions? options,
   }) {
-    return $createStreamingCall(
-        _$watchLogs, $async.Stream.fromIterable([request]),
-        options: options);
+    return $createStreamingCall(_$watchLogs, $async.Stream.fromIterable([request]), options: options);
   }
 
   $grpc.ResponseFuture<$0.ExportLogsResponse> exportLogs(
@@ -235,9 +229,7 @@ class CoreControlClient extends $grpc.Client {
     $0.WatchSubscriptionsRequest request, {
     $grpc.CallOptions? options,
   }) {
-    return $createStreamingCall(
-        _$watchSubscriptions, $async.Stream.fromIterable([request]),
-        options: options);
+    return $createStreamingCall(_$watchSubscriptions, $async.Stream.fromIterable([request]), options: options);
   }
 
   /// PutSecret and DeleteSecret manage the credential material the core keeps.
@@ -261,151 +253,121 @@ class CoreControlClient extends $grpc.Client {
 
   // method descriptors
 
-  static final _$connect =
-      $grpc.ClientMethod<$0.ConnectRequest, $0.ConnectResponse>(
-          '/sora.core.v1.CoreControl/Connect',
-          ($0.ConnectRequest value) => value.writeToBuffer(),
-          $0.ConnectResponse.fromBuffer);
-  static final _$disconnect =
-      $grpc.ClientMethod<$0.DisconnectRequest, $0.DisconnectResponse>(
-          '/sora.core.v1.CoreControl/Disconnect',
-          ($0.DisconnectRequest value) => value.writeToBuffer(),
-          $0.DisconnectResponse.fromBuffer);
-  static final _$getStatus =
-      $grpc.ClientMethod<$0.GetStatusRequest, $0.GetStatusResponse>(
-          '/sora.core.v1.CoreControl/GetStatus',
-          ($0.GetStatusRequest value) => value.writeToBuffer(),
-          $0.GetStatusResponse.fromBuffer);
-  static final _$watchEvents =
-      $grpc.ClientMethod<$0.WatchEventsRequest, $0.CoreEvent>(
-          '/sora.core.v1.CoreControl/WatchEvents',
-          ($0.WatchEventsRequest value) => value.writeToBuffer(),
-          $0.CoreEvent.fromBuffer);
-  static final _$parseImport =
-      $grpc.ClientMethod<$0.ParseImportRequest, $0.ParseImportResponse>(
-          '/sora.core.v1.CoreControl/ParseImport',
-          ($0.ParseImportRequest value) => value.writeToBuffer(),
-          $0.ParseImportResponse.fromBuffer);
-  static final _$fetchSubscription = $grpc.ClientMethod<
-          $0.FetchSubscriptionRequest, $0.FetchSubscriptionResponse>(
+  static final _$connect = $grpc.ClientMethod<$0.ConnectRequest, $0.ConnectResponse>(
+      '/sora.core.v1.CoreControl/Connect',
+      ($0.ConnectRequest value) => value.writeToBuffer(),
+      $0.ConnectResponse.fromBuffer);
+  static final _$disconnect = $grpc.ClientMethod<$0.DisconnectRequest, $0.DisconnectResponse>(
+      '/sora.core.v1.CoreControl/Disconnect',
+      ($0.DisconnectRequest value) => value.writeToBuffer(),
+      $0.DisconnectResponse.fromBuffer);
+  static final _$getStatus = $grpc.ClientMethod<$0.GetStatusRequest, $0.GetStatusResponse>(
+      '/sora.core.v1.CoreControl/GetStatus',
+      ($0.GetStatusRequest value) => value.writeToBuffer(),
+      $0.GetStatusResponse.fromBuffer);
+  static final _$watchEvents = $grpc.ClientMethod<$0.WatchEventsRequest, $0.CoreEvent>(
+      '/sora.core.v1.CoreControl/WatchEvents',
+      ($0.WatchEventsRequest value) => value.writeToBuffer(),
+      $0.CoreEvent.fromBuffer);
+  static final _$parseImport = $grpc.ClientMethod<$0.ParseImportRequest, $0.ParseImportResponse>(
+      '/sora.core.v1.CoreControl/ParseImport',
+      ($0.ParseImportRequest value) => value.writeToBuffer(),
+      $0.ParseImportResponse.fromBuffer);
+  static final _$fetchSubscription = $grpc.ClientMethod<$0.FetchSubscriptionRequest, $0.FetchSubscriptionResponse>(
       '/sora.core.v1.CoreControl/FetchSubscription',
       ($0.FetchSubscriptionRequest value) => value.writeToBuffer(),
       $0.FetchSubscriptionResponse.fromBuffer);
-  static final _$probeServers =
-      $grpc.ClientMethod<$0.ProbeServersRequest, $0.ProbeResult>(
-          '/sora.core.v1.CoreControl/ProbeServers',
-          ($0.ProbeServersRequest value) => value.writeToBuffer(),
-          $0.ProbeResult.fromBuffer);
-  static final _$getStats =
-      $grpc.ClientMethod<$0.GetStatsRequest, $0.GetStatsResponse>(
-          '/sora.core.v1.CoreControl/GetStats',
-          ($0.GetStatsRequest value) => value.writeToBuffer(),
-          $0.GetStatsResponse.fromBuffer);
-  static final _$runDiagnostics =
-      $grpc.ClientMethod<$0.RunDiagnosticsRequest, $0.RunDiagnosticsResponse>(
-          '/sora.core.v1.CoreControl/RunDiagnostics',
-          ($0.RunDiagnosticsRequest value) => value.writeToBuffer(),
-          $0.RunDiagnosticsResponse.fromBuffer);
-  static final _$exportDiagnostics = $grpc.ClientMethod<
-          $0.ExportDiagnosticsRequest, $0.ExportDiagnosticsResponse>(
+  static final _$probeServers = $grpc.ClientMethod<$0.ProbeServersRequest, $0.ProbeResult>(
+      '/sora.core.v1.CoreControl/ProbeServers',
+      ($0.ProbeServersRequest value) => value.writeToBuffer(),
+      $0.ProbeResult.fromBuffer);
+  static final _$getStats = $grpc.ClientMethod<$0.GetStatsRequest, $0.GetStatsResponse>(
+      '/sora.core.v1.CoreControl/GetStats',
+      ($0.GetStatsRequest value) => value.writeToBuffer(),
+      $0.GetStatsResponse.fromBuffer);
+  static final _$runDiagnostics = $grpc.ClientMethod<$0.RunDiagnosticsRequest, $0.RunDiagnosticsResponse>(
+      '/sora.core.v1.CoreControl/RunDiagnostics',
+      ($0.RunDiagnosticsRequest value) => value.writeToBuffer(),
+      $0.RunDiagnosticsResponse.fromBuffer);
+  static final _$exportDiagnostics = $grpc.ClientMethod<$0.ExportDiagnosticsRequest, $0.ExportDiagnosticsResponse>(
       '/sora.core.v1.CoreControl/ExportDiagnostics',
       ($0.ExportDiagnosticsRequest value) => value.writeToBuffer(),
       $0.ExportDiagnosticsResponse.fromBuffer);
-  static final _$setKillSwitch =
-      $grpc.ClientMethod<$0.SetKillSwitchRequest, $0.SetKillSwitchResponse>(
-          '/sora.core.v1.CoreControl/SetKillSwitch',
-          ($0.SetKillSwitchRequest value) => value.writeToBuffer(),
-          $0.SetKillSwitchResponse.fromBuffer);
-  static final _$handshake =
-      $grpc.ClientMethod<$0.HandshakeRequest, $0.HandshakeResponse>(
-          '/sora.core.v1.CoreControl/Handshake',
-          ($0.HandshakeRequest value) => value.writeToBuffer(),
-          $0.HandshakeResponse.fromBuffer);
-  static final _$getAbout =
-      $grpc.ClientMethod<$0.GetAboutRequest, $0.GetAboutResponse>(
-          '/sora.core.v1.CoreControl/GetAbout',
-          ($0.GetAboutRequest value) => value.writeToBuffer(),
-          $0.GetAboutResponse.fromBuffer);
-  static final _$getRoutingPresets = $grpc.ClientMethod<
-          $0.GetRoutingPresetsRequest, $0.GetRoutingPresetsResponse>(
+  static final _$setKillSwitch = $grpc.ClientMethod<$0.SetKillSwitchRequest, $0.SetKillSwitchResponse>(
+      '/sora.core.v1.CoreControl/SetKillSwitch',
+      ($0.SetKillSwitchRequest value) => value.writeToBuffer(),
+      $0.SetKillSwitchResponse.fromBuffer);
+  static final _$handshake = $grpc.ClientMethod<$0.HandshakeRequest, $0.HandshakeResponse>(
+      '/sora.core.v1.CoreControl/Handshake',
+      ($0.HandshakeRequest value) => value.writeToBuffer(),
+      $0.HandshakeResponse.fromBuffer);
+  static final _$getAbout = $grpc.ClientMethod<$0.GetAboutRequest, $0.GetAboutResponse>(
+      '/sora.core.v1.CoreControl/GetAbout',
+      ($0.GetAboutRequest value) => value.writeToBuffer(),
+      $0.GetAboutResponse.fromBuffer);
+  static final _$getRoutingPresets = $grpc.ClientMethod<$0.GetRoutingPresetsRequest, $0.GetRoutingPresetsResponse>(
       '/sora.core.v1.CoreControl/GetRoutingPresets',
       ($0.GetRoutingPresetsRequest value) => value.writeToBuffer(),
       $0.GetRoutingPresetsResponse.fromBuffer);
-  static final _$queryLogs =
-      $grpc.ClientMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
-          '/sora.core.v1.CoreControl/QueryLogs',
-          ($0.QueryLogsRequest value) => value.writeToBuffer(),
-          $0.QueryLogsResponse.fromBuffer);
-  static final _$watchLogs =
-      $grpc.ClientMethod<$0.WatchLogsRequest, $0.LogEntry>(
-          '/sora.core.v1.CoreControl/WatchLogs',
-          ($0.WatchLogsRequest value) => value.writeToBuffer(),
-          $0.LogEntry.fromBuffer);
-  static final _$exportLogs =
-      $grpc.ClientMethod<$0.ExportLogsRequest, $0.ExportLogsResponse>(
-          '/sora.core.v1.CoreControl/ExportLogs',
-          ($0.ExportLogsRequest value) => value.writeToBuffer(),
-          $0.ExportLogsResponse.fromBuffer);
-  static final _$clearLogs =
-      $grpc.ClientMethod<$0.ClearLogsRequest, $0.ClearLogsResponse>(
-          '/sora.core.v1.CoreControl/ClearLogs',
-          ($0.ClearLogsRequest value) => value.writeToBuffer(),
-          $0.ClearLogsResponse.fromBuffer);
-  static final _$getLogSettings =
-      $grpc.ClientMethod<$0.GetLogSettingsRequest, $0.GetLogSettingsResponse>(
-          '/sora.core.v1.CoreControl/GetLogSettings',
-          ($0.GetLogSettingsRequest value) => value.writeToBuffer(),
-          $0.GetLogSettingsResponse.fromBuffer);
-  static final _$setLogSettings =
-      $grpc.ClientMethod<$0.SetLogSettingsRequest, $0.SetLogSettingsResponse>(
-          '/sora.core.v1.CoreControl/SetLogSettings',
-          ($0.SetLogSettingsRequest value) => value.writeToBuffer(),
-          $0.SetLogSettingsResponse.fromBuffer);
-  static final _$listConnections =
-      $grpc.ClientMethod<$0.ListConnectionsRequest, $0.ListConnectionsResponse>(
-          '/sora.core.v1.CoreControl/ListConnections',
-          ($0.ListConnectionsRequest value) => value.writeToBuffer(),
-          $0.ListConnectionsResponse.fromBuffer);
-  static final _$closeConnection =
-      $grpc.ClientMethod<$0.CloseConnectionRequest, $0.CloseConnectionResponse>(
-          '/sora.core.v1.CoreControl/CloseConnection',
-          ($0.CloseConnectionRequest value) => value.writeToBuffer(),
-          $0.CloseConnectionResponse.fromBuffer);
-  static final _$saveSubscription = $grpc.ClientMethod<
-          $0.SaveSubscriptionRequest, $0.SaveSubscriptionResponse>(
+  static final _$queryLogs = $grpc.ClientMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
+      '/sora.core.v1.CoreControl/QueryLogs',
+      ($0.QueryLogsRequest value) => value.writeToBuffer(),
+      $0.QueryLogsResponse.fromBuffer);
+  static final _$watchLogs = $grpc.ClientMethod<$0.WatchLogsRequest, $0.LogEntry>('/sora.core.v1.CoreControl/WatchLogs',
+      ($0.WatchLogsRequest value) => value.writeToBuffer(), $0.LogEntry.fromBuffer);
+  static final _$exportLogs = $grpc.ClientMethod<$0.ExportLogsRequest, $0.ExportLogsResponse>(
+      '/sora.core.v1.CoreControl/ExportLogs',
+      ($0.ExportLogsRequest value) => value.writeToBuffer(),
+      $0.ExportLogsResponse.fromBuffer);
+  static final _$clearLogs = $grpc.ClientMethod<$0.ClearLogsRequest, $0.ClearLogsResponse>(
+      '/sora.core.v1.CoreControl/ClearLogs',
+      ($0.ClearLogsRequest value) => value.writeToBuffer(),
+      $0.ClearLogsResponse.fromBuffer);
+  static final _$getLogSettings = $grpc.ClientMethod<$0.GetLogSettingsRequest, $0.GetLogSettingsResponse>(
+      '/sora.core.v1.CoreControl/GetLogSettings',
+      ($0.GetLogSettingsRequest value) => value.writeToBuffer(),
+      $0.GetLogSettingsResponse.fromBuffer);
+  static final _$setLogSettings = $grpc.ClientMethod<$0.SetLogSettingsRequest, $0.SetLogSettingsResponse>(
+      '/sora.core.v1.CoreControl/SetLogSettings',
+      ($0.SetLogSettingsRequest value) => value.writeToBuffer(),
+      $0.SetLogSettingsResponse.fromBuffer);
+  static final _$listConnections = $grpc.ClientMethod<$0.ListConnectionsRequest, $0.ListConnectionsResponse>(
+      '/sora.core.v1.CoreControl/ListConnections',
+      ($0.ListConnectionsRequest value) => value.writeToBuffer(),
+      $0.ListConnectionsResponse.fromBuffer);
+  static final _$closeConnection = $grpc.ClientMethod<$0.CloseConnectionRequest, $0.CloseConnectionResponse>(
+      '/sora.core.v1.CoreControl/CloseConnection',
+      ($0.CloseConnectionRequest value) => value.writeToBuffer(),
+      $0.CloseConnectionResponse.fromBuffer);
+  static final _$saveSubscription = $grpc.ClientMethod<$0.SaveSubscriptionRequest, $0.SaveSubscriptionResponse>(
       '/sora.core.v1.CoreControl/SaveSubscription',
       ($0.SaveSubscriptionRequest value) => value.writeToBuffer(),
       $0.SaveSubscriptionResponse.fromBuffer);
-  static final _$listSubscriptions = $grpc.ClientMethod<
-          $0.ListSubscriptionsRequest, $0.ListSubscriptionsResponse>(
+  static final _$listSubscriptions = $grpc.ClientMethod<$0.ListSubscriptionsRequest, $0.ListSubscriptionsResponse>(
       '/sora.core.v1.CoreControl/ListSubscriptions',
       ($0.ListSubscriptionsRequest value) => value.writeToBuffer(),
       $0.ListSubscriptionsResponse.fromBuffer);
-  static final _$deleteSubscription = $grpc.ClientMethod<
-          $0.DeleteSubscriptionRequest, $0.DeleteSubscriptionResponse>(
+  static final _$deleteSubscription = $grpc.ClientMethod<$0.DeleteSubscriptionRequest, $0.DeleteSubscriptionResponse>(
       '/sora.core.v1.CoreControl/DeleteSubscription',
       ($0.DeleteSubscriptionRequest value) => value.writeToBuffer(),
       $0.DeleteSubscriptionResponse.fromBuffer);
-  static final _$refreshSubscription = $grpc.ClientMethod<
-          $0.RefreshSubscriptionRequest, $0.RefreshSubscriptionResponse>(
-      '/sora.core.v1.CoreControl/RefreshSubscription',
-      ($0.RefreshSubscriptionRequest value) => value.writeToBuffer(),
-      $0.RefreshSubscriptionResponse.fromBuffer);
-  static final _$watchSubscriptions =
-      $grpc.ClientMethod<$0.WatchSubscriptionsRequest, $0.SubscriptionState>(
-          '/sora.core.v1.CoreControl/WatchSubscriptions',
-          ($0.WatchSubscriptionsRequest value) => value.writeToBuffer(),
-          $0.SubscriptionState.fromBuffer);
-  static final _$putSecret =
-      $grpc.ClientMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
-          '/sora.core.v1.CoreControl/PutSecret',
-          ($0.PutSecretRequest value) => value.writeToBuffer(),
-          $0.PutSecretResponse.fromBuffer);
-  static final _$deleteSecret =
-      $grpc.ClientMethod<$0.DeleteSecretRequest, $0.DeleteSecretResponse>(
-          '/sora.core.v1.CoreControl/DeleteSecret',
-          ($0.DeleteSecretRequest value) => value.writeToBuffer(),
-          $0.DeleteSecretResponse.fromBuffer);
+  static final _$refreshSubscription =
+      $grpc.ClientMethod<$0.RefreshSubscriptionRequest, $0.RefreshSubscriptionResponse>(
+          '/sora.core.v1.CoreControl/RefreshSubscription',
+          ($0.RefreshSubscriptionRequest value) => value.writeToBuffer(),
+          $0.RefreshSubscriptionResponse.fromBuffer);
+  static final _$watchSubscriptions = $grpc.ClientMethod<$0.WatchSubscriptionsRequest, $0.SubscriptionState>(
+      '/sora.core.v1.CoreControl/WatchSubscriptions',
+      ($0.WatchSubscriptionsRequest value) => value.writeToBuffer(),
+      $0.SubscriptionState.fromBuffer);
+  static final _$putSecret = $grpc.ClientMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
+      '/sora.core.v1.CoreControl/PutSecret',
+      ($0.PutSecretRequest value) => value.writeToBuffer(),
+      $0.PutSecretResponse.fromBuffer);
+  static final _$deleteSecret = $grpc.ClientMethod<$0.DeleteSecretRequest, $0.DeleteSecretResponse>(
+      '/sora.core.v1.CoreControl/DeleteSecret',
+      ($0.DeleteSecretRequest value) => value.writeToBuffer(),
+      $0.DeleteSecretResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('sora.core.v1.CoreControl')
@@ -439,34 +401,28 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         watchEvents_Pre,
         false,
         true,
-        ($core.List<$core.int> value) =>
-            $0.WatchEventsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.WatchEventsRequest.fromBuffer(value),
         ($0.CoreEvent value) => value.writeToBuffer()));
-    $addMethod(
-        $grpc.ServiceMethod<$0.ParseImportRequest, $0.ParseImportResponse>(
-            'ParseImport',
-            parseImport_Pre,
-            false,
-            false,
-            ($core.List<$core.int> value) =>
-                $0.ParseImportRequest.fromBuffer(value),
-            ($0.ParseImportResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.FetchSubscriptionRequest,
-            $0.FetchSubscriptionResponse>(
+    $addMethod($grpc.ServiceMethod<$0.ParseImportRequest, $0.ParseImportResponse>(
+        'ParseImport',
+        parseImport_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.ParseImportRequest.fromBuffer(value),
+        ($0.ParseImportResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.FetchSubscriptionRequest, $0.FetchSubscriptionResponse>(
         'FetchSubscription',
         fetchSubscription_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.FetchSubscriptionRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.FetchSubscriptionRequest.fromBuffer(value),
         ($0.FetchSubscriptionResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.ProbeServersRequest, $0.ProbeResult>(
         'ProbeServers',
         probeServers_Pre,
         false,
         true,
-        ($core.List<$core.int> value) =>
-            $0.ProbeServersRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.ProbeServersRequest.fromBuffer(value),
         ($0.ProbeResult value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.GetStatsRequest, $0.GetStatsResponse>(
         'GetStats',
@@ -475,33 +431,27 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.GetStatsRequest.fromBuffer(value),
         ($0.GetStatsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.RunDiagnosticsRequest,
-            $0.RunDiagnosticsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.RunDiagnosticsRequest, $0.RunDiagnosticsResponse>(
         'RunDiagnostics',
         runDiagnostics_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.RunDiagnosticsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.RunDiagnosticsRequest.fromBuffer(value),
         ($0.RunDiagnosticsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.ExportDiagnosticsRequest,
-            $0.ExportDiagnosticsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.ExportDiagnosticsRequest, $0.ExportDiagnosticsResponse>(
         'ExportDiagnostics',
         exportDiagnostics_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.ExportDiagnosticsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.ExportDiagnosticsRequest.fromBuffer(value),
         ($0.ExportDiagnosticsResponse value) => value.writeToBuffer()));
-    $addMethod(
-        $grpc.ServiceMethod<$0.SetKillSwitchRequest, $0.SetKillSwitchResponse>(
-            'SetKillSwitch',
-            setKillSwitch_Pre,
-            false,
-            false,
-            ($core.List<$core.int> value) =>
-                $0.SetKillSwitchRequest.fromBuffer(value),
-            ($0.SetKillSwitchResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetKillSwitchRequest, $0.SetKillSwitchResponse>(
+        'SetKillSwitch',
+        setKillSwitch_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.SetKillSwitchRequest.fromBuffer(value),
+        ($0.SetKillSwitchResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.HandshakeRequest, $0.HandshakeResponse>(
         'Handshake',
         handshake_Pre,
@@ -516,14 +466,12 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.GetAboutRequest.fromBuffer(value),
         ($0.GetAboutResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.GetRoutingPresetsRequest,
-            $0.GetRoutingPresetsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.GetRoutingPresetsRequest, $0.GetRoutingPresetsResponse>(
         'GetRoutingPresets',
         getRoutingPresets_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.GetRoutingPresetsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.GetRoutingPresetsRequest.fromBuffer(value),
         ($0.GetRoutingPresetsResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.QueryLogsRequest, $0.QueryLogsResponse>(
         'QueryLogs',
@@ -553,87 +501,69 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.ClearLogsRequest.fromBuffer(value),
         ($0.ClearLogsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.GetLogSettingsRequest,
-            $0.GetLogSettingsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.GetLogSettingsRequest, $0.GetLogSettingsResponse>(
         'GetLogSettings',
         getLogSettings_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.GetLogSettingsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.GetLogSettingsRequest.fromBuffer(value),
         ($0.GetLogSettingsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.SetLogSettingsRequest,
-            $0.SetLogSettingsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.SetLogSettingsRequest, $0.SetLogSettingsResponse>(
         'SetLogSettings',
         setLogSettings_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.SetLogSettingsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.SetLogSettingsRequest.fromBuffer(value),
         ($0.SetLogSettingsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.ListConnectionsRequest,
-            $0.ListConnectionsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.ListConnectionsRequest, $0.ListConnectionsResponse>(
         'ListConnections',
         listConnections_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.ListConnectionsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.ListConnectionsRequest.fromBuffer(value),
         ($0.ListConnectionsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.CloseConnectionRequest,
-            $0.CloseConnectionResponse>(
+    $addMethod($grpc.ServiceMethod<$0.CloseConnectionRequest, $0.CloseConnectionResponse>(
         'CloseConnection',
         closeConnection_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.CloseConnectionRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.CloseConnectionRequest.fromBuffer(value),
         ($0.CloseConnectionResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.SaveSubscriptionRequest,
-            $0.SaveSubscriptionResponse>(
+    $addMethod($grpc.ServiceMethod<$0.SaveSubscriptionRequest, $0.SaveSubscriptionResponse>(
         'SaveSubscription',
         saveSubscription_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.SaveSubscriptionRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.SaveSubscriptionRequest.fromBuffer(value),
         ($0.SaveSubscriptionResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.ListSubscriptionsRequest,
-            $0.ListSubscriptionsResponse>(
+    $addMethod($grpc.ServiceMethod<$0.ListSubscriptionsRequest, $0.ListSubscriptionsResponse>(
         'ListSubscriptions',
         listSubscriptions_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.ListSubscriptionsRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.ListSubscriptionsRequest.fromBuffer(value),
         ($0.ListSubscriptionsResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.DeleteSubscriptionRequest,
-            $0.DeleteSubscriptionResponse>(
+    $addMethod($grpc.ServiceMethod<$0.DeleteSubscriptionRequest, $0.DeleteSubscriptionResponse>(
         'DeleteSubscription',
         deleteSubscription_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.DeleteSubscriptionRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.DeleteSubscriptionRequest.fromBuffer(value),
         ($0.DeleteSubscriptionResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.RefreshSubscriptionRequest,
-            $0.RefreshSubscriptionResponse>(
+    $addMethod($grpc.ServiceMethod<$0.RefreshSubscriptionRequest, $0.RefreshSubscriptionResponse>(
         'RefreshSubscription',
         refreshSubscription_Pre,
         false,
         false,
-        ($core.List<$core.int> value) =>
-            $0.RefreshSubscriptionRequest.fromBuffer(value),
+        ($core.List<$core.int> value) => $0.RefreshSubscriptionRequest.fromBuffer(value),
         ($0.RefreshSubscriptionResponse value) => value.writeToBuffer()));
-    $addMethod(
-        $grpc.ServiceMethod<$0.WatchSubscriptionsRequest, $0.SubscriptionState>(
-            'WatchSubscriptions',
-            watchSubscriptions_Pre,
-            false,
-            true,
-            ($core.List<$core.int> value) =>
-                $0.WatchSubscriptionsRequest.fromBuffer(value),
-            ($0.SubscriptionState value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.WatchSubscriptionsRequest, $0.SubscriptionState>(
+        'WatchSubscriptions',
+        watchSubscriptions_Pre,
+        false,
+        true,
+        ($core.List<$core.int> value) => $0.WatchSubscriptionsRequest.fromBuffer(value),
+        ($0.SubscriptionState value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
         'PutSecret',
         putSecret_Pre,
@@ -641,94 +571,81 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.PutSecretRequest.fromBuffer(value),
         ($0.PutSecretResponse value) => value.writeToBuffer()));
-    $addMethod(
-        $grpc.ServiceMethod<$0.DeleteSecretRequest, $0.DeleteSecretResponse>(
-            'DeleteSecret',
-            deleteSecret_Pre,
-            false,
-            false,
-            ($core.List<$core.int> value) =>
-                $0.DeleteSecretRequest.fromBuffer(value),
-            ($0.DeleteSecretResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.DeleteSecretRequest, $0.DeleteSecretResponse>(
+        'DeleteSecret',
+        deleteSecret_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.DeleteSecretRequest.fromBuffer(value),
+        ($0.DeleteSecretResponse value) => value.writeToBuffer()));
   }
 
-  $async.Future<$0.ConnectResponse> connect_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.ConnectRequest> $request) async {
+  $async.Future<$0.ConnectResponse> connect_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.ConnectRequest> $request) async {
     return connect($call, await $request);
   }
 
-  $async.Future<$0.ConnectResponse> connect(
-      $grpc.ServiceCall call, $0.ConnectRequest request);
+  $async.Future<$0.ConnectResponse> connect($grpc.ServiceCall call, $0.ConnectRequest request);
 
-  $async.Future<$0.DisconnectResponse> disconnect_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.DisconnectRequest> $request) async {
+  $async.Future<$0.DisconnectResponse> disconnect_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.DisconnectRequest> $request) async {
     return disconnect($call, await $request);
   }
 
-  $async.Future<$0.DisconnectResponse> disconnect(
-      $grpc.ServiceCall call, $0.DisconnectRequest request);
+  $async.Future<$0.DisconnectResponse> disconnect($grpc.ServiceCall call, $0.DisconnectRequest request);
 
-  $async.Future<$0.GetStatusResponse> getStatus_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.GetStatusRequest> $request) async {
+  $async.Future<$0.GetStatusResponse> getStatus_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.GetStatusRequest> $request) async {
     return getStatus($call, await $request);
   }
 
-  $async.Future<$0.GetStatusResponse> getStatus(
-      $grpc.ServiceCall call, $0.GetStatusRequest request);
+  $async.Future<$0.GetStatusResponse> getStatus($grpc.ServiceCall call, $0.GetStatusRequest request);
 
-  $async.Stream<$0.CoreEvent> watchEvents_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.WatchEventsRequest> $request) async* {
+  $async.Stream<$0.CoreEvent> watchEvents_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.WatchEventsRequest> $request) async* {
     yield* watchEvents($call, await $request);
   }
 
-  $async.Stream<$0.CoreEvent> watchEvents(
-      $grpc.ServiceCall call, $0.WatchEventsRequest request);
+  $async.Stream<$0.CoreEvent> watchEvents($grpc.ServiceCall call, $0.WatchEventsRequest request);
 
-  $async.Future<$0.ParseImportResponse> parseImport_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.ParseImportRequest> $request) async {
+  $async.Future<$0.ParseImportResponse> parseImport_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.ParseImportRequest> $request) async {
     return parseImport($call, await $request);
   }
 
-  $async.Future<$0.ParseImportResponse> parseImport(
-      $grpc.ServiceCall call, $0.ParseImportRequest request);
+  $async.Future<$0.ParseImportResponse> parseImport($grpc.ServiceCall call, $0.ParseImportRequest request);
 
   $async.Future<$0.FetchSubscriptionResponse> fetchSubscription_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.FetchSubscriptionRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.FetchSubscriptionRequest> $request) async {
     return fetchSubscription($call, await $request);
   }
 
   $async.Future<$0.FetchSubscriptionResponse> fetchSubscription(
       $grpc.ServiceCall call, $0.FetchSubscriptionRequest request);
 
-  $async.Stream<$0.ProbeResult> probeServers_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.ProbeServersRequest> $request) async* {
+  $async.Stream<$0.ProbeResult> probeServers_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.ProbeServersRequest> $request) async* {
     yield* probeServers($call, await $request);
   }
 
-  $async.Stream<$0.ProbeResult> probeServers(
-      $grpc.ServiceCall call, $0.ProbeServersRequest request);
+  $async.Stream<$0.ProbeResult> probeServers($grpc.ServiceCall call, $0.ProbeServersRequest request);
 
-  $async.Future<$0.GetStatsResponse> getStats_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.GetStatsRequest> $request) async {
+  $async.Future<$0.GetStatsResponse> getStats_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.GetStatsRequest> $request) async {
     return getStats($call, await $request);
   }
 
-  $async.Future<$0.GetStatsResponse> getStats(
-      $grpc.ServiceCall call, $0.GetStatsRequest request);
+  $async.Future<$0.GetStatsResponse> getStats($grpc.ServiceCall call, $0.GetStatsRequest request);
 
   $async.Future<$0.RunDiagnosticsResponse> runDiagnostics_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.RunDiagnosticsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.RunDiagnosticsRequest> $request) async {
     return runDiagnostics($call, await $request);
   }
 
-  $async.Future<$0.RunDiagnosticsResponse> runDiagnostics(
-      $grpc.ServiceCall call, $0.RunDiagnosticsRequest request);
+  $async.Future<$0.RunDiagnosticsResponse> runDiagnostics($grpc.ServiceCall call, $0.RunDiagnosticsRequest request);
 
   $async.Future<$0.ExportDiagnosticsResponse> exportDiagnostics_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.ExportDiagnosticsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.ExportDiagnosticsRequest> $request) async {
     return exportDiagnostics($call, await $request);
   }
 
@@ -736,110 +653,92 @@ abstract class CoreControlServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.ExportDiagnosticsRequest request);
 
   $async.Future<$0.SetKillSwitchResponse> setKillSwitch_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.SetKillSwitchRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.SetKillSwitchRequest> $request) async {
     return setKillSwitch($call, await $request);
   }
 
-  $async.Future<$0.SetKillSwitchResponse> setKillSwitch(
-      $grpc.ServiceCall call, $0.SetKillSwitchRequest request);
+  $async.Future<$0.SetKillSwitchResponse> setKillSwitch($grpc.ServiceCall call, $0.SetKillSwitchRequest request);
 
-  $async.Future<$0.HandshakeResponse> handshake_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.HandshakeRequest> $request) async {
+  $async.Future<$0.HandshakeResponse> handshake_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.HandshakeRequest> $request) async {
     return handshake($call, await $request);
   }
 
-  $async.Future<$0.HandshakeResponse> handshake(
-      $grpc.ServiceCall call, $0.HandshakeRequest request);
+  $async.Future<$0.HandshakeResponse> handshake($grpc.ServiceCall call, $0.HandshakeRequest request);
 
-  $async.Future<$0.GetAboutResponse> getAbout_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.GetAboutRequest> $request) async {
+  $async.Future<$0.GetAboutResponse> getAbout_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.GetAboutRequest> $request) async {
     return getAbout($call, await $request);
   }
 
-  $async.Future<$0.GetAboutResponse> getAbout(
-      $grpc.ServiceCall call, $0.GetAboutRequest request);
+  $async.Future<$0.GetAboutResponse> getAbout($grpc.ServiceCall call, $0.GetAboutRequest request);
 
   $async.Future<$0.GetRoutingPresetsResponse> getRoutingPresets_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.GetRoutingPresetsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.GetRoutingPresetsRequest> $request) async {
     return getRoutingPresets($call, await $request);
   }
 
   $async.Future<$0.GetRoutingPresetsResponse> getRoutingPresets(
       $grpc.ServiceCall call, $0.GetRoutingPresetsRequest request);
 
-  $async.Future<$0.QueryLogsResponse> queryLogs_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.QueryLogsRequest> $request) async {
+  $async.Future<$0.QueryLogsResponse> queryLogs_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.QueryLogsRequest> $request) async {
     return queryLogs($call, await $request);
   }
 
-  $async.Future<$0.QueryLogsResponse> queryLogs(
-      $grpc.ServiceCall call, $0.QueryLogsRequest request);
+  $async.Future<$0.QueryLogsResponse> queryLogs($grpc.ServiceCall call, $0.QueryLogsRequest request);
 
-  $async.Stream<$0.LogEntry> watchLogs_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.WatchLogsRequest> $request) async* {
+  $async.Stream<$0.LogEntry> watchLogs_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.WatchLogsRequest> $request) async* {
     yield* watchLogs($call, await $request);
   }
 
-  $async.Stream<$0.LogEntry> watchLogs(
-      $grpc.ServiceCall call, $0.WatchLogsRequest request);
+  $async.Stream<$0.LogEntry> watchLogs($grpc.ServiceCall call, $0.WatchLogsRequest request);
 
-  $async.Future<$0.ExportLogsResponse> exportLogs_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.ExportLogsRequest> $request) async {
+  $async.Future<$0.ExportLogsResponse> exportLogs_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.ExportLogsRequest> $request) async {
     return exportLogs($call, await $request);
   }
 
-  $async.Future<$0.ExportLogsResponse> exportLogs(
-      $grpc.ServiceCall call, $0.ExportLogsRequest request);
+  $async.Future<$0.ExportLogsResponse> exportLogs($grpc.ServiceCall call, $0.ExportLogsRequest request);
 
-  $async.Future<$0.ClearLogsResponse> clearLogs_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.ClearLogsRequest> $request) async {
+  $async.Future<$0.ClearLogsResponse> clearLogs_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.ClearLogsRequest> $request) async {
     return clearLogs($call, await $request);
   }
 
-  $async.Future<$0.ClearLogsResponse> clearLogs(
-      $grpc.ServiceCall call, $0.ClearLogsRequest request);
+  $async.Future<$0.ClearLogsResponse> clearLogs($grpc.ServiceCall call, $0.ClearLogsRequest request);
 
   $async.Future<$0.GetLogSettingsResponse> getLogSettings_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.GetLogSettingsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.GetLogSettingsRequest> $request) async {
     return getLogSettings($call, await $request);
   }
 
-  $async.Future<$0.GetLogSettingsResponse> getLogSettings(
-      $grpc.ServiceCall call, $0.GetLogSettingsRequest request);
+  $async.Future<$0.GetLogSettingsResponse> getLogSettings($grpc.ServiceCall call, $0.GetLogSettingsRequest request);
 
   $async.Future<$0.SetLogSettingsResponse> setLogSettings_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.SetLogSettingsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.SetLogSettingsRequest> $request) async {
     return setLogSettings($call, await $request);
   }
 
-  $async.Future<$0.SetLogSettingsResponse> setLogSettings(
-      $grpc.ServiceCall call, $0.SetLogSettingsRequest request);
+  $async.Future<$0.SetLogSettingsResponse> setLogSettings($grpc.ServiceCall call, $0.SetLogSettingsRequest request);
 
   $async.Future<$0.ListConnectionsResponse> listConnections_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.ListConnectionsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.ListConnectionsRequest> $request) async {
     return listConnections($call, await $request);
   }
 
-  $async.Future<$0.ListConnectionsResponse> listConnections(
-      $grpc.ServiceCall call, $0.ListConnectionsRequest request);
+  $async.Future<$0.ListConnectionsResponse> listConnections($grpc.ServiceCall call, $0.ListConnectionsRequest request);
 
   $async.Future<$0.CloseConnectionResponse> closeConnection_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.CloseConnectionRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.CloseConnectionRequest> $request) async {
     return closeConnection($call, await $request);
   }
 
-  $async.Future<$0.CloseConnectionResponse> closeConnection(
-      $grpc.ServiceCall call, $0.CloseConnectionRequest request);
+  $async.Future<$0.CloseConnectionResponse> closeConnection($grpc.ServiceCall call, $0.CloseConnectionRequest request);
 
   $async.Future<$0.SaveSubscriptionResponse> saveSubscription_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.SaveSubscriptionRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.SaveSubscriptionRequest> $request) async {
     return saveSubscription($call, await $request);
   }
 
@@ -847,8 +746,7 @@ abstract class CoreControlServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.SaveSubscriptionRequest request);
 
   $async.Future<$0.ListSubscriptionsResponse> listSubscriptions_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.ListSubscriptionsRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.ListSubscriptionsRequest> $request) async {
     return listSubscriptions($call, await $request);
   }
 
@@ -856,8 +754,7 @@ abstract class CoreControlServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.ListSubscriptionsRequest request);
 
   $async.Future<$0.DeleteSubscriptionResponse> deleteSubscription_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.DeleteSubscriptionRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.DeleteSubscriptionRequest> $request) async {
     return deleteSubscription($call, await $request);
   }
 
@@ -865,8 +762,7 @@ abstract class CoreControlServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.DeleteSubscriptionRequest request);
 
   $async.Future<$0.RefreshSubscriptionResponse> refreshSubscription_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.RefreshSubscriptionRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.RefreshSubscriptionRequest> $request) async {
     return refreshSubscription($call, await $request);
   }
 
@@ -874,28 +770,23 @@ abstract class CoreControlServiceBase extends $grpc.Service {
       $grpc.ServiceCall call, $0.RefreshSubscriptionRequest request);
 
   $async.Stream<$0.SubscriptionState> watchSubscriptions_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.WatchSubscriptionsRequest> $request) async* {
+      $grpc.ServiceCall $call, $async.Future<$0.WatchSubscriptionsRequest> $request) async* {
     yield* watchSubscriptions($call, await $request);
   }
 
-  $async.Stream<$0.SubscriptionState> watchSubscriptions(
-      $grpc.ServiceCall call, $0.WatchSubscriptionsRequest request);
+  $async.Stream<$0.SubscriptionState> watchSubscriptions($grpc.ServiceCall call, $0.WatchSubscriptionsRequest request);
 
-  $async.Future<$0.PutSecretResponse> putSecret_Pre($grpc.ServiceCall $call,
-      $async.Future<$0.PutSecretRequest> $request) async {
+  $async.Future<$0.PutSecretResponse> putSecret_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.PutSecretRequest> $request) async {
     return putSecret($call, await $request);
   }
 
-  $async.Future<$0.PutSecretResponse> putSecret(
-      $grpc.ServiceCall call, $0.PutSecretRequest request);
+  $async.Future<$0.PutSecretResponse> putSecret($grpc.ServiceCall call, $0.PutSecretRequest request);
 
   $async.Future<$0.DeleteSecretResponse> deleteSecret_Pre(
-      $grpc.ServiceCall $call,
-      $async.Future<$0.DeleteSecretRequest> $request) async {
+      $grpc.ServiceCall $call, $async.Future<$0.DeleteSecretRequest> $request) async {
     return deleteSecret($call, await $request);
   }
 
-  $async.Future<$0.DeleteSecretResponse> deleteSecret(
-      $grpc.ServiceCall call, $0.DeleteSecretRequest request);
+  $async.Future<$0.DeleteSecretResponse> deleteSecret($grpc.ServiceCall call, $0.DeleteSecretRequest request);
 }

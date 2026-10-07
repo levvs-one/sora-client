@@ -256,4 +256,16 @@ class SRu extends S {
 
   @override
   String get exportText => 'Текст';
+
+  @override
+  String get connections => 'Соединения';
+
+  @override
+  String get close => 'Закрыть';
+
+  @override
+  String get chainDirect => 'Напрямую';
+
+  @override
+  String get chainBlocked => 'Заблокировано';
 }

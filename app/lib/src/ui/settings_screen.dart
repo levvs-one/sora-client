@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/strings.dart';
 import '../sora.dart';
 import 'about.dart';
+import 'connections.dart';
 import 'kit.dart';
 import 'logs.dart';
 
@@ -49,6 +50,7 @@ class SettingsScreen extends StatelessWidget {
         Group(
           children: [
             LinkTile(title: s.logs, onTap: () => push<void>(context, const LogsScreen())),
+            LinkTile(title: s.connections, onTap: () => push<void>(context, const ConnectionsScreen())),
             LinkTile(title: s.about, onTap: () => push<void>(context, const AboutScreen())),
           ],
         ),

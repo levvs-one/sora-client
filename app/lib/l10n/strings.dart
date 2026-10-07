@@ -547,6 +547,30 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Текст'**
   String get exportText;
+
+  /// No description provided for @connections.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединения'**
+  String get connections;
+
+  /// No description provided for @close.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть'**
+  String get close;
+
+  /// No description provided for @chainDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Напрямую'**
+  String get chainDirect;
+
+  /// No description provided for @chainBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заблокировано'**
+  String get chainBlocked;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

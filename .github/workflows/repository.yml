@@ -162,8 +162,21 @@ jobs:
         run: |
           $setup = Get-ChildItem dist\Sora-Setup-*.exe | Select-Object -First 1
           Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install.log' -Wait
-          $service = Get-Service SoraCore -ErrorAction SilentlyContinue
-          if (-not $service -or $service.Status -ne 'Running') { Get-Content install.log; throw "SoraCore is not running" }
+          # A service reports StartPending before Running; give it time.
+          for ($i = 0; $i -lt 30; $i++) {
+            $service = Get-Service SoraCore -ErrorAction SilentlyContinue
+            if ($service -and $service.Status -eq 'Running') { break }
+            Start-Sleep -Seconds 1
+          }
+          if (-not $service -or $service.Status -ne 'Running') {
+            Get-Content install.log -Tail 20
+            sc.exe qc SoraCore
+            sc.exe query SoraCore
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'SoraCore' } -MaxEvents 5 -ErrorAction SilentlyContinue | Format-List TimeCreated, Message
+            Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager' } -MaxEvents 5 | Format-List TimeCreated, Message
+            & "${env:ProgramFiles}\Sora\core\sora-core.exe" -check -data-dir "${env:ProgramData}\Sora" -engines-dir "${env:ProgramFiles}\Sora\core\engines"
+            throw "SoraCore is not running"
+          }
       - name: The app reaches the installed core over the pipe
         working-directory: app
         env:

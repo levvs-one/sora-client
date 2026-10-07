@@ -1,7 +1,10 @@
 package guard
 
 import (
+	"net/netip"
 	"strings"
+
+	"github.com/levvs-one/sora-client/core/engine"
 )
 
 // nftables owns the kill switch on Linux. The ruleset lives in a table this
@@ -42,11 +45,22 @@ func NftRuleset(engineUID int, bypass []string) string {
 	b.WriteString("\tchain " + nftChain + " {\n")
 	b.WriteString("\t\ttype filter hook output priority filter; policy accept;\n")
 	b.WriteString("\t\tmeta skuid " + itoa(engineUID) + " accept comment \"sora: the engine keeps its own traffic\"\n")
-	b.WriteString("\t\tiif lo accept comment \"sora: the local engine is on loopback\"\n")
+	b.WriteString("\t\toif lo accept comment \"sora: the local engine is on loopback\"\n")
+	// A tun session sends everyone's traffic out of its adapter; the kill
+	// switch exists to stop traffic that goes around it, not through it.
+	b.WriteString("\t\toifname \"" + engine.TunDevice + "\" accept comment \"sora: through the tunnel\"\n")
 	b.WriteString("\t\tct state established,related accept comment \"sora: an existing connection finishes\"\n")
 	for _, network := range networks {
-		b.WriteString("\t\tip daddr " + network + " accept comment \"sora: local network bypass\"\n")
-		b.WriteString("\t\tip6 daddr " + network + " accept comment \"sora: local network bypass\"\n")
+		// nft refuses a whole ruleset that matches an IPv4 network against
+		// IPv6 addresses or the other way round, so each network gets the rule
+		// of its own family.
+		family := "ip"
+		if prefix, err := netip.ParsePrefix(network); err == nil && prefix.Addr().Is6() {
+			family = "ip6"
+		} else if addr, err := netip.ParseAddr(network); err == nil && addr.Is6() {
+			family = "ip6"
+		}
+		b.WriteString("\t\t" + family + " daddr " + network + " accept comment \"sora: local network bypass\"\n")
 	}
 	b.WriteString("\t\tcounter drop comment \"sora: kill switch\"\n")
 	b.WriteString("\t}\n")

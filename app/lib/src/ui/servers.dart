@@ -178,7 +178,10 @@ class _SubscriptionHeader extends StatelessWidget {
         facts.add(s.expired);
         alarm = true;
       } else {
-        facts.add(s.until(DateFormat.MMMMd(locale).format(expire)));
+        // A date in another year names its year: "until 13 September" of a
+        // subscription that runs to 2030 would read as this autumn.
+        final format = expire.year == DateTime.now().year ? DateFormat.MMMMd(locale) : DateFormat.yMMMMd(locale);
+        facts.add(s.until(format.format(expire)));
       }
     }
     final error = state.hasLastError() && state.lastError.userMessageKey.isNotEmpty;
@@ -189,48 +192,72 @@ class _SubscriptionHeader extends StatelessWidget {
     }
     final factStyle = Styles.caption.copyWith(color: error || alarm ? palette.danger : palette.ink);
 
+    final used = (info.uploadBytes + info.downloadBytes).toDouble();
+    final share = info.hasUsage && info.totalBytes > Int64.ZERO
+        ? (used / info.totalBytes.toDouble()).clamp(0.0, 1.0)
+        : null;
+    final announce = info.announce.trim();
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 6, 4, 10),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  state.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Styles.bodyStrong.copyWith(color: palette.ink),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Styles.bodyStrong.copyWith(color: palette.ink),
+                    ),
+                    if (facts.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        // Space, not punctuation, keeps the facts apart.
+                        child: Wrap(spacing: 14, children: [for (final f in facts) Text(f, style: factStyle)]),
+                      ),
+                  ],
                 ),
-                if (facts.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    // Space, not punctuation, keeps the facts apart.
-                    child: Wrap(spacing: 14, children: [for (final f in facts) Text(f, style: factStyle)]),
-                  ),
-              ],
-            ),
-          ),
-          if (state.updating)
-            SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
-          else
-            MenuAnchor(
-              alignmentOffset: const Offset(-150, 4),
-              menuChildren: [
-                _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
-                _item(
-                  context,
-                  s.subscriptionSettings,
-                  () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
-                ),
-                _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
-              ],
-              builder: (context, controller, _) => RoundButton(
-                icon: CupertinoIcons.ellipsis,
-                label: state.displayName,
-                onTap: () => controller.isOpen ? controller.close() : controller.open(),
               ),
+              if (state.updating)
+                SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
+              else
+                MenuAnchor(
+                  alignmentOffset: const Offset(-150, 4),
+                  menuChildren: [
+                    _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
+                    if (info.webPageUrl.isNotEmpty)
+                      _item(context, s.website, () => unawaited(openLink(info.webPageUrl))),
+                    if (info.supportUrl.isNotEmpty)
+                      _item(context, s.support, () => unawaited(openLink(info.supportUrl))),
+                    _item(
+                      context,
+                      s.subscriptionSettings,
+                      () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
+                    ),
+                    _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
+                  ],
+                  builder: (context, controller, _) => RoundButton(
+                    icon: CupertinoIcons.ellipsis,
+                    label: state.displayName,
+                    onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                  ),
+                ),
+            ],
+          ),
+          if (share != null && !error)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 10, 0),
+              child: UsageBar(share: share, alarm: share > 0.9),
+            ),
+          if (announce.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 10, 10, 0),
+              child: LinkedText(announce, style: Styles.caption.copyWith(color: palette.ink)),
             ),
         ],
       ),

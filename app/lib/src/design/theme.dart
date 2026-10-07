@@ -105,8 +105,13 @@ class Palette extends ThemeExtension<Palette> {
 /// Five sizes, Inter with its optical size axis, tracking tightened as the
 /// size grows, the way Apple sets SF Pro.
 abstract final class Styles {
+  /// Flags in server names are emoji; a colour emoji font is named first, so a
+  /// monochrome font that happens to have the letters never draws them.
+  static const _emoji = ['Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji'];
+
   static TextStyle _inter(double size, double weight, double tracking, double height) => TextStyle(
     fontFamily: 'Inter',
+    fontFamilyFallback: _emoji,
     fontSize: size,
     height: height,
     letterSpacing: tracking,

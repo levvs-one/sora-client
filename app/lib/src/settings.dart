@@ -15,7 +15,7 @@ class Settings {
   static const _keys = {
     'format', 'server', 'preset', 'blockAds', 'killSwitch', 'engine', 'animations', 'theme', 'language', //
     'fragment', 'fragmentPackets', 'fragmentLength', 'fragmentInterval', 'ipv6', 'dns', //
-    'probeMethod', 'probeUrl', 'probeTimeout', 'splitPos', 'disorder', 'tlsRecord', 'hostCase',
+    'probeMethod', 'probeUrl', 'probeTimeout', 'splitPos', 'disorder', 'tlsRecord', 'hostCase', 'controlPort',
   };
 
   final SharedPreferencesWithCache _store;
@@ -121,6 +121,12 @@ class Settings {
   set tlsRecord(String value) => _store.setString('tlsRecord', value);
   bool get hostCase => _store.getBool('hostCase') ?? true;
   set hostCase(bool value) => _store.setBool('hostCase', value);
+
+  /// Lets an engine be controlled over a loopback port. sing-box has no
+  /// other way, and with it no connection center or counters; the port is
+  /// one other programs can find, so it is off until the person agrees.
+  bool get controlPort => _store.getBool('controlPort') ?? false;
+  set controlPort(bool value) => _store.setBool('controlPort', value);
 
   /// Forgets every choice; the next read gives the defaults again.
   Future<void> reset() async {

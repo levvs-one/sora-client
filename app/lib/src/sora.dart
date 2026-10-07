@@ -220,7 +220,7 @@ class Sora extends ChangeNotifier {
       final answer = await link.stub.connect(
         ConnectRequest(
           apiVersion: apiVersion,
-          sessionPlan: buildPlan(servers: servers, choice: selected, settings: settings),
+          sessionPlan: buildPlan(servers: servers, choice: selected, settings: settings, latency: latency),
           controlAuthenticator: link.token,
         ),
       );
@@ -440,10 +440,21 @@ class Sora extends ChangeNotifier {
 /// The plan for a connection: every server, and what carries the traffic the
 /// routing preset does not send direct. [choice] is "auto" for the fastest
 /// server, picked by the core, "bypass" for no server at all, or a server id.
-SessionPlan buildPlan({required List<OutboundSpec> servers, required String choice, required Settings settings}) {
+///
+/// A profile — a whole Xray configuration a provider wrote for one server —
+/// runs alone: it is the plan's only outbound when picked, and the fastest of
+/// the ordinary servers is chosen among the others. A subscription of profiles
+/// only picks the profile that answered fastest, from [latency].
+SessionPlan buildPlan({
+  required List<OutboundSpec> servers,
+  required String choice,
+  required Settings settings,
+  Map<String, int?> latency = const {},
+}) {
   final plan = SessionPlan(
     tunnelMode: TunnelMode.TUNNEL_MODE_SYSTEM,
     engines: [if (settings.engine.isNotEmpty) settings.engine],
+    networkControlAllowed: settings.controlPort,
     routing: RoutingOptions(preset: settings.preset, blockAds: settings.blockAds),
     ipv6: settings.ipv6,
     dnsPolicy: DnsPolicy(servers: settings.dns),
@@ -471,13 +482,28 @@ SessionPlan buildPlan({required List<OutboundSpec> servers, required String choi
     plan.routing.proxyTarget = Sora.bypassId;
     return plan;
   }
-  plan.outbounds.addAll(servers);
+  final profiles = [
+    for (final o in servers)
+      if (isProfile(o)) o,
+  ];
+  final ordinary = [
+    for (final o in servers)
+      if (!isProfile(o)) o,
+  ];
+  final picked = profiles.where((o) => o.id == choice).firstOrNull;
+  if (picked != null || (choice == 'auto' && ordinary.isEmpty && profiles.isNotEmpty)) {
+    final profile = picked ?? _fastest(profiles, latency);
+    plan.outbounds.add(profile);
+    plan.routing.proxyTarget = profile.id;
+    return plan;
+  }
+  plan.outbounds.addAll(ordinary);
   if (choice == 'auto') {
     plan.groups.add(
       GroupSpec(
         name: Sora.autoGroup,
         type: GroupType.GROUP_TYPE_URL_TEST,
-        members: [for (final o in servers) o.id],
+        members: [for (final o in ordinary) o.id],
         toleranceMs: 50,
       ),
     );
@@ -486,6 +512,19 @@ SessionPlan buildPlan({required List<OutboundSpec> servers, required String choi
     plan.routing.proxyTarget = choice;
   }
   return plan;
+}
+
+/// Whether a server is a whole Xray configuration from a JSON subscription.
+bool isProfile(OutboundSpec o) => o.protocol == 'xray-profile';
+
+/// The profile that answered fastest; the first one when none was measured.
+OutboundSpec _fastest(List<OutboundSpec> profiles, Map<String, int?> latency) {
+  var best = profiles.first;
+  for (final o in profiles) {
+    final ms = latency[o.id], bestMs = latency[best.id];
+    if (ms != null && (bestMs == null || ms < bestMs)) best = o;
+  }
+  return best;
 }
 
 /// Hands [Sora] to the widgets below and rebuilds them when it changes.

@@ -166,7 +166,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: s.engine,
               value: settings.engine,
               choices: {'': s.engineAuto, 'sing-box': 'sing-box', 'xray': 'Xray', 'mihomo': 'mihomo'},
-              onChanged: (v) => set((x) => x.engine = v),
+              onChanged: (v) async {
+                // sing-box can only be controlled over a loopback port, which
+                // other programs can find; the person decides, once.
+                if (v == 'sing-box' && !settings.controlPort) {
+                  final yes = await confirm(
+                    context,
+                    question: s.controlPortQuestion('sing-box'),
+                    action: s.chooseEngine('sing-box'),
+                  );
+                  if (!yes) return;
+                }
+                set(
+                  (x) => x
+                    ..engine = v
+                    ..controlPort = v == 'sing-box',
+                );
+              },
             ),
             SwitchTile(title: s.ipv6, value: settings.ipv6, onChanged: (v) => set((x) => x.ipv6 = v)),
             LinkTile(

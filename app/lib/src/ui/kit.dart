@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -492,6 +496,107 @@ class Segments<T> extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// How much of a subscription's traffic is spent: a short rounded track that
+/// fills with ink, and with red once less than a tenth is left.
+class UsageBar extends StatelessWidget {
+  const UsageBar({super.key, required this.share, this.alarm = false});
+
+  /// From 0 to 1.
+  final double share;
+  final bool alarm;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = Palette.of(context);
+    return SizedBox(
+      height: 4,
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: palette.field, borderRadius: BorderRadius.circular(2)),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: share),
+          duration: Motion.of(context, Motion.slow),
+          curve: Motion.curve,
+          builder: (context, value, _) => Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FractionallySizedBox(
+              widthFactor: value,
+              heightFactor: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: alarm ? palette.danger : palette.ink,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Opens a link a provider gave, in the browser or Telegram. Only the schemes
+/// the core lets through are opened.
+Future<void> openLink(String link) async {
+  final uri = Uri.tryParse(link.trim());
+  if (uri == null || !const {'https', 'http', 'tg'}.contains(uri.scheme)) return;
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+/// Text from a provider with its links and Telegram names made tappable:
+/// "@sumivpn" opens the channel, an address opens the page.
+class LinkedText extends StatefulWidget {
+  const LinkedText(this.text, {super.key, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<LinkedText> createState() => _LinkedTextState();
+}
+
+class _LinkedTextState extends State<LinkedText> {
+  static final _links = RegExp(r'https?://[^\s]+[^\s.,!?)]|@[A-Za-z0-9_]{4,32}');
+  final _recognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    for (final r in _recognizers) {
+      r.dispose();
+    }
+    _recognizers.clear();
+    final spans = <InlineSpan>[];
+    var at = 0;
+    for (final m in _links.allMatches(widget.text)) {
+      if (m.start > at) spans.add(TextSpan(text: widget.text.substring(at, m.start)));
+      final token = m.group(0)!;
+      final target = token.startsWith('@') ? 'https://t.me/${token.substring(1)}' : token;
+      final tap = TapGestureRecognizer()..onTap = () => unawaited(openLink(target));
+      _recognizers.add(tap);
+      spans.add(
+        TextSpan(
+          text: token,
+          recognizer: tap,
+          mouseCursor: SystemMouseCursors.click,
+          style: const TextStyle(fontVariations: [FontVariation('wght', 620)]),
+        ),
+      );
+      at = m.end;
+    }
+    if (at < widget.text.length) spans.add(TextSpan(text: widget.text.substring(at)));
+    return Text.rich(TextSpan(style: widget.style, children: spans));
   }
 }
 

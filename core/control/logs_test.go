@@ -48,6 +48,7 @@ func newLogServer(t *testing.T, eng engine.Engine) (*control.Server, *logs.Cente
 	server, err := control.New(control.Config{
 		Version: control.Version{Major: 1, Minor: 2, MinSupportedMinor: 1}, Authenticator: auth, Secrets: store, Logs: center,
 		Sessions: session.NewManager(session.ManagerConfig{
+			TunUp:   noAdapter,
 			Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return eng, nil },
 			Backoff: engine.Backoff{Initial: time.Millisecond, Max: time.Millisecond, Factor: 1},
 			Budget:  func() *engine.RestartBudget { return engine.NewRestartBudget(2, time.Minute, nil) },

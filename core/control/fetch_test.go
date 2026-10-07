@@ -38,6 +38,7 @@ func TestFetchSubscriptionCarriesTheUserAgentAndThePanelInfo(t *testing.T) {
 	server, err := control.New(control.Config{
 		Version: control.Version{Major: 1, Minor: 2, MinSupportedMinor: 1}, Authenticator: auth, Secrets: store, Fetcher: fetcher,
 		Sessions: session.NewManager(session.ManagerConfig{
+			TunUp:   noAdapter,
 			Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
 		}),
 	})
@@ -68,6 +69,7 @@ func TestGetAboutFillsTheContractAndNeedsNoToken(t *testing.T) {
 	server, err := control.New(control.Config{
 		Version: control.Version{Major: 1, Minor: 3, MinSupportedMinor: 1}, Authenticator: auth,
 		Sessions: session.NewManager(session.ManagerConfig{
+			TunUp:   noAdapter,
 			Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
 		}),
 		About: func() *corev1.About {

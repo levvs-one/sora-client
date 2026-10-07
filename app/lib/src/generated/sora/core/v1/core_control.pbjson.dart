@@ -1,13 +1,15 @@
+// This is a generated file - do not edit.
 //
-//  Generated code. Do not modify.
-//  source: sora/core/v1/core_control.proto
-//
-// @dart = 2.12
+// Generated from sora/core/v1/core_control.proto.
+
+// @dart = 3.3
 
 // ignore_for_file: annotate_overrides, camel_case_types, comment_references
-// ignore_for_file: constant_identifier_names, library_prefixes
-// ignore_for_file: non_constant_identifier_names, prefer_final_fields
-// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
 
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
@@ -153,7 +155,13 @@ const ApiVersion$json = {
   '2': [
     {'1': 'major', '3': 1, '4': 1, '5': 13, '10': 'major'},
     {'1': 'minor', '3': 2, '4': 1, '5': 13, '10': 'minor'},
-    {'1': 'min_supported_minor', '3': 3, '4': 1, '5': 13, '10': 'minSupportedMinor'},
+    {
+      '1': 'min_supported_minor',
+      '3': 3,
+      '4': 1,
+      '5': 13,
+      '10': 'minSupportedMinor'
+    },
     {'1': 'capabilities', '3': 4, '4': 3, '5': 9, '10': 'capabilities'},
   ],
 };
@@ -168,11 +176,31 @@ final $typed_data.Uint8List apiVersionDescriptor = $convert.base64Decode(
 const ConnectRequest$json = {
   '1': 'ConnectRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
-    {'1': 'session_plan', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SessionPlan', '10': 'sessionPlan'},
-    {'1': 'control_authenticator', '3': 5, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'session_plan',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SessionPlan',
+      '10': 'sessionPlan'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 5,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -188,8 +216,22 @@ final $typed_data.Uint8List connectRequestDescriptor = $convert.base64Decode(
 const ConnectResponse$json = {
   '1': 'ConnectResponse',
   '2': [
-    {'1': 'status', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SessionStatus', '10': 'status'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'status',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SessionStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -203,10 +245,23 @@ final $typed_data.Uint8List connectResponseDescriptor = $convert.base64Decode(
 const DisconnectRequest$json = {
   '1': 'DisconnectRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
-    {'1': 'control_authenticator', '3': 4, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'control_authenticator',
+      '3': 4,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -221,8 +276,22 @@ final $typed_data.Uint8List disconnectRequestDescriptor = $convert.base64Decode(
 const DisconnectResponse$json = {
   '1': 'DisconnectResponse',
   '2': [
-    {'1': 'status', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SessionStatus', '10': 'status'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'status',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SessionStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -236,7 +305,14 @@ final $typed_data.Uint8List disconnectResponseDescriptor = $convert.base64Decode
 const GetStatusRequest$json = {
   '1': 'GetStatusRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
   ],
 };
@@ -250,8 +326,22 @@ final $typed_data.Uint8List getStatusRequestDescriptor = $convert.base64Decode(
 const GetStatusResponse$json = {
   '1': 'GetStatusResponse',
   '2': [
-    {'1': 'status', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SessionStatus', '10': 'status'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'status',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SessionStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -265,7 +355,14 @@ final $typed_data.Uint8List getStatusResponseDescriptor = $convert.base64Decode(
 const WatchEventsRequest$json = {
   '1': 'WatchEventsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
     {'1': 'after_sequence', '3': 3, '4': 1, '5': 4, '10': 'afterSequence'},
   ],
@@ -281,18 +378,87 @@ final $typed_data.Uint8List watchEventsRequestDescriptor = $convert.base64Decode
 const SessionPlan$json = {
   '1': 'SessionPlan',
   '2': [
-    {'1': 'tunnel_mode', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.TunnelMode', '10': 'tunnelMode'},
-    {'1': 'outbounds', '3': 2, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
-    {'1': 'routes', '3': 3, '4': 3, '5': 11, '6': '.sora.core.v1.RoutingRule', '10': 'routes'},
-    {'1': 'dns_policy', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.DnsPolicy', '10': 'dnsPolicy'},
-    {'1': 'bypass_settings', '3': 5, '4': 1, '5': 11, '6': '.sora.core.v1.BypassSettings', '10': 'bypassSettings'},
+    {
+      '1': 'tunnel_mode',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.TunnelMode',
+      '10': 'tunnelMode'
+    },
+    {
+      '1': 'outbounds',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.OutboundSpec',
+      '10': 'outbounds'
+    },
+    {
+      '1': 'routes',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.RoutingRule',
+      '10': 'routes'
+    },
+    {
+      '1': 'dns_policy',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.DnsPolicy',
+      '10': 'dnsPolicy'
+    },
+    {
+      '1': 'bypass_settings',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.BypassSettings',
+      '10': 'bypassSettings'
+    },
     {'1': 'session_identity', '3': 6, '4': 1, '5': 9, '10': 'sessionIdentity'},
-    {'1': 'anti_censorship', '3': 7, '4': 1, '5': 11, '6': '.sora.core.v1.AntiCensorship', '10': 'antiCensorship'},
+    {
+      '1': 'anti_censorship',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.AntiCensorship',
+      '10': 'antiCensorship'
+    },
     {'1': 'engines', '3': 8, '4': 3, '5': 9, '10': 'engines'},
-    {'1': 'network_control_allowed', '3': 9, '4': 1, '5': 8, '10': 'networkControlAllowed'},
-    {'1': 'local_proxy', '3': 10, '4': 1, '5': 11, '6': '.sora.core.v1.LocalProxy', '10': 'localProxy'},
-    {'1': 'groups', '3': 11, '4': 3, '5': 11, '6': '.sora.core.v1.GroupSpec', '10': 'groups'},
-    {'1': 'routing', '3': 12, '4': 1, '5': 11, '6': '.sora.core.v1.RoutingOptions', '10': 'routing'},
+    {
+      '1': 'network_control_allowed',
+      '3': 9,
+      '4': 1,
+      '5': 8,
+      '10': 'networkControlAllowed'
+    },
+    {
+      '1': 'local_proxy',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LocalProxy',
+      '10': 'localProxy'
+    },
+    {
+      '1': 'groups',
+      '3': 11,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.GroupSpec',
+      '10': 'groups'
+    },
+    {
+      '1': 'routing',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.RoutingOptions',
+      '10': 'routing'
+    },
   ],
 };
 
@@ -317,10 +483,24 @@ const GroupSpec$json = {
   '1': 'GroupSpec',
   '2': [
     {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
-    {'1': 'type', '3': 2, '4': 1, '5': 14, '6': '.sora.core.v1.GroupType', '10': 'type'},
+    {
+      '1': 'type',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.GroupType',
+      '10': 'type'
+    },
     {'1': 'members', '3': 3, '4': 3, '5': 9, '10': 'members'},
     {'1': 'test_url', '3': 4, '4': 1, '5': 9, '10': 'testUrl'},
-    {'1': 'test_interval', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'testInterval'},
+    {
+      '1': 'test_interval',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Duration',
+      '10': 'testInterval'
+    },
     {'1': 'tolerance_ms', '3': 6, '4': 1, '5': 13, '10': 'toleranceMs'},
   ],
 };
@@ -370,7 +550,13 @@ const AntiCensorship$json = {
     {'1': 'tls_fragment', '3': 1, '4': 1, '5': 8, '10': 'tlsFragment'},
     {'1': 'fragment_packets', '3': 2, '4': 1, '5': 9, '10': 'fragmentPackets'},
     {'1': 'fragment_length', '3': 3, '4': 1, '5': 9, '10': 'fragmentLength'},
-    {'1': 'fragment_interval', '3': 4, '4': 1, '5': 9, '10': 'fragmentInterval'},
+    {
+      '1': 'fragment_interval',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '10': 'fragmentInterval'
+    },
   ],
 };
 
@@ -387,12 +573,33 @@ const OutboundSpec$json = {
   '2': [
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'display_name', '3': 2, '4': 1, '5': 9, '10': 'displayName'},
-    {'1': 'bypass', '3': 8, '4': 1, '5': 11, '6': '.sora.core.v1.BypassStrategy', '10': 'bypass'},
+    {
+      '1': 'bypass',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.BypassStrategy',
+      '10': 'bypass'
+    },
     {'1': 'protocol', '3': 3, '4': 1, '5': 9, '10': 'protocol'},
     {'1': 'transport', '3': 4, '4': 1, '5': 9, '10': 'transport'},
     {'1': 'security', '3': 5, '4': 1, '5': 9, '10': 'security'},
-    {'1': 'endpoint', '3': 6, '4': 1, '5': 11, '6': '.sora.core.v1.Endpoint', '10': 'endpoint'},
-    {'1': 'credentials', '3': 7, '4': 1, '5': 11, '6': '.sora.core.v1.CredentialsRef', '10': 'credentials'},
+    {
+      '1': 'endpoint',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.Endpoint',
+      '10': 'endpoint'
+    },
+    {
+      '1': 'credentials',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.CredentialsRef',
+      '10': 'credentials'
+    },
   ],
 };
 
@@ -476,8 +683,22 @@ final $typed_data.Uint8List bypassSettingsDescriptor = $convert.base64Decode(
 const SessionStatus$json = {
   '1': 'SessionStatus',
   '2': [
-    {'1': 'connection', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ConnectionState', '10': 'connection'},
-    {'1': 'negotiated_version', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'negotiatedVersion'},
+    {
+      '1': 'connection',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ConnectionState',
+      '10': 'connection'
+    },
+    {
+      '1': 'negotiated_version',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'negotiatedVersion'
+    },
   ],
 };
 
@@ -491,7 +712,14 @@ final $typed_data.Uint8List sessionStatusDescriptor = $convert.base64Decode(
 const GetStatsRequest$json = {
   '1': 'GetStatsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
   ],
 };
@@ -505,8 +733,22 @@ final $typed_data.Uint8List getStatsRequestDescriptor = $convert.base64Decode(
 const GetStatsResponse$json = {
   '1': 'GetStatsResponse',
   '2': [
-    {'1': 'stats', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.StatsTick', '10': 'stats'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'stats',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.StatsTick',
+      '10': 'stats'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -520,11 +762,39 @@ final $typed_data.Uint8List getStatsResponseDescriptor = $convert.base64Decode(
 const ConnectionState$json = {
   '1': 'ConnectionState',
   '2': [
-    {'1': 'value', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.ConnectionStateValue', '10': 'value'},
+    {
+      '1': 'value',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.ConnectionStateValue',
+      '10': 'value'
+    },
     {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
-    {'1': 'reason', '3': 3, '4': 1, '5': 14, '6': '.sora.core.v1.SoraErrorCode', '10': 'reason'},
-    {'1': 'changed_at', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'changedAt'},
-    {'1': 'retry_after', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'retryAfter'},
+    {
+      '1': 'reason',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.SoraErrorCode',
+      '10': 'reason'
+    },
+    {
+      '1': 'changed_at',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'changedAt'
+    },
+    {
+      '1': 'retry_after',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Duration',
+      '10': 'retryAfter'
+    },
   ],
 };
 
@@ -543,14 +813,77 @@ const CoreEvent$json = {
   '2': [
     {'1': 'sequence', '3': 1, '4': 1, '5': 4, '10': 'sequence'},
     {'1': 'session_id', '3': 2, '4': 1, '5': 9, '10': 'sessionId'},
-    {'1': 'emitted_at', '3': 3, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'emittedAt'},
-    {'1': 'state_changed', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.StateChanged', '9': 0, '10': 'stateChanged'},
-    {'1': 'stats_tick', '3': 5, '4': 1, '5': 11, '6': '.sora.core.v1.StatsTick', '9': 0, '10': 'statsTick'},
-    {'1': 'bypass_strategy_changed', '3': 6, '4': 1, '5': 11, '6': '.sora.core.v1.BypassStrategyChanged', '9': 0, '10': 'bypassStrategyChanged'},
-    {'1': 'probe_result', '3': 7, '4': 1, '5': 11, '6': '.sora.core.v1.ProbeResult', '9': 0, '10': 'probeResult'},
-    {'1': 'log_batch', '3': 8, '4': 1, '5': 11, '6': '.sora.core.v1.LogBatch', '9': 0, '10': 'logBatch'},
-    {'1': 'error', '3': 9, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '9': 0, '10': 'error'},
-    {'1': 'kill_switch_changed', '3': 10, '4': 1, '5': 11, '6': '.sora.core.v1.KillSwitchChanged', '9': 0, '10': 'killSwitchChanged'},
+    {
+      '1': 'emitted_at',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'emittedAt'
+    },
+    {
+      '1': 'state_changed',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.StateChanged',
+      '9': 0,
+      '10': 'stateChanged'
+    },
+    {
+      '1': 'stats_tick',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.StatsTick',
+      '9': 0,
+      '10': 'statsTick'
+    },
+    {
+      '1': 'bypass_strategy_changed',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.BypassStrategyChanged',
+      '9': 0,
+      '10': 'bypassStrategyChanged'
+    },
+    {
+      '1': 'probe_result',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ProbeResult',
+      '9': 0,
+      '10': 'probeResult'
+    },
+    {
+      '1': 'log_batch',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogBatch',
+      '9': 0,
+      '10': 'logBatch'
+    },
+    {
+      '1': 'error',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '9': 0,
+      '10': 'error'
+    },
+    {
+      '1': 'kill_switch_changed',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.KillSwitchChanged',
+      '9': 0,
+      '10': 'killSwitchChanged'
+    },
   ],
   '8': [
     {'1': 'payload'},
@@ -576,7 +909,14 @@ final $typed_data.Uint8List coreEventDescriptor = $convert.base64Decode(
 const StateChanged$json = {
   '1': 'StateChanged',
   '2': [
-    {'1': 'state', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ConnectionState', '10': 'state'},
+    {
+      '1': 'state',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ConnectionState',
+      '10': 'state'
+    },
   ],
 };
 
@@ -591,7 +931,13 @@ const StatsTick$json = {
   '2': [
     {'1': 'bytes_up', '3': 1, '4': 1, '5': 4, '10': 'bytesUp'},
     {'1': 'bytes_down', '3': 2, '4': 1, '5': 4, '10': 'bytesDown'},
-    {'1': 'active_connections', '3': 3, '4': 1, '5': 4, '10': 'activeConnections'},
+    {
+      '1': 'active_connections',
+      '3': 3,
+      '4': 1,
+      '5': 4,
+      '10': 'activeConnections'
+    },
   ],
 };
 
@@ -610,8 +956,9 @@ const BypassStrategyChanged$json = {
 };
 
 /// Descriptor for `BypassStrategyChanged`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List bypassStrategyChangedDescriptor = $convert.base64Decode(
-    'ChVCeXBhc3NTdHJhdGVneUNoYW5nZWQSGgoIc3RyYXRlZ3kYASABKAlSCHN0cmF0ZWd5');
+final $typed_data.Uint8List bypassStrategyChangedDescriptor =
+    $convert.base64Decode(
+        'ChVCeXBhc3NTdHJhdGVneUNoYW5nZWQSGgoIc3RyYXRlZ3kYASABKAlSCHN0cmF0ZWd5');
 
 @$core.Deprecated('Use probeResultDescriptor instead')
 const ProbeResult$json = {
@@ -620,7 +967,14 @@ const ProbeResult$json = {
     {'1': 'server_id', '3': 1, '4': 1, '5': 9, '10': 'serverId'},
     {'1': 'reachable', '3': 2, '4': 1, '5': 8, '10': 'reachable'},
     {'1': 'latency_ms', '3': 3, '4': 1, '5': 13, '10': 'latencyMs'},
-    {'1': 'error', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
     {'1': 'method', '3': 5, '4': 1, '5': 9, '10': 'method'},
     {'1': 'engine', '3': 6, '4': 1, '5': 9, '10': 'engine'},
   ],
@@ -642,8 +996,8 @@ const LogBatch$json = {
 };
 
 /// Descriptor for `LogBatch`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List logBatchDescriptor = $convert.base64Decode(
-    'CghMb2dCYXRjaBIUCgVsaW5lcxgBIAMoCVIFbGluZXM=');
+final $typed_data.Uint8List logBatchDescriptor =
+    $convert.base64Decode('CghMb2dCYXRjaBIUCgVsaW5lcxgBIAMoCVIFbGluZXM=');
 
 @$core.Deprecated('Use killSwitchChangedDescriptor instead')
 const KillSwitchChanged$json = {
@@ -663,7 +1017,14 @@ final $typed_data.Uint8List killSwitchChangedDescriptor = $convert.base64Decode(
 const ParseImportRequest$json = {
   '1': 'ParseImportRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'payload', '3': 3, '4': 1, '5': 12, '10': 'payload'},
   ],
@@ -679,8 +1040,22 @@ final $typed_data.Uint8List parseImportRequestDescriptor = $convert.base64Decode
 const ParseImportResponse$json = {
   '1': 'ParseImportResponse',
   '2': [
-    {'1': 'session_plan', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SessionPlan', '10': 'sessionPlan'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'session_plan',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SessionPlan',
+      '10': 'sessionPlan'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -694,7 +1069,14 @@ final $typed_data.Uint8List parseImportResponseDescriptor = $convert.base64Decod
 const FetchSubscriptionRequest$json = {
   '1': 'FetchSubscriptionRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'reference', '3': 3, '4': 1, '5': 9, '10': 'reference'},
     {'1': 'user_agent', '3': 4, '4': 1, '5': 9, '10': 'userAgent'},
@@ -712,9 +1094,30 @@ final $typed_data.Uint8List fetchSubscriptionRequestDescriptor = $convert.base64
 const FetchSubscriptionResponse$json = {
   '1': 'FetchSubscriptionResponse',
   '2': [
-    {'1': 'outbounds', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
-    {'1': 'info', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionInfo', '10': 'info'},
+    {
+      '1': 'outbounds',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.OutboundSpec',
+      '10': 'outbounds'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
+    {
+      '1': 'info',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionInfo',
+      '10': 'info'
+    },
   ],
 };
 
@@ -730,12 +1133,26 @@ const SubscriptionInfo$json = {
   '1': 'SubscriptionInfo',
   '2': [
     {'1': 'title', '3': 1, '4': 1, '5': 9, '10': 'title'},
-    {'1': 'update_interval', '3': 2, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'updateInterval'},
+    {
+      '1': 'update_interval',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Duration',
+      '10': 'updateInterval'
+    },
     {'1': 'has_usage', '3': 3, '4': 1, '5': 8, '10': 'hasUsage'},
     {'1': 'upload_bytes', '3': 4, '4': 1, '5': 4, '10': 'uploadBytes'},
     {'1': 'download_bytes', '3': 5, '4': 1, '5': 4, '10': 'downloadBytes'},
     {'1': 'total_bytes', '3': 6, '4': 1, '5': 4, '10': 'totalBytes'},
-    {'1': 'expire', '3': 7, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'expire'},
+    {
+      '1': 'expire',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'expire'
+    },
     {'1': 'web_page_url', '3': 8, '4': 1, '5': 9, '10': 'webPageUrl'},
     {'1': 'support_url', '3': 9, '4': 1, '5': 9, '10': 'supportUrl'},
     {'1': 'announce', '3': 10, '4': 1, '5': 9, '10': 'announce'},
@@ -757,11 +1174,39 @@ final $typed_data.Uint8List subscriptionInfoDescriptor = $convert.base64Decode(
 const ProbeServersRequest$json = {
   '1': 'ProbeServersRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
-    {'1': 'endpoints', '3': 3, '4': 3, '5': 11, '6': '.sora.core.v1.Endpoint', '10': 'endpoints'},
-    {'1': 'outbounds', '3': 4, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
-    {'1': 'options', '3': 5, '4': 1, '5': 11, '6': '.sora.core.v1.ProbeOptions', '10': 'options'},
+    {
+      '1': 'endpoints',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.Endpoint',
+      '10': 'endpoints'
+    },
+    {
+      '1': 'outbounds',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.OutboundSpec',
+      '10': 'outbounds'
+    },
+    {
+      '1': 'options',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ProbeOptions',
+      '10': 'options'
+    },
   ],
 };
 
@@ -778,7 +1223,14 @@ final $typed_data.Uint8List probeServersRequestDescriptor = $convert.base64Decod
 const ProbeOptions$json = {
   '1': 'ProbeOptions',
   '2': [
-    {'1': 'method', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.ProbeMethod', '10': 'method'},
+    {
+      '1': 'method',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.ProbeMethod',
+      '10': 'method'
+    },
     {'1': 'url', '3': 2, '4': 1, '5': 9, '10': 'url'},
     {'1': 'timeout_ms', '3': 3, '4': 1, '5': 13, '10': 'timeoutMs'},
     {'1': 'concurrency', '3': 4, '4': 1, '5': 13, '10': 'concurrency'},
@@ -797,7 +1249,14 @@ final $typed_data.Uint8List probeOptionsDescriptor = $convert.base64Decode(
 const RunDiagnosticsRequest$json = {
   '1': 'RunDiagnosticsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
   ],
@@ -813,8 +1272,22 @@ final $typed_data.Uint8List runDiagnosticsRequestDescriptor = $convert.base64Dec
 const RunDiagnosticsResponse$json = {
   '1': 'RunDiagnosticsResponse',
   '2': [
-    {'1': 'report', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.DiagnosticReport', '10': 'report'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'report',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.DiagnosticReport',
+      '10': 'report'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -828,7 +1301,14 @@ final $typed_data.Uint8List runDiagnosticsResponseDescriptor = $convert.base64De
 const ExportDiagnosticsRequest$json = {
   '1': 'ExportDiagnosticsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
   ],
@@ -845,20 +1325,35 @@ const ExportDiagnosticsResponse$json = {
   '1': 'ExportDiagnosticsResponse',
   '2': [
     {'1': 'archive', '3': 1, '4': 1, '5': 12, '10': 'archive'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
 /// Descriptor for `ExportDiagnosticsResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List exportDiagnosticsResponseDescriptor = $convert.base64Decode(
-    'ChlFeHBvcnREaWFnbm9zdGljc1Jlc3BvbnNlEhgKB2FyY2hpdmUYASABKAxSB2FyY2hpdmUSLQ'
-    'oFZXJyb3IYAiABKAsyFy5zb3JhLmNvcmUudjEuU29yYUVycm9yUgVlcnJvcg==');
+final $typed_data.Uint8List exportDiagnosticsResponseDescriptor =
+    $convert.base64Decode(
+        'ChlFeHBvcnREaWFnbm9zdGljc1Jlc3BvbnNlEhgKB2FyY2hpdmUYASABKAxSB2FyY2hpdmUSLQ'
+        'oFZXJyb3IYAiABKAsyFy5zb3JhLmNvcmUudjEuU29yYUVycm9yUgVlcnJvcg==');
 
 @$core.Deprecated('Use setKillSwitchRequestDescriptor instead')
 const SetKillSwitchRequest$json = {
   '1': 'SetKillSwitchRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
     {'1': 'enabled', '3': 4, '4': 1, '5': 8, '10': 'enabled'},
@@ -877,7 +1372,14 @@ const SetKillSwitchResponse$json = {
   '1': 'SetKillSwitchResponse',
   '2': [
     {'1': 'enabled', '3': 1, '4': 1, '5': 8, '10': 'enabled'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -895,14 +1397,21 @@ const DiagnosticReport$json = {
 };
 
 /// Descriptor for `DiagnosticReport`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List diagnosticReportDescriptor = $convert.base64Decode(
-    'ChBEaWFnbm9zdGljUmVwb3J0EhQKBWxpbmVzGAEgAygJUgVsaW5lcw==');
+final $typed_data.Uint8List diagnosticReportDescriptor = $convert
+    .base64Decode('ChBEaWFnbm9zdGljUmVwb3J0EhQKBWxpbmVzGAEgAygJUgVsaW5lcw==');
 
 @$core.Deprecated('Use handshakeRequestDescriptor instead')
 const HandshakeRequest$json = {
   '1': 'HandshakeRequest',
   '2': [
-    {'1': 'client_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'clientVersion'},
+    {
+      '1': 'client_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'clientVersion'
+    },
   ],
 };
 
@@ -915,9 +1424,29 @@ final $typed_data.Uint8List handshakeRequestDescriptor = $convert.base64Decode(
 const HandshakeResponse$json = {
   '1': 'HandshakeResponse',
   '2': [
-    {'1': 'negotiated_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'negotiatedVersion'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
-    {'1': 'control_authenticator', '3': 3, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'negotiated_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'negotiatedVersion'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 3,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -932,9 +1461,23 @@ final $typed_data.Uint8List handshakeResponseDescriptor = $convert.base64Decode(
 const PutSecretRequest$json = {
   '1': 'PutSecretRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
-    {'1': 'credentials', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.CredentialsRef', '10': 'credentials'},
+    {
+      '1': 'credentials',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.CredentialsRef',
+      '10': 'credentials'
+    },
     {'1': 'material', '3': 4, '4': 1, '5': 12, '10': 'material'},
   ],
 };
@@ -950,8 +1493,22 @@ final $typed_data.Uint8List putSecretRequestDescriptor = $convert.base64Decode(
 const PutSecretResponse$json = {
   '1': 'PutSecretResponse',
   '2': [
-    {'1': 'credentials', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.CredentialsRef', '10': 'credentials'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'credentials',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.CredentialsRef',
+      '10': 'credentials'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -965,9 +1522,23 @@ final $typed_data.Uint8List putSecretResponseDescriptor = $convert.base64Decode(
 const DeleteSecretRequest$json = {
   '1': 'DeleteSecretRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
-    {'1': 'credentials', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.CredentialsRef', '10': 'credentials'},
+    {
+      '1': 'credentials',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.CredentialsRef',
+      '10': 'credentials'
+    },
   ],
 };
 
@@ -982,7 +1553,14 @@ final $typed_data.Uint8List deleteSecretRequestDescriptor = $convert.base64Decod
 const DeleteSecretResponse$json = {
   '1': 'DeleteSecretResponse',
   '2': [
-    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -995,12 +1573,26 @@ final $typed_data.Uint8List deleteSecretResponseDescriptor = $convert.base64Deco
 const SoraError$json = {
   '1': 'SoraError',
   '2': [
-    {'1': 'code', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.SoraErrorCode', '10': 'code'},
+    {
+      '1': 'code',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.SoraErrorCode',
+      '10': 'code'
+    },
     {'1': 'user_message_key', '3': 2, '4': 1, '5': 9, '10': 'userMessageKey'},
     {'1': 'detail_redacted', '3': 3, '4': 1, '5': 9, '10': 'detailRedacted'},
     {'1': 'retryable', '3': 4, '4': 1, '5': 8, '10': 'retryable'},
     {'1': 'request_id', '3': 5, '4': 1, '5': 9, '10': 'requestId'},
-    {'1': 'retry_after', '3': 6, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'retryAfter'},
+    {
+      '1': 'retry_after',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Duration',
+      '10': 'retryAfter'
+    },
   ],
 };
 
@@ -1017,8 +1609,22 @@ const LogEntry$json = {
   '1': 'LogEntry',
   '2': [
     {'1': 'sequence', '3': 1, '4': 1, '5': 4, '10': 'sequence'},
-    {'1': 'time', '3': 2, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'time'},
-    {'1': 'level', '3': 3, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'level'},
+    {
+      '1': 'time',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'time'
+    },
+    {
+      '1': 'level',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.LogLevel',
+      '10': 'level'
+    },
     {'1': 'source', '3': 4, '4': 1, '5': 9, '10': 'source'},
     {'1': 'message', '3': 5, '4': 1, '5': 9, '10': 'message'},
     {'1': 'repeat', '3': 6, '4': 1, '5': 13, '10': 'repeat'},
@@ -1036,12 +1642,33 @@ final $typed_data.Uint8List logEntryDescriptor = $convert.base64Decode(
 const LogFilter$json = {
   '1': 'LogFilter',
   '2': [
-    {'1': 'min_level', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'minLevel'},
+    {
+      '1': 'min_level',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.LogLevel',
+      '10': 'minLevel'
+    },
     {'1': 'sources', '3': 2, '4': 3, '5': 9, '10': 'sources'},
     {'1': 'contains', '3': 3, '4': 1, '5': 9, '10': 'contains'},
     {'1': 'pattern', '3': 4, '4': 1, '5': 9, '10': 'pattern'},
-    {'1': 'since', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'since'},
-    {'1': 'until', '3': 6, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'until'},
+    {
+      '1': 'since',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'since'
+    },
+    {
+      '1': 'until',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'until'
+    },
   ],
 };
 
@@ -1057,9 +1684,29 @@ final $typed_data.Uint8List logFilterDescriptor = $convert.base64Decode(
 const QueryLogsRequest$json = {
   '1': 'QueryLogsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
-    {'1': 'filter', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogFilter', '10': 'filter'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
+    {
+      '1': 'filter',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogFilter',
+      '10': 'filter'
+    },
     {'1': 'before_sequence', '3': 4, '4': 1, '5': 4, '10': 'beforeSequence'},
     {'1': 'limit', '3': 5, '4': 1, '5': 13, '10': 'limit'},
   ],
@@ -1077,10 +1724,31 @@ final $typed_data.Uint8List queryLogsRequestDescriptor = $convert.base64Decode(
 const QueryLogsResponse$json = {
   '1': 'QueryLogsResponse',
   '2': [
-    {'1': 'entries', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.LogEntry', '10': 'entries'},
+    {
+      '1': 'entries',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.LogEntry',
+      '10': 'entries'
+    },
     {'1': 'before_sequence', '3': 2, '4': 1, '5': 4, '10': 'beforeSequence'},
-    {'1': 'stats', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogStats', '10': 'stats'},
-    {'1': 'error', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'stats',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogStats',
+      '10': 'stats'
+    },
+    {
+      '1': 'error',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1095,8 +1763,22 @@ final $typed_data.Uint8List queryLogsResponseDescriptor = $convert.base64Decode(
 const LogStats$json = {
   '1': 'LogStats',
   '2': [
-    {'1': 'by_level', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.LogLevelCount', '10': 'byLevel'},
-    {'1': 'by_source', '3': 2, '4': 3, '5': 11, '6': '.sora.core.v1.LogSourceCount', '10': 'bySource'},
+    {
+      '1': 'by_level',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.LogLevelCount',
+      '10': 'byLevel'
+    },
+    {
+      '1': 'by_source',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.LogSourceCount',
+      '10': 'bySource'
+    },
     {'1': 'total', '3': 3, '4': 1, '5': 4, '10': 'total'},
     {'1': 'bytes', '3': 4, '4': 1, '5': 4, '10': 'bytes'},
     {'1': 'max_bytes', '3': 5, '4': 1, '5': 4, '10': 'maxBytes'},
@@ -1116,7 +1798,14 @@ final $typed_data.Uint8List logStatsDescriptor = $convert.base64Decode(
 const LogLevelCount$json = {
   '1': 'LogLevelCount',
   '2': [
-    {'1': 'level', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'level'},
+    {
+      '1': 'level',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.LogLevel',
+      '10': 'level'
+    },
     {'1': 'count', '3': 2, '4': 1, '5': 4, '10': 'count'},
   ],
 };
@@ -1144,9 +1833,29 @@ final $typed_data.Uint8List logSourceCountDescriptor = $convert.base64Decode(
 const WatchLogsRequest$json = {
   '1': 'WatchLogsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
-    {'1': 'filter', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogFilter', '10': 'filter'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
+    {
+      '1': 'filter',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogFilter',
+      '10': 'filter'
+    },
     {'1': 'after_sequence', '3': 4, '4': 1, '5': 4, '10': 'afterSequence'},
   ],
 };
@@ -1162,10 +1871,37 @@ final $typed_data.Uint8List watchLogsRequestDescriptor = $convert.base64Decode(
 const ExportLogsRequest$json = {
   '1': 'ExportLogsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
-    {'1': 'filter', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogFilter', '10': 'filter'},
-    {'1': 'format', '3': 4, '4': 1, '5': 14, '6': '.sora.core.v1.LogExportFormat', '10': 'format'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
+    {
+      '1': 'filter',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogFilter',
+      '10': 'filter'
+    },
+    {
+      '1': 'format',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.LogExportFormat',
+      '10': 'format'
+    },
   ],
 };
 
@@ -1184,7 +1920,14 @@ const ExportLogsResponse$json = {
     {'1': 'data', '3': 1, '4': 1, '5': 12, '10': 'data'},
     {'1': 'file_name', '3': 2, '4': 1, '5': 9, '10': 'fileName'},
     {'1': 'media_type', '3': 3, '4': 1, '5': 9, '10': 'mediaType'},
-    {'1': 'error', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1198,8 +1941,21 @@ final $typed_data.Uint8List exportLogsResponseDescriptor = $convert.base64Decode
 const ClearLogsRequest$json = {
   '1': 'ClearLogsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -1213,7 +1969,14 @@ final $typed_data.Uint8List clearLogsRequestDescriptor = $convert.base64Decode(
 const ClearLogsResponse$json = {
   '1': 'ClearLogsResponse',
   '2': [
-    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1226,8 +1989,21 @@ final $typed_data.Uint8List clearLogsResponseDescriptor = $convert.base64Decode(
 const LogSettings$json = {
   '1': 'LogSettings',
   '2': [
-    {'1': 'capture_level', '3': 1, '4': 1, '5': 14, '6': '.sora.core.v1.LogLevel', '10': 'captureLevel'},
-    {'1': 'record_destinations', '3': 2, '4': 1, '5': 8, '10': 'recordDestinations'},
+    {
+      '1': 'capture_level',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.sora.core.v1.LogLevel',
+      '10': 'captureLevel'
+    },
+    {
+      '1': 'record_destinations',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '10': 'recordDestinations'
+    },
     {'1': 'max_entries', '3': 3, '4': 1, '5': 13, '10': 'maxEntries'},
     {'1': 'max_bytes', '3': 4, '4': 1, '5': 13, '10': 'maxBytes'},
   ],
@@ -1244,8 +2020,21 @@ final $typed_data.Uint8List logSettingsDescriptor = $convert.base64Decode(
 const GetLogSettingsRequest$json = {
   '1': 'GetLogSettingsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -1259,8 +2048,22 @@ final $typed_data.Uint8List getLogSettingsRequestDescriptor = $convert.base64Dec
 const GetLogSettingsResponse$json = {
   '1': 'GetLogSettingsResponse',
   '2': [
-    {'1': 'settings', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.LogSettings', '10': 'settings'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'settings',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogSettings',
+      '10': 'settings'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1274,9 +2077,29 @@ final $typed_data.Uint8List getLogSettingsResponseDescriptor = $convert.base64De
 const SetLogSettingsRequest$json = {
   '1': 'SetLogSettingsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
-    {'1': 'settings', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.LogSettings', '10': 'settings'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
+    {
+      '1': 'settings',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogSettings',
+      '10': 'settings'
+    },
   ],
 };
 
@@ -1291,8 +2114,22 @@ final $typed_data.Uint8List setLogSettingsRequestDescriptor = $convert.base64Dec
 const SetLogSettingsResponse$json = {
   '1': 'SetLogSettingsResponse',
   '2': [
-    {'1': 'settings', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.LogSettings', '10': 'settings'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'settings',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.LogSettings',
+      '10': 'settings'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1315,7 +2152,14 @@ const Connection$json = {
     {'1': 'chain', '3': 7, '4': 3, '5': 9, '10': 'chain'},
     {'1': 'upload', '3': 8, '4': 1, '5': 4, '10': 'upload'},
     {'1': 'download', '3': 9, '4': 1, '5': 4, '10': 'download'},
-    {'1': 'start', '3': 10, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'start'},
+    {
+      '1': 'start',
+      '3': 10,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'start'
+    },
   ],
 };
 
@@ -1331,8 +2175,21 @@ final $typed_data.Uint8List connectionDescriptor = $convert.base64Decode(
 const ListConnectionsRequest$json = {
   '1': 'ListConnectionsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
   ],
 };
@@ -1348,8 +2205,22 @@ final $typed_data.Uint8List listConnectionsRequestDescriptor = $convert.base64De
 const ListConnectionsResponse$json = {
   '1': 'ListConnectionsResponse',
   '2': [
-    {'1': 'connections', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.Connection', '10': 'connections'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'connections',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.Connection',
+      '10': 'connections'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1363,8 +2234,21 @@ final $typed_data.Uint8List listConnectionsResponseDescriptor = $convert.base64D
 const CloseConnectionRequest$json = {
   '1': 'CloseConnectionRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
     {'1': 'connection_id', '3': 4, '4': 1, '5': 9, '10': 'connectionId'},
   ],
@@ -1381,14 +2265,22 @@ final $typed_data.Uint8List closeConnectionRequestDescriptor = $convert.base64De
 const CloseConnectionResponse$json = {
   '1': 'CloseConnectionResponse',
   '2': [
-    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
 /// Descriptor for `CloseConnectionResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List closeConnectionResponseDescriptor = $convert.base64Decode(
-    'ChdDbG9zZUNvbm5lY3Rpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS52MS'
-    '5Tb3JhRXJyb3JSBWVycm9y');
+final $typed_data.Uint8List closeConnectionResponseDescriptor =
+    $convert.base64Decode(
+        'ChdDbG9zZUNvbm5lY3Rpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS52MS'
+        '5Tb3JhRXJyb3JSBWVycm9y');
 
 @$core.Deprecated('Use subscriptionSettingsDescriptor instead')
 const SubscriptionSettings$json = {
@@ -1399,7 +2291,14 @@ const SubscriptionSettings$json = {
     {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
     {'1': 'user_agent', '3': 4, '4': 1, '5': 9, '10': 'userAgent'},
     {'1': 'auto_update', '3': 5, '4': 1, '5': 8, '10': 'autoUpdate'},
-    {'1': 'update_interval', '3': 6, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'updateInterval'},
+    {
+      '1': 'update_interval',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Duration',
+      '10': 'updateInterval'
+    },
   ],
 };
 
@@ -1414,12 +2313,54 @@ final $typed_data.Uint8List subscriptionSettingsDescriptor = $convert.base64Deco
 const SubscriptionState$json = {
   '1': 'SubscriptionState',
   '2': [
-    {'1': 'settings', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionSettings', '10': 'settings'},
-    {'1': 'info', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionInfo', '10': 'info'},
-    {'1': 'outbounds', '3': 3, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
-    {'1': 'last_update', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'lastUpdate'},
-    {'1': 'next_update', '3': 5, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'nextUpdate'},
-    {'1': 'last_error', '3': 6, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'lastError'},
+    {
+      '1': 'settings',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionSettings',
+      '10': 'settings'
+    },
+    {
+      '1': 'info',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionInfo',
+      '10': 'info'
+    },
+    {
+      '1': 'outbounds',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.OutboundSpec',
+      '10': 'outbounds'
+    },
+    {
+      '1': 'last_update',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'lastUpdate'
+    },
+    {
+      '1': 'next_update',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'nextUpdate'
+    },
+    {
+      '1': 'last_error',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'lastError'
+    },
     {'1': 'updating', '3': 7, '4': 1, '5': 8, '10': 'updating'},
     {'1': 'deleted', '3': 8, '4': 1, '5': 8, '10': 'deleted'},
     {'1': 'display_name', '3': 9, '4': 1, '5': 9, '10': 'displayName'},
@@ -1442,9 +2383,29 @@ final $typed_data.Uint8List subscriptionStateDescriptor = $convert.base64Decode(
 const SaveSubscriptionRequest$json = {
   '1': 'SaveSubscriptionRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
-    {'1': 'settings', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionSettings', '10': 'settings'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
+    {
+      '1': 'settings',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionSettings',
+      '10': 'settings'
+    },
   ],
 };
 
@@ -1459,8 +2420,22 @@ final $typed_data.Uint8List saveSubscriptionRequestDescriptor = $convert.base64D
 const SaveSubscriptionResponse$json = {
   '1': 'SaveSubscriptionResponse',
   '2': [
-    {'1': 'state', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionState', '10': 'state'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'state',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionState',
+      '10': 'state'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1474,8 +2449,21 @@ final $typed_data.Uint8List saveSubscriptionResponseDescriptor = $convert.base64
 const ListSubscriptionsRequest$json = {
   '1': 'ListSubscriptionsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -1489,8 +2477,22 @@ final $typed_data.Uint8List listSubscriptionsRequestDescriptor = $convert.base64
 const ListSubscriptionsResponse$json = {
   '1': 'ListSubscriptionsResponse',
   '2': [
-    {'1': 'subscriptions', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.SubscriptionState', '10': 'subscriptions'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'subscriptions',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionState',
+      '10': 'subscriptions'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1504,8 +2506,21 @@ final $typed_data.Uint8List listSubscriptionsResponseDescriptor = $convert.base6
 const DeleteSubscriptionRequest$json = {
   '1': 'DeleteSubscriptionRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
     {'1': 'id', '3': 3, '4': 1, '5': 9, '10': 'id'},
   ],
 };
@@ -1520,52 +2535,102 @@ final $typed_data.Uint8List deleteSubscriptionRequestDescriptor = $convert.base6
 const DeleteSubscriptionResponse$json = {
   '1': 'DeleteSubscriptionResponse',
   '2': [
-    {'1': 'error', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'error',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
 /// Descriptor for `DeleteSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List deleteSubscriptionResponseDescriptor = $convert.base64Decode(
-    'ChpEZWxldGVTdWJzY3JpcHRpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS'
-    '52MS5Tb3JhRXJyb3JSBWVycm9y');
+final $typed_data.Uint8List deleteSubscriptionResponseDescriptor =
+    $convert.base64Decode(
+        'ChpEZWxldGVTdWJzY3JpcHRpb25SZXNwb25zZRItCgVlcnJvchgBIAEoCzIXLnNvcmEuY29yZS'
+        '52MS5Tb3JhRXJyb3JSBWVycm9y');
 
 @$core.Deprecated('Use refreshSubscriptionRequestDescriptor instead')
 const RefreshSubscriptionRequest$json = {
   '1': 'RefreshSubscriptionRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
     {'1': 'id', '3': 3, '4': 1, '5': 9, '10': 'id'},
   ],
 };
 
 /// Descriptor for `RefreshSubscriptionRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List refreshSubscriptionRequestDescriptor = $convert.base64Decode(
-    'ChpSZWZyZXNoU3Vic2NyaXB0aW9uUmVxdWVzdBI5CgthcGlfdmVyc2lvbhgBIAEoCzIYLnNvcm'
-    'EuY29yZS52MS5BcGlWZXJzaW9uUgphcGlWZXJzaW9uEjMKFWNvbnRyb2xfYXV0aGVudGljYXRv'
-    'chgCIAEoDFIUY29udHJvbEF1dGhlbnRpY2F0b3ISDgoCaWQYAyABKAlSAmlk');
+final $typed_data.Uint8List refreshSubscriptionRequestDescriptor =
+    $convert.base64Decode(
+        'ChpSZWZyZXNoU3Vic2NyaXB0aW9uUmVxdWVzdBI5CgthcGlfdmVyc2lvbhgBIAEoCzIYLnNvcm'
+        'EuY29yZS52MS5BcGlWZXJzaW9uUgphcGlWZXJzaW9uEjMKFWNvbnRyb2xfYXV0aGVudGljYXRv'
+        'chgCIAEoDFIUY29udHJvbEF1dGhlbnRpY2F0b3ISDgoCaWQYAyABKAlSAmlk');
 
 @$core.Deprecated('Use refreshSubscriptionResponseDescriptor instead')
 const RefreshSubscriptionResponse$json = {
   '1': 'RefreshSubscriptionResponse',
   '2': [
-    {'1': 'state', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionState', '10': 'state'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'state',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SubscriptionState',
+      '10': 'state'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
 /// Descriptor for `RefreshSubscriptionResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List refreshSubscriptionResponseDescriptor = $convert.base64Decode(
-    'ChtSZWZyZXNoU3Vic2NyaXB0aW9uUmVzcG9uc2USNQoFc3RhdGUYASABKAsyHy5zb3JhLmNvcm'
-    'UudjEuU3Vic2NyaXB0aW9uU3RhdGVSBXN0YXRlEi0KBWVycm9yGAIgASgLMhcuc29yYS5jb3Jl'
-    'LnYxLlNvcmFFcnJvclIFZXJyb3I=');
+final $typed_data.Uint8List refreshSubscriptionResponseDescriptor =
+    $convert.base64Decode(
+        'ChtSZWZyZXNoU3Vic2NyaXB0aW9uUmVzcG9uc2USNQoFc3RhdGUYASABKAsyHy5zb3JhLmNvcm'
+        'UudjEuU3Vic2NyaXB0aW9uU3RhdGVSBXN0YXRlEi0KBWVycm9yGAIgASgLMhcuc29yYS5jb3Jl'
+        'LnYxLlNvcmFFcnJvclIFZXJyb3I=');
 
 @$core.Deprecated('Use watchSubscriptionsRequestDescriptor instead')
 const WatchSubscriptionsRequest$json = {
   '1': 'WatchSubscriptionsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
-    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
+    {
+      '1': 'control_authenticator',
+      '3': 2,
+      '4': 1,
+      '5': 12,
+      '10': 'controlAuthenticator'
+    },
   ],
 };
 
@@ -1579,7 +2644,14 @@ final $typed_data.Uint8List watchSubscriptionsRequestDescriptor = $convert.base6
 const GetAboutRequest$json = {
   '1': 'GetAboutRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
   ],
 };
 
@@ -1592,8 +2664,22 @@ final $typed_data.Uint8List getAboutRequestDescriptor = $convert.base64Decode(
 const GetAboutResponse$json = {
   '1': 'GetAboutResponse',
   '2': [
-    {'1': 'about', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.About', '10': 'about'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'about',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.About',
+      '10': 'about'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1608,11 +2694,32 @@ const About$json = {
   '2': [
     {'1': 'core_version', '3': 1, '4': 1, '5': 9, '10': 'coreVersion'},
     {'1': 'commit', '3': 2, '4': 1, '5': 9, '10': 'commit'},
-    {'1': 'commit_time', '3': 3, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'commitTime'},
-    {'1': 'contract', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'contract'},
+    {
+      '1': 'commit_time',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Timestamp',
+      '10': 'commitTime'
+    },
+    {
+      '1': 'contract',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'contract'
+    },
     {'1': 'platform', '3': 5, '4': 1, '5': 9, '10': 'platform'},
     {'1': 'go_version', '3': 6, '4': 1, '5': 9, '10': 'goVersion'},
-    {'1': 'engines', '3': 7, '4': 3, '5': 11, '6': '.sora.core.v1.EngineBuild', '10': 'engines'},
+    {
+      '1': 'engines',
+      '3': 7,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.EngineBuild',
+      '10': 'engines'
+    },
     {'1': 'license', '3': 8, '4': 1, '5': 9, '10': 'license'},
     {'1': 'source_url', '3': 9, '4': 1, '5': 9, '10': 'sourceUrl'},
   ],
@@ -1647,21 +2754,43 @@ final $typed_data.Uint8List engineBuildDescriptor = $convert.base64Decode(
 const GetRoutingPresetsRequest$json = {
   '1': 'GetRoutingPresetsRequest',
   '2': [
-    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {
+      '1': 'api_version',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.ApiVersion',
+      '10': 'apiVersion'
+    },
   ],
 };
 
 /// Descriptor for `GetRoutingPresetsRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List getRoutingPresetsRequestDescriptor = $convert.base64Decode(
-    'ChhHZXRSb3V0aW5nUHJlc2V0c1JlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLm'
-    'NvcmUudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbg==');
+final $typed_data.Uint8List getRoutingPresetsRequestDescriptor =
+    $convert.base64Decode(
+        'ChhHZXRSb3V0aW5nUHJlc2V0c1JlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLm'
+        'NvcmUudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbg==');
 
 @$core.Deprecated('Use getRoutingPresetsResponseDescriptor instead')
 const GetRoutingPresetsResponse$json = {
   '1': 'GetRoutingPresetsResponse',
   '2': [
-    {'1': 'presets', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.RoutingPreset', '10': 'presets'},
-    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {
+      '1': 'presets',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.sora.core.v1.RoutingPreset',
+      '10': 'presets'
+    },
+    {
+      '1': 'error',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.SoraError',
+      '10': 'error'
+    },
   ],
 };
 
@@ -1705,4 +2834,3 @@ final $typed_data.Uint8List bypassStrategyDescriptor = $convert.base64Decode(
     'VyGAIgASgIUghkaXNvcmRlchIQCgNvb2IYAyABKAhSA29vYhIdCgp0bHNfcmVjb3JkGAQgASgJ'
     'Ugl0bHNSZWNvcmQSGwoJaG9zdF9jYXNlGAUgASgIUghob3N0Q2FzZRIfCgtkb21haW5fY2FzZR'
     'gGIAEoCFIKZG9tYWluQ2FzZRIdCgptZXRob2RfZW9sGAcgASgIUgltZXRob2RFb2w=');
-

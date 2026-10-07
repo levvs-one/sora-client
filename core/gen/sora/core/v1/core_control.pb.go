@@ -1586,6 +1586,9 @@ func (x *RoutingRule) GetOutboundId() string {
 	return ""
 }
 
+// DnsPolicy names the resolvers of the session. A tun session that names none
+// uses DNS over HTTPS to 1.1.1.1 and 8.8.8.8, since the adapter carries every
+// lookup of the machine.
 type DnsPolicy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Servers       []string               `protobuf:"bytes,1,rep,name=servers,proto3" json:"servers,omitempty"`

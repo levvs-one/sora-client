@@ -163,8 +163,12 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 			Length:   defences.GetFragmentLength(),
 			Interval: defences.GetFragmentInterval(),
 		}},
+		// A tun adapter without routes carries nothing, so the plan always
+		// asks the engine to route through it.
 		Tun: engine.Tun{
-			Enabled: in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+			Enabled:    in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+			AutoRoute:  true,
+			DeviceName: engine.TunDevice,
 		},
 		PrivateControl: !in.GetNetworkControlAllowed(),
 	}
@@ -237,7 +241,7 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 	if err != nil {
 		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
 	}
-	plan.DNS = dnsFromProto(in.GetDnsPolicy())
+	plan.DNS = dnsFromProto(in.GetDnsPolicy(), plan.Tun.Enabled)
 	if err := checkDNS(plan.DNS); err != nil {
 		return nil, err
 	}
@@ -596,9 +600,19 @@ func ruleTypeOf(destination string) engine.RuleType {
 	}
 }
 
+// defaultTunResolvers serve a tun plan that names none: a tun adapter carries
+// every lookup of the machine, so it needs a resolver of its own. DNS over
+// HTTPS by address needs no other resolver to start and is not readable on
+// the way.
+var defaultTunResolvers = []string{"https://1.1.1.1/dns-query", "https://8.8.8.8/dns-query"}
+
 // dnsFromProto converts the resolver settings of a request.
-func dnsFromProto(policy *corev1.DnsPolicy) engine.DNS {
-	if policy == nil || len(policy.GetServers()) == 0 {
+func dnsFromProto(policy *corev1.DnsPolicy, tun bool) engine.DNS {
+	servers := policy.GetServers()
+	if len(servers) == 0 && tun {
+		servers = defaultTunResolvers
+	}
+	if len(servers) == 0 {
 		return engine.DNS{}
 	}
 	out := engine.DNS{
@@ -606,7 +620,7 @@ func dnsFromProto(policy *corev1.DnsPolicy) engine.DNS {
 		Mode:    "rule",
 		Sniff:   true,
 	}
-	for index, address := range policy.GetServers() {
+	for index, address := range servers {
 		if len(out.Servers) >= engine.MaxDNSServers {
 			break
 		}

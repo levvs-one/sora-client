@@ -67,6 +67,7 @@ func probeServer(t *testing.T, m control.Measurer, p control.Prober) *control.Se
 		Version: control.Version{Major: 1, Minor: 3, MinSupportedMinor: 1}, Authenticator: auth,
 		Measurer: m, Prober: p,
 		Sessions: session.NewManager(session.ManagerConfig{
+			TunUp:   noAdapter,
 			Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
 		}),
 	})

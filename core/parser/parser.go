@@ -407,6 +407,24 @@ func parseLink(raw string) (OutboundSpec, error) {
 			o.Options[k] = v
 		}
 	}
+	if o.Security == "" {
+		// A link that does not say keeps what its protocol means: trojan,
+		// hysteria2 and https run over TLS, everything else here does not. An
+		// empty value would read as TLS further down, and plain SOCKS would be
+		// wrapped in a handshake the server never answers.
+		switch proto {
+		case "trojan", "hysteria2", "hy2", "https":
+			o.Security = "tls"
+		default:
+			o.Security = "none"
+		}
+	}
+	// The scheme of a link is not the name of its protocol, and the engines
+	// know only the names.
+	o.Protocol = map[string]string{"ss": "shadowsocks", "socks": "socks5", "hy2": "hysteria2", "https": "http"}[proto]
+	if o.Protocol == "" {
+		o.Protocol = proto
+	}
 	o.DisplayName = fragmentName(u.Fragment)
 	o.CountryCode = countryCode(o.DisplayName)
 	return o, o.validate()

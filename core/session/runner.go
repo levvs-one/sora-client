@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"net"
 	"sync"
 	"time"
 
@@ -60,6 +61,32 @@ type Config struct {
 
 	// Now supplies timestamps. Tests replace it to get stable output.
 	Now func() time.Time
+
+	// TunUp waits until the adapter of a tun plan is up. An engine may start
+	// and keep running without its adapter, for example without the right to
+	// create one, and a session that called that connected would tell a
+	// person they are protected while their traffic goes around the tunnel.
+	// It waits for the network interface by default.
+	TunUp func(ctx context.Context, device string) error
+}
+
+// tunWait bounds how long an engine may take to bring its adapter up.
+const tunWait = 5 * time.Second
+
+func interfaceUp(ctx context.Context, device string) error {
+	ctx, cancel := context.WithTimeout(ctx, tunWait)
+	defer cancel()
+	for {
+		if iface, err := net.InterfaceByName(device); err == nil && iface.Flags&net.FlagUp != 0 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return errs.Newf(errs.CodeFailedPrecondition, errs.KeyPlanTunnel,
+				"session: the engine is running but the adapter %s is not up; the core may lack CAP_NET_ADMIN", device)
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
 }
 
 // Session is one running tunnel: the engine, the guard and the state machine
@@ -113,6 +140,9 @@ func New(cfg Config) (*Session, error) {
 	}
 	if cfg.RestartBudget == nil {
 		cfg.RestartBudget = engine.NewRestartBudget(5, 10*time.Minute, nil)
+	}
+	if cfg.TunUp == nil {
+		cfg.TunUp = interfaceUp
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now
@@ -193,8 +223,16 @@ func (s *Session) Start(ctx context.Context) error {
 	s.mu.Lock()
 	s.guardApplied = true
 	s.mu.Unlock()
-	if err := s.eng.Apply(s.ctx, s.cfg.Plan); err != nil {
-		wrapped := errs.Wrap(err, errs.CodeUnavailable, errs.KeyEngineStartFailed)
+	err := s.eng.Apply(s.ctx, s.cfg.Plan)
+	if err != nil {
+		err = errs.Wrap(err, errs.CodeUnavailable, errs.KeyEngineStartFailed)
+	} else if tun := s.cfg.Plan.Tun; tun.Enabled && tun.DeviceName != "" {
+		if err = s.cfg.TunUp(s.ctx, tun.DeviceName); err != nil {
+			_ = s.eng.Stop(context.WithoutCancel(ctx))
+		}
+	}
+	if err != nil {
+		wrapped := err
 		restoreCtx := context.WithoutCancel(ctx)
 		if restoreErr := s.restoreGuard(restoreCtx); restoreErr != nil {
 			s.log.Append(Event{

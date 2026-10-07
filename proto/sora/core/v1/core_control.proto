@@ -176,6 +176,9 @@ message OutboundSpec {
 message Endpoint { string host = 1; uint32 port = 2; }
 message CredentialsRef { string reference = 1; }
 message RoutingRule { string destination = 1; string outbound_id = 2; }
+// DnsPolicy names the resolvers of the session. A tun session that names none
+// uses DNS over HTTPS to 1.1.1.1 and 8.8.8.8, since the adapter carries every
+// lookup of the machine.
 message DnsPolicy { repeated string servers = 1; bool block_private = 2; }
 message BypassSettings { bool enabled = 1; repeated string rules = 2; }
 enum TunnelMode { TUNNEL_MODE_UNSPECIFIED = 0; TUNNEL_MODE_SYSTEM = 1; TUNNEL_MODE_APPLICATION = 2; }

@@ -264,3 +264,34 @@ func TestPlanCarriesABypassOutbound(t *testing.T) {
 		t.Fatal("a split position carrying an option must be refused")
 	}
 }
+
+func TestTunPlanGetsResolversWhenItNamesNone(t *testing.T) {
+	plan := func(mode corev1.TunnelMode, servers ...string) *corev1.SessionPlan {
+		return &corev1.SessionPlan{
+			TunnelMode: mode,
+			Outbounds:  []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}},
+			DnsPolicy:  &corev1.DnsPolicy{Servers: servers},
+		}
+	}
+	p, err := planFromProto(plan(corev1.TunnelMode_TUNNEL_MODE_SYSTEM), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.DNS.Enabled || len(p.DNS.Servers) != 2 || p.DNS.Servers[0].Transport != engine.DNSHTTPS {
+		t.Fatalf("a tun plan without resolvers must get the defaults: %+v", p.DNS)
+	}
+	p, err = planFromProto(plan(corev1.TunnelMode_TUNNEL_MODE_SYSTEM, "tls://dns.example:853"), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.DNS.Servers) != 1 || p.DNS.Servers[0].Address != "dns.example" {
+		t.Fatalf("the person's resolver replaces the defaults: %+v", p.DNS)
+	}
+	p, err = planFromProto(plan(corev1.TunnelMode_TUNNEL_MODE_APPLICATION), "s", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.DNS.Enabled {
+		t.Fatalf("a proxy plan resolves through the system unless asked: %+v", p.DNS)
+	}
+}

@@ -2563,6 +2563,7 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
     ApiVersion? apiVersion,
     $core.String? requestId,
     $core.String? reference,
+    $core.String? userAgent,
   }) {
     final $result = create();
     if (apiVersion != null) {
@@ -2574,6 +2575,9 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
     if (reference != null) {
       $result.reference = reference;
     }
+    if (userAgent != null) {
+      $result.userAgent = userAgent;
+    }
     return $result;
   }
   FetchSubscriptionRequest._() : super();
@@ -2584,6 +2588,7 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
     ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.create)
     ..aOS(2, _omitFieldNames ? '' : 'requestId')
     ..aOS(3, _omitFieldNames ? '' : 'reference')
+    ..aOS(4, _omitFieldNames ? '' : 'userAgent')
     ..hasRequiredFields = false
   ;
 
@@ -2636,12 +2641,24 @@ class FetchSubscriptionRequest extends $pb.GeneratedMessage {
   $core.bool hasReference() => $_has(2);
   @$pb.TagNumber(3)
   void clearReference() => clearField(3);
+
+  /// Since 1.3. Replaces the default User-Agent for this subscription: panels
+  /// choose the format of their answer by it. Printable ASCII, at most 256 bytes.
+  @$pb.TagNumber(4)
+  $core.String get userAgent => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set userAgent($core.String v) { $_setString(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasUserAgent() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUserAgent() => clearField(4);
 }
 
 class FetchSubscriptionResponse extends $pb.GeneratedMessage {
   factory FetchSubscriptionResponse({
     $core.Iterable<OutboundSpec>? outbounds,
     SoraError? error,
+    SubscriptionInfo? info,
   }) {
     final $result = create();
     if (outbounds != null) {
@@ -2649,6 +2666,9 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
     }
     if (error != null) {
       $result.error = error;
+    }
+    if (info != null) {
+      $result.info = info;
     }
     return $result;
   }
@@ -2659,6 +2679,7 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'FetchSubscriptionResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
     ..pc<OutboundSpec>(1, _omitFieldNames ? '' : 'outbounds', $pb.PbFieldType.PM, subBuilder: OutboundSpec.create)
     ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.create)
+    ..aOM<SubscriptionInfo>(3, _omitFieldNames ? '' : 'info', subBuilder: SubscriptionInfo.create)
     ..hasRequiredFields = false
   ;
 
@@ -2696,6 +2717,206 @@ class FetchSubscriptionResponse extends $pb.GeneratedMessage {
   void clearError() => clearField(2);
   @$pb.TagNumber(2)
   SoraError ensureError() => $_ensure(1);
+
+  /// Since 1.3. What the provider said about the subscription.
+  @$pb.TagNumber(3)
+  SubscriptionInfo get info => $_getN(2);
+  @$pb.TagNumber(3)
+  set info(SubscriptionInfo v) { setField(3, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasInfo() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearInfo() => clearField(3);
+  @$pb.TagNumber(3)
+  SubscriptionInfo ensureInfo() => $_ensure(2);
+}
+
+/// SubscriptionInfo is read from the panel headers (profile-title,
+/// profile-update-interval, subscription-userinfo, profile-web-page-url,
+/// support-url, announce) or from "#key: value" lines at the top of the body.
+class SubscriptionInfo extends $pb.GeneratedMessage {
+  factory SubscriptionInfo({
+    $core.String? title,
+    $2.Duration? updateInterval,
+    $core.bool? hasUsage,
+    $fixnum.Int64? uploadBytes,
+    $fixnum.Int64? downloadBytes,
+    $fixnum.Int64? totalBytes,
+    $1.Timestamp? expire,
+    $core.String? webPageUrl,
+    $core.String? supportUrl,
+    $core.String? announce,
+  }) {
+    final $result = create();
+    if (title != null) {
+      $result.title = title;
+    }
+    if (updateInterval != null) {
+      $result.updateInterval = updateInterval;
+    }
+    if (hasUsage != null) {
+      $result.hasUsage = hasUsage;
+    }
+    if (uploadBytes != null) {
+      $result.uploadBytes = uploadBytes;
+    }
+    if (downloadBytes != null) {
+      $result.downloadBytes = downloadBytes;
+    }
+    if (totalBytes != null) {
+      $result.totalBytes = totalBytes;
+    }
+    if (expire != null) {
+      $result.expire = expire;
+    }
+    if (webPageUrl != null) {
+      $result.webPageUrl = webPageUrl;
+    }
+    if (supportUrl != null) {
+      $result.supportUrl = supportUrl;
+    }
+    if (announce != null) {
+      $result.announce = announce;
+    }
+    return $result;
+  }
+  SubscriptionInfo._() : super();
+  factory SubscriptionInfo.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory SubscriptionInfo.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'SubscriptionInfo', package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'title')
+    ..aOM<$2.Duration>(2, _omitFieldNames ? '' : 'updateInterval', subBuilder: $2.Duration.create)
+    ..aOB(3, _omitFieldNames ? '' : 'hasUsage')
+    ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'uploadBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'downloadBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'totalBytes', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOM<$1.Timestamp>(7, _omitFieldNames ? '' : 'expire', subBuilder: $1.Timestamp.create)
+    ..aOS(8, _omitFieldNames ? '' : 'webPageUrl')
+    ..aOS(9, _omitFieldNames ? '' : 'supportUrl')
+    ..aOS(10, _omitFieldNames ? '' : 'announce')
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  SubscriptionInfo clone() => SubscriptionInfo()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  SubscriptionInfo copyWith(void Function(SubscriptionInfo) updates) => super.copyWith((message) => updates(message as SubscriptionInfo)) as SubscriptionInfo;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionInfo create() => SubscriptionInfo._();
+  SubscriptionInfo createEmptyInstance() => create();
+  static $pb.PbList<SubscriptionInfo> createRepeated() => $pb.PbList<SubscriptionInfo>();
+  @$core.pragma('dart2js:noInline')
+  static SubscriptionInfo getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SubscriptionInfo>(create);
+  static SubscriptionInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get title => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set title($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasTitle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearTitle() => clearField(1);
+
+  /// How often the provider asks to be fetched; unset when it did not say.
+  @$pb.TagNumber(2)
+  $2.Duration get updateInterval => $_getN(1);
+  @$pb.TagNumber(2)
+  set updateInterval($2.Duration v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasUpdateInterval() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUpdateInterval() => clearField(2);
+  @$pb.TagNumber(2)
+  $2.Duration ensureUpdateInterval() => $_ensure(1);
+
+  /// Whether the provider sent traffic figures at all.
+  @$pb.TagNumber(3)
+  $core.bool get hasUsage => $_getBF(2);
+  @$pb.TagNumber(3)
+  set hasUsage($core.bool v) { $_setBool(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasHasUsage() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHasUsage() => clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get uploadBytes => $_getI64(3);
+  @$pb.TagNumber(4)
+  set uploadBytes($fixnum.Int64 v) { $_setInt64(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasUploadBytes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearUploadBytes() => clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get downloadBytes => $_getI64(4);
+  @$pb.TagNumber(5)
+  set downloadBytes($fixnum.Int64 v) { $_setInt64(4, v); }
+  @$pb.TagNumber(5)
+  $core.bool hasDownloadBytes() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearDownloadBytes() => clearField(5);
+
+  /// Zero means unlimited.
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get totalBytes => $_getI64(5);
+  @$pb.TagNumber(6)
+  set totalBytes($fixnum.Int64 v) { $_setInt64(5, v); }
+  @$pb.TagNumber(6)
+  $core.bool hasTotalBytes() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTotalBytes() => clearField(6);
+
+  /// Unset when the subscription does not expire.
+  @$pb.TagNumber(7)
+  $1.Timestamp get expire => $_getN(6);
+  @$pb.TagNumber(7)
+  set expire($1.Timestamp v) { setField(7, v); }
+  @$pb.TagNumber(7)
+  $core.bool hasExpire() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearExpire() => clearField(7);
+  @$pb.TagNumber(7)
+  $1.Timestamp ensureExpire() => $_ensure(6);
+
+  /// https, http or tg links only.
+  @$pb.TagNumber(8)
+  $core.String get webPageUrl => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set webPageUrl($core.String v) { $_setString(7, v); }
+  @$pb.TagNumber(8)
+  $core.bool hasWebPageUrl() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearWebPageUrl() => clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.String get supportUrl => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set supportUrl($core.String v) { $_setString(8, v); }
+  @$pb.TagNumber(9)
+  $core.bool hasSupportUrl() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearSupportUrl() => clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get announce => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set announce($core.String v) { $_setString(9, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasAnnounce() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearAnnounce() => clearField(10);
 }
 
 class ProbeServersRequest extends $pb.GeneratedMessage {

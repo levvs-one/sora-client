@@ -35,6 +35,15 @@ service CoreControl {
   // Since 1.3. The connection center: live connections of the session.
   rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
   rpc CloseConnection(CloseConnectionRequest) returns (CloseConnectionResponse);
+
+  // Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
+  // current while the interface is closed. The link of a subscription is its
+  // credential: the core stores it encrypted and never sends it back.
+  rpc SaveSubscription(SaveSubscriptionRequest) returns (SaveSubscriptionResponse);
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
+  rpc DeleteSubscription(DeleteSubscriptionRequest) returns (DeleteSubscriptionResponse);
+  rpc RefreshSubscription(RefreshSubscriptionRequest) returns (RefreshSubscriptionResponse);
+  rpc WatchSubscriptions(WatchSubscriptionsRequest) returns (stream SubscriptionState);
   // PutSecret and DeleteSecret manage the credential material the core keeps.
   // They exist because the rest of the contract carries only references: a plan
   // names a secret, and these two calls are the only way a secret ever reaches
@@ -375,6 +384,51 @@ message ListConnectionsRequest { ApiVersion api_version = 1; bytes control_authe
 message ListConnectionsResponse { repeated Connection connections = 1; SoraError error = 2; }
 message CloseConnectionRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string session_id = 3; string connection_id = 4; }
 message CloseConnectionResponse { SoraError error = 1; }
+
+// SubscriptionSettings are what the user chooses for one subscription.
+message SubscriptionSettings {
+  // Empty on the first save; the core assigns one and answers with it.
+  string id = 1;
+  // The https link. Required on the first save; empty on a later save keeps
+  // the stored link.
+  string url = 2;
+  // Overrides the provider title in the list; empty shows the provider title.
+  string name = 3;
+  // Empty sends the Sora User-Agent.
+  string user_agent = 4;
+  bool auto_update = 5;
+  // Overrides the interval the provider asks for; unset follows the provider,
+  // and 24 hours when the provider did not say. At least one hour.
+  google.protobuf.Duration update_interval = 6;
+}
+
+// SubscriptionState is a subscription as the core holds it.
+message SubscriptionState {
+  SubscriptionSettings settings = 1;
+  SubscriptionInfo info = 2;
+  repeated OutboundSpec outbounds = 3;
+  google.protobuf.Timestamp last_update = 4;
+  google.protobuf.Timestamp next_update = 5;
+  // The failure of the last attempt; unset after a success.
+  SoraError last_error = 6;
+  // Whether a fetch is running right now.
+  bool updating = 7;
+  // Set on a watched state when the subscription was deleted.
+  bool deleted = 8;
+  // What the list shows: the user's name, else the provider's title, else the
+  // file name the provider sent, else the host of the link. Never empty.
+  string display_name = 9;
+}
+
+message SaveSubscriptionRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; SubscriptionSettings settings = 3; }
+message SaveSubscriptionResponse { SubscriptionState state = 1; SoraError error = 2; }
+message ListSubscriptionsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; }
+message ListSubscriptionsResponse { repeated SubscriptionState subscriptions = 1; SoraError error = 2; }
+message DeleteSubscriptionRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string id = 3; }
+message DeleteSubscriptionResponse { SoraError error = 1; }
+message RefreshSubscriptionRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string id = 3; }
+message RefreshSubscriptionResponse { SubscriptionState state = 1; SoraError error = 2; }
+message WatchSubscriptionsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; }
 
 // BypassStrategy is how zapret reshapes a handshake. Positions are a number
 // of bytes, negative from the end, or a marker (method, host, endhost, sld,

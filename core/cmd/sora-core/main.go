@@ -301,6 +301,9 @@ func (s *source) EngineLines() []string {
 // Serve runs the control plane until the context ends.
 func (a *App) Serve(ctx context.Context) error {
 	a.log.Info("core listening", "endpoint", a.address, "tunnel", a.local)
+	// Subscriptions update on schedule for as long as the core serves, whether
+	// or not an interface is connected.
+	go a.plane.Run(ctx)
 	err := a.server.Serve(a.listener)
 	if ctx.Err() != nil {
 		// The listener closes with the context, so a server that stops because the

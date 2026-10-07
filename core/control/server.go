@@ -147,6 +147,7 @@ type Server struct {
 	redactors   *redactorCache
 	prober      Prober
 	measurer    Measurer
+	subs        *subscriptionBook
 	logs        *logs.Center
 	diagnostics Diagnostics
 	fetcher     Fetcher
@@ -159,6 +160,10 @@ type SecretStore interface {
 	Get(reference string) ([]byte, error)
 	Put(reference string, material []byte) error
 	Delete(reference string) error
+	// Apply stores puts and removes deletes in one write, all or nothing.
+	Apply(puts map[string][]byte, deletes []string) error
+	// Refs lists the stored references, so the core can find its own records.
+	Refs() []string
 }
 
 // redactorCache holds one redactor per session, because a redactor is seeded with
@@ -213,7 +218,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.Version.Major == 0 {
 		cfg.Version = Version{Major: 1, Minor: 0, MinSupportedMinor: 0}
 	}
-	return &Server{
+	server := &Server{
 		version:     cfg.Version,
 		auth:        cfg.Authenticator,
 		sessions:    cfg.Sessions,
@@ -225,8 +230,14 @@ func New(cfg Config) (*Server, error) {
 		logs:        cfg.Logs,
 		diagnostics: cfg.Diagnostics,
 		fetcher:     cfg.Fetcher,
-	}, nil
+	}
+	server.subs = newSubscriptionBook(server)
+	return server, nil
 }
+
+// Run does the work of the core that belongs to no request: it updates the
+// subscriptions on schedule until ctx ends.
+func (s *Server) Run(ctx context.Context) { s.subs.run(ctx) }
 
 // SetDiagnostics attaches the collector after the plane was built. A collector
 // needs the session manager and the engine build, both of which exist before the
@@ -833,46 +844,65 @@ func (s *Server) ParseImport(_ context.Context, req *corev1.ParseImportRequest) 
 			"control: this core cannot store credentials, so it cannot import")
 		return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
 	}
-	// Parsing a body is bounded by the payload limit and runs in this process, so
-	// there is nothing here to cancel: the deadline that matters belongs to the
-	// fetch that produced the body. What is bounded is the number of secrets one
-	// body may create, and that is the parser's own limit.
-	// The payload is detected before it is parsed. A parser that tries every
-	// format in turn would accept anything and answer "no servers" for a file of
-	// plain text; detecting first turns that into the honest answer, which is
-	// that the core does not know what this is.
-	if _, err := (parser.ImportDetector{MaxItems: s.parser.MaxItems}).Detect(payload); err != nil {
-		return &corev1.ParseImportResponse{Error: toWire(importError(err), nil, id)}, nil
-	}
-	result, err := s.parser.Parse(payload)
+	servers, err := s.parsePayload(payload, referenceOf)
 	if err != nil {
-		return &corev1.ParseImportResponse{Error: toWire(importError(err), nil, id)}, nil
-	}
-	if len(result.Servers) == 0 {
-		err := errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionNoServers,
-			"control: the payload produced no usable server")
 		return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
 	}
-
+	puts := make(map[string][]byte, len(servers))
 	plan := &corev1.SessionPlan{TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM}
-	for _, server := range result.Servers {
-		reference, err := referenceOf(server)
-		if err != nil {
-			return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
-		}
-		document, err := credentialDocument(server)
-		if err != nil {
-			return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
-		}
-		if err := s.secrets.Put(reference, document); err != nil {
-			return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
-		}
-		plan.Outbounds = append(plan.Outbounds, outboundToProto(server, reference))
+	for _, server := range servers {
+		puts[server.reference] = server.document
+		plan.Outbounds = append(plan.Outbounds, server.spec)
+	}
+	if err := s.secrets.Apply(puts, nil); err != nil {
+		return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
 	}
 	// No routing rule is invented here. A rule names an outbound, and the only
 	// outbounds in this plan are the imported servers; a client that wants a
 	// particular split adds the rules it wants, with the targets it can name.
 	return &corev1.ParseImportResponse{SessionPlan: plan}, nil
+}
+
+// importedServer is one parsed server, ready for the vault.
+type importedServer struct {
+	spec      *corev1.OutboundSpec
+	reference string
+	document  []byte
+}
+
+// parsePayload detects and parses an import and prepares every server for the
+// vault without writing anything, so the caller stores all of them in one
+// change. refFor names the vault entry of a server.
+//
+// The payload is detected before it is parsed. A parser that tries every format
+// in turn would accept anything and answer "no servers" for a file of plain
+// text; detecting first turns that into the honest answer, which is that the
+// core does not know what this is.
+func (s *Server) parsePayload(payload []byte, refFor func(parser.OutboundSpec) (string, error)) ([]importedServer, error) {
+	if _, err := (parser.ImportDetector{MaxItems: s.parser.MaxItems}).Detect(payload); err != nil {
+		return nil, importError(err)
+	}
+	result, err := s.parser.Parse(payload)
+	if err != nil {
+		return nil, importError(err)
+	}
+	if len(result.Servers) == 0 {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionNoServers,
+			"control: the payload produced no usable server")
+	}
+	out := make([]importedServer, 0, len(result.Servers))
+	for _, server := range result.Servers {
+		reference, err := refFor(server)
+		if err != nil {
+			return nil, err
+		}
+		document, err := credentialDocument(server)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, importedServer{spec: outboundToProto(server, reference), reference: reference, document: document})
+	}
+	return out, nil
 }
 
 // importError maps a parser failure onto the catalog. The parser speaks in its own

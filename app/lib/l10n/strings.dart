@@ -571,6 +571,324 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Заблокировано'**
   String get chainBlocked;
+
+  /// No description provided for @theme.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тема'**
+  String get theme;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как в системе'**
+  String get themeSystem;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In ru, this message translates to:
+  /// **'Светлая'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тёмная'**
+  String get themeDark;
+
+  /// No description provided for @language.
+  ///
+  /// In ru, this message translates to:
+  /// **'Язык'**
+  String get language;
+
+  /// No description provided for @languageSystem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как в системе'**
+  String get languageSystem;
+
+  /// No description provided for @sectionConnection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключение'**
+  String get sectionConnection;
+
+  /// No description provided for @sectionNoServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без сервера'**
+  String get sectionNoServer;
+
+  /// No description provided for @sectionPing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг'**
+  String get sectionPing;
+
+  /// No description provided for @sectionLog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Диагностика'**
+  String get sectionLog;
+
+  /// No description provided for @ipv6.
+  ///
+  /// In ru, this message translates to:
+  /// **'IPv6'**
+  String get ipv6;
+
+  /// No description provided for @dns.
+  ///
+  /// In ru, this message translates to:
+  /// **'DNS'**
+  String get dns;
+
+  /// No description provided for @dnsAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Авто'**
+  String get dnsAuto;
+
+  /// No description provided for @dnsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адреса через запятую'**
+  String get dnsHint;
+
+  /// No description provided for @fragment.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фрагментация TLS'**
+  String get fragment;
+
+  /// No description provided for @fragmentPackets.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что дробить'**
+  String get fragmentPackets;
+
+  /// No description provided for @fragmentLength.
+  ///
+  /// In ru, this message translates to:
+  /// **'Размер частей'**
+  String get fragmentLength;
+
+  /// No description provided for @fragmentInterval.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза между частями'**
+  String get fragmentInterval;
+
+  /// No description provided for @byDefault.
+  ///
+  /// In ru, this message translates to:
+  /// **'По умолчанию'**
+  String get byDefault;
+
+  /// No description provided for @rangeHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Например, 100-200'**
+  String get rangeHint;
+
+  /// No description provided for @splitPos.
+  ///
+  /// In ru, this message translates to:
+  /// **'Места разбиения'**
+  String get splitPos;
+
+  /// No description provided for @splitPosHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Например, 1, midsld'**
+  String get splitPosHint;
+
+  /// No description provided for @disorder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Менять порядок частей'**
+  String get disorder;
+
+  /// No description provided for @tlsRecord.
+  ///
+  /// In ru, this message translates to:
+  /// **'Делить TLS-запись'**
+  String get tlsRecord;
+
+  /// No description provided for @tlsRecordNo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет'**
+  String get tlsRecordNo;
+
+  /// No description provided for @tlsRecordSni.
+  ///
+  /// In ru, this message translates to:
+  /// **'По имени сайта'**
+  String get tlsRecordSni;
+
+  /// No description provided for @tlsRecordFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'После первого байта'**
+  String get tlsRecordFirst;
+
+  /// No description provided for @hostCase.
+  ///
+  /// In ru, this message translates to:
+  /// **'Менять регистр Host'**
+  String get hostCase;
+
+  /// No description provided for @probeMethod.
+  ///
+  /// In ru, this message translates to:
+  /// **'Способ'**
+  String get probeMethod;
+
+  /// No description provided for @probeAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Авто'**
+  String get probeAuto;
+
+  /// No description provided for @probeEngine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через ядро'**
+  String get probeEngine;
+
+  /// No description provided for @probeConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только соединение'**
+  String get probeConnect;
+
+  /// No description provided for @probeUrl.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес проверки'**
+  String get probeUrl;
+
+  /// No description provided for @probeTimeout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ожидание'**
+  String get probeTimeout;
+
+  /// No description provided for @seconds.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} с'**
+  String seconds(int n);
+
+  /// No description provided for @subscriptions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подписки'**
+  String get subscriptions;
+
+  /// No description provided for @subscriptionSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки'**
+  String get subscriptionSettings;
+
+  /// No description provided for @userAgent.
+  ///
+  /// In ru, this message translates to:
+  /// **'User-Agent'**
+  String get userAgent;
+
+  /// No description provided for @autoUpdate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлять автоматически'**
+  String get autoUpdate;
+
+  /// No description provided for @updateInterval.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как часто'**
+  String get updateInterval;
+
+  /// No description provided for @intervalProvider.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как просит провайдер'**
+  String get intervalProvider;
+
+  /// No description provided for @hours.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} ч'**
+  String hours(int n);
+
+  /// No description provided for @updateNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить сейчас'**
+  String get updateNow;
+
+  /// No description provided for @logLevel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что записывать'**
+  String get logLevel;
+
+  /// No description provided for @levelDebug.
+  ///
+  /// In ru, this message translates to:
+  /// **'Всё'**
+  String get levelDebug;
+
+  /// No description provided for @levelInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обычное'**
+  String get levelInfo;
+
+  /// No description provided for @levelWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Важное'**
+  String get levelWarning;
+
+  /// No description provided for @levelError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только ошибки'**
+  String get levelError;
+
+  /// No description provided for @recordDestinations.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записывать адреса сайтов'**
+  String get recordDestinations;
+
+  /// No description provided for @reset.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить настройки'**
+  String get reset;
+
+  /// No description provided for @resetConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить все настройки?'**
+  String get resetConfirm;
+
+  /// No description provided for @resetAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить'**
+  String get resetAction;
+
+  /// No description provided for @invalidValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Такое значение не подойдёт'**
+  String get invalidValue;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

@@ -268,4 +268,167 @@ class SEn extends S {
 
   @override
   String get chainBlocked => 'Blocked';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get languageSystem => 'System';
+
+  @override
+  String get sectionConnection => 'Connection';
+
+  @override
+  String get sectionNoServer => 'No server';
+
+  @override
+  String get sectionPing => 'Ping';
+
+  @override
+  String get sectionLog => 'Diagnostics';
+
+  @override
+  String get ipv6 => 'IPv6';
+
+  @override
+  String get dns => 'DNS';
+
+  @override
+  String get dnsAuto => 'Auto';
+
+  @override
+  String get dnsHint => 'Addresses, comma separated';
+
+  @override
+  String get fragment => 'TLS fragmentation';
+
+  @override
+  String get fragmentPackets => 'What to split';
+
+  @override
+  String get fragmentLength => 'Piece size';
+
+  @override
+  String get fragmentInterval => 'Pause between pieces';
+
+  @override
+  String get byDefault => 'Default';
+
+  @override
+  String get rangeHint => 'For example, 100-200';
+
+  @override
+  String get splitPos => 'Split positions';
+
+  @override
+  String get splitPosHint => 'For example, 1, midsld';
+
+  @override
+  String get disorder => 'Reorder pieces';
+
+  @override
+  String get tlsRecord => 'Split the TLS record';
+
+  @override
+  String get tlsRecordNo => 'No';
+
+  @override
+  String get tlsRecordSni => 'At the site name';
+
+  @override
+  String get tlsRecordFirst => 'After the first byte';
+
+  @override
+  String get hostCase => 'Change Host case';
+
+  @override
+  String get probeMethod => 'Method';
+
+  @override
+  String get probeAuto => 'Auto';
+
+  @override
+  String get probeEngine => 'Through the engine';
+
+  @override
+  String get probeConnect => 'Connection only';
+
+  @override
+  String get probeUrl => 'Test address';
+
+  @override
+  String get probeTimeout => 'Wait';
+
+  @override
+  String seconds(int n) {
+    return '$n s';
+  }
+
+  @override
+  String get subscriptions => 'Subscriptions';
+
+  @override
+  String get subscriptionSettings => 'Settings';
+
+  @override
+  String get userAgent => 'User-Agent';
+
+  @override
+  String get autoUpdate => 'Update automatically';
+
+  @override
+  String get updateInterval => 'How often';
+
+  @override
+  String get intervalProvider => 'As the provider asks';
+
+  @override
+  String hours(int n) {
+    return '$n h';
+  }
+
+  @override
+  String get updateNow => 'Update now';
+
+  @override
+  String get logLevel => 'What to record';
+
+  @override
+  String get levelDebug => 'Everything';
+
+  @override
+  String get levelInfo => 'Usual';
+
+  @override
+  String get levelWarning => 'Important';
+
+  @override
+  String get levelError => 'Errors only';
+
+  @override
+  String get recordDestinations => 'Record site addresses';
+
+  @override
+  String get reset => 'Reset settings';
+
+  @override
+  String get resetConfirm => 'Reset all settings?';
+
+  @override
+  String get resetAction => 'Reset';
+
+  @override
+  String get invalidValue => 'This value will not work';
 }

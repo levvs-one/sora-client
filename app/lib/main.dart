@@ -43,6 +43,12 @@ class _SoraAppState extends State<SoraApp> {
             debugShowCheckedModeBanner: false,
             theme: buildTheme(Brightness.light),
             darkTheme: buildTheme(Brightness.dark),
+            themeMode: switch (sora.settings.theme) {
+              'light' => ThemeMode.light,
+              'dark' => ThemeMode.dark,
+              _ => ThemeMode.system,
+            },
+            locale: sora.settings.language == 'system' ? null : Locale(sora.settings.language),
             themeAnimationDuration: const Duration(milliseconds: 300),
             localizationsDelegates: const [
               S.delegate,

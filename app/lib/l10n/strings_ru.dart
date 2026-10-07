@@ -268,4 +268,167 @@ class SRu extends S {
 
   @override
   String get chainBlocked => 'Заблокировано';
+
+  @override
+  String get theme => 'Тема';
+
+  @override
+  String get themeSystem => 'Как в системе';
+
+  @override
+  String get themeLight => 'Светлая';
+
+  @override
+  String get themeDark => 'Тёмная';
+
+  @override
+  String get language => 'Язык';
+
+  @override
+  String get languageSystem => 'Как в системе';
+
+  @override
+  String get sectionConnection => 'Подключение';
+
+  @override
+  String get sectionNoServer => 'Без сервера';
+
+  @override
+  String get sectionPing => 'Пинг';
+
+  @override
+  String get sectionLog => 'Диагностика';
+
+  @override
+  String get ipv6 => 'IPv6';
+
+  @override
+  String get dns => 'DNS';
+
+  @override
+  String get dnsAuto => 'Авто';
+
+  @override
+  String get dnsHint => 'Адреса через запятую';
+
+  @override
+  String get fragment => 'Фрагментация TLS';
+
+  @override
+  String get fragmentPackets => 'Что дробить';
+
+  @override
+  String get fragmentLength => 'Размер частей';
+
+  @override
+  String get fragmentInterval => 'Пауза между частями';
+
+  @override
+  String get byDefault => 'По умолчанию';
+
+  @override
+  String get rangeHint => 'Например, 100-200';
+
+  @override
+  String get splitPos => 'Места разбиения';
+
+  @override
+  String get splitPosHint => 'Например, 1, midsld';
+
+  @override
+  String get disorder => 'Менять порядок частей';
+
+  @override
+  String get tlsRecord => 'Делить TLS-запись';
+
+  @override
+  String get tlsRecordNo => 'Нет';
+
+  @override
+  String get tlsRecordSni => 'По имени сайта';
+
+  @override
+  String get tlsRecordFirst => 'После первого байта';
+
+  @override
+  String get hostCase => 'Менять регистр Host';
+
+  @override
+  String get probeMethod => 'Способ';
+
+  @override
+  String get probeAuto => 'Авто';
+
+  @override
+  String get probeEngine => 'Через ядро';
+
+  @override
+  String get probeConnect => 'Только соединение';
+
+  @override
+  String get probeUrl => 'Адрес проверки';
+
+  @override
+  String get probeTimeout => 'Ожидание';
+
+  @override
+  String seconds(int n) {
+    return '$n с';
+  }
+
+  @override
+  String get subscriptions => 'Подписки';
+
+  @override
+  String get subscriptionSettings => 'Настройки';
+
+  @override
+  String get userAgent => 'User-Agent';
+
+  @override
+  String get autoUpdate => 'Обновлять автоматически';
+
+  @override
+  String get updateInterval => 'Как часто';
+
+  @override
+  String get intervalProvider => 'Как просит провайдер';
+
+  @override
+  String hours(int n) {
+    return '$n ч';
+  }
+
+  @override
+  String get updateNow => 'Обновить сейчас';
+
+  @override
+  String get logLevel => 'Что записывать';
+
+  @override
+  String get levelDebug => 'Всё';
+
+  @override
+  String get levelInfo => 'Обычное';
+
+  @override
+  String get levelWarning => 'Важное';
+
+  @override
+  String get levelError => 'Только ошибки';
+
+  @override
+  String get recordDestinations => 'Записывать адреса сайтов';
+
+  @override
+  String get reset => 'Сбросить настройки';
+
+  @override
+  String get resetConfirm => 'Сбросить все настройки?';
+
+  @override
+  String get resetAction => 'Сбросить';
+
+  @override
+  String get invalidValue => 'Такое значение не подойдёт';
 }

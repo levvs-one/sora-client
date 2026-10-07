@@ -183,7 +183,9 @@ int? _transfer(_NtIo call, HANDLE file, HANDLE event, Pointer<OVERLAPPED> block,
   final offset = Pointer<Int64>.fromAddress(block.address + 16);
   var status = call(file.cast(), event.cast(), nullptr, nullptr, block, buffer, length, offset, nullptr);
   if (status == _statusPending) {
-    WaitForSingleObject(event, INFINITE);
+    // A wait that fails leaves the call running in the buffer and the block:
+    // the line cannot be used again, so it is over.
+    if (WaitForSingleObject(event, INFINITE).value != WAIT_OBJECT_0) return null;
     status = block.ref.Internal.toSigned(32);
   }
   // Errors and warnings have the high bit set.
@@ -201,7 +203,8 @@ void _readLoop((int, SendPort) args) {
   final event = CreateEvent(null, true, false, null).value;
   overlapped.ref.hEvent = event;
   try {
-    while (true) {
+    // Without an event no call can be waited for: the line is over at once.
+    while (event.isValid) {
       final read = _transfer(_ntReadFile, handle, event, overlapped, buffer, size);
       if (read == null) break;
       if (read == 0) continue;
@@ -226,7 +229,7 @@ void _writeLoop((int, SendPort) args) {
   final event = CreateEvent(null, true, false, null).value;
   overlapped.ref.hEvent = event;
   inbox.listen((message) {
-    if (message is! TransferableTypedData) {
+    if (message is! TransferableTypedData || !event.isValid) {
       inbox.close();
       CloseHandle(event);
       calloc.free(overlapped);

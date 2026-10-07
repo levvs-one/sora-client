@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Locale, PlatformDispatcher;
 
@@ -60,9 +61,13 @@ class Desktop with WindowListener {
   /// Set once Sora is ending; [_dropping] when the connection ends with it.
   bool _closing = false, _dropping = false;
 
-  /// The port the system proxy points at, while it points at the core.
-  int? _proxyPort;
+  /// Changes of the system proxy, one after another: a restore must never
+  /// overtake a change still being written.
   Future<void> _proxyWork = Future.value();
+
+  /// The core answered at least once in this run. Before that, a session in
+  /// the proxy mode may still be running in it, and its proxy is left alone.
+  bool _coreSeen = false;
 
   /// The warning each subscription was last announced with.
   final Map<String, String> _warned = {};
@@ -149,7 +154,7 @@ class Desktop with WindowListener {
     _closing = true;
     _dropping = disconnect;
     if (disconnect && sora.phase != Phase.off && sora.phase != Phase.offline) await sora.disconnect();
-    await _syncProxy();
+    await (_proxyWork = _proxyWork.then((_) => _syncProxy()).catchError((Object _) {}));
     for (final watch in _watches) {
       await watch.cancel();
     }
@@ -346,29 +351,38 @@ class Desktop with WindowListener {
   // The system proxy.
 
   /// Points the system proxy at the core while a session runs in the proxy
-  /// mode, and puts the old one back otherwise. A snapshot left by a crash is
-  /// put back too, the first time the state is known.
+  /// mode, and puts the old one back otherwise — also when the core is gone,
+  /// since a proxy pointing at a dead port cuts the person off. A snapshot
+  /// left by a crash is put back too.
   Future<void> _syncProxy() async {
     final proxy = _proxy;
-    if (proxy == null || sora.phase == Phase.offline) return;
+    if (proxy == null) return;
+    if (sora.phase != Phase.offline) _coreSeen = true;
+    if (sora.phase == Phase.offline && !_coreSeen && !_dropping) return;
     final local = sora.localProxy;
     final wanted =
         !_dropping &&
         sora.settings.tunnel == 'proxy' &&
         local != null &&
         (sora.phase == Phase.connected || sora.phase == Phase.reconnecting);
-    final saved = sora.settings.proxySnapshot;
+    final saved = sora.settings.proxySnapshot.isEmpty
+        ? null
+        : jsonDecode(sora.settings.proxySnapshot) as Map<String, dynamic>;
     if (wanted) {
-      if (_proxyPort == local.port.toInt() && saved.isNotEmpty) return;
-      final before = await proxy.apply(local.host, local.port.toInt());
-      // A proxy already pointed at the core, by this run or one that ended
-      // without putting it back, keeps the snapshot of what came before.
-      if (saved.isEmpty) sora.settings.proxySnapshot = before;
-      _proxyPort = local.port.toInt();
-    } else if (saved.isNotEmpty) {
-      await proxy.restore(saved);
-      sora.settings.proxySnapshot = '';
-      _proxyPort = null;
+      if (saved != null && saved['host'] == local.host && saved['port'] == local.port) return;
+      // What was there is kept before anything changes. A proxy already
+      // pointed at the core, by this run or one that ended without putting
+      // it back, keeps the snapshot of what came before Sora.
+      final before = saved?['before'] as String? ?? await proxy.read();
+      await sora.settings.saveProxySnapshot(jsonEncode({'before': before, 'host': local.host, 'port': local.port}));
+      await proxy.point(local.host, local.port);
+    } else if (saved != null) {
+      // Only what Sora set is put back: a proxy the person or another
+      // program chose since is theirs to keep.
+      if (await proxy.pointsAt(saved['host'] as String, saved['port'] as int)) {
+        await proxy.restore(saved['before'] as String);
+      }
+      await sora.settings.saveProxySnapshot('');
     }
   }
 

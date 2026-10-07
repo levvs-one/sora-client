@@ -87,7 +87,7 @@ Root: HKA; Subkey: "Software\Classes\sora"; ValueType: string; ValueData: "URL:S
 Root: HKA; Subkey: "Software\Classes\sora"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKA; Subkey: "Software\Classes\sora\DefaultIcon"; ValueType: string; ValueData: """{app}\sora.exe"",0"
 Root: HKA; Subkey: "Software\Classes\sora\shell\open\command"; ValueType: string; ValueData: """{app}\sora.exe"" ""%1"""
-Root: HKA; Subkey: "Software\Classes\happ"; ValueType: string; ValueData: "URL:Happ link"; Flags: uninsdeletekey; Tasks: happlinks
+Root: HKA; Subkey: "Software\Classes\happ"; ValueType: string; ValueData: "URL:Happ link"; Tasks: happlinks
 Root: HKA; Subkey: "Software\Classes\happ"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Tasks: happlinks
 Root: HKA; Subkey: "Software\Classes\happ\shell\open\command"; ValueType: string; ValueData: """{app}\sora.exe"" ""%1"""; Tasks: happlinks
 ; The app adds itself to the start with the system; removing Sora removes that
@@ -133,6 +133,18 @@ procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpSelectTasks then
     WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
+end;
+
+// Removing Sora removes happ:// only while it is still Sora's: if Happ took
+// the links back since, its registration stays.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Command: String;
+begin
+  if (CurUninstallStep = usUninstall) and
+     RegQueryStringValue(HKLM, 'Software\Classes\happ\shell\open\command', '', Command) and
+     (Pos(Lowercase(ExpandConstant('{app}\sora.exe')), Lowercase(Command)) > 0) then
+    RegDeleteKeyIncludingSubkeys(HKLM, 'Software\Classes\happ');
 end;
 
 // An upgrade replaces the core while the service holds it open, so the

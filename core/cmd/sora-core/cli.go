@@ -29,6 +29,8 @@ type flags struct {
 	check       bool
 	fileKeys    bool
 	showVersion bool
+	install     bool
+	uninstall   bool
 	showToken   bool
 }
 
@@ -69,9 +71,19 @@ func run(ctx context.Context, arguments []string) error {
 	set.BoolVar(&f.check, "check", false, "build everything, report on it and exit without serving")
 	set.BoolVar(&f.fileKeys, "allow-file-keys", false, "fall back to a key file when the machine key store is unavailable")
 	set.BoolVar(&f.showVersion, "version", false, "print the contract and build version and exit")
+	set.BoolVar(&f.install, "install-service", false, "Windows: register this executable as the SoraCore service with the other flags, start it and exit")
+	set.BoolVar(&f.uninstall, "uninstall-service", false, "Windows: stop and remove the SoraCore service and exit")
 	set.BoolVar(&f.showToken, "print-token", false, "print the control plane token and exit")
 	if err := set.Parse(arguments); err != nil {
 		return errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyUnauthenticated)
+	}
+	if f.uninstall {
+		return uninstallService()
+	}
+	if f.install {
+		// The service runs with the data and engines directories given here;
+		// the install flag itself is not passed on.
+		return installService([]string{"-data-dir", f.dataDir, "-engines-dir", f.enginesDir})
 	}
 	if f.showVersion {
 		fmt.Printf("sora-core %s (contract %d.%d, min supported %d, %s/%s)\n",

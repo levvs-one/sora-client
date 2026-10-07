@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:grpc/grpc.dart';
+import 'package:grpc/service_api.dart' as api;
 import 'package:retry/retry.dart';
 
 import '../generated/sora/core/v1/core_control.pbgrpc.dart';
+import 'pipe.dart';
 
 /// The contract this interface speaks: 1.3, and nothing older, because the
 /// subscription book, the log center and the token in Handshake arrived in it.
@@ -14,13 +16,16 @@ final apiVersion = ApiVersion(major: 1, minor: 3, minSupportedMinor: 3);
 class CoreLink {
   CoreLink._(this._channel, this.stub, this.token);
 
-  final ClientChannel _channel;
+  final api.ClientChannel _channel;
   final CoreControlClient stub;
   final List<int> token;
 
-  /// Where a system installation listens. SORA_CORE_SOCKET points at a core
-  /// run by hand with -socket.
-  static String get socketPath => Platform.environment['SORA_CORE_SOCKET'] ?? '/run/sora/core.sock';
+  /// Where a system installation listens: a unix socket on Linux, a named
+  /// pipe on Windows. SORA_CORE_SOCKET points at a core run by hand with
+  /// -socket.
+  static String get socketPath =>
+      Platform.environment['SORA_CORE_SOCKET'] ??
+      (Platform.isWindows ? r'\\.\pipe\sora-core-v1' : '/run/sora/core.sock');
 
   /// Opens the line, trying again with a growing pause until the core answers:
   /// the service may still be starting, or may be restarting after an update.
@@ -32,11 +37,10 @@ class CoreLink {
   }
 
   static Future<CoreLink> _openOnce() async {
-    final channel = ClientChannel(
-      InternetAddress(socketPath, type: InternetAddressType.unix),
-      port: 0,
-      options: const ChannelOptions(credentials: ChannelCredentials.insecure()),
-    );
+    const options = ChannelOptions(credentials: ChannelCredentials.insecure());
+    final api.ClientChannel channel = Platform.isWindows
+        ? ClientTransportConnectorChannel(PipeConnector(socketPath), options: options)
+        : ClientChannel(InternetAddress(socketPath, type: InternetAddressType.unix), port: 0, options: options);
     try {
       final stub = CoreControlClient(channel);
       final answer = await stub.handshake(

@@ -125,6 +125,63 @@ jobs:
       - name: Build for Linux
         run: flutter build linux --release
 
+  windows:
+    name: Windows
+    # The whole chain on a real Windows: build, install the service with the
+    # installer, reach it from the app over the named pipe, uninstall.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache: false
+      - name: Build the core
+        working-directory: core
+        shell: bash
+        run: CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o ../dist/windows/sora-core.exe ./cmd/sora-core
+      - name: Fetch and verify the engines
+        shell: bash
+        run: packaging/engines/fetch.sh windows-amd64 dist/windows/engines
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.6
+          channel: stable
+      - name: Build the app
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build windows --release --dart-define=SORA_VERSION=0.0.0-${{ github.run_number }}
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=0.0.0.${{ github.run_number }} packaging\windows\sora.iss
+      - name: Install silently and check the service
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\Sora-Setup-*.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install.log' -Wait
+          $service = Get-Service SoraCore -ErrorAction SilentlyContinue
+          if (-not $service -or $service.Status -ne 'Running') { Get-Content install.log; throw "SoraCore is not running" }
+      - name: The app reaches the installed core over the pipe
+        working-directory: app
+        env:
+          SORA_CORE_LIVE: "1"
+          SORA_CORE_ENGINES: sing-box,xray,mihomo
+        run: flutter test test/live_core_test.dart
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          Start-Process "${env:ProgramFiles}\Sora\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait
+          Start-Sleep -Seconds 3
+          if (Get-Service SoraCore -ErrorAction SilentlyContinue) { throw "the service outlived the uninstaller" }
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sora-windows-x64
+          path: dist/Sora-Setup-*.exe
+          if-no-files-found: error
+
   linux-packages:
     name: Linux packages
     # zapret is C linked against the distribution's netfilter libraries, so

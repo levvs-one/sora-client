@@ -136,6 +136,10 @@ jobs:
         with:
           go-version-file: core/go.mod
           cache: false
+      - name: Test the core on Windows
+        working-directory: core
+        shell: bash
+        run: go test ./...
       - name: Build the core
         working-directory: core
         shell: bash

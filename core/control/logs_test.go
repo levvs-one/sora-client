@@ -55,8 +55,6 @@ func newLogServer(t *testing.T, eng engine.Engine) (*control.Server, *logs.Cente
 		Sessions: session.NewManager(session.ManagerConfig{
 			TunUp:   noAdapter,
 			Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return eng, nil },
-			Backoff: engine.Backoff{Initial: time.Millisecond, Max: time.Millisecond, Factor: 1},
-			Budget:  func() *engine.RestartBudget { return engine.NewRestartBudget(2, time.Minute, nil) },
 		}),
 	})
 	if err != nil {

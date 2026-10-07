@@ -166,8 +166,6 @@ func testConfig(eng engine.Engine, guard Guard) Config {
 		Plan:          testPlan("session-1"),
 		Engine:        eng,
 		Guard:         guard,
-		Backoff:       engine.Backoff{Initial: time.Millisecond, Max: 2 * time.Millisecond, Factor: 1, Rand: func() float64 { return 0 }},
-		RestartBudget: engine.NewRestartBudget(3, time.Minute, nil),
 		StatsInterval: 5 * time.Millisecond,
 	}
 }
@@ -274,33 +272,7 @@ func TestSessionRestoresTheSystemWhenTheEngineWillNotStart(t *testing.T) {
 	}
 }
 
-func TestSessionReconnectsAndRecovers(t *testing.T) {
-	eng, guard := newFakeEngine(), &fakeGuard{}
-	session, err := New(testConfig(eng, guard))
-	if err != nil {
-		t.Fatalf("New() error = %v", err)
-	}
-	if err := session.Start(context.Background()); err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-	eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown, Err: errors.New("process exited")})
-
-	waitFor(t, 2*time.Second, func() bool {
-		applies, _, _ := eng.counts()
-		return session.State() == StateConnected && applies >= 2
-	})
-	if applies, _, _ := eng.counts(); applies < 2 {
-		t.Errorf("the engine was applied %d times, want a reconnect", applies)
-	}
-	if !containsState(stateSequence(session), StateReconnecting) {
-		t.Errorf("the session never reported reconnecting, states = %v", stateSequence(session))
-	}
-	if err := session.Stop(context.Background()); err != nil {
-		t.Fatalf("Stop() error = %v", err)
-	}
-}
-
-func TestSessionGivesUpWhenTheRestartBudgetIsSpent(t *testing.T) {
+func TestSessionFollowsTheSupervisorThroughARestart(t *testing.T) {
 	eng, guard := newFakeEngine(), &fakeGuard{}
 	session, err := New(testConfig(eng, guard))
 	if err != nil {
@@ -310,25 +282,53 @@ func TestSessionGivesUpWhenTheRestartBudgetIsSpent(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 	defer func() { _ = session.Stop(context.Background()) }()
-	// The engine answers the first apply and then always fails, which is what a
-	// binary that dies on the first packet looks like from here.
-	eng.mu.Lock()
-	eng.apply = errors.New("the engine exited with status 2")
-	eng.mu.Unlock()
+	eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown, Err: errors.New("process exited")})
+	waitFor(t, 2*time.Second, func() bool { return session.State() == StateReconnecting })
+	// The supervisor brings the engine back; the session only follows.
+	eng.bus.Publish(engine.Event{Kind: engine.EventState, State: engine.StateRunning})
+	waitFor(t, 2*time.Second, func() bool { return session.State() == StateConnected })
+	if applies, _, _ := eng.counts(); applies != 1 {
+		t.Errorf("the session applied the engine %d times; a restart is the supervisor's, not a second process", applies)
+	}
+}
 
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if session.State() == StateFailed {
-			break
+func TestSessionFailsWhenTheSupervisorGivesUp(t *testing.T) {
+	eng, guard := newFakeEngine(), &fakeGuard{}
+	session, err := New(testConfig(eng, guard))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if err := session.Start(context.Background()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer func() { _ = session.Stop(context.Background()) }()
+	eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown, Err: errors.New("process exited")})
+	eng.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: errors.New("more than 5 restarts")})
+	waitFor(t, 2*time.Second, func() bool { return session.State() == StateFailed })
+}
+
+func TestAnEngineStateIsNoSessionState(t *testing.T) {
+	eng, guard := newFakeEngine(), &fakeGuard{}
+	session, err := New(testConfig(eng, guard))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if err := session.Start(context.Background()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer func() { _ = session.Stop(context.Background()) }()
+	// A hot reload reports "applying" and "running" from the engine; the
+	// session is connected all along, and its journal must not say otherwise.
+	eng.bus.Publish(engine.Event{Kind: engine.EventState, State: engine.StateApplying})
+	eng.bus.Publish(engine.Event{Kind: engine.EventState, State: engine.StateRunning, Message: "plan applied"})
+	time.Sleep(50 * time.Millisecond)
+	for _, ev := range session.Journal().Since(0, 64) {
+		if ev.Kind == EventState && ev.State != StateConnecting && ev.State != StateConnected {
+			t.Errorf("the journal reports the session %s after an engine state", ev.State)
 		}
-		eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown, Err: errors.New("process exited")})
-		time.Sleep(10 * time.Millisecond)
 	}
-	if session.State() != StateFailed {
-		t.Fatalf("state = %s, want failed once the budget is spent", session.State())
-	}
-	if key := session.Status().Key; key != errs.KeyEngineRestartSpent {
-		t.Errorf("status key = %q, want %q", key, errs.KeyEngineRestartSpent)
+	if session.State() != StateConnected {
+		t.Errorf("state = %s, want connected", session.State())
 	}
 }
 
@@ -395,26 +395,6 @@ func waitFor(t *testing.T, budget time.Duration, cond func() bool) {
 		time.Sleep(2 * time.Millisecond)
 	}
 	t.Fatalf("condition did not hold within %s", budget)
-}
-
-func stateSequence(s *Session) []State {
-	events := s.Journal().Since(0, 0)
-	out := make([]State, 0, len(events))
-	for _, ev := range events {
-		if ev.Kind == EventState {
-			out = append(out, ev.State)
-		}
-	}
-	return out
-}
-
-func containsState(states []State, want State) bool {
-	for _, state := range states {
-		if state == want {
-			return true
-		}
-	}
-	return false
 }
 
 func TestSessionRefusesAnEngineThatRunsWithoutItsAdapter(t *testing.T) {

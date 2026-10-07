@@ -47,6 +47,9 @@ void main() {
         'vless://uuid@host:443',
         'clash://install-config?name=x',
         'sora://open/https://sub.example.com',
+        'sora://add/%',
+        'sora://add?url=%FF',
+        'hiddify://import/https://sub.example.com/c#%E0%A4',
       ]) {
         expect(parseImportLink(text), isNull, reason: text);
       }
@@ -70,9 +73,8 @@ void main() {
 
     test('a reset keeps the saved system proxy, so it can still be put back', () async {
       final settings = await Settings.load();
-      settings
-        ..proxySnapshot = '{"flags":1}'
-        ..tunnel = 'proxy';
+      await settings.saveProxySnapshot('{"flags":1}');
+      settings.tunnel = 'proxy';
       await Future<void>.delayed(Duration.zero);
       await settings.reset();
       expect(settings.tunnel, 'tun');

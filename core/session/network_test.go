@@ -41,12 +41,24 @@ func TestNetworkWatchSeesAnotherNetworkAndAReturn(t *testing.T) {
 
 func TestNetworkWatchSeesASleep(t *testing.T) {
 	w := newNetworkWatch(sequence("wifi-a"), time.Second)
+	// A sleep: an hour on the wall clock between two looks, none on the
+	// monotonic one.
 	w.lastWall = w.lastWall.Add(-time.Hour)
 	if why := w.changed(); why != "the machine woke from sleep" {
 		t.Errorf("after an hour away: %q", why)
 	}
 	if why := w.changed(); why != "" {
 		t.Errorf("right after: %q", why)
+	}
+}
+
+func TestALateLookIsNoSleep(t *testing.T) {
+	w := newNetworkWatch(sequence("wifi-a"), time.Second)
+	// A minute on both clocks: the session was busy, the machine was awake.
+	w.lastWall = w.lastWall.Add(-time.Minute)
+	w.lastMono = w.lastMono.Add(-time.Minute)
+	if why := w.changed(); why != "" {
+		t.Errorf("a late look counted as %q", why)
 	}
 }
 

@@ -11,8 +11,8 @@ import 'package:ffi/ffi.dart';
 /// core runs as a service, and a service writing "the current user's" proxy
 /// writes its own account's, which no program the person runs reads.
 ///
-/// What was there before is returned as a snapshot for the caller to keep
-/// somewhere that survives a crash, and given back to [restore].
+/// What was there before is read first, for the caller to keep somewhere that
+/// survives a crash before anything changes, and given back to [restore].
 abstract interface class SystemProxy {
   /// The proxy of this desktop, or null where the system has none to set:
   /// on Linux outside GNOME-like desktops and KDE, programs take a proxy each
@@ -28,10 +28,17 @@ abstract interface class SystemProxy {
     return null;
   }
 
-  /// Points the system proxy at [host]:[port] and returns what was there.
-  Future<String> apply(String host, int port);
+  /// The proxy as it is now, as a snapshot [restore] takes.
+  Future<String> read();
 
-  /// Puts back what [apply] returned.
+  /// Points the system proxy at [host]:[port].
+  Future<void> point(String host, int port);
+
+  /// Whether the system proxy points at [host]:[port] now, as [point] left
+  /// it, rather than where the person or another program moved it since.
+  Future<bool> pointsAt(String host, int port);
+
+  /// Puts back what [read] returned.
   Future<void> restore(String snapshot);
 }
 
@@ -63,10 +70,16 @@ final class _WinInet implements SystemProxy {
   static const _direct = 1, _proxy = 2;
 
   @override
-  Future<String> apply(String host, int port) async {
-    final before = _read();
-    _write(flags: _direct | _proxy, server: '$host:$port', bypass: _bypass.join(';'), autoConfigUrl: '');
-    return jsonEncode(before);
+  Future<String> read() async => jsonEncode(_read());
+
+  @override
+  Future<void> point(String host, int port) async =>
+      _write(flags: _direct | _proxy, server: '$host:$port', bypass: _bypass.join(';'), autoConfigUrl: '');
+
+  @override
+  Future<bool> pointsAt(String host, int port) async {
+    final now = _read();
+    return (now['flags']! as int) & _proxy != 0 && now['server'] == '$host:$port';
   }
 
   @override
@@ -174,11 +187,22 @@ final class _Gnome implements SystemProxy {
   ];
 
   @override
-  Future<String> apply(String host, int port) async {
+  Future<String> read() async {
     final before = <String, String>{};
     for (final (schema, key) in _keys) {
       before['$schema $key'] = await _gsettings(['get', schema, key]);
     }
+    return jsonEncode(before);
+  }
+
+  @override
+  Future<bool> pointsAt(String host, int port) async =>
+      await _gsettings(['get', 'org.gnome.system.proxy', 'mode']) == "'manual'" &&
+      await _gsettings(['get', 'org.gnome.system.proxy.http', 'host']) == "'$host'" &&
+      await _gsettings(['get', 'org.gnome.system.proxy.http', 'port']) == '$port';
+
+  @override
+  Future<void> point(String host, int port) async {
     final hosts = "['localhost', '127.0.0.0/8', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']";
     for (final schema in ['http', 'https', 'socks']) {
       await _gsettings(['set', 'org.gnome.system.proxy.$schema', 'host', host]);
@@ -186,7 +210,6 @@ final class _Gnome implements SystemProxy {
     }
     await _gsettings(['set', 'org.gnome.system.proxy', 'ignore-hosts', hosts]);
     await _gsettings(['set', 'org.gnome.system.proxy', 'mode', 'manual']);
-    return jsonEncode(before);
   }
 
   @override
@@ -211,15 +234,20 @@ final class _Kde implements SystemProxy {
   static const _keys = ['ProxyType', 'httpProxy', 'httpsProxy', 'socksProxy', 'NoProxyFor'];
 
   @override
-  Future<String> apply(String host, int port) async {
-    final before = <String, String>{for (final key in _keys) key: await _read(key)};
+  Future<String> read() async => jsonEncode({for (final key in _keys) key: await _read(key)});
+
+  @override
+  Future<bool> pointsAt(String host, int port) async =>
+      await _read('ProxyType') == '1' && await _read('httpProxy') == 'http://$host $port';
+
+  @override
+  Future<void> point(String host, int port) async {
     await _write('httpProxy', 'http://$host $port');
     await _write('httpsProxy', 'http://$host $port');
     await _write('socksProxy', 'socks://$host $port');
     await _write('NoProxyFor', 'localhost,127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16');
     await _write('ProxyType', '1');
     await _announce();
-    return jsonEncode(before);
   }
 
   @override

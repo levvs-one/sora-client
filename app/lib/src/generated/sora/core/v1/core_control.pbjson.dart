@@ -639,6 +639,7 @@ const FetchSubscriptionRequest$json = {
     {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
     {'1': 'request_id', '3': 2, '4': 1, '5': 9, '10': 'requestId'},
     {'1': 'reference', '3': 3, '4': 1, '5': 9, '10': 'reference'},
+    {'1': 'user_agent', '3': 4, '4': 1, '5': 9, '10': 'userAgent'},
   ],
 };
 
@@ -646,7 +647,8 @@ const FetchSubscriptionRequest$json = {
 final $typed_data.Uint8List fetchSubscriptionRequestDescriptor = $convert.base64Decode(
     'ChhGZXRjaFN1YnNjcmlwdGlvblJlcXVlc3QSOQoLYXBpX3ZlcnNpb24YASABKAsyGC5zb3JhLm'
     'NvcmUudjEuQXBpVmVyc2lvblIKYXBpVmVyc2lvbhIdCgpyZXF1ZXN0X2lkGAIgASgJUglyZXF1'
-    'ZXN0SWQSHAoJcmVmZXJlbmNlGAMgASgJUglyZWZlcmVuY2U=');
+    'ZXN0SWQSHAoJcmVmZXJlbmNlGAMgASgJUglyZWZlcmVuY2USHQoKdXNlcl9hZ2VudBgEIAEoCV'
+    'IJdXNlckFnZW50');
 
 @$core.Deprecated('Use fetchSubscriptionResponseDescriptor instead')
 const FetchSubscriptionResponse$json = {
@@ -654,6 +656,7 @@ const FetchSubscriptionResponse$json = {
   '2': [
     {'1': 'outbounds', '3': 1, '4': 3, '5': 11, '6': '.sora.core.v1.OutboundSpec', '10': 'outbounds'},
     {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+    {'1': 'info', '3': 3, '4': 1, '5': 11, '6': '.sora.core.v1.SubscriptionInfo', '10': 'info'},
   ],
 };
 
@@ -661,7 +664,36 @@ const FetchSubscriptionResponse$json = {
 final $typed_data.Uint8List fetchSubscriptionResponseDescriptor = $convert.base64Decode(
     'ChlGZXRjaFN1YnNjcmlwdGlvblJlc3BvbnNlEjgKCW91dGJvdW5kcxgBIAMoCzIaLnNvcmEuY2'
     '9yZS52MS5PdXRib3VuZFNwZWNSCW91dGJvdW5kcxItCgVlcnJvchgCIAEoCzIXLnNvcmEuY29y'
-    'ZS52MS5Tb3JhRXJyb3JSBWVycm9y');
+    'ZS52MS5Tb3JhRXJyb3JSBWVycm9yEjIKBGluZm8YAyABKAsyHi5zb3JhLmNvcmUudjEuU3Vic2'
+    'NyaXB0aW9uSW5mb1IEaW5mbw==');
+
+@$core.Deprecated('Use subscriptionInfoDescriptor instead')
+const SubscriptionInfo$json = {
+  '1': 'SubscriptionInfo',
+  '2': [
+    {'1': 'title', '3': 1, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'update_interval', '3': 2, '4': 1, '5': 11, '6': '.google.protobuf.Duration', '10': 'updateInterval'},
+    {'1': 'has_usage', '3': 3, '4': 1, '5': 8, '10': 'hasUsage'},
+    {'1': 'upload_bytes', '3': 4, '4': 1, '5': 4, '10': 'uploadBytes'},
+    {'1': 'download_bytes', '3': 5, '4': 1, '5': 4, '10': 'downloadBytes'},
+    {'1': 'total_bytes', '3': 6, '4': 1, '5': 4, '10': 'totalBytes'},
+    {'1': 'expire', '3': 7, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'expire'},
+    {'1': 'web_page_url', '3': 8, '4': 1, '5': 9, '10': 'webPageUrl'},
+    {'1': 'support_url', '3': 9, '4': 1, '5': 9, '10': 'supportUrl'},
+    {'1': 'announce', '3': 10, '4': 1, '5': 9, '10': 'announce'},
+  ],
+};
+
+/// Descriptor for `SubscriptionInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List subscriptionInfoDescriptor = $convert.base64Decode(
+    'ChBTdWJzY3JpcHRpb25JbmZvEhQKBXRpdGxlGAEgASgJUgV0aXRsZRJCCg91cGRhdGVfaW50ZX'
+    'J2YWwYAiABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25SDnVwZGF0ZUludGVydmFsEhsK'
+    'CWhhc191c2FnZRgDIAEoCFIIaGFzVXNhZ2USIQoMdXBsb2FkX2J5dGVzGAQgASgEUgt1cGxvYW'
+    'RCeXRlcxIlCg5kb3dubG9hZF9ieXRlcxgFIAEoBFINZG93bmxvYWRCeXRlcxIfCgt0b3RhbF9i'
+    'eXRlcxgGIAEoBFIKdG90YWxCeXRlcxIyCgZleHBpcmUYByABKAsyGi5nb29nbGUucHJvdG9idW'
+    'YuVGltZXN0YW1wUgZleHBpcmUSIAoMd2ViX3BhZ2VfdXJsGAggASgJUgp3ZWJQYWdlVXJsEh8K'
+    'C3N1cHBvcnRfdXJsGAkgASgJUgpzdXBwb3J0VXJsEhoKCGFubm91bmNlGAogASgJUghhbm5vdW'
+    '5jZQ==');
 
 @$core.Deprecated('Use probeServersRequestDescriptor instead')
 const ProbeServersRequest$json = {

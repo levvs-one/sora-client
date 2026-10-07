@@ -1,19 +1,17 @@
 //go:build !windows
 
-package mihomo
+package supervise
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
 func TestControlSocketFallsBackToAPrivateShortDirectory(t *testing.T) {
 	long := filepath.Join(t.TempDir(), strings.Repeat("deep-", 20))
-	addr, err := driver{}.ControlAddress(supervise.Runtime{HomeDir: long})
+	addr, err := ControlSocket(Runtime{HomeDir: long}, "controller.sock")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +29,7 @@ func TestControlSocketFallsBackToAPrivateShortDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = os.Remove(filepath.Dir(path)) }()
-	if _, err := (driver{}).ControlAddress(supervise.Runtime{HomeDir: long}); err == nil {
+	if _, err := ControlSocket(Runtime{HomeDir: long}, "controller.sock"); err == nil {
 		t.Fatal("a socket directory that is not owner-only must be refused")
 	}
 }

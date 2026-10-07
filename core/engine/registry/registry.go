@@ -148,6 +148,9 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 		if err != nil {
 			return nil, err
 		}
+		if len(p.Engines) == 0 && p.PrivateControl {
+			order = engine.PrivatePreference
+		}
 		withBypass := bypass.Has(p)
 		// Both refusals below are about what is installed, not about the
 		// plan, so they carry the key the interface explains as a missing engine.

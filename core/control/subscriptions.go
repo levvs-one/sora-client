@@ -346,6 +346,7 @@ func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.Subs
 	ctx, cancel := context.WithTimeout(ctx, subscriptionFetchLimit)
 	defer cancel()
 	fetched, err := b.srv.fetcher.Fetch(ctx, link, subscription.FetchOptions{UserAgent: agent})
+	answered := err == nil
 	var servers []importedServer
 	if err == nil {
 		servers, err = b.srv.parsePayload(fetched.Body, serverRefFor(id))
@@ -369,6 +370,12 @@ func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.Subs
 		// A failed update keeps the last good servers: a provider that is down
 		// for an hour must not empty the user's list.
 		next.Failures++
+		// The panel answered even when its body did not parse: its title,
+		// usage and announcement still tell the person whose subscription
+		// this is and what the provider says.
+		if answered {
+			next.Info = fetched.Info
+		}
 		failure := errs.From(err)
 		next.LastError = &storedError{Code: failure.Code(), Key: failure.Key(), Detail: errs.Detail(err)}
 		if perr := b.persistLocked(&next, nil, nil); perr != nil {

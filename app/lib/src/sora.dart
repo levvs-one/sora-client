@@ -83,6 +83,15 @@ class Sora extends ChangeNotifier {
   /// What happened to the connection on its own.
   Stream<Notice> get notices => _notices.stream;
 
+  /// How many notices went out, so a caller can tell whether one already
+  /// said what it is about to say.
+  int _emitted = 0;
+
+  void _emit(Notice notice) {
+    _emitted++;
+    _notices.add(notice);
+  }
+
   /// Where the core's local proxy listens; the system proxy points here in
   /// the proxy mode. Null until the core said.
   Endpoint? localProxy;
@@ -217,7 +226,7 @@ class Sora extends ChangeNotifier {
       latency[_member!] = null;
       _memberSpare--;
       final entry = entryOf(settings.server, _subscriptions.values);
-      if (entry != null) _notices.add(ServerSwitched(entry.name, backup: entry.ordered));
+      if (entry != null) _emit(ServerSwitched(entry.name, backup: entry.ordered));
       Future.microtask(() => connect(retry: true));
       return;
     }
@@ -236,13 +245,13 @@ class Sora extends ChangeNotifier {
   void _announce(Phase before, ConnectionState state) {
     if (before == Phase.connected && phase == Phase.reconnecting) {
       _lostAnnounced = true;
-      _notices.add(const ConnectionLost());
+      _emit(const ConnectionLost());
     } else if (phase == Phase.connected && _lostAnnounced) {
       _lostAnnounced = false;
-      _notices.add(const ConnectionRestored());
+      _emit(const ConnectionRestored());
     } else if (phase == Phase.off && state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED && !_stopping) {
       _lostAnnounced = false;
-      _notices.add(ConnectionFailed(failure ?? CoreFailure(_keyOfCode(state.reason))));
+      _emit(ConnectionFailed(failure ?? CoreFailure(_keyOfCode(state.reason))));
     }
   }
 
@@ -280,11 +289,15 @@ class Sora extends ChangeNotifier {
       if (_link == link) unawaited(_readStatus().then((_) => notifyListeners(), onError: _drop));
     }
 
+    // A watch starts with the history of the session; what happened before it
+    // opened is state to show, not news to announce or to act on again.
+    final opened = DateTime.now().subtract(const Duration(seconds: 1));
     final stream = link.stub.watchEvents(WatchEventsRequest(apiVersion: apiVersion, sessionId: id));
     _sessionWatch = stream.listen(
       (event) {
         if (event.hasStateChanged()) {
-          _applyState(event.stateChanged.state);
+          final fresh = !event.hasEmittedAt() || event.emittedAt.toDateTime().isAfter(opened);
+          _applyState(event.stateChanged.state, report: fresh);
           notifyListeners();
         }
       },
@@ -313,7 +326,7 @@ class Sora extends ChangeNotifier {
     failure = null;
     if (selected != 'bypass' && servers.isEmpty) {
       failure = const CoreFailure('app.no_servers');
-      _notices.add(ConnectionFailed(failure!));
+      _emit(ConnectionFailed(failure!));
       notifyListeners();
       return;
     }
@@ -339,11 +352,16 @@ class Sora extends ChangeNotifier {
         if (kill.hasError()) failure = CoreFailure(kill.error.userMessageKey);
       }
       _watchSession();
+      // The person picked another server while this one was coming up.
+      if (selected != choice && phase == Phase.connected) unawaited(connect());
     } catch (error) {
       failure = CoreFailure.from(error);
-      await _readStatus(report: false).catchError((Object _) {});
+      // The state says whether a profile of a group failed, which moves on to
+      // the next member, and announces the failure when it is final.
+      final before = _emitted;
+      await _readStatus().catchError((Object _) {});
       if (phase == Phase.connecting) phase = Phase.off;
-      if (phase == Phase.off) _notices.add(ConnectionFailed(failure!));
+      if (phase == Phase.off && _emitted == before) _emit(ConnectionFailed(failure!));
     }
     notifyListeners();
   }
@@ -403,7 +421,17 @@ class Sora extends ChangeNotifier {
     settings.killSwitch = value;
     notifyListeners();
     final link = _link, id = sessionId;
-    if (link == null || id == null) return;
+    if (link == null) return;
+    if (id == null) {
+      // A session that failed keeps the block on, and the interface no longer
+      // knows it: ending it is what lifts the block.
+      if (!value) {
+        await link.stub
+            .disconnect(DisconnectRequest(apiVersion: apiVersion, controlAuthenticator: link.token))
+            .catchError((Object _) => DisconnectResponse());
+      }
+      return;
+    }
     try {
       final answer = await link.stub.setKillSwitch(
         SetKillSwitchRequest(apiVersion: apiVersion, sessionId: id, enabled: value),

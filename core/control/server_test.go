@@ -76,8 +76,6 @@ func newTestServer(t *testing.T) (*control.Server, *secret.Store) {
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) {
 			return newStubEngine(), nil
 		},
-		Backoff: engine.Backoff{Initial: time.Millisecond, Max: time.Millisecond, Factor: 1},
-		Budget:  func() *engine.RestartBudget { return engine.NewRestartBudget(2, time.Minute, nil) },
 	})
 	server, err := control.New(control.Config{
 		Version:       control.Version{Major: 1, Minor: 2, MinSupportedMinor: 1},

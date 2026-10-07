@@ -72,6 +72,7 @@ func newTestServer(t *testing.T) (*control.Server, *secret.Store) {
 		t.Fatalf("NewAuthenticator() error = %v", err)
 	}
 	manager := session.NewManager(session.ManagerConfig{
+		TunUp: noAdapter,
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) {
 			return newStubEngine(), nil
 		},
@@ -99,6 +100,10 @@ var testToken = func() []byte {
 	}
 	return out
 }()
+
+// noAdapter stands in for the tun adapter: the fake engines of these tests
+// bring none up, and the check of a real one belongs to the session tests.
+func noAdapter(context.Context, string) error { return nil }
 
 func clientVersion() *corev1.ApiVersion {
 	return &corev1.ApiVersion{Major: 1, Minor: 2, MinSupportedMinor: 1}
@@ -142,6 +147,7 @@ func TestNewRequiresItsCollaborators(t *testing.T) {
 		t.Errorf("without sessions = %v, key = %q", err, errs.KeyOf(err))
 	}
 	manager := session.NewManager(session.ManagerConfig{
+		TunUp:   noAdapter,
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
 	})
 	if _, err := control.New(control.Config{Sessions: manager}); errs.KeyOf(err) != errs.KeyUnauthenticated {

@@ -1,0 +1,43 @@
+# The desktop application. It depends on the core package of the same version,
+# so installing "sora" is all a person does. Run from the repository root after
+# building the app into app/build/linux/x64/release/bundle (see README.md).
+name: sora
+arch: ${SORA_ARCH}
+platform: linux
+version: ${SORA_VERSION}
+section: net
+priority: optional
+maintainer: Sora <levvs.one@gmail.com>
+description: |
+  Sora, a VPN client: one button, subscriptions that keep themselves current,
+  the fastest server picked for you, and DPI bypass without a server. Runs on
+  the Sora core service, which this package brings in.
+vendor: Sora
+homepage: https://github.com/levvs-one/sora-client
+license: GPL-3.0-only
+
+depends:
+  - sora-core (= ${SORA_VERSION})
+overrides:
+  deb:
+    depends: ["sora-core (= ${SORA_VERSION})", libgtk-3-0]
+  rpm:
+    depends: ["sora-core = ${SORA_VERSION}", gtk3]
+  archlinux:
+    depends: ["sora-core=${SORA_VERSION}", gtk3]
+
+contents:
+  - src: ./app/build/linux/x64/release/bundle/
+    dst: /usr/lib/sora/app
+    type: tree
+  - src: /usr/lib/sora/app/sora
+    dst: /usr/bin/sora
+    type: symlink
+  - src: ./packaging/linux/io.github.levvs_one.sora.desktop
+    dst: /usr/share/applications/io.github.levvs_one.sora.desktop
+  - src: ./packaging/linux/io.github.levvs_one.sora.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/io.github.levvs_one.sora.svg
+  - src: ./LICENSE
+    dst: /usr/share/licenses/sora/LICENSE
+  - src: ./app/assets/fonts/Inter-LICENSE.txt
+    dst: /usr/share/licenses/sora/Inter-LICENSE.txt

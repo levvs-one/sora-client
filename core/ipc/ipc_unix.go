@@ -41,10 +41,7 @@ func listenLocal(address string, opts Options) (net.Listener, error) {
 	if err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
-	// The socket carries the identity of the peer through the kernel, so the
-	// permission on it is the real boundary: 0660 with the service group means the
-	// interface account may connect and nothing else on the machine may.
-	if err := os.Chmod(address, 0o660); err != nil { //nolint:gosec // group access is the design: the interface account is in the service group
+	if err := os.Chmod(address, socketMode); err != nil { //nolint:gosec // see socketMode: the boundary is the platform's peer rule
 		_ = listener.Close()
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
@@ -78,10 +75,9 @@ func defaultAllow(opts Options) func(Peer) bool {
 	}
 	return func(peer Peer) bool {
 		if !peer.Verified {
-			// The peer could not be identified, so the permission on the socket is
-			// the only boundary left. Refusing here would make the core unusable on
-			// a kernel that does not answer, which is worse than the permission.
-			return true
+			// The permission on the socket is the only boundary left, and an open
+			// socket is no boundary at all.
+			return socketMode&0o007 == 0
 		}
 		return peer.UID == os.Getuid() || inGroup(peer.UID, group) || polkitAllows(peer, PolkitAction)
 	}
@@ -141,8 +137,8 @@ func chownToGroup(address, group string) error {
 	if err != nil {
 		return nil //nolint:nilerr // a group id that is not a number is treated as a missing group
 	}
-	// A failure here is not fatal: the mode 0660 already restricts the socket, and
-	// the owner is the service account.
+	// A failure here is not fatal: the owner is the service account, and the
+	// peer rule decides who is let in.
 	_ = os.Chown(address, -1, id)
 	return nil
 }

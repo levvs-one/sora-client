@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -36,6 +37,7 @@ func (o Outbound) Secrets() []string {
 	for _, p := range o.Peers {
 		candidates = append(candidates, p.PreSharedKey)
 	}
+	candidates = append(candidates, profileSecrets(o.Profile)...)
 	out := make([]string, 0, len(candidates))
 	for _, c := range candidates {
 		if len(c) >= 4 {
@@ -119,6 +121,14 @@ func (o Outbound) Validate() error {
 	if o.Protocol == ProtocolBypass {
 		errs = append(errs, o.Bypass.validate(o.ID))
 	}
+	if o.Protocol == ProtocolXrayProfile {
+		var profile struct {
+			Outbounds []json.RawMessage `json:"outbounds"`
+		}
+		if err := json.Unmarshal(o.Profile, &profile); err != nil || len(profile.Outbounds) == 0 {
+			errs = append(errs, fmt.Errorf("outbound %s: the Xray profile has no outbounds", o.ID))
+		}
+	}
 	if len(o.TLS.ALPN) > 8 {
 		errs = append(errs, fmt.Errorf("outbound %s: too many ALPN entries", o.ID))
 	}
@@ -163,6 +173,13 @@ func (p *Plan) Validate() error {
 			errs = append(errs, fmt.Errorf("plan: duplicate outbound id %q", o.ID))
 		}
 		ids[o.ID] = struct{}{}
+	}
+	// A profile is a whole configuration with its own routing; two of them, or
+	// one inside a group, cannot be merged without breaking what the provider
+	// wrote, so a profile runs alone.
+	if slices.ContainsFunc(p.Outbounds, func(o Outbound) bool { return o.Protocol == ProtocolXrayProfile }) &&
+		(len(p.Outbounds) > 1 || len(p.Groups) > 0) {
+		errs = append(errs, errors.New("plan: an Xray profile runs alone, without other outbounds or groups"))
 	}
 
 	// Groups may contain groups ("Proxy" offering "Auto"), so every name is

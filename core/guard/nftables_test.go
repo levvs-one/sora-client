@@ -19,7 +19,8 @@ func TestNftRulesetKeepsTheEngineAndCutsEverythingElse(t *testing.T) {
 		"chain output {",
 		"policy accept;",
 		"meta skuid 999 accept",
-		"iif lo accept",
+		"oif lo accept",
+		`oifname "sora0" accept`,
 		"ct state established,related accept",
 		"ip daddr 192.168.0.0/16 accept",
 		"counter drop",
@@ -64,6 +65,11 @@ func TestFirstLineKeepsAnNftMessageShort(t *testing.T) {
 }
 
 func TestPlatformFirewallRefusesAnEngineWithoutAUser(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		// Only Linux matches the engine by its user id; elsewhere os.Getuid is
+		// -1 and the kill switch must still start.
+		t.Skip("the engine is matched by user id on Linux only")
+	}
 	if _, err := guard.PlatformFirewall(-1, nil); err == nil {
 		t.Error("a kill switch accepted an engine without a user id")
 	}

@@ -28,7 +28,7 @@ jobs:
       - uses: dart-lang/setup-dart@v1
       - name: Install Dart generator
         run: |
-          dart pub global activate protoc_plugin 21.1.2
+          dart pub global activate protoc_plugin 25.1.0
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
       - name: Generate protobuf code
         if: hashFiles('proto/buf.gen.yaml') != ''
@@ -39,11 +39,15 @@ jobs:
         run: |
           go mod tidy
           gofmt -w .
+      - uses: subosito/flutter-action@v2
+        if: hashFiles('app/pubspec.yaml') != ''
+        with:
+          flutter-version: 3.47.6
+          channel: stable
       - name: Format Flutter application
         if: hashFiles('app/pubspec.yaml') != ''
         working-directory: app
         run: |
-          echo "Flutter setup is required when app/pubspec.yaml exists."
           flutter pub get
           dart format .
       - name: Commit generated changes

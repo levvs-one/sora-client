@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"sync"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/engine/tunroute"
 )
 
 // Prober recognizes an Xray build. "xray version" prints, for example,
@@ -69,6 +71,14 @@ type driver struct {
 
 func (*driver) Kind() engine.Kind { return engine.KindXray }
 
+// Route sends the machine's traffic into the adapter Xray created. Xray runs
+// as the core's account, which the routes leave on the main table.
+func (*driver) Route(ctx context.Context, p *engine.Plan) error {
+	return tunroute.Route(ctx, p.Tun.DeviceName, os.Getuid())
+}
+
+func (*driver) Unroute(ctx context.Context) error { return tunroute.Unroute(ctx) }
+
 func (d *driver) Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	return Render(p, rt, d.selection())
 }
@@ -82,9 +92,33 @@ func (d *driver) selection() Selection {
 func (*driver) RunArgs(supervise.Runtime) []string   { return []string{"run", "-c", "stdin:"} }
 func (*driver) CheckArgs(supervise.Runtime) []string { return []string{"run", "-test", "-c", "stdin:"} }
 
+// ControlAddress keeps the metrics listener only where the plan allows one.
+// Xray 26.3 serves metrics on TCP alone, and a loopback port that answers is
+// how other programs find a VPN, so a private plan runs Xray without one: its
+// balancers and observatory work inside the engine, and only the traffic
+// counters go.
+func (*driver) ControlAddress(rt supervise.Runtime, private bool) (string, error) {
+	if private {
+		return "", nil
+	}
+	return rt.ControlAddr, nil
+}
+
 // Handshake waits for the metrics listener. Xray does not report its version
-// there, so the probed version stays in effect.
+// there, so the probed version stays in effect. Without a metrics listener the
+// start is judged by the local proxy accepting a connection, or, for a tun, by
+// its adapter, which the session checks.
 func (*driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, error) {
+	if rt.ControlAddr == "" {
+		if !rt.LocalProxy {
+			return "", nil
+		}
+		conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(rt.LocalPort)))
+		if err != nil {
+			return "", fmt.Errorf("xray: the local proxy is not listening yet: %w", err)
+		}
+		return "", conn.Close()
+	}
 	_, err := readVars(ctx, rt.ControlAddr)
 	return "", err
 }
@@ -143,6 +177,9 @@ func (e *Engine) Counters(ctx context.Context) (engine.Counters, error) {
 	if err != nil {
 		return engine.Counters{}, err
 	}
+	if rt.ControlAddr == "" {
+		return engine.Counters{At: time.Now()}, nil
+	}
 	v, verr := readVars(ctx, rt.ControlAddr)
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -165,9 +202,11 @@ func (e *Engine) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
 	if p == nil {
 		return nil, supervise.ErrNotRunning
 	}
-	v, err := readVars(ctx, rt.ControlAddr)
-	if err != nil {
-		return nil, e.Redactor().Err(err)
+	var v vars
+	if rt.ControlAddr != "" {
+		if v, err = readVars(ctx, rt.ControlAddr); err != nil {
+			return nil, e.Redactor().Err(err)
+		}
 	}
 	names, tags := map[string]string{}, map[string]string{}
 	for i, o := range p.Outbounds {
@@ -350,24 +389,35 @@ func measureBatch(ctx context.Context, cfg supervise.Config, batch []engine.Outb
 	return nil
 }
 
-// timeThrough times one request through a loopback SOCKS port.
+// timeThrough times a request through a loopback SOCKS port the way a person
+// feels it: a first request opens the tunnel and the TLS session to the test
+// address, and the second, over the same connection, is the one timed. A
+// single cold request mostly measures handshakes — of the proxy, of REALITY or
+// XHTTP, of TLS — and reads several times slower than the server is.
 func timeThrough(ctx context.Context, port int, opts engine.MeasureOptions) (time.Duration, error) {
 	proxy := &url.URL{Scheme: "socks5h", Host: "127.0.0.1:" + strconv.Itoa(port)}
-	client := &http.Client{Timeout: opts.Timeout, Transport: &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true}}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, opts.URL, nil)
-	if err != nil {
-		return 0, err
+	transport := &http.Transport{Proxy: http.ProxyURL(proxy), MaxIdleConnsPerHost: 1}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Timeout: opts.Timeout, Transport: transport}
+	var timed time.Duration
+	for range 2 {
+		req, err := http.NewRequestWithContext(ctx, http.MethodHead, opts.URL, nil)
+		if err != nil {
+			return 0, err
+		}
+		start := time.Now()
+		resp, err := client.Do(req)
+		if err != nil {
+			return 0, fmt.Errorf("xray: latency test failed: %w", err)
+		}
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode >= 500 {
+			return 0, fmt.Errorf("xray: latency test answered %d", resp.StatusCode)
+		}
+		timed = time.Since(start)
 	}
-	start := time.Now()
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, fmt.Errorf("xray: latency test failed: %w", err)
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode >= 500 {
-		return 0, fmt.Errorf("xray: latency test answered %d", resp.StatusCode)
-	}
-	return time.Since(start), nil
+	return timed, nil
 }
 
 func waitListening(ctx context.Context, proc *supervise.Process, port int) error {

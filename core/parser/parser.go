@@ -203,10 +203,20 @@ type WireGuardPeer struct {
 }
 
 // StableKey returns the identity of a server across re-imports: protocol,
-// endpoint and credentials, with the sensitive part hashed so the key never
-// carries a password in clear.
+// endpoint, id and user, hashed so the key never carries an id in clear.
 func (o OutboundSpec) StableKey() string {
-	h := sha256.Sum256([]byte(o.Protocol + "\x00" + o.Host + "\x00" + strconv.Itoa(int(o.Port)) + "\x00" + o.UUID + "\x00" + o.Password + "\x00" + o.User))
+	// The password stays out: protocol, endpoint, id and user tell servers
+	// apart, and a hash of a password is a hash of a password however short.
+	material := o.Protocol + "\x00" + o.Host + "\x00" + strconv.Itoa(int(o.Port)) + "\x00" + o.UUID + "\x00" + o.User
+	// Profiles of one provider often share a server ("Auto" and the country it
+	// balances to) and carry no credential of their own in these fields, so
+	// the name tells them apart. The rest of a profile changes with every
+	// update of the provider's rules, and a key that followed it would lose
+	// the person's choice each time.
+	if o.Protocol == "xray-profile" {
+		material += "\x00" + o.DisplayName
+	}
+	h := sha256.Sum256([]byte(material))
 	return o.Protocol + ":" + o.Host + ":" + strconv.Itoa(int(o.Port)) + ":" + hex.EncodeToString(h[:8])
 }
 func (o *OutboundSpec) validate() error {
@@ -407,6 +417,24 @@ func parseLink(raw string) (OutboundSpec, error) {
 			o.Options[k] = v
 		}
 	}
+	if o.Security == "" {
+		// A link that does not say keeps what its protocol means: trojan,
+		// hysteria2 and https run over TLS, everything else here does not. An
+		// empty value would read as TLS further down, and plain SOCKS would be
+		// wrapped in a handshake the server never answers.
+		switch proto {
+		case "trojan", "hysteria2", "hy2", "https":
+			o.Security = "tls"
+		default:
+			o.Security = "none"
+		}
+	}
+	// The scheme of a link is not the name of its protocol, and the engines
+	// know only the names.
+	o.Protocol = map[string]string{"ss": "shadowsocks", "socks": "socks5", "hy2": "hysteria2", "https": "http"}[proto]
+	if o.Protocol == "" {
+		o.Protocol = proto
+	}
 	o.DisplayName = fragmentName(u.Fragment)
 	o.CountryCode = countryCode(o.DisplayName)
 	return o, o.validate()
@@ -589,9 +617,24 @@ func (p LinkParser) parseJSON(b []byte, f Format) (ImportResult, error) {
 		}
 	}
 	r := ImportResult{Format: f}
+	// A whole Xray configuration, alone or in a list (the JSON subscription of
+	// Remnawave and others), is a profile: one server as the provider wrote it.
+	if m, ok := v.(map[string]any); ok && isXrayConfig(m) {
+		items = []any{m}
+	}
 	for _, it := range items {
 		m, ok := it.(map[string]any)
 		if !ok {
+			continue
+		}
+		if isXrayConfig(m) {
+			o, e := profileSpec(m)
+			if e != nil {
+				r.Report.Invalid++
+				continue
+			}
+			r.Servers = append(r.Servers, o)
+			r.Report.Imported++
 			continue
 		}
 		o, e := mapJSONSpec(m, "")
@@ -608,6 +651,80 @@ func (p LinkParser) parseJSON(b []byte, f Format) (ImportResult, error) {
 	}
 	return r, nil
 }
+
+// isXrayConfig reports whether m is a whole Xray configuration rather than one
+// outbound: it has outbounds of Xray's shape, protocol and settings.
+func isXrayConfig(m map[string]any) bool {
+	outs, ok := m["outbounds"].([]any)
+	if !ok || len(outs) == 0 {
+		return false
+	}
+	first, ok := outs[0].(map[string]any)
+	if !ok {
+		return false
+	}
+	_, hasProtocol := first["protocol"]
+	return hasProtocol
+}
+
+// profileSpec reads an Xray configuration as one server. The configuration
+// travels whole, compacted, in Options["profile"]; the endpoint, transport and
+// security of the outbound its traffic goes to by default name and measure it.
+func profileSpec(m map[string]any) (OutboundSpec, error) {
+	raw, err := json.Marshal(m)
+	if err != nil {
+		return OutboundSpec{}, ErrInvalid
+	}
+	o := OutboundSpec{Protocol: "xray-profile", Options: map[string]string{"profile": string(raw)}}
+	o.DisplayName = strings.TrimSpace(stringValue(m["remarks"]))
+	for _, it := range m["outbounds"].([]any) {
+		ob, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		switch stringValue(ob["protocol"]) {
+		case "freedom", "blackhole", "dns", "loopback", "":
+			continue
+		}
+		o.Host, o.Port = xrayEndpoint(ob)
+		if ss, ok := ob["streamSettings"].(map[string]any); ok {
+			o.Transport = stringValue(ss["network"])
+			o.Security = stringValue(ss["security"])
+		}
+		break
+	}
+	if o.Transport == "" {
+		o.Transport = "tcp"
+	}
+	if o.Security == "" {
+		o.Security = "none"
+	}
+	if o.DisplayName == "" {
+		o.DisplayName = o.Host
+	}
+	o.CountryCode = countryCode(o.DisplayName)
+	return o, o.validate()
+}
+
+// xrayEndpoint reads the server of an Xray outbound in either of its shapes:
+// settings.vnext / settings.servers, or the flat settings.address of newer
+// releases.
+func xrayEndpoint(ob map[string]any) (string, uint16) {
+	settings, _ := ob["settings"].(map[string]any)
+	for _, key := range []string{"vnext", "servers", "peers"} {
+		if list, ok := settings[key].([]any); ok && len(list) > 0 {
+			if first, ok := list[0].(map[string]any); ok {
+				host := stringValue(first["address"])
+				if host == "" {
+					host = stringValue(first["endpoint"])
+				}
+				return host, portNumber(first["port"])
+			}
+		}
+	}
+	return stringValue(settings["address"]), portNumber(settings["port"])
+}
+
 func xrayItems(m map[string]any) []any {
 	if a, ok := m["outbounds"].([]any); ok {
 		return a

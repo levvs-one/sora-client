@@ -416,3 +416,37 @@ func containsState(states []State, want State) bool {
 	}
 	return false
 }
+
+func TestSessionRefusesAnEngineThatRunsWithoutItsAdapter(t *testing.T) {
+	eng, guard := newFakeEngine(), &fakeGuard{}
+	cfg := testConfig(eng, guard)
+	cfg.Plan.Tun = engine.Tun{Enabled: true, DeviceName: engine.TunDevice}
+	var asked string
+	cfg.TunUp = func(_ context.Context, device string) error {
+		asked = device
+		return errs.Newf(errs.CodeFailedPrecondition, errs.KeyPlanTunnel, "no adapter")
+	}
+	session, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = session.Start(context.Background())
+	if errs.KeyOf(err) != errs.KeyPlanTunnel {
+		t.Fatalf("Start() = %v, want the tunnel refusal", err)
+	}
+	if asked != engine.TunDevice {
+		t.Errorf("the session waited for %q, want %q", asked, engine.TunDevice)
+	}
+	if session.State() == StateConnected {
+		t.Error("a session without its adapter must not report connected")
+	}
+	eng.mu.Lock()
+	stops := eng.stops
+	eng.mu.Unlock()
+	if stops == 0 {
+		t.Error("the engine kept running after the adapter failed to come up")
+	}
+	if _, restored := guard.snapshot(); restored == 0 {
+		t.Error("the guard was not restored")
+	}
+}

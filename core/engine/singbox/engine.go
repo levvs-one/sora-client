@@ -40,6 +40,19 @@ type driver struct{}
 
 func (driver) Kind() engine.Kind { return engine.KindSingBox }
 
+// PlanNames inverts the tags the renderer assigns.
+func (driver) PlanNames(p *engine.Plan) map[string]string {
+	r := renderer{plan: p, tags: map[string]string{}, used: map[string]bool{"direct": true}}
+	if r.assignTags() != nil {
+		return nil
+	}
+	out := make(map[string]string, len(r.tags))
+	for id, tag := range r.tags {
+		out[tag] = id
+	}
+	return out
+}
+
 func (driver) Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) { return Render(p, rt) }
 
 func (driver) RunArgs(rt supervise.Runtime) []string {

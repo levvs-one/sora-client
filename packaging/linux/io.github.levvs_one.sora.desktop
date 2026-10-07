@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Sora
+GenericName=VPN client
+GenericName[ru]=VPN-клиент
+Comment=Connect through your subscription, or bypass blocking without a server
+Comment[ru]=Подключение через подписку или обход блокировок без сервера
+Exec=sora
+Icon=io.github.levvs_one.sora
+Terminal=false
+Categories=Network;
+Keywords=vpn;proxy;xray;sing-box;mihomo;zapret;
+StartupNotify=true

@@ -8,10 +8,35 @@ that can carry it. It is designed for networks that block, throttle and inspect:
 the core picks the transport the network lets through, keeps nothing on the machine
 that could give the user away, and explains every failure in plain words.
 
-The new client is in active development. The core is working and tested end to end
-against real engine builds; the desktop and Android interface is being built on top
-of it. The previous Windows client, Sora Legacy, lives in [`legacy`](legacy/README.md)
-and receives security fixes only.
+The client runs on Linux (.deb, .rpm and Arch packages) and on Windows 10 and 11
+(an installer). Android is in progress. The previous client, Sora Legacy, lives in
+[`legacy`](legacy/README.md).
+
+## What the app does
+
+- **One button.** Connecting, the state in a few words and the chosen server, on
+  one screen. The button and the window edge glow while it connects; a failure is
+  explained in words, not codes.
+- **Subscriptions that look after themselves.** The core updates them on schedule,
+  even with the window closed, and keeps them encrypted. You see how much traffic is
+  spent, until when the subscription runs and what the provider says, with its links
+  and `@names` tappable. Three days before it ends, or with a tenth of the traffic
+  left, Sora says so on the home screen.
+- **Xray JSON subscriptions (Remnawave).** Each profile runs as the provider wrote
+  it, with its balancers, observatory and routing; Sora adds its own inbound, DNS,
+  ad block and routing preset.
+- **The fastest server, and a spare.** "Fastest" is picked by the core from
+  measurements; a server picked by hand is backed by the others and switched on
+  failure. Latency is measured over a warm connection, the way a person feels it.
+- **Your own rules.** A site, an address, a network or a program — direct, through
+  the VPN, or blocked. Rules by program work on all three engines.
+- **No server.** DPI bypass through zapret (tpws) without a VPN server, with a
+  configurable strategy.
+- **Log center and connection center** one step away, with export and closing any
+  connection.
+- Simple settings first, fine ones below: engine, IPv6, DNS, TLS fragmentation, how
+  latency is measured, how often subscriptions update. Light and dark, Russian and
+  English, animations can be turned off.
 
 ## What the core does
 
@@ -112,11 +137,13 @@ Design notes: [core](docs/architecture/core.md), [engines](docs/architecture/eng
 
 ## Platforms
 
-| System | Versions | Architectures |
-| --- | --- | --- |
-| Windows | 10 1809 and later, 11 | x64, ARM64 |
-| Linux | Debian 12+, Ubuntu 22.04+, Fedora 39+, openSUSE, AppImage | x64, ARM64 |
-| Android | 8.0 and later, Android TV | arm64-v8a, armeabi-v7a, x86_64 |
+| System | What there is |
+| --- | --- |
+| Linux x64 | app and core: .deb, .rpm and Arch packages ([packaging/linux](packaging/linux/README.md)) |
+| Linux ARM64 | core (Flutter publishes no Linux SDK for ARM64) |
+| Windows 10 1809+ and 11, x64 | app, core as a service, installer ([packaging/windows](packaging/windows/README.md)) |
+| Windows 7 SP1, x32 | in progress: the core and engines build; the interface needs a build of its own, Flutter does not support Windows 7 |
+| Android, Android TV | in progress |
 
 ## Building the core
 

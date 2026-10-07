@@ -28,7 +28,10 @@ const (
 	ProtocolSOCKS5      Protocol = "socks5"
 	ProtocolHTTP        Protocol = "http"
 	ProtocolAnyTLS      Protocol = "anytls"
-	ProtocolDirect      Protocol = "direct"
+	// ProtocolBypass reaches sites directly, with the TLS and HTTP handshake
+	// reshaped by zapret so that DPI does not recognise the site. No server.
+	ProtocolBypass Protocol = "bypass"
+	ProtocolDirect Protocol = "direct"
 )
 
 // GroupType is how the engine chooses between the members of a group.
@@ -111,6 +114,8 @@ type Outbound struct {
 	// Amnezia turns a WireGuard outbound into AmneziaWG. Nil is plain
 	// WireGuard.
 	Amnezia *AmneziaWG
+	// Bypass is the strategy of a bypass outbound.
+	Bypass *BypassStrategy
 	// Addresses are the interface addresses of a WireGuard outbound, in CIDR
 	// form. A WireGuard tunnel cannot carry traffic without them.
 	Addresses []string
@@ -228,6 +233,23 @@ type AmneziaWG struct {
 	I1, I2, I3, I4, I5 string
 	J1, J2, J3         string
 	Itime              int
+}
+
+// BypassStrategy is how zapret reshapes a handshake. Positions follow zapret:
+// a number of bytes, negative from the end, or a marker (method, host,
+// endhost, sld, midsld, endsld, sniext) with an optional +N or -N.
+type BypassStrategy struct {
+	SplitPos []string
+	// Disorder sends the second part of a split first.
+	Disorder bool
+	// OOB sends an out-of-band byte with the split.
+	OOB bool
+	// TLSRecord splits the ClientHello into two TLS records at a position.
+	TLSRecord string
+	// HostCase, DomainCase and MethodEOL reshape plain HTTP requests.
+	HostCase   bool
+	DomainCase bool
+	MethodEOL  bool
 }
 
 // Fragment splits the TLS ClientHello of proxy connections into several TCP

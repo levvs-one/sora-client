@@ -17,7 +17,7 @@ serves the control plane the interface talks to over `proto/sora/core/v1`.
 | `engine/singbox`, `engine/xray`, `engine/mihomo` | one driver per engine |
 | `engine/registry` | which engines this machine has and which one carries a plan |
 | `session` | the session state machine, supervision, event journal, guard contract |
-| `guard` | the system proxy and the kill switch |
+| `guard` | the kill switch: nftables on Linux, WFP on Windows |
 | `probe` | measuring whether a server answers |
 | `subscription` | retrieving a subscription without exposing its token |
 | `diagnostics` | the report and the archive a user can safely send |
@@ -58,14 +58,16 @@ go run ./cmd/sora-core -print-token                # the token a client presents
 
 What a real start does, in this order: create the data directory owner-only,
 generate or read the control token, open the secret store under the machine key
-store, discover the engine binary, build the session manager with the proxy guard
-and the kill switch, attach the prober, the subscription fetcher and the
+store, discover the engine binary, build the session manager with the kill
+switch and the network watch, attach the prober, the subscription fetcher and the
 diagnostics collector, open the local endpoint, and serve gRPC over it. On shutdown
-the session is stopped first, so the proxy and the kill switch go back where they
-were, and only then does the endpoint close.
+the session is stopped first, so the kill switch is lifted, and only then does the
+endpoint close.
 
-The loopback tunnel port is reserved by the service, not by the engine, because
-the system proxy is pointed at it before the engine starts.
+The loopback port of the local proxy is reserved by the service, not by the
+engine, and reported in `About`: in the proxy mode the interface points the
+system proxy of the person signed in at it. The service cannot do that itself —
+its own account's proxy is not the one any program the person runs reads.
 
 ## Building and checking
 

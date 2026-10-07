@@ -185,7 +185,8 @@ func buildGroup(g engine.Group, byID map[string]string, testURL string) (proxyGr
 	if testURL == "" {
 		return proxyGroup{}, fmt.Errorf("mihomo: group %q needs a test url", g.Name)
 	}
-	grp.URL = testURL
+	// A group's own test address wins over the plan's, as on sing-box.
+	grp.URL = orDefault(g.URL, testURL)
 	grp.Interval = orDefaultInt(g.Interval, 300)
 	grp.Timeout = 5000
 	grp.MaxFailed = 5

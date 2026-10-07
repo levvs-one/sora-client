@@ -237,5 +237,36 @@
         "type": "String"
       }
     }
+  },
+  "rules": "Свои правила",
+  "ruleAdd": "Новое правило",
+  "ruleHint": "Сайт, IP или программа",
+  "ruleDirect": "Напрямую",
+  "ruleProxy": "Через VPN",
+  "ruleBlock": "Блокировать",
+  "failover": "Переключаться при сбое",
+  "connectOnStart": "Подключаться при запуске",
+  "expiresIn": "{name}: подписка закончится через {days, plural, =0{несколько часов} one{# день} few{# дня} other{# дней}}",
+  "trafficLow": "{name}: осталось {left}",
+  "ruleInvalid": "Не похоже на сайт, IP или программу",
+  "@expiresIn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "@trafficLow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "left": {
+        "type": "String"
+      }
+    }
   }
 }

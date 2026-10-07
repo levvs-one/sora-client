@@ -447,4 +447,42 @@ class SEn extends S {
   String chooseEngine(String engine) {
     return 'Choose $engine';
   }
+
+  @override
+  String get rules => 'Custom rules';
+
+  @override
+  String get ruleAdd => 'New rule';
+
+  @override
+  String get ruleHint => 'Site, IP or program';
+
+  @override
+  String get ruleDirect => 'Direct';
+
+  @override
+  String get ruleProxy => 'Through VPN';
+
+  @override
+  String get ruleBlock => 'Block';
+
+  @override
+  String get failover => 'Switch on failure';
+
+  @override
+  String get connectOnStart => 'Connect on start';
+
+  @override
+  String expiresIn(String name, int days) {
+    String _temp0 = intl.Intl.pluralLogic(days, locale: localeName, other: '# days', one: '# day', zero: 'a few hours');
+    return '$name: the subscription ends in $_temp0';
+  }
+
+  @override
+  String trafficLow(String name, String left) {
+    return '$name: $left left';
+  }
+
+  @override
+  String get ruleInvalid => 'This does not look like a site, an IP or a program';
 }

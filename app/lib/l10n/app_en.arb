@@ -136,5 +136,16 @@
   "website": "Provider website",
   "support": "Support",
   "controlPortQuestion": "{engine} is controlled through a port on this computer. Other programs will be able to tell that a VPN is on.",
-  "chooseEngine": "Choose {engine}"
+  "chooseEngine": "Choose {engine}",
+  "rules": "Custom rules",
+  "ruleAdd": "New rule",
+  "ruleHint": "Site, IP or program",
+  "ruleDirect": "Direct",
+  "ruleProxy": "Through VPN",
+  "ruleBlock": "Block",
+  "failover": "Switch on failure",
+  "connectOnStart": "Connect on start",
+  "expiresIn": "{name}: the subscription ends in {days, plural, =0{a few hours} one{# day} other{# days}}",
+  "trafficLow": "{name}: {left} left",
+  "ruleInvalid": "This does not look like a site, an IP or a program"
 }

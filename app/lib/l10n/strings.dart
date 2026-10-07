@@ -913,6 +913,72 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Выбрать {engine}'**
   String chooseEngine(String engine);
+
+  /// No description provided for @rules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свои правила'**
+  String get rules;
+
+  /// No description provided for @ruleAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новое правило'**
+  String get ruleAdd;
+
+  /// No description provided for @ruleHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт, IP или программа'**
+  String get ruleHint;
+
+  /// No description provided for @ruleDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Напрямую'**
+  String get ruleDirect;
+
+  /// No description provided for @ruleProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через VPN'**
+  String get ruleProxy;
+
+  /// No description provided for @ruleBlock.
+  ///
+  /// In ru, this message translates to:
+  /// **'Блокировать'**
+  String get ruleBlock;
+
+  /// No description provided for @failover.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переключаться при сбое'**
+  String get failover;
+
+  /// No description provided for @connectOnStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключаться при запуске'**
+  String get connectOnStart;
+
+  /// No description provided for @expiresIn.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name}: подписка закончится через {days, plural, =0{несколько часов} one{# день} few{# дня} other{# дней}}'**
+  String expiresIn(String name, int days);
+
+  /// No description provided for @trafficLow.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name}: осталось {left}'**
+  String trafficLow(String name, String left);
+
+  /// No description provided for @ruleInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не похоже на сайт, IP или программу'**
+  String get ruleInvalid;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

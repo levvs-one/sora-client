@@ -447,4 +447,49 @@ class SRu extends S {
   String chooseEngine(String engine) {
     return 'Выбрать $engine';
   }
+
+  @override
+  String get rules => 'Свои правила';
+
+  @override
+  String get ruleAdd => 'Новое правило';
+
+  @override
+  String get ruleHint => 'Сайт, IP или программа';
+
+  @override
+  String get ruleDirect => 'Напрямую';
+
+  @override
+  String get ruleProxy => 'Через VPN';
+
+  @override
+  String get ruleBlock => 'Блокировать';
+
+  @override
+  String get failover => 'Переключаться при сбое';
+
+  @override
+  String get connectOnStart => 'Подключаться при запуске';
+
+  @override
+  String expiresIn(String name, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '# дней',
+      few: '# дня',
+      one: '# день',
+      zero: 'несколько часов',
+    );
+    return '$name: подписка закончится через $_temp0';
+  }
+
+  @override
+  String trafficLow(String name, String left) {
+    return '$name: осталось $left';
+  }
+
+  @override
+  String get ruleInvalid => 'Не похоже на сайт, IP или программу';
 }

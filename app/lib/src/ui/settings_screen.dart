@@ -12,6 +12,7 @@ import 'about.dart';
 import 'connections.dart';
 import 'kit.dart';
 import 'logs.dart';
+import 'rules_screen.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
 
@@ -129,6 +130,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SwitchTile(title: s.blockAds, value: settings.blockAds, onChanged: (v) => set((x) => x.blockAds = v)),
             SwitchTile(
+              title: s.connectOnStart,
+              value: settings.connectOnStart,
+              onChanged: (v) => set((x) => x.connectOnStart = v, replan: false),
+            ),
+            SwitchTile(
               title: s.killSwitch,
               value: settings.killSwitch,
               onChanged: (v) => unawaited(sora.setKillSwitch(v)),
@@ -184,6 +190,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
+            LinkTile(
+              title: s.rules,
+              value: settings.rules.isEmpty ? null : '${settings.rules.length}',
+              onTap: () => push<void>(context, const RulesScreen()),
+            ),
+            SwitchTile(title: s.failover, value: settings.failover, onChanged: (v) => set((x) => x.failover = v)),
             SwitchTile(title: s.ipv6, value: settings.ipv6, onChanged: (v) => set((x) => x.ipv6 = v)),
             LinkTile(
               title: s.dns,

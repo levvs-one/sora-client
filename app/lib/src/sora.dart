@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart' hide ConnectionState;
 
 import 'core/link.dart';
 import 'generated/sora/core/v1/core_control.pbgrpc.dart';
+import 'rules.dart';
 import 'settings.dart';
 
 /// Where the connection is, in the terms the interface shows.
@@ -21,9 +22,11 @@ class Sora extends ChangeNotifier {
   /// the server itself and never starts with "sora:".
   static const autoGroup = 'sora:auto';
   static const bypassId = 'sora:bypass';
+  static const failoverGroup = 'sora:failover';
 
   CoreLink? _link;
   bool _disposed = false;
+  bool _startedOnce = false;
   StreamSubscription<SubscriptionState>? _subscriptionWatch;
   StreamSubscription<CoreEvent>? _sessionWatch;
 
@@ -91,6 +94,15 @@ class Sora extends ChangeNotifier {
         _watchSubscriptions();
         _watchSession();
         notifyListeners();
+        if (settings.connectOnStart && !_startedOnce && phase == Phase.off) {
+          // Once per launch: a line that drops and comes back must not
+          // reconnect a person who disconnected on purpose.
+          _startedOnce = true;
+          // The servers arrive through the watch a moment after it opens.
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+          if (phase == Phase.off) unawaited(connect());
+        }
+        _startedOnce = true;
         await dropped.future;
       } catch (error) {
         failure = CoreFailure.from(error);
@@ -465,6 +477,19 @@ SessionPlan buildPlan({
       fragmentInterval: settings.fragmentInterval,
     ),
   );
+  // The person's own rules come before the preset; "through VPN" points at
+  // whatever carries the rest, which is known once the target is.
+  void addRules(String proxy) {
+    for (final rule in settings.rules.map(UserRule.parse).nonNulls) {
+      final target = switch (rule.target) {
+        RuleTarget.direct => 'direct',
+        RuleTarget.block => 'reject',
+        RuleTarget.proxy => proxy,
+      };
+      plan.routes.add(RoutingRule(destination: rule.destination, outboundId: target));
+    }
+  }
+
   if (choice == 'bypass') {
     plan.outbounds.add(
       OutboundSpec(
@@ -480,6 +505,7 @@ SessionPlan buildPlan({
       ),
     );
     plan.routing.proxyTarget = Sora.bypassId;
+    addRules(Sora.bypassId);
     return plan;
   }
   final profiles = [
@@ -495,6 +521,7 @@ SessionPlan buildPlan({
     final profile = picked ?? _fastest(profiles, latency);
     plan.outbounds.add(profile);
     plan.routing.proxyTarget = profile.id;
+    addRules(profile.id);
     return plan;
   }
   plan.outbounds.addAll(ordinary);
@@ -508,9 +535,27 @@ SessionPlan buildPlan({
       ),
     );
     plan.routing.proxyTarget = Sora.autoGroup;
+  } else if (settings.failover && ordinary.length > 1 && (settings.engine.isEmpty || settings.engine == 'mihomo')) {
+    // Only mihomo has fallback groups; a pinned sing-box or Xray keeps the
+    // picked server alone rather than refusing to connect.
+    // The picked server first, then the others from the fastest: the core
+    // moves to the next one that answers and back once the first does.
+    final others = [
+      for (final o in ordinary)
+        if (o.id != choice) o,
+    ]..sort((a, b) => (latency[a.id] ?? 1 << 30).compareTo(latency[b.id] ?? 1 << 30));
+    plan.groups.add(
+      GroupSpec(
+        name: Sora.failoverGroup,
+        type: GroupType.GROUP_TYPE_FALLBACK,
+        members: [choice, for (final o in others) o.id],
+      ),
+    );
+    plan.routing.proxyTarget = Sora.failoverGroup;
   } else {
     plan.routing.proxyTarget = choice;
   }
+  addRules(plan.routing.proxyTarget);
   return plan;
 }
 

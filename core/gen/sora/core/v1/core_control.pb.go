@@ -1544,6 +1544,10 @@ func (x *CredentialsRef) GetReference() string {
 	return ""
 }
 
+// RoutingRule sends a destination to an outbound, a group, "direct" or
+// "reject". The destination is "domain:" (the site and everything under it),
+// "full:", "geosite:", "geoip:", "ruleset:", "process:" (a program by name,
+// since 1.3), a network such as "203.0.113.0/24", or a port.
 type RoutingRule struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Destination   string                 `protobuf:"bytes,1,opt,name=destination,proto3" json:"destination,omitempty"`

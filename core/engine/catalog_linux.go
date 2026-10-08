@@ -1,5 +1,5 @@
 package engine
 
-// The core routes into Xray's tun adapter on Linux only (engine/tunroute);
-// elsewhere a tun plan goes to sing-box or mihomo, which route themselves.
+// init enables core-managed Xray TUN routes only on Linux. Other platforms use
+// sing-box or mihomo to install routes.
 func init() { Catalog[KindXray].Features[FeatureTun] = true }

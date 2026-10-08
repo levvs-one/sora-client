@@ -13,8 +13,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// profile is the shape of a Remnawave profile: several outbounds with links
-// between them, a balancer over an observatory, and the provider's rules.
+// profile models Remnawave outbounds, linked tags, observatory-backed
+// balancers, and provider rules.
 const profile = `{"remarks":"Авто","log":{"loglevel":"debug"},
  "inbounds":[{"listen":"127.0.0.1","port":10808,"protocol":"socks","tag":"socks"}],
  "outbounds":[
@@ -81,14 +81,13 @@ func TestAProfileRunsAsWrittenInsideTheSession(t *testing.T) {
 		}
 	}
 
-	// The engine itself is the judge of the result.
 	dir := os.Getenv("SORA_ENGINES_DIR")
 	if dir == "" {
 		t.Skip("set SORA_ENGINES_DIR to check the result with Xray")
 	}
-	// "run -test" creates a tun adapter for real, which needs the right to;
-	// the tun variant is covered by the structure above and by the end to end
-	// run in a network namespace.
+	// Xray -test creates real TUN devices and requires privileges.
+	// Structural checks and a network-namespace integration run cover TUN
+	// here.
 	for _, tun := range []bool{false} {
 		out, err := Render(profilePlan(tun), supervise.Runtime{HomeDir: t.TempDir(), LocalPort: 4000, ControlAddr: "127.0.0.1:4001"}, nil)
 		if err != nil {

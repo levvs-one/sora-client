@@ -1,10 +1,6 @@
-// Package bypass carries bypass outbounds: sites reached directly, with the
-// handshake reshaped by zapret's tpws so that DPI does not recognise them.
-//
-// No engine knows the bypass protocol. This package runs one tpws per
-// strategy as a loopback SOCKS5 proxy and hands the engine a plan in which
-// every bypass outbound is a SOCKS5 outbound to that proxy, so the mode works
-// on every engine and through every routing rule and group.
+// Package bypass runs zapret tpws to reshape direct TLS and HTTP handshakes
+// against DPI. It shares one loopback SOCKS5 proxy per strategy and rewrites
+// bypass outbounds to SOCKS5, supporting all engines, rules, and groups.
 package bypass
 
 import (
@@ -31,8 +27,8 @@ func Has(p *engine.Plan) bool {
 	return p != nil && slices.ContainsFunc(p.Outbounds, func(o engine.Outbound) bool { return o.Protocol == engine.ProtocolBypass })
 }
 
-// Args is the tpws command line of a strategy. Only listening and the
-// strategy are set: no file, user or daemon option can reach tpws from a plan.
+// Args returns listener and strategy arguments for tpws. Plans cannot set file,
+// user, or daemon options.
 func Args(s engine.BypassStrategy, port int) []string {
 	args := []string{"--socks", "--bind-addr=127.0.0.1", "--port=" + strconv.Itoa(port)}
 	if len(s.SplitPos) > 0 {
@@ -59,13 +55,11 @@ func Args(s engine.BypassStrategy, port int) []string {
 	return args
 }
 
-// key identifies a strategy, so outbounds with the same strategy share one tpws.
+// key identifies a strategy so matching outbounds share one tpws process.
 func key(s engine.BypassStrategy) string { return strings.Join(Args(s, 0), " ") }
 
-// Rewrite returns the plan the engine runs: each bypass outbound becomes a
-// SOCKS5 outbound to the tpws of its strategy. ports maps a strategy key to
-// its port; a missing key gets port 1, which Validate accepts and nothing
-// connects to.
+// Rewrite replaces bypass outbounds with SOCKS5 proxies. ports maps strategy
+// keys to ports; absent keys use port 1 for validation without a running proxy.
 func Rewrite(p *engine.Plan, ports map[string]int) *engine.Plan {
 	out := *p
 	out.Outbounds = slices.Clone(p.Outbounds)
@@ -145,9 +139,8 @@ func (e *Engine) Apply(ctx context.Context, p *engine.Plan) error {
 	return e.Engine.Apply(ctx, Rewrite(p, ports))
 }
 
-// start runs one tpws and keeps it running: when it dies, it is started again
-// on the same port with a growing pause, so the engine's SOCKS5 outbound
-// keeps pointing at a live proxy.
+// start supervises one tpws process, restarting it on the same port with
+// increasing delays so engine outbounds remain valid.
 func (e *Engine) start(strategy engine.BypassStrategy) (*proxy, error) {
 	port, err := supervise.FreePort()
 	if err != nil {

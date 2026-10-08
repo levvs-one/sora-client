@@ -7,9 +7,8 @@ import (
 	"github.com/levvs-one/sora-client/core/logs"
 )
 
-// logLine matches sing-box output without colours and timestamps, for example
-// "INFO[0002] [1403639248 0ms] outbound/direct[direct]: outbound connection to …".
-// The bracketed number is seconds since start, so the time of reading is used.
+// logLine matches sing-box output without colors or timestamps. Bracketed time
+// is elapsed seconds, so records use the read time.
 var logLine = regexp.MustCompile(`^(TRACE|DEBUG|INFO|WARN|ERROR|FATAL|PANIC)\[\d+\] (.*)$`)
 
 // ParseLog reads one sing-box output line.

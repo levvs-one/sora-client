@@ -55,10 +55,8 @@ type Event struct {
 	At       time.Time
 }
 
-// EventBus fans engine events out to subscribers. Publishing never blocks the
-// engine: a slow subscriber loses events and the counter records how many, so
-// the control plane reconciles by polling instead of pretending nothing was
-// lost.
+// EventBus publishes without blocking engines. Slow subscribers lose events
+// counted by Dropped; clients can reconcile by polling.
 type EventBus struct {
 	mu      sync.Mutex
 	subs    map[chan Event]struct{}
@@ -122,8 +120,8 @@ type MeasureOptions struct {
 	Engines []Kind
 }
 
-// Measurement is the latency of one outbound measured with a real request
-// through an engine. Err is ErrNoEngine when no engine carries the outbound.
+// Measurement records request latency through an engine. ErrNoEngine indicates
+// an unsupported outbound.
 type Measurement struct {
 	OutboundID string
 	Engine     Kind
@@ -131,9 +129,8 @@ type Measurement struct {
 	Err        error
 }
 
-// Connection is one live connection of a session, as the connection center
-// shows it. Host is what the application asked for: a name where the engine
-// saw one, an address otherwise.
+// Connection describes a live session connection. Host is the requested name
+// when available, otherwise an address.
 type Connection struct {
 	ID      string
 	Network string
@@ -149,8 +146,8 @@ type Connection struct {
 	Start    time.Time
 }
 
-// ConnectionTracker is implemented by engines that can list and close the
-// live connections of a session. Xray cannot, so it does not implement it.
+// ConnectionTracker lists and closes session connections. Xray does not
+// implement it.
 type ConnectionTracker interface {
 	Connections(ctx context.Context) ([]Connection, error)
 	CloseConnection(ctx context.Context, id string) error

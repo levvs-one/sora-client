@@ -11,9 +11,8 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// declaredCodes lists every code the package defines. The catalog test walks it
-// so a new code cannot reach the catalog without also being listed here, which
-// is what keeps the set closed and reviewable.
+// declaredCodes lists all error classes so catalog tests require explicit
+// coverage for additions.
 var declaredCodes = []errs.Code{
 	errs.CodeVersionMismatch,
 	errs.CodeInvalidArgument,

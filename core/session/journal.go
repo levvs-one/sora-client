@@ -7,9 +7,8 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// EventKind classifies one event of a session. Each kind maps to one field of
-// the CoreEvent oneof in the contract, so the control plane is a translation
-// table and nothing more.
+// EventKind maps session events to CoreEvent oneof fields for control-plane
+// translation.
 type EventKind string
 
 // Kinds of session event.
@@ -21,10 +20,8 @@ const (
 	EventError    EventKind = "error"
 )
 
-// Event is one thing that happened in a session. The sequence number is
-// assigned by the journal and is strictly increasing within one session, which
-// is what lets a client resume a stream after a reconnect without losing its
-// place or replaying the whole history.
+// Event records a session change. Journal-assigned sequence numbers increase
+// within the session so clients can resume streams after reconnecting.
 type Event struct {
 	Sequence   uint64
 	At         time.Time
@@ -39,8 +36,8 @@ type Event struct {
 	LogLine    string
 }
 
-// Counters are the traffic counters of a running session. The type is local so
-// a future engine backend cannot change the shape a client already reads.
+// Counters defines session traffic totals independently of engine types to
+// preserve the client contract.
 type Counters struct {
 	BytesUp           uint64
 	BytesDown         uint64
@@ -48,9 +45,8 @@ type Counters struct {
 	At                time.Time
 }
 
-// ProbeOutcome is the result of one latency measurement. It travels with the event
-// rather than being rebuilt by the control plane, because only the session knows
-// which server the measurement was about.
+// ProbeOutcome carries latency results with their session-known server
+// identity, avoiding reconstruction by the control plane.
 type ProbeOutcome struct {
 	ServerID  string
 	Reachable bool
@@ -58,14 +54,9 @@ type ProbeOutcome struct {
 	Err       error
 }
 
-// Journal keeps the recent history of one session and fans new events out to
-// live subscribers.
-//
-// Two properties matter and both are deliberate. History is bounded, so a core
-// that runs for weeks cannot grow without limit. A subscriber that stops
-// reading is never allowed to block the session: its events are dropped, the
-// drop is counted, and the control plane answers a gap with a fresh status
-// snapshot instead of pretending the history was complete.
+// Journal stores bounded session history and publishes without blocking. Slow
+// subscribers lose counted events; clients reconcile gaps with a fresh status
+// snapshot.
 type Journal struct {
 	mu       sync.Mutex
 	next     uint64
@@ -75,8 +66,8 @@ type Journal struct {
 	dropped  uint64
 }
 
-// DefaultJournalCapacity keeps roughly a minute of counters and state changes,
-// which is enough to reattach an interface that lost its stream.
+// DefaultJournalCapacity retains roughly a minute of counters and state changes
+// for client reattachment.
 const DefaultJournalCapacity = 512
 
 // NewJournal returns a journal that keeps capacity events of history.
@@ -91,9 +82,8 @@ func NewJournal(capacity int) *Journal {
 	}
 }
 
-// Append stamps the event with the next sequence number and the current time,
-// stores it and delivers it to every live subscriber. The stamped event is
-// returned so a caller can log the sequence it produced.
+// Append assigns sequence and time, stores and publishes the event, and returns
+// the stamped value for log correlation.
 func (j *Journal) Append(ev Event) Event {
 	j.mu.Lock()
 	j.next++
@@ -103,9 +93,8 @@ func (j *Journal) Append(ev Event) Event {
 	}
 	j.history = append(j.history, ev)
 	if len(j.history) > j.capacity {
-		// The slice is trimmed from the front without reallocating: a session
-		// that emits a counter tick every second would otherwise allocate once
-		// a second for the whole life of the process.
+		// Trim history without reallocating the slice on every counter
+		// tick.
 		j.history = append(j.history[:0], j.history[len(j.history)-j.capacity:]...)
 	}
 	subs := make([]chan Event, 0, len(j.subs))
@@ -126,10 +115,9 @@ func (j *Journal) Append(ev Event) Event {
 	return ev
 }
 
-// Since returns up to limit events with a sequence greater than after, oldest
-// first. It returns whatever the journal still holds, which may be nothing: a
-// client that was away longer than the history must reconcile from a status
-// snapshot, and the control plane tells it so through the drop count.
+// Since returns retained events after the cursor, oldest first, up to limit.
+// Clients beyond retained history need a status snapshot; drop counts signal
+// incomplete delivery.
 func (j *Journal) Since(after uint64, limit int) []Event {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -149,24 +137,23 @@ func (j *Journal) Since(after uint64, limit int) []Event {
 	return out
 }
 
-// Latest reports the sequence number of the most recent event, which is also
-// the sequence a client resumes from after a fresh subscribe.
+// Latest returns the newest event sequence for stream resumption.
 func (j *Journal) Latest() uint64 {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return j.next
 }
 
-// Dropped reports how many events a slow subscriber missed. The control plane
-// reports it so a client knows its view may be incomplete.
+// Dropped counts missed subscriber events so clients can detect incomplete
+// state.
 func (j *Journal) Dropped() uint64 {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return j.dropped
 }
 
-// Subscribe registers a live listener with its own buffer. The returned function
-// unregisters it and closes the channel; calling it twice is harmless.
+// Subscribe creates a buffered live listener. The returned cancellation
+// function unregisters and closes it safely on repeated calls.
 func (j *Journal) Subscribe(buffer int) (<-chan Event, func()) {
 	if buffer <= 0 {
 		buffer = 64

@@ -16,16 +16,9 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// WFP is the kill switch on Windows: filters of the Windows Filtering Platform
-// in a sublayer of its own. Whatever goes out is blocked unless it is the
-// engine or the core itself, goes through the tunnel adapter, stays on the
-// machine or on its local network, or is DHCP and neighbour discovery the
-// network needs to stay up.
-//
-// The session is dynamic: Windows removes every filter when the session closes
-// or the core process ends, however it ends. A crashed core lets traffic out
-// rather than leaving the machine cut off with nothing left to lift the block,
-// the same trade WireGuard and Tailscale make.
+// WFP owns a dynamic sublayer permitting core/engine, TUN, local, DHCP, and
+// neighbor-discovery traffic. Windows removes filters on close or process exit,
+// allowing traffic after crashes, as WireGuard and Tailscale do.
 type WFP struct {
 	mu         sync.Mutex
 	enginesDir string
@@ -33,8 +26,8 @@ type WFP struct {
 	session    *wf.Session
 }
 
-// PlatformFirewall returns the kill switch this platform has. Windows has no
-// user id to match the engine by, so the engine is matched by its executable.
+// PlatformFirewall returns Windows WFP, matching engines by executable because
+// Windows has no Unix UID.
 func PlatformFirewall(opts FirewallOptions) (Firewall, error) {
 	bypass := opts.Bypass
 	if len(bypass) == 0 {
@@ -114,8 +107,8 @@ func (w *WFP) install(session *wf.Session) error {
 		return err
 	}
 	sublayer := wf.SublayerID(guid)
-	// The highest weight: this sublayer is consulted before the ones other
-	// programs add, and a block here holds whatever they permit.
+	// Highest sublayer priority ensures this block overrides other
+	// programs' permits.
 	if err := session.AddSublayer(&wf.Sublayer{ID: sublayer, Name: "Sora kill switch", Weight: 0xffff}); err != nil {
 		return err
 	}
@@ -145,9 +138,8 @@ func (w *WFP) install(session *wf.Session) error {
 	if err != nil {
 		return err
 	}
-	// An engine is let through only when it runs as the account of the core,
-	// LocalSystem for the service: anyone can start xray.exe from the engines
-	// folder, and a copy started by someone else must not get around the switch.
+	// Require the core's account, LocalSystem for services, so
+	// user-launched copies of engine executables cannot bypass the switch.
 	owner, err := sameAccount()
 	if err != nil {
 		return err
@@ -177,9 +169,8 @@ func (w *WFP) install(session *wf.Session) error {
 			return err
 		}
 	}
-	// DHCP and neighbour discovery keep the physical network configured; without
-	// them a lease that expires while the switch is armed takes the tunnel
-	// down with it.
+	// Permit DHCP and neighbor discovery to keep physical connectivity and
+	// lease renewal working.
 	udp := &wf.Match{Field: wf.FieldIPProtocol, Op: wf.MatchTypeEqual, Value: wf.IPProtoUDP}
 	if err := permit("DHCP",
 		udp,
@@ -189,8 +180,8 @@ func (w *WFP) install(session *wf.Session) error {
 	); err != nil {
 		return err
 	}
-	// The servers' multicast group: the rule is IPv6 only, and port 546 on its
-	// own would let any program reach any address on 547.
+	// Restrict IPv6 DHCP to server multicast; ports alone would permit
+	// arbitrary destinations.
 	if err := permit("DHCPv6",
 		udp,
 		&wf.Match{Field: wf.FieldIPLocalPort, Op: wf.MatchTypeEqual, Value: uint16(546)},
@@ -211,9 +202,8 @@ func (w *WFP) install(session *wf.Session) error {
 	return add("everything else", wf.ActionBlock, weightBlock)
 }
 
-// executables are the programs whose traffic is the tunnel's own: every engine
-// in the engines directory, and the core, which updates subscriptions and
-// measures servers.
+// executables includes installed engines and the core for subscription updates
+// and measurements.
 func (w *WFP) executables() ([]string, error) {
 	self, err := os.Executable()
 	if err != nil {
@@ -227,9 +217,8 @@ func (w *WFP) executables() ([]string, error) {
 	return append(files, engines...), nil
 }
 
-// sameAccount is a security descriptor that WFP matches against the account of
-// a connecting process: it grants the filter's access right only to the
-// account this core runs as.
+// sameAccount grants WFP filter access only to processes running as the core
+// account.
 func sameAccount() (*windows.SECURITY_DESCRIPTOR, error) {
 	token := windows.GetCurrentProcessToken()
 	user, err := token.GetTokenUser()
@@ -241,13 +230,13 @@ func sameAccount() (*windows.SECURITY_DESCRIPTOR, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The parser gives a self-relative descriptor, and the wf package makes one
-	// self-relative itself, which Windows refuses to do twice.
+	// Convert to absolute form because wf performs its own self-relative
+	// conversion and Windows rejects repeating it.
 	return sd.ToAbsolute()
 }
 
-// applies keeps an address condition to the layer of its family: an IPv4
-// network on the IPv6 layer is refused by the filtering engine.
+// applies restricts address conditions to matching-family layers; WFP rejects
+// cross-family networks.
 func applies(layer wf.LayerID, conditions []*wf.Match) bool {
 	for _, c := range conditions {
 		if prefix, ok := c.Value.(netip.Prefix); ok {

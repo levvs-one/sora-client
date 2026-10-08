@@ -1,11 +1,10 @@
-// Package enginetest builds plans that exercise every engine renderer, so the
-// same plan is judged by the validator of each engine binary.
+// Package enginetest builds shared plans for validation by each engine binary.
 package enginetest
 
 import "github.com/levvs-one/sora-client/core/engine"
 
-// Outbound returns a realistic outbound of protocol p. The keys are test
-// values with the right shape: engines validate key lengths.
+// Outbound returns a test outbound for p with keys matching engine-required
+// lengths.
 func Outbound(p engine.Protocol) engine.Outbound {
 	const (
 		uuid    = "b831381d-6324-4d53-ad4f-8cda48b30811"
@@ -50,10 +49,9 @@ func Outbound(p engine.Protocol) engine.Outbound {
 	return o
 }
 
-// Plan returns a plan with one outbound per protocol, a selector over all of
-// them, an automatic group, geo and domain rules, and resolvers on three
-// transports. The tun device is off so that the engine validators, which
-// open devices, run without privileges.
+// Plan includes every protocol, select and automatic groups, geo/domain rules,
+// and three DNS transports. TUN is disabled so validators can run without
+// device privileges.
 func Plan(protocols ...engine.Protocol) *engine.Plan {
 	p := &engine.Plan{
 		SessionID:  "enginetest",

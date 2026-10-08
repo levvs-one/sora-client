@@ -2,7 +2,6 @@
 
 package guard
 
-// PlatformFirewall returns the kill switch this platform has: none here. On
-// macOS there is no mechanism in this package that is both correct and
-// reversible, so the answer is honest rather than approximate.
+// PlatformFirewall returns NoopFirewall here. This package has no reversible
+// macOS firewall implementation.
 func PlatformFirewall(FirewallOptions) (Firewall, error) { return NoopFirewall{}, nil }

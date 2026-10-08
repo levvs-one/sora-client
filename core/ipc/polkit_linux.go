@@ -9,20 +9,17 @@ import (
 	"github.com/godbus/dbus/v5"
 )
 
-// PolkitAction is what a person must hold to drive the core. Its policy
-// (service/linux/sora.policy) grants it to the active local session without a
-// password, the way desktop network managers work, and names the sora user as
-// the action owner: polkit lets only root or an action owner ask about another
-// identity's process, and the core does not run as root.
+// PolkitAction authorizes core control via service/linux/sora.policy. Active
+// local users need no password; sora owns the action because non-root checks of
+// other processes require action ownership.
 const PolkitAction = "io.github.levvs-one.sora.control"
 
-// polkitTimeout bounds the question, so a hung polkit cannot hold a connection
-// open; the answer is then "no".
+// polkitTimeout bounds authorization requests; timeout rejects the peer.
 const polkitTimeout = 3 * time.Second
 
-// polkitSubject is the (sa{sv}) subject polkit checks: the client process as the
-// kernel reported it. A start time of zero lets polkit look it up itself, which
-// is what stops a pid that was reused from inheriting the authorization.
+// polkitSubject encodes the kernel-reported client as (sa{sv}). Zero start time
+// makes polkit resolve process timing to prevent reused PIDs inheriting
+// authorization.
 type polkitSubject struct {
 	Kind    string
 	Details map[string]dbus.Variant
@@ -34,8 +31,8 @@ type polkitResult struct {
 	Details    map[string]string
 }
 
-// polkitAllows asks polkit whether the peer process holds action. Any failure
-// (no system bus, no polkit, an unregistered action) is a refusal.
+// polkitAllows checks the peer's action authorization. Missing bus, polkit, or
+// policy rejects the connection.
 func polkitAllows(peer Peer, action string) bool {
 	if !peer.Verified || peer.PID <= 0 {
 		return false
@@ -52,8 +49,8 @@ func polkitAllows(peer Peer, action string) bool {
 	}}
 	ctx, cancel := context.WithTimeout(context.Background(), polkitTimeout)
 	defer cancel()
-	// Flags 0: no interaction. A connection is never held open for a password
-	// prompt; a session that needs one is not the active local session.
+	// Disable interaction so authorization cannot hold a connection open
+	// for a password prompt.
 	call := conn.Object("org.freedesktop.PolicyKit1", "/org/freedesktop/PolicyKit1/Authority").CallWithContext(ctx,
 		"org.freedesktop.PolicyKit1.Authority.CheckAuthorization", 0,
 		subject, action, map[string]string{}, uint32(0), "")

@@ -47,12 +47,8 @@ func (o Outbound) Secrets() []string {
 	return out
 }
 
-// Identifiers lists the values of one outbound that are not secrets but still
-// identify a person or a provider: the server host and the host with its port.
-//
-// They are masked separately from credentials because a diagnostic that names
-// the server a user connected to is a report about that user, and because a
-// reviewer needs to see the shape of a problem without seeing whose it is.
+// Identifiers returns the server host and host:port for privacy redaction.
+// These are not credentials but identify user connections and providers.
 func (o Outbound) Identifiers() []string {
 	out := make([]string, 0, 3)
 	if o.Server != "" {
@@ -68,8 +64,7 @@ func (o Outbound) Identifiers() []string {
 	return out
 }
 
-// Identifiers returns every value of the plan that identifies a server. It is the
-// counterpart of Secrets for masking, and the two are used together.
+// Identifiers returns plan server identifiers for redaction alongside Secrets.
 func (p *Plan) Identifiers() []string {
 	if p == nil {
 		return nil
@@ -81,8 +76,8 @@ func (p *Plan) Identifiers() []string {
 	return out
 }
 
-// Warnings returns machine-readable codes for allowed but risky choices. The
-// interface localizes them, so no user text lives in the core.
+// Warnings returns codes for allowed risky settings. Clients localize them; the
+// core stores no user-facing text.
 func (o Outbound) Warnings() []string {
 	var out []string
 	if o.TLS.Insecure && o.Protocol != ProtocolDirect {
@@ -174,16 +169,15 @@ func (p *Plan) Validate() error {
 		}
 		ids[o.ID] = struct{}{}
 	}
-	// A profile is a whole configuration with its own routing; two of them, or
-	// one inside a group, cannot be merged without breaking what the provider
-	// wrote, so a profile runs alone.
+	// Profiles run alone because combining provider routing with other
+	// profiles or groups changes its semantics.
 	if slices.ContainsFunc(p.Outbounds, func(o Outbound) bool { return o.Protocol == ProtocolXrayProfile }) &&
 		(len(p.Outbounds) > 1 || len(p.Groups) > 0) {
 		errs = append(errs, errors.New("plan: an Xray profile runs alone, without other outbounds or groups"))
 	}
 
-	// Groups may contain groups ("Proxy" offering "Auto"), so every name is
-	// known before members are checked.
+	// Collect all group names before validating members to allow nested and
+	// forward references.
 	members := make(map[string][]string, len(p.Groups))
 	for _, g := range p.Groups {
 		members[g.Name] = g.Outbounds

@@ -10,9 +10,7 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// checkReport says whether this machine can run a tunnel, in the terms an operator
-// has to act on. It builds nothing new and changes nothing: the point of a check
-// is to be safe to run on a working installation.
+// checkReport reports tunnel readiness without changing the installation.
 func checkReport(app *App) ([]string, bool) {
 	lines := []string{
 		"endpoint: " + app.address,
@@ -50,9 +48,8 @@ func readyText(ready bool) string {
 	return "result: an engine is required before a tunnel can be started"
 }
 
-// printToken reads the token of a data directory. It is a separate,
-// explicitly named operation because the token is the thing that lets a caller
-// connect, and it is printed by nothing else.
+// printToken reads the data directory's control token. Only this explicit
+// operation prints it.
 func printToken(dir string) (string, error) {
 	raw, err := os.ReadFile(filepath.Join(dir, "control.token")) //nolint:gosec // a fixed name inside the core data directory
 	if err != nil {
@@ -61,10 +58,7 @@ func printToken(dir string) (string, error) {
 	return strings.TrimSpace(string(raw)), nil
 }
 
-// newLogger builds the logger the service writes with. The format is text with a
-// timestamp because a service log is read by a person with a terminal, and the
-// level is a flag because the answer to "why is it slow" is usually one line of
-// debug output.
+// newLogger creates a timestamped text logger at the requested level.
 func newLogger(level string) (*slog.Logger, error) {
 	var parsed slog.Level
 	switch strings.ToLower(strings.TrimSpace(level)) {

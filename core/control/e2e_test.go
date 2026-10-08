@@ -22,15 +22,9 @@ import (
 	"github.com/levvs-one/sora-client/core/session"
 )
 
-// TestClientTalksToTheCoreOverTheTransport is the one test that crosses every
-// boundary the product is built on: a real gRPC client, over the real local
-// transport, against the real control plane, into a real session with a stub
-// engine.
-//
-// Every other test stops at one of those boundaries with a fake on the other side,
-// which is what let a lost event and an ignored session identifier survive. Here
-// nothing is stubbed except the engine itself, which is the only part that needs
-// a network and a device.
+// TestClientTalksToTheCoreOverTheTransport exercises a real gRPC client, local
+// transport, control plane, and session. Only the engine is stubbed to avoid
+// network and device dependencies.
 func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -50,8 +44,8 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) { return newStubEngine(), nil },
 	})
 	plane, err := control.New(control.Config{
-		// The core answers the versions from the second minor on: a client older
-		// than that is told so instead of being served a contract it cannot read.
+		// Reject clients below the supported minor version instead of
+		// serving an unreadable contract.
 		Version:       control.Version{Major: 1, Minor: 2, MinSupportedMinor: 1},
 		Authenticator: auth,
 		Sessions:      manager,
@@ -67,21 +61,20 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Fatalf("Listen() error = %v", err)
 	}
 	grpcServer := grpc.NewServer(
-		// The largest answer the contract defines is a plan of four megabytes; a
-		// larger request is refused by the transport before the core allocates
-		// anything for it.
+		// The transport enforces the four-megabyte plan limit before
+		// payload allocation.
 		grpc.MaxRecvMsgSize(8<<20),
 		grpc.MaxSendMsgSize(16<<20),
 	)
 	corev1.RegisterCoreControlServer(grpcServer, plane)
 	served := make(chan error, 1)
-	// The listener is handed to gRPC as it is: the peer rule lives in Accept, so
-	// the boundary is the same for the real service and for this test.
+	// Peer checks belong in Accept, matching the real service's transport
+	// boundary.
 	go func() { served <- grpcServer.Serve(listener) }()
 
 	connection, err := grpc.NewClient(
-		// The target is a placeholder: the transport is the local endpoint, and
-		// everything the client needs to reach it is in the dialer.
+		// The dialer selects the local endpoint; the gRPC target is
+		// unused.
 		"passthrough:///sora-core",
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			return ipc.Dial(ctx, address)
@@ -95,7 +88,6 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 	defer func() { _ = connection.Close() }()
 	client := corev1.NewCoreControlClient(connection)
 
-	// The handshake needs no token, which is what a client does first.
 	handshake, err := client.Handshake(ctx, &corev1.HandshakeRequest{
 		ClientVersion: clientVersion(),
 	})
@@ -109,8 +101,7 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Fatal("an admitted client must receive the token: it cannot read the token file of a system core")
 	}
 
-	// A client that is too old is refused, and it is refused in band: the answer
-	// tells it what the core speaks so it can update itself.
+	// Version failures must include the supported contract in the response.
 	stale, err := client.Handshake(ctx, &corev1.HandshakeRequest{
 		ClientVersion: &corev1.ApiVersion{Major: 1, Minor: 0},
 	})
@@ -132,9 +123,8 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Fatalf("Connect() error = %v", err)
 	}
 
-	// A wrong token is refused at the transport, before the plan is read and
-	// before the engine is started: a caller that cannot authenticate gets
-	// nothing, and the running session is left alone.
+	// Reject bad tokens before reading the plan or starting an engine,
+	// leaving the current session unchanged.
 	refused, err := client.Connect(ctx, &corev1.ConnectRequest{
 		ApiVersion:           clientVersion(),
 		SessionPlan:          validPlan(t, store),
@@ -162,8 +152,7 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Fatal("the core did not name the session it started")
 	}
 
-	// A client that names another session is refused, which is the check that was
-	// missing when this test was written.
+	// Requests for another session must be rejected.
 	foreign, err := client.GetStatus(ctx, &corev1.GetStatusRequest{
 		ApiVersion: clientVersion(),
 		SessionId:  "s_not_the_running_one",
@@ -175,8 +164,7 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Errorf("a foreign session answered %v, want not found", foreign.GetError())
 	}
 
-	// The event stream starts with the history the client missed, and the first
-	// event a fresh client sees is the session coming up.
+	// A fresh stream must replay session startup before live events.
 	events, err := client.WatchEvents(ctx, &corev1.WatchEventsRequest{
 		ApiVersion: clientVersion(),
 		SessionId:  sessionID,
@@ -192,8 +180,7 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 		t.Errorf("the first event is %v, want a state change", event)
 	}
 
-	// An import over the same connection stores what it stores and answers with
-	// a plan whose references the store knows.
+	// Imported plans must reference credentials present in the store.
 	imported, err := client.ParseImport(ctx, &corev1.ParseImportRequest{
 		ApiVersion: clientVersion(),
 		RequestId:  "e2e-import",
@@ -236,8 +223,7 @@ func TestClientTalksToTheCoreOverTheTransport(t *testing.T) {
 	}
 }
 
-// testEndpointAddress returns an address for the endpoint that cannot collide with
-// a running core.
+// testEndpointAddress returns an endpoint address distinct from a running core.
 func testEndpointAddress(t *testing.T) string {
 	t.Helper()
 	if strings.HasPrefix(ipc.ListenAddress(), `\\.\pipe\`) {

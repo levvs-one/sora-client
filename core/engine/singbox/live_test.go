@@ -10,9 +10,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// TestLiveEngineLifecycle runs the real sing-box binary end to end: start,
-// controller handshake, groups, selection, counters, a new plan (which
-// restarts sing-box) and shutdown.
+// TestLiveEngineLifecycle checks startup, handshake, groups, selection,
+// counters, configuration restart, and shutdown with a real sing-box binary.
 func TestLiveEngineLifecycle(t *testing.T) {
 	path := os.Getenv(Prober.EnvVar)
 	if path == "" {

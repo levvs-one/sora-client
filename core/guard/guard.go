@@ -1,10 +1,6 @@
-// Package guard applies and reverts the system change a tunnel owns: the kill
-// switch.
-//
-// Everything here is written from one rule: the core may only change what it can
-// put back. A guard records what it armed and, on every exit path, lifts it
-// again. The kill switch is a firewall rule set with a name this package owns,
-// and it knows nothing about tunnels.
+// Package guard manages reversible kill-switch rules owned by the core. It
+// records armed state and restores it on every exit path; tunnel implementation
+// is separate.
 package guard
 
 import (
@@ -15,14 +11,10 @@ import (
 	"github.com/levvs-one/sora-client/core/session"
 )
 
-// Compile-time proof that the guard is the shape a session expects. A session that
-// stops compiling because of a change here is a change that would have broken the
-// tunnel lifecycle, and it should fail here rather than in a service.
 var _ session.Guard = (*Guard)(nil)
 
-// NoopFirewall is the firewall of a platform where the tunnel is owned by the
-// system rather than by a rule this process can add: the Android VpnService owns
-// its routes, and there is nothing to block or unblock from here.
+// NoopFirewall supports system-owned tunnels such as Android VpnService, where
+// this process has no firewall rules to manage.
 type NoopFirewall struct{}
 
 // Arm succeeds and reports that nothing is blocked.
@@ -44,26 +36,28 @@ type Firewall interface {
 	Armed(ctx context.Context) (bool, error)
 }
 
-// FirewallOptions says what a kill switch lets through besides the tunnel.
+// FirewallOptions configures kill-switch exemptions outside the tunnel.
 type FirewallOptions struct {
-	// EngineUID is the account the engines run as; Linux matches them by it.
+	// EngineUID is the account the engines run as; Linux matches them by
+	// it.
 	EngineUID int
-	// EnginesDir holds the engine executables; Windows matches them by file.
+	// EnginesDir holds the engine executables; Windows matches them by
+	// file.
 	EnginesDir string
-	// Bypass are the networks that stay reachable; empty means private space.
+	// Bypass are the networks that stay reachable; empty means private
+	// space.
 	Bypass []string
 }
 
-// Options says where the engine listens: a kill switch must keep the engine's
-// own ports open or the tunnel can never come back.
+// Options identifies engine listener ports that must stay reachable for tunnel
+// recovery.
 type Options struct {
 	// EnginePorts are the local ports the kill switch must never block.
 	EnginePorts []uint16
 }
 
-// Guard is the guard a session uses: it owns the kill switch and lifts it when
-// a session ends. The system proxy is not here: it belongs to the person signed
-// in, and the interface, which runs as that person, sets it.
+// Guard owns and restores the session kill switch. The system proxy belongs to
+// the signed-in user and is managed by the user UI.
 type Guard struct {
 	mu        sync.Mutex
 	firewall  Firewall
@@ -72,8 +66,8 @@ type Guard struct {
 	restoring bool
 }
 
-// New builds a guard over its firewall. A nil firewall is replaced by one that
-// does nothing, so a platform without one still gets a guard.
+// New creates a guard. Nil uses NoopFirewall for platforms without a
+// process-managed firewall.
 func New(opts Options, firewall Firewall) (*Guard, error) {
 	if len(opts.EnginePorts) == 0 {
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardFirewallFail,
@@ -116,8 +110,8 @@ func (g *Guard) Restore(ctx context.Context) error {
 
 	if g.applied.KillSwitch {
 		if err := g.firewall.Disarm(ctx); err != nil {
-			// The block is still in force: the guard keeps knowing it, so the
-			// next restore or the next session lifts it.
+			// Retain armed state after a failed restore so
+			// subsequent cleanup can retry.
 			return errs.Wrap(err, errs.CodeInternal, errs.KeyGuardRestoreFailed)
 		}
 	}

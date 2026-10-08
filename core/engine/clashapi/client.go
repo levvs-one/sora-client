@@ -1,7 +1,6 @@
-// Package clashapi is the client of the Clash compatible controller API that
-// both mihomo (external-controller) and sing-box (experimental.clash_api)
-// serve on the loopback interface. One client belongs to one running engine:
-// the address and the secret change with every start.
+// Package clashapi implements the Clash-compatible API used by mihomo and
+// sing-box. Each client belongs to one engine run, whose controller address and
+// secret change at startup.
 package clashapi
 
 import (
@@ -19,11 +18,11 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
-// MaxResponse bounds one controller response body. Answers are small by
-// contract; the cap stops a hung or hostile engine from exhausting memory.
+// MaxResponse limits controller bodies to prevent an unresponsive or hostile
+// engine from exhausting memory.
 const MaxResponse = 8 << 20
 
-// Controller errors the caller has to tell apart from transport noise.
+// Controller errors distinct from transport errors.
 var (
 	ErrUnauthorized = errors.New("clashapi: controller rejected the secret")
 	ErrNotFound     = errors.New("clashapi: controller has no such object")
@@ -34,8 +33,8 @@ var (
 
 // Client talks to one engine controller.
 type Client struct {
-	// host is what request URLs carry. Over a socket or a pipe it is a fixed
-	// name, because the dialer, not the URL, decides where the request goes.
+	// host supplies request URL authority; socket and pipe dialers select
+	// the actual destination.
 	host   string
 	secret string
 	http   *http.Client
@@ -47,9 +46,8 @@ const (
 	schemePipe = "pipe:"
 )
 
-// NewClient builds a controller client. addr is host:port, "unix:" followed by
-// a socket path, or "pipe:" followed by a Windows named pipe. timeout bounds
-// one request, not the lifetime of the client.
+// NewClient accepts host:port, unix:<path>, or pipe:<name>. timeout bounds each
+// request, not the client lifetime.
 func NewClient(addr, secret string, timeout time.Duration) *Client {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -83,9 +81,8 @@ type VersionInfo struct {
 	Version string `json:"version"`
 }
 
-// Version performs the handshake. The Meta flag is what separates mihomo from
-// the dead Clash it descends from, so a false value means Sora is pointed at
-// the wrong binary and every later call would fail in confusing ways.
+// Version performs the controller handshake. A false Meta flag identifies
+// legacy Clash rather than the required mihomo binary.
 func (c *Client) Version(ctx context.Context) (VersionInfo, error) {
 	var out VersionInfo
 	if err := c.call(ctx, http.MethodGet, "/version", nil, &out); err != nil {
@@ -156,9 +153,8 @@ func (c *Client) Delay(ctx context.Context, name, testURL string, timeout time.D
 	return time.Duration(out.Delay) * time.Millisecond, nil
 }
 
-// groupTypes maps the group type names the controller reports onto the names
-// the Sora contract uses. The API answers in CamelCase while configuration
-// files are written in lowercase, and both appear in the same conversation.
+// groupTypes maps controller CamelCase names to contract names; configuration
+// files use lowercase variants.
 var groupTypes = map[string]engine.GroupType{
 	"Selector":     engine.GroupSelect,
 	"URLTest":      engine.GroupURLTest,

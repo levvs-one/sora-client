@@ -11,9 +11,8 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// Nftables blocks or unblocks traffic that does not belong to the tunnel. On Linux
-// it is a table of this package's own, installed in the output hook and removed
-// again when the session ends.
+// Nftables manages a Linux output-hook table, removing it when the session
+// ends.
 type Nftables struct {
 	mu      sync.Mutex
 	uid     int
@@ -22,10 +21,8 @@ type Nftables struct {
 	armed   bool
 }
 
-// NewNftables returns a kill switch that allows the engine owned by uid and keeps
-// the given networks reachable. An empty bypass list falls back to private space,
-// because a kill switch that cuts a machine off from its own network is a bug, not
-// a strictness.
+// NewNftables permits engine traffic owned by uid and the supplied bypass
+// networks. Empty bypass uses private ranges to keep local resources reachable.
 func NewNftables(uid int, bypass []string) (*Nftables, error) {
 	if uid < 0 {
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyGuardFirewallFail,
@@ -37,8 +34,7 @@ func NewNftables(uid int, bypass []string) (*Nftables, error) {
 	return &Nftables{uid: uid, bypass: bypass, command: "nft"}, nil
 }
 
-// Arm installs the table. Arming twice replaces the table, so the state does not
-// depend on how many times the session asked for it.
+// Arm installs or replaces the table, making repeated calls idempotent.
 func (n *Nftables) Arm(ctx context.Context, _ []uint16) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -49,7 +45,7 @@ func (n *Nftables) Arm(ctx context.Context, _ []uint16) error {
 	return nil
 }
 
-// Disarm removes the table. Removing it twice is the same as removing it once.
+// Disarm removes the table and succeeds if already removed.
 func (n *Nftables) Disarm(ctx context.Context) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -70,25 +66,22 @@ func (n *Nftables) Armed(context.Context) (bool, error) {
 // Name identifies the implementation in a diagnostics line.
 func (n *Nftables) Name() string { return "nftables" }
 
-// apply feeds a ruleset to nft over standard input. The text goes through the pipe
-// rather than the command line because a ruleset is far longer than any command
-// line and because an argument list is visible to every process on the machine.
+// apply sends nft rules on stdin to avoid command-line length limits and
+// exposing rules in process arguments.
 func (n *Nftables) apply(ctx context.Context, ruleset string) error {
 	process := exec.CommandContext(ctx, n.command, "-f", "-") //nolint:gosec // n.command is the nft binary found at construction; the ruleset arrives on stdin
 	process.Stdin = strings.NewReader(ruleset)
 	output, err := process.CombinedOutput()
 	if err != nil {
-		// nft prints the reason on standard output; it names a table, a chain or a
-		// syntax position, none of which is a secret.
+		// nft output names table, chain, or syntax failures and
+		// contains no secrets.
 		return errs.Newf(errs.CodePermissionDenied, errs.KeyGuardFirewallFail,
 			"guard: nft refused the ruleset: %s", FirstLine(string(output)))
 	}
 	return nil
 }
 
-// PlatformFirewall returns the kill switch this platform has. Linux blocks traffic
-// with its own table; the other platforms are handled by the caller, because a
-// correct mechanism there is not the same problem.
+// PlatformFirewall returns the Linux nftables kill switch.
 func PlatformFirewall(opts FirewallOptions) (Firewall, error) {
 	return NewNftables(opts.EngineUID, opts.Bypass)
 }

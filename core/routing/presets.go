@@ -1,7 +1,5 @@
-// Package routing holds the routing presets a session can start from. A
-// preset is data: which destinations go direct, and that everything else goes
-// through the proxy. The rules the user writes come before the preset, so a
-// preset never overrides a choice the user made.
+// Package routing provides direct-destination presets with proxy fallback. User
+// rules precede presets and retain priority.
 package routing
 
 import (
@@ -18,20 +16,17 @@ type Preset struct {
 	Direct []engine.Rule
 }
 
-// Every geo rule here was checked against the databases Sora ships
-// (geosite.dat and geoip.dat of the pinned Xray build) and against the
-// SagerNet rule sets sing-box downloads. GeoIP rules never resolve a name:
-// resolving every domain only to learn whether its address is local would
-// send every visited name to the local resolver, which is exactly the
-// observation a tunnel exists to prevent.
+// Geo rules are checked against shipped Xray geoip.dat/geosite.dat and SagerNet
+// rule sets. GeoIP never resolves names, avoiding disclosure of visited domains
+// to local DNS.
 var presets = []Preset{
 	{ID: "global", Direct: []engine.Rule{
 		geoip("private"),
 	}},
 	{ID: "ru", Direct: []engine.Rule{
 		geoip("private"),
-		// Russian banks, government services and many shops refuse foreign
-		// addresses, so they are reached from the user's own network.
+		// Use direct routing for Russian banks, government services,
+		// and shops that reject foreign addresses.
 		geosite("category-gov-ru"), geosite("category-bank-ru"),
 		geosite("category-ru"), geosite("tld-ru"),
 		geosite("yandex"), geosite("vk"), geosite("mailru"),
@@ -65,28 +60,26 @@ func Presets() []Preset {
 	return out
 }
 
-// Options choose how a preset is applied.
+// Options configures preset application.
 type Options struct {
 	// Preset is a preset id; empty applies none.
 	Preset string
 	// ProxyTarget is the outbound or group the rest of the traffic goes to.
 	ProxyTarget string
-	// BlockAds rejects advertising and tracking domains before anything else.
+	// BlockAds rejects advertising and tracking domains before anything
+	// else.
 	BlockAds bool
 }
 
-// Apply returns the rules of a session: the user's rules first, untouched,
-// then the ad block, then the preset, then everything else to the proxy
-// target. A user rule that sends everything somewhere ends the list, since
-// nothing after it could match.
+// Apply preserves user rules, then adds ad blocking, preset rules, and proxy
+// fallback. A user catch-all ends the list because later rules cannot match.
 func Apply(user []engine.Rule, opts Options) ([]engine.Rule, error) {
 	out := slices.Clone(user)
 	if slices.ContainsFunc(user, func(r engine.Rule) bool { return r.Type == engine.RuleMatchAll }) {
 		return out, nil
 	}
-	// A plan that names a target sends the rest there even without a preset:
-	// without a final rule every engine goes direct, which for a person who
-	// picked a server is traffic outside the tunnel.
+	// Add proxy fallback even without a preset because engines otherwise
+	// send unmatched traffic directly.
 	if opts.Preset == "" && !opts.BlockAds && opts.ProxyTarget == "" {
 		return out, nil
 	}

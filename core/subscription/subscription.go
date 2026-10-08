@@ -1,16 +1,6 @@
-// Package subscription retrieves a subscription body by reference.
-//
-// The reference is a bearer token: whoever holds the link holds the subscription.
-// That single fact decides every rule in this package. The link is only ever sent
-// over https, because a plain http request hands the token to every network on the
-// way. Redirects are followed, but each hop is checked again and the number is
-// bounded, because a redirect is the one way a provider can move a token somewhere
-// it should not go. The body is capped, because a provider that answers with an
-// endless stream must not be able to fill the disk of a laptop.
-//
-// Nothing is cached. A subscription body is a list of credentials, and a cache
-// would be a second place where those credentials live, on a disk, with no
-// benefit: a subscription is fetched when a user asks for it.
+// Package subscription fetches bearer-token references over HTTPS only. Every
+// redirect is validated and counted; bodies are size-limited. Responses contain
+// credentials and are never cached on disk.
 package subscription
 
 import (
@@ -27,38 +17,35 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// Defaults of one retrieval. They are chosen for a provider on the other side of
-// the world, on a connection the user already has, and they are still bounded: a
-// fetch that has not answered in half a minute is a failure the user should see.
+// Default retrieval limits allow distant providers while bounding total fetch
+// time to half a minute.
 const (
 	// DefaultTimeout bounds one retrieval, redirects included.
 	DefaultTimeout = 30 * time.Second
-	// MaxRedirects bounds how far a provider may lead the token.
+	// MaxRedirects limits validated redirect hops carrying the bearer
+	// reference.
 	MaxRedirects = 5
-	// MaxBodyBytes is the largest body accepted. It matches the import limit, so a
-	// body that passes this check can always be parsed.
+	// MaxBodyBytes matches the import size limit, allowing accepted bodies
+	// to reach parsing.
 	MaxBodyBytes = 16 << 20
-	// UserAgent identifies the client honestly when a subscription names no
-	// other. It does not imitate a browser, because a provider that needs to
-	// treat Sora differently must be able to.
+	// UserAgent identifies Sora when no override is set, allowing
+	// provider-specific handling without browser impersonation.
 	UserAgent = "sora-core/1 (+https://github.com/levvs-one/sora-client)"
 	// MaxUserAgent bounds the User-Agent a subscription may set.
 	MaxUserAgent = 256
 )
 
-// FetchOptions are the settings of one subscription.
+// FetchOptions configures one subscription retrieval.
 type FetchOptions struct {
-	// UserAgent replaces the default. Panels choose the format of the answer by
-	// it, so a subscription made for one client sometimes needs that client's
-	// name to answer with a list Sora can read.
+	// UserAgent overrides the default because panels may choose
+	// client-specific subscription formats.
 	UserAgent string
 }
 
 // Result is one retrieved subscription.
 type Result struct {
 	Body []byte
-	// Info is what the provider said about the subscription in its headers
-	// or in the comment lines at the top of the body.
+	// Info contains provider response headers and leading body metadata.
 	Info Info
 }
 
@@ -66,13 +53,13 @@ type Result struct {
 type Options struct {
 	// Timeout bounds one retrieval.
 	Timeout time.Duration
-	// MaxRedirects bounds how far a provider may lead the token.
+	// MaxRedirects limits redirect hops carrying the bearer reference.
 	MaxRedirects int
 	// MaxBodyBytes is the largest body accepted.
 	MaxBodyBytes int
-	// HTTPClient retrieves the body. A nil client means one that verifies
-	// certificates and never follows a redirect on its own. Tests inject a client
-	// that trusts a local server; nothing else may.
+	// HTTPClient performs requests. Nil verifies certificates and leaves
+	// redirects to this package. Only tests may inject a client trusting a
+	// local test server.
 	HTTPClient *http.Client
 }
 
@@ -98,8 +85,8 @@ func New(opts Options) *Fetcher {
 	client := opts.HTTPClient
 	if client == nil {
 		client = &http.Client{
-			// Redirects are followed by this package, not by the client, because
-			// each hop has to be checked and counted here.
+			// Handle redirects here so every hop is validated and
+			// counted.
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -123,12 +110,9 @@ func New(opts Options) *Fetcher {
 	}
 }
 
-// Fetch retrieves the body behind a reference.
-//
-// The steps are the same on every hop: the scheme must be https, the hop count
-// must be inside the budget, and the body must fit. A failure at any of them stops
-// the retrieval, and the detail of a failure never quotes the reference, because
-// the reference is the credential.
+// Fetch validates HTTPS and redirect limits on every hop and bounds the body.
+// Failures stop retrieval without including the bearer reference in error
+// details.
 func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions) (Result, error) {
 	agent, err := UserAgentFor(opts.UserAgent)
 	if err != nil {
@@ -154,9 +138,8 @@ func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions
 		if location == "" {
 			return Result{Body: body, Info: parseInfo(header, body)}, nil
 		}
-		// A redirect may be relative, which the standards allow and providers use.
-		// It is resolved against the url it came from, so a hop that stays on the
-		// same host does not have to spell the host out again.
+		// Resolve relative redirects against the response URL, as
+		// allowed by HTTP standards.
 		moved, err := url.Parse(location)
 		if err != nil {
 			return Result{}, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionRedirect,
@@ -169,20 +152,19 @@ func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions
 	}
 }
 
-// hop performs one request and reports either the body with its headers or
-// where the provider sent the token next.
+// hop returns one response's body and headers or its redirect target.
 func (f *Fetcher) hop(ctx context.Context, target *url.URL, agent string) ([]byte, http.Header, string, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		// The error of this call quotes the url, which is the token. It is replaced
-		// by a line that names the reason and nothing else.
+		// HTTP errors include bearer URLs; rebuild details using only
+		// the cause.
 		return nil, nil, "", errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
 			"subscription: the reference is not a url this client can request")
 	}
 	request.Header.Set("User-Agent", agent)
 	request.Header.Set("Accept", "text/plain, application/octet-stream, */*")
-	// A provider that answers with a compressed body must not be able to expand it
-	// into something larger than the limit below.
+	// Bound decompressed size so compressed responses cannot exceed the
+	// body limit.
 	request.Header.Set("Accept-Encoding", "identity")
 
 	response, err := f.client.Do(request)
@@ -190,9 +172,8 @@ func (f *Fetcher) hop(ctx context.Context, target *url.URL, agent string) ([]byt
 		return nil, nil, "", errs.From(err)
 	}
 	defer func() {
-		// The body is drained and closed so the connection can be reused, and the
-		// drain is bounded: a provider that keeps sending must not hold a goroutine
-		// and a socket after the answer has already been refused.
+		// Drain and close for connection reuse, but bound draining so
+		// rejected responses cannot retain sockets indefinitely.
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, drainLimit))
 		_ = response.Body.Close()
 	}()
@@ -203,9 +184,8 @@ func (f *Fetcher) hop(ctx context.Context, target *url.URL, agent string) ([]byt
 	if response.StatusCode != http.StatusOK {
 		failure := errs.Newf(errs.CodeUnavailable, errs.KeySubscriptionStatus,
 			"subscription: the provider answered %d", response.StatusCode)
-		// A provider that is busy or broken may answer differently in a moment, so
-		// the caller is told to try again. A provider that refused this token will
-		// refuse it again, and a retry would only hide that from the user.
+		// Retry transient provider failures; rejected tokens need user
+		// action and must not be retried.
 		if response.StatusCode >= http.StatusInternalServerError ||
 			response.StatusCode == http.StatusTooManyRequests {
 			return nil, nil, "", failure.WithRetry(0)
@@ -232,13 +212,11 @@ func (f *Fetcher) hop(ctx context.Context, target *url.URL, agent string) ([]byt
 	return body, response.Header, "", nil
 }
 
-// drainLimit is how much of an unwanted body is read so the connection can be
-// returned to the pool. Anything larger is left on the socket, which is cheaper
-// than reading a body nobody wants.
+// drainLimit bounds unwanted body reads for connection reuse. Larger bodies
+// discard the connection instead of wasting reads.
 const drainLimit = 4 << 10
 
-// redirectTarget reports where the provider wants the request to go, or an empty
-// string when this is a final answer.
+// redirectTarget returns the next URL or empty for a final response.
 func redirectTarget(response *http.Response) string {
 	switch response.StatusCode {
 	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
@@ -249,9 +227,8 @@ func redirectTarget(response *http.Response) string {
 	return response.Header.Get("Location")
 }
 
-// ValidateReference checks a reference and returns it parsed. Plain http is
-// refused: the reference is a credential, and a credential sent in clear is a
-// credential that has to be rotated afterwards.
+// ValidateReference parses HTTPS references and rejects HTTP to avoid sending
+// bearer tokens in cleartext.
 func ValidateReference(reference string) (*url.URL, error) {
 	trimmed := strings.TrimSpace(reference)
 	if trimmed == "" {
@@ -264,8 +241,8 @@ func ValidateReference(reference string) (*url.URL, error) {
 			"subscription: the reference is not a url")
 	}
 	if parsed.User != nil {
-		// Credentials inside the url are a second secret in the same string, and
-		// they would follow it into every log line that mentions the reference.
+		// Reject URL user info to avoid additional credentials in
+		// reference strings and logs.
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeySubscriptionScheme,
 			"subscription: the reference carries credentials of its own")
 	}
@@ -285,9 +262,8 @@ func ValidateReference(reference string) (*url.URL, error) {
 	return parsed, nil
 }
 
-// UserAgentFor checks the User-Agent a subscription asked for and answers the
-// one to send. A line break would
-// let a subscription setting inject a header into the request.
+// UserAgentFor validates an override or returns the default. Line breaks are
+// rejected to prevent header injection.
 func UserAgentFor(asked string) (string, error) {
 	trimmed := strings.TrimSpace(asked)
 	if trimmed == "" {
@@ -306,10 +282,9 @@ func UserAgentFor(asked string) (string, error) {
 	return trimmed, nil
 }
 
-// privateKey marks a fetch whose subscription lives on this machine or its
-// local network, which may then be dialled. A panel at home is a real setup;
-// a provider on the internet redirecting the service to a local address is
-// not, and is refused.
+// privateKey permits private destinations only for initially local
+// subscriptions. Internet providers cannot redirect the service into local
+// networks.
 type privateKey struct{}
 
 // isPrivateHost reports whether host is, or resolves to, an address that is
@@ -335,10 +310,8 @@ func publicAddr(addr netip.Addr) bool {
 	return addr.IsGlobalUnicast() && !addr.IsPrivate()
 }
 
-// dialChecked dials like the standard transport, but refuses an address that
-// is not on the internet unless the subscription itself is local. The check is
-// on the address actually dialled, after DNS, so a name that resolves to the
-// internet first and to a local address later does not get through.
+// dialChecked rejects private resolved addresses unless the subscription is
+// local. Checking the actual dial target after DNS prevents rebinding bypasses.
 func dialChecked(ctx context.Context, network, address string) (net.Conn, error) {
 	allowPrivate, _ := ctx.Value(privateKey{}).(bool)
 	dialer := &net.Dialer{
@@ -350,7 +323,7 @@ func dialChecked(ctx context.Context, network, address string) (net.Conn, error)
 	return dialer.DialContext(ctx, network, address)
 }
 
-// checkDial is the rule of dialChecked for one resolved address.
+// checkDial validates one resolved address using dialChecked's policy.
 func checkDial(allowPrivate bool, address string) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {

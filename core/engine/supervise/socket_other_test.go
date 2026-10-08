@@ -24,7 +24,7 @@ func TestControlSocketFallsBackToAPrivateShortDirectory(t *testing.T) {
 		t.Fatalf("socket directory must be owner-only: %v %v", info, err)
 	}
 
-	// A directory someone else prepared, here with the wrong mode, is refused.
+	// Reject pre-created directories with unsafe permissions.
 	if err := os.Chmod(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}

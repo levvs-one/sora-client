@@ -14,46 +14,25 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// pipeName is the name of the control endpoint. The version is part of the name so
-// that an old interface and a new core cannot meet halfway through an upgrade and
-// disagree about the contract.
+// pipeName includes the API version to keep incompatible clients and cores
+// separate during upgrades.
 const pipeName = `\\.\pipe\sora-core-v1`
 
-// ListenAddress is where the core listens on this platform.
+// ListenAddress is the platform's core endpoint address.
 func ListenAddress() string { return pipeName }
 
-// pipeSecurityDescriptor builds the access list of the pipe: the local system,
-// the administrators, the account this core runs as, and the person signed in at
-// the machine. Everyone else (services, network logons, other sessions' batch
-// jobs) is refused by the kernel before a single byte of the protocol is read.
-//
-// The interactive users are what lets the interface in at all: the core runs as
-// LocalSystem, and the person's token under UAC carries the administrators group
-// as deny-only, so without them nobody at the machine could connect. They get
-// read, write and attributes (0x0012018B) and not GENERIC_WRITE: for a pipe
-// that would include FILE_CREATE_PIPE_INSTANCE, and anyone signed in could
-// then serve instances of this pipe to the app. Which of them may talk to the
-// core is decided per connection, see peerOf.
-//
-// The descriptor is assembled from the process token rather than written out as a
-// constant. The string that circulates for named pipes and ends up in many
-// projects is
-//
-//	D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;CO)
-//
-// and it does not work: the creator owner of a named pipe is not resolved by the
-// kernel in the access list, so the only account that may connect is nobody and
-// every call is refused with "access is denied". The same string without the
-// protected flag is rejected outright by the converter. Naming the real account of
-// this process is the version that works, and it is measured rather than assumed.
+// pipeSecurityDescriptor grants SYSTEM, admins, process SID, and interactive
+// users access, including UAC deny-only admins. Mask 0x0012018B excludes
+// pipe-instance creation; peerOf restricts sessions.
 func pipeSecurityDescriptor() (string, error) {
 	token := windows.Token(0) //nolint:gosec // the token of this process, opened for querying
 	if err := windows.OpenProcessToken(windows.CurrentProcess(), windows.TOKEN_QUERY, &token); err != nil {
 		return "", errs.Wrap(err, errs.CodeInternal, errs.KeyPermissionDenied)
 	}
 	defer func() { _ = token.Close() }()
-	// TOKEN_USER ends in a variable length security identifier, so the buffer is
-	// sized generously and the structure is read back out of it.
+	// TOKEN_USER has a variable-length SID. Use the actual SID: named-pipe
+	// ACLs do not resolve creator-owner (CO), and an unprotected CO
+	// descriptor is rejected by conversion.
 	const capacity = 1024
 	var returned uint32
 	buffer := make([]byte, capacity)
@@ -68,9 +47,8 @@ func pipeSecurityDescriptor() (string, error) {
 	return "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;" + entry.User.Sid.String() + ")(A;;0x0012018B;;;IU)", nil
 }
 
-// listenLocal opens a named pipe. A pipe has no leftover to remove: it exists only
-// while a process holds it, so a crashed core leaves nothing behind for a person to
-// clean up.
+// listenLocal opens a named pipe. Process-owned pipes disappear on exit, so no
+// stale endpoint cleanup is needed.
 func listenLocal(address string, _ Options) (net.Listener, error) {
 	descriptor, err := pipeSecurityDescriptor()
 	if err != nil {
@@ -88,9 +66,7 @@ func listenLocal(address string, _ Options) (net.Listener, error) {
 	return listener, nil
 }
 
-// dialLocal opens a client connection to a named pipe. The context carries the
-// deadline, so a client that cannot reach a core that is not running fails in a
-// few seconds instead of hanging on a pipe that will never answer.
+// dialLocal opens a named-pipe connection within the context deadline.
 func dialLocal(ctx context.Context, address string) (net.Conn, error) {
 	connection, err := winio.DialPipeContext(ctx, address)
 	if err != nil {
@@ -99,10 +75,9 @@ func dialLocal(ctx context.Context, address string) (net.Conn, error) {
 	return connection, nil
 }
 
-// peerOf asks the kernel which process opened the pipe and whether it belongs
-// to the person at the machine: a process in the active session, or one with
-// administrator rights. A second person signed in on the same computer, in a
-// session that is not the active one, is not let in, as on Linux.
+// peerOf obtains the client process from the kernel and admits active-session
+// or administrator processes. Inactive user sessions are rejected, matching
+// Linux policy.
 func peerOf(connection net.Conn) Peer {
 	pipe, ok := connection.(interface{ Fd() uintptr })
 	if !ok {
@@ -136,7 +111,7 @@ func peerOf(connection net.Conn) Peer {
 	return Peer{PID: int(pid), Verified: true, Present: present, Detail: "pid " + strconv.Itoa(int(pid))}
 }
 
-// sessionActive reports whether the session is the one a person is using now.
+// sessionActive reports whether a Windows session is active.
 func sessionActive(id uint32) bool {
 	var sessions *windows.WTS_SESSION_INFO
 	var count uint32
@@ -152,7 +127,7 @@ func sessionActive(id uint32) bool {
 	return false
 }
 
-// defaultAllow lets in the person at the machine, see peerOf.
+// defaultAllow admits active-session or administrator peers; see peerOf.
 func defaultAllow(Options) func(Peer) bool {
 	return func(p Peer) bool { return p.Verified && p.Present }
 }

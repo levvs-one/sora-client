@@ -1,37 +1,32 @@
-// Package mihomo drives MetaCubeX/mihomo as an engine of Sora.
-//
-// Sora never links mihomo as a library. mihomo is GPL-3.0 software shipped as
-// its own binary and driven over its local controller API. That keeps the
-// license boundary clean, keeps an engine crash from taking the core service
-// down with it, and lets Sora update the engine without a rebuild.
-//
-// Render turns an engine.Plan into the YAML mihomo reads, and the client of
-// package clashapi talks to the external controller bound to the loopback
-// interface only.
+// Package mihomo drives MetaCubeX/mihomo through its local Clash API. The
+// GPL-3.0 engine remains a separate binary for license separation, crash
+// isolation, and independent updates. Render produces its YAML configuration.
 package mihomo
 
 // Ports and limits used when Sora starts one engine process.
 const (
-	// MaxConfigBytes bounds the rendered config before it reaches the engine.
+	// MaxConfigBytes bounds the rendered config before it reaches the
+	// engine.
 	MaxConfigBytes = 8 << 20
 )
 
-// Default geodata sources for the automatic update. Sora runs mihomo in
-// geodata mode, so both are .dat files, the format Xray reads as well.
+// Shipped geodata uses geoip.dat and geosite.dat, also read by Xray; these
+// sources support automatic updates.
 const (
 	GeoSiteDefaultURL = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
 	GeoIPDefaultURL   = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
 )
 
-// Runtime holds the values the supervisor chooses for one run. They are
-// separate from the plan because one plan is applied many times.
+// Runtime holds supervisor-selected values for one engine run, separate from
+// the reusable plan.
 type Runtime struct {
 	// HomeDir is passed as -d. mihomo resolves relative paths against it.
 	HomeDir string
-	// ControllerAddr is host:port of the loopback controller, e.g. 127.0.0.1:23456.
+	// ControllerAddr is host:port of the loopback controller, e.g.
+	// 127.0.0.1:23456.
 	ControllerAddr string
-	// Secret authorizes the controller API. mihomo accepts an empty secret,
-	// Sora never does: a loopback port is reachable by every local user.
+	// Secret authorizes controller requests. Sora requires it because all
+	// local users can reach loopback ports.
 	Secret string
 	// MixedPort is the local http+socks listener, opened only when the plan
 	// asks for a local proxy.
@@ -40,9 +35,8 @@ type Runtime struct {
 	TestURL string
 }
 
-// config is the root of the YAML mihomo reads. Only mihomo keys appear here,
-// and an unset key is left out rather than written empty: mihomo reads some
-// empty values as explicit settings.
+// config models mihomo YAML. Unset keys are omitted because some empty values
+// are explicit settings upstream.
 type config struct {
 	MixedPort          int                      `yaml:"mixed-port"`
 	AllowLAN           bool                     `yaml:"allow-lan"`
@@ -79,9 +73,8 @@ type profile struct {
 	StoreFakeIP   bool `yaml:"store-fake-ip"`
 }
 
-// proxy is one mihomo proxy entry. mihomo documents name, type, server and
-// port as required; everything else is protocol specific and omitted when
-// empty.
+// proxy models a mihomo entry. Name, type, server, and port are required; empty
+// protocol-specific fields are omitted.
 type proxy struct {
 	Name   string `yaml:"name"`
 	Type   string `yaml:"type"`
@@ -107,8 +100,8 @@ type proxy struct {
 	ProtocolParam string `yaml:"protocol-param,omitempty"`
 	TLS           *bool  `yaml:"tls,omitempty"`
 
-	// Transport options are nested per transport. mihomo ignores keys it
-	// does not know, so a flat key that looks right is silently dropped.
+	// Network selects the stream transport. Its options must be nested
+	// because mihomo silently ignores unknown flat keys.
 	Network    string     `yaml:"network,omitempty"`
 	WSOpts     *wsOpts    `yaml:"ws-opts,omitempty"`
 	GRPCOpts   *grpcOpts  `yaml:"grpc-opts,omitempty"`
@@ -184,8 +177,8 @@ type reality struct {
 	ShortID   string `yaml:"short-id,omitempty"`
 }
 
-// proxyGroup is one selectable group. Interval is in seconds and Timeout is
-// in milliseconds, exactly as mihomo documents them.
+// proxyGroup models a selectable group. Interval uses seconds and Timeout uses
+// milliseconds, per mihomo.
 type proxyGroup struct {
 	Name            string   `yaml:"name"`
 	Type            string   `yaml:"type"`
@@ -247,8 +240,8 @@ type dnsConfig struct {
 	DirectNameserver      []string            `yaml:"direct-nameserver,omitempty"`
 }
 
-// tunConfig is the mihomo tun block. Stack defaults to gvisor upstream; Sora
-// asks for mixed unless the caller needs the system stack.
+// tunConfig models the TUN block. Upstream defaults to gvisor; Sora uses mixed
+// unless the plan requests system.
 type tunConfig struct {
 	Enable              bool     `yaml:"enable"`
 	Stack               string   `yaml:"stack,omitempty"`

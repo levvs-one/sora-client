@@ -10,8 +10,8 @@ import (
 	"github.com/levvs-one/sora-client/core/session"
 )
 
-// memoryFirewall is a firewall that records whether it was armed, so the guard
-// can be tested without changing the machine running the tests.
+// memoryFirewall records armed state for tests without modifying the host
+// firewall.
 type memoryFirewall struct {
 	armed   bool
 	arms    int

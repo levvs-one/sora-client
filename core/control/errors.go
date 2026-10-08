@@ -13,18 +13,12 @@ import (
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 )
 
-// The control plane reports failures in two places, and the split is deliberate.
-//
-// A failure the caller can act on is returned inside the response, in SoraError:
-// the interface already holds that response and reads the key from it. A failure
-// of the connection itself is returned as a gRPC status: a caller that cannot
-// authenticate, cannot speak the contract, or was cancelled never gets far enough
-// to read a field. Mixing the two is what makes a client write two error paths,
-// so the rule is: domain failures in band, transport failures as a status.
+// Domain failures use SoraError responses. Authentication, version, and
+// cancellation failures use gRPC status because the caller cannot use a normal
+// response.
 
-// wireCodes maps a catalog class onto the error code of the contract. The two
-// sets are not identical and were not meant to be: the contract speaks to every
-// client, the catalog speaks to this implementation.
+// wireCodes maps implementation error classes to the client contract's error
+// codes.
 var wireCodes = map[errs.Code]corev1.SoraErrorCode{
 	errs.CodeVersionMismatch:    corev1.SoraErrorCode_SORA_ERROR_CODE_VERSION_MISMATCH,
 	errs.CodeUnauthenticated:    corev1.SoraErrorCode_SORA_ERROR_CODE_UNAUTHENTICATED,
@@ -42,9 +36,8 @@ var wireCodes = map[errs.Code]corev1.SoraErrorCode{
 	errs.CodeInternal:           corev1.SoraErrorCode_SORA_ERROR_CODE_INTERNAL,
 }
 
-// statusCodes maps a catalog class onto a transport status. Only the classes
-// that describe the connection itself get a status; everything else stays in the
-// response, so a client does not have to parse a status to show a message.
+// statusCodes maps connection errors to gRPC status codes. Domain errors stay
+// in responses.
 var statusCodes = map[errs.Code]codes.Code{
 	errs.CodeVersionMismatch:  codes.FailedPrecondition,
 	errs.CodeUnauthenticated:  codes.Unauthenticated,
@@ -55,17 +48,15 @@ var statusCodes = map[errs.Code]codes.Code{
 	errs.CodeInternal:         codes.Internal,
 }
 
-// transportOnly lists the classes that are never returned inside a response,
-// because nobody who could act on it would ever read that response.
+// transportOnly lists errors returned exclusively as gRPC statuses.
 var transportOnly = map[errs.Code]struct{}{
 	errs.CodeUnauthenticated:  {},
 	errs.CodePermissionDenied: {},
 	errs.CodeVersionMismatch:  {},
 }
 
-// toWire renders err as the error message of the contract. The detail is masked
-// first: the core decides what may leave the process, and the control plane is
-// the last place where that decision can still be enforced.
+// toWire converts an error to SoraError and masks its detail before it leaves
+// the core.
 func toWire(err error, mask func(string) string, requestID string) *corev1.SoraError {
 	if err == nil {
 		return nil
@@ -79,8 +70,8 @@ func toWire(err error, mask func(string) string, requestID string) *corev1.SoraE
 	if mask != nil {
 		detail = mask(detail)
 	}
-	// An empty key would leave the interface with nothing to translate, so a
-	// failure that lost its key falls back to the generic internal line.
+	// Use the generic internal key when no translatable error key is
+	// available.
 	key := string(classified.Key())
 	if key == "" {
 		key = string(errs.KeyInternal)
@@ -95,8 +86,8 @@ func toWire(err error, mask func(string) string, requestID string) *corev1.SoraE
 	}
 }
 
-// transportStatus renders err as a gRPC status, or nil when the failure belongs
-// inside the response instead.
+// transportStatus returns a gRPC status for transport errors and nil for domain
+// errors.
 func transportStatus(err error) error {
 	if err == nil {
 		return nil
@@ -109,14 +100,12 @@ func transportStatus(err error) error {
 	if !ok {
 		code = codes.Unknown
 	}
-	// The status text names the class and the key, never the detail: a status
-	// line is written to access logs that nobody masks.
+	// Status text excludes details because access logs may not redact them.
 	return status.Error(code, string(classified.Code())+" "+string(classified.Key()))
 }
 
-// durationOrNil renders a delay, or nothing when there is none. A zero duration
-// in the contract would read as "retry immediately", which is never what the core
-// means when it has no opinion.
+// durationOrNil returns a wire delay or nil when unset. Zero would incorrectly
+// request an immediate retry.
 func durationOrNil(d time.Duration) *durationpb.Duration {
 	if d <= 0 {
 		return nil
@@ -124,7 +113,7 @@ func durationOrNil(d time.Duration) *durationpb.Duration {
 	return durationpb.New(d)
 }
 
-// timestampOrNil renders a moment, or nothing when there is none.
+// timestampOrNil returns a wire timestamp or nil when unset.
 func timestampOrNil(at time.Time) *timestamppb.Timestamp {
 	if at.IsZero() {
 		return nil
@@ -132,10 +121,8 @@ func timestampOrNil(at time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(at)
 }
 
-// counter narrows a non-negative counter to the width of the contract field.
-// The conversion is guarded rather than asserted: a counter that somehow arrived
-// negative would otherwise become a number near the top of the range, and a
-// client would show an impossible value instead of a wrong one.
+// counter clamps non-negative counters to the wire field's range. Negative
+// values become zero instead of overflowing.
 func counter(value int) uint64 {
 	if value <= 0 {
 		return 0
@@ -143,13 +130,13 @@ func counter(value int) uint64 {
 	return uint64(value) //nolint:gosec // guarded above, so the value cannot be negative
 }
 
-// latency narrows a measured delay for the contract field, which is in
-// milliseconds and cannot hold a negative value.
+// latency converts a delay to non-negative milliseconds for the wire field.
 func latency(value int) uint32 {
 	if value <= 0 {
 		return 0
 	}
-	// Compared as int64: on a 32-bit platform an int never exceeds the limit
+	// Compared as int64: on a 32-bit platform an int never exceeds the
+	// limit
 	// and the constant does not fit in an int.
 	if int64(value) > math.MaxUint32 {
 		return math.MaxUint32

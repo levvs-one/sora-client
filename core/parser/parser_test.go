@@ -7,8 +7,7 @@ import (
 )
 
 func TestParseLinks(t *testing.T) {
-	// The protocol is the engine's name for it, whatever the scheme of the
-	// link, and the security says what the link meant when it did not say.
+	// Normalize schemes and apply protocol-specific security defaults.
 	tests := []struct{ name, input, protocol, security string }{
 		{"vless", "vless://123e4567-e89b-12d3-a456-426614174000@example.com:443?security=tls&type=ws&path=%2F#🇩🇪%20Berlin", "vless", "tls"},
 		{"vless plain", "vless://123e4567-e89b-12d3-a456-426614174000@example.com:443", "vless", "none"},
@@ -78,8 +77,8 @@ func BenchmarkParseBase64Subscription(b *testing.B) {
 	}
 }
 
-// A JSON subscription of whole Xray configurations, the shape Remnawave serves
-// to advanced clients, becomes one profile per configuration.
+// TestXrayConfigurationsBecomeProfiles checks one profile per configuration in
+// Remnawave-style subscription lists.
 func TestXrayConfigurationsBecomeProfiles(t *testing.T) {
 	config := func(name string) string {
 		return `{"remarks":"` + name + `","inbounds":[{"listen":"127.0.0.1","port":10808,"protocol":"socks"}],

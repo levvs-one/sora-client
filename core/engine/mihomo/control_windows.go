@@ -9,9 +9,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// ControlAddress puts the controller on a named pipe with an unguessable name,
-// so no application finds a port that answers. The controller secret still
-// guards every request.
+// ControlAddress uses an unguessable named pipe to avoid discoverable
+// controller ports. The secret still authenticates requests.
 func (driver) ControlAddress(supervise.Runtime, bool) (string, error) {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {

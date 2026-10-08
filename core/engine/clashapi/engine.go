@@ -9,9 +9,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// Engine is a supervised engine controlled over the Clash API: the lifecycle
-// comes from the supervisor, groups, selection, latency and counters from the
-// controller of the running process.
+// Engine combines supervisor lifecycle management with Clash API groups,
+// selection, latency, and counters.
 type Engine struct {
 	*supervise.Supervisor
 
@@ -75,9 +74,8 @@ func (e *Engine) Delay(ctx context.Context, name, testURL string, timeout time.D
 	return d, e.Redactor().Err(err)
 }
 
-// Counters returns the traffic counters of the running session. When the
-// controller is briefly unreachable the last known value is returned together
-// with the error, so the interface keeps its chart instead of dropping to zero.
+// Counters returns session traffic totals. Controller failures include the last
+// known totals to avoid resetting client charts to zero.
 func (e *Engine) Counters(ctx context.Context) (engine.Counters, error) {
 	c, err := e.api()
 	if err != nil {
@@ -103,8 +101,7 @@ func (e *Engine) Connections(ctx context.Context) ([]engine.Connection, error) {
 	if err != nil {
 		return nil, e.Redactor().Err(err)
 	}
-	// The engine names a chain by its own names; the interface knows the
-	// plan's, so it can show the server a person picked by the name they see.
+	// Translate engine chain names to plan names for client display.
 	if names := e.PlanNames(); names != nil {
 		for i := range list {
 			for j, hop := range list[i].Chain {

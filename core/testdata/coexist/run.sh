@@ -142,6 +142,30 @@ regressions() {
     probe=("$work/probe" "$casework/core.sock")
     "${probe[@]}" connect "$engine" tun kill > "$casework/connect.log"
     snapshot "$casework/connected"
+    ip -j addr show dev sora0 > "$casework/connected-addresses"
+    # A duplicate service and diagnostic invocations must leave live routing
+    # and addresses intact, even with a distinct data directory.
+    if [[ -z ${SORA_COEXIST_CORE:-} ]]; then
+        if timeout 10 "$work/sora-core" -socket "$casework/core.sock" -data-dir "$casework/second-data" \
+            -engines-dir "$engines" -allow-file-keys > "$casework/second-start.log" 2>&1; then
+            echo "Second service start unexpectedly succeeded"
+            return 1
+        fi
+        grep -q 'another instance owns' "$casework/second-start.log"
+        for diagnostic in check version print-token; do
+            "$work/sora-core" -"$diagnostic" -socket "$casework/core.sock" -data-dir "$casework/data" \
+                -engines-dir "$engines" -allow-file-keys > /dev/null
+        done
+        snapshot "$casework/diagnosed"
+        for family in 4 6; do
+            cmp "$casework/connected-rules$family" "$casework/diagnosed-rules$family"
+            cmp "$casework/connected-routes$family" "$casework/diagnosed-routes$family"
+        done
+        ip -j addr show dev sora0 > "$casework/diagnosed-addresses"
+        cmp "$casework/connected-addresses" "$casework/diagnosed-addresses"
+        if [[ $other == none ]]; then request "$engine-startup-preserved-$other"; fi
+        printf '%s\tstartup-preserved\t%s\tPASS\n' "$engine" "$other" | tee -a "$work/results.tsv"
+    fi
     nft list ruleset > "$casework/firewall"
     result=PASS
     for transport in udp tcp; do
@@ -164,8 +188,8 @@ regressions() {
     for _ in {1..50}; do ip link show sora0 > /dev/null 2>&1 || break; sleep .1; done
     result=PASS
     if ip link show sora0 > /dev/null 2>&1; then result=FAIL; fi
-    observe "ip daddr { $fake, $peer }"
-    for destination in "$fake" "$peer"; do
+    observe "ip daddr { $fake, $peer, 172.19.0.5 }"
+    for destination in "$fake" "$peer" 172.19.0.5; do
         setpriv --reuid 1000 --regid 1000 --clear-groups curl --noproxy '*' --max-time 1 "http://$destination:8080/" > /dev/null 2>&1 || true
         # Even the otherwise exempt engine UID must not release cached tunnel
         # destinations through the physical interface.
@@ -231,12 +255,16 @@ if [[ -z ${SORA_COEXIST_CORE:-} ]]; then
     ip link set sora0 up
     ip addr add 100.64.0.1/32 dev sora0
     ip route add 203.0.113.1/32 via 192.168.0.1 table 2022
+    for family in 4 6; do
+        ip -"$family" rule add fwmark 0x7000 oif uplink lookup main priority 5333 protocol 99
+        ip -"$family" rule add fwmark 0x7001 oif lo lookup main priority 5333 protocol 2
+        ip -"$family" rule add oif lo lookup main priority 5333 protocol 2
+    done
     snapshot "$casework/before"
     ip addr add 172.20.0.1/30 dev sora0
     ip -6 addr add fdfe:dcba:9877::1/126 dev sora0 nodad
     for family in 4 6; do
-        ip -"$family" rule add oif uplink lookup main priority 5333
-        ip -"$family" rule add oif lo lookup main priority 5333
+        ip -"$family" rule add oif uplink lookup main priority 5333 protocol 2
         ip -"$family" rule add uidrange 0-0 lookup main priority 5336
         ip -"$family" rule add iif lo ipproto udp dport 53 lookup 5340 priority 5337
         ip -"$family" rule add iif lo lookup main suppress_prefixlength 0 priority 5338
@@ -254,6 +282,11 @@ if [[ -z ${SORA_COEXIST_CORE:-} ]]; then
     kill "$core"
     wait "$core" || true
     ip link del sora0
+    for family in 4 6; do
+        ip -"$family" rule del fwmark 0x7000 oif uplink lookup main priority 5333 protocol 99
+        ip -"$family" rule del fwmark 0x7001 oif lo lookup main priority 5333 protocol 2
+        ip -"$family" rule del oif lo lookup main priority 5333 protocol 2
+    done
     ip route del 203.0.113.1/32 table 2022
     printf 'sing-box\tlegacy-recovery\tnone\tPASS\n' | tee -a "$work/results.tsv"
 fi
@@ -300,6 +333,10 @@ for other in ${SORA_COEXIST_VPNS:-none happ openvpn}; do
                 sleep .1
             done
             [[ $ready == true ]]
+            if [[ $mode == tun && -z ${SORA_COEXIST_CORE:-} ]]; then
+                "$work/sora-core" -check -socket "$casework/core.sock" -data-dir "$casework/data" \
+                    -engines-dir "$engines" -allow-file-keys > "$casework/check.log"
+            fi
             ip addr > "$casework/addresses"
             ip -4 rule > "$casework/rules4"
             ip -6 rule > "$casework/rules6"

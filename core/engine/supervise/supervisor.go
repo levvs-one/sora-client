@@ -307,6 +307,9 @@ func (s *Supervisor) Apply(ctx context.Context, p *engine.Plan) error {
 	if err := s.start(ctx, p); err != nil {
 		masked := s.redactor.Err(err)
 		s.setState(engine.StateFailed)
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), masked.Error())
+		}
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: masked})
 		return masked
 	}
@@ -440,7 +443,11 @@ func (s *Supervisor) waitReady(ctx context.Context, rt Runtime, proc *Process) (
 			return version, nil
 		}
 		lastErr = err
-		if reason := proc.Err(); reason != nil {
+		if proc.Exited() {
+			reason := proc.Err()
+			if reason == nil {
+				reason = fmt.Errorf("%s: engine exited with status 0 before readiness: %s", s.driver.Kind(), proc.Output().Last(8))
+			}
 			return "", reason
 		}
 		select {
@@ -461,12 +468,22 @@ func (s *Supervisor) watch(proc *Process) {
 	if !current || stopping {
 		return
 	}
-	if err == nil || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) {
 		s.setState(engine.StateStopped)
 		return
 	}
 
+	if err == nil {
+		err = fmt.Errorf("%s: engine exited unexpectedly with status 0", s.driver.Kind())
+	}
 	masked := s.redactor.Err(err)
+	if s.cfg.Logs != nil {
+		s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()),
+			fmt.Sprintf("engine exited unexpectedly: %s", proc.cmd.ProcessState.String()))
+		for _, line := range strings.Split(proc.Output().Last(8), "\n") {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), s.redactor.String(line))
+		}
+	}
 	s.bus.Publish(engine.Event{Kind: engine.EventEngineDown, State: engine.StateRecovering,
 		Err: masked, Message: s.redactor.String(proc.Output().Last(5))})
 	if plan == nil {
@@ -493,6 +510,9 @@ func (s *Supervisor) watch(proc *Process) {
 	case <-timer.C:
 	}
 	if restartErr := s.start(s.ctx, plan); restartErr != nil {
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), s.redactor.String(restartErr.Error()))
+		}
 		s.setState(engine.StateFailed)
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: s.redactor.Err(restartErr)})
 	}

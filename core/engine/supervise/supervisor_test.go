@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/logs"
 )
 
 // The test executable runs as "<test binary> -sora-fake-engine run|check" with
@@ -23,8 +25,10 @@ type fakeConfig struct {
 	Addr string `json:"addr"`
 	// CrashAfter makes the fake exit with an error once it has served for
 	// this long.
-	CrashAfter time.Duration `json:"crash_after"`
-	Reject     bool          `json:"reject"`
+	CrashAfter   time.Duration `json:"crash_after"`
+	CleanExit    bool          `json:"clean_exit"`
+	CrashMessage string        `json:"crash_message"`
+	Reject       bool          `json:"reject"`
 }
 
 func TestMain(m *testing.M) {
@@ -63,7 +67,14 @@ func fakeEngine(mode string) int {
 	}()
 	if cfg.CrashAfter > 0 {
 		time.Sleep(cfg.CrashAfter)
-		_, _ = os.Stderr.WriteString("fake: crashed\n")
+		message := cfg.CrashMessage
+		if message == "" {
+			message = "fake: crashed"
+		}
+		_, _ = os.Stderr.WriteString(message)
+		if cfg.CleanExit {
+			return 0
+		}
 		return 1
 	}
 	select {}
@@ -204,5 +215,48 @@ func TestStopAfterCloseIsSafe(t *testing.T) {
 	}
 	if err := sup.Stop(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestUnexpectedExitsReachLogCenter(t *testing.T) {
+	for _, clean := range []bool{false, true} {
+		t.Run(fmt.Sprint(clean), func(t *testing.T) {
+			sup := newFake(t, fakeConfig{CrashAfter: 300 * time.Millisecond, CleanExit: clean, CrashMessage: "failure with secret-value"}, 1)
+			sup.cfg.Logs = logs.New(logs.Settings{CaptureLevel: logs.LevelWarning, RecordDestinations: true})
+			sup.redactor.Add("secret-value")
+			if err := sup.Apply(context.Background(), plan()); err != nil {
+				t.Fatal(err)
+			}
+			waitState(t, sup, engine.StateFailed, 10*time.Second)
+			entries := sup.cfg.Logs.Query(logs.Filter{}, 0, 0).Entries
+			var status, tail bool
+			for _, entry := range entries {
+				if strings.Contains(entry.Message, "secret-value") {
+					t.Fatal("secret reached the log store")
+				}
+				if entry.Level != logs.LevelError || entry.Source != "mihomo" {
+					t.Fatalf("entry = %+v", entry)
+				}
+				status = status || strings.Contains(entry.Message, "engine exited unexpectedly:")
+				tail = tail || strings.Contains(entry.Message, "failure with [masked]")
+			}
+			if !status || !tail {
+				t.Fatalf("missing status or output: %+v", entries)
+			}
+		})
+	}
+}
+
+func TestRequestedStopDoesNotLogAnUnexpectedExit(t *testing.T) {
+	sup := newFake(t, fakeConfig{}, 1)
+	sup.cfg.Logs = logs.New(logs.DefaultSettings())
+	if err := sup.Apply(context.Background(), plan()); err != nil {
+		t.Fatal(err)
+	}
+	if err := sup.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if entries := sup.cfg.Logs.Query(logs.Filter{MinLevel: logs.LevelWarning}, 0, 0).Entries; len(entries) != 0 {
+		t.Fatalf("requested stop logged errors: %+v", entries)
 	}
 }

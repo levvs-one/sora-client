@@ -92,6 +92,8 @@ type LogParser interface {
 // that would otherwise be downloaded.
 type Preparer interface {
 	Prepare(rt Runtime, b Binary) error
+	// PrepareStart may reset persistent state; validation must never do so.
+	PrepareStart(p *engine.Plan, rt Runtime) error
 }
 
 // Config configures one supervised engine instance.
@@ -350,6 +352,12 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	}
 	if err := s.check(ctx, rt, cfg); err != nil {
 		return err
+	}
+
+	if preparer, ok := s.driver.(Preparer); ok {
+		if err := preparer.PrepareStart(p, rt); err != nil {
+			return fmt.Errorf("%s: prepare persistent state: %w", s.driver.Kind(), err)
+		}
 	}
 
 	s.setState(engine.StateStarting)

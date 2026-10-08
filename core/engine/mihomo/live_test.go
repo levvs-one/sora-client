@@ -2,8 +2,11 @@ package mihomo
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"os"
 	"strings"
 	"testing"
@@ -195,4 +198,101 @@ func currentOS() string {
 		return "windows"
 	}
 	return "linux"
+}
+
+func TestLiveLegacyFakeIPCacheMigration(t *testing.T) {
+	path := os.Getenv(Prober.EnvVar)
+	if path == "" {
+		t.Skipf("set %s to exercise persistent fake-IP cache migration", Prober.EnvVar)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	binary, err := Prober.Probe(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	control, err := supervise.FreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dnsPort, err := supervise.FreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	rt := supervise.Runtime{HomeDir: home, ControlAddr: fmt.Sprintf("127.0.0.1:%d", control), Secret: "cache-test"}
+	p := livePlan("cache-upgrade")
+	p.DNS = engine.DNS{Enabled: true, Mode: string(engine.DNSFakeIP), FakeIPRange: "172.19.0.0/16",
+		HijackTun: []string{fmt.Sprintf("127.0.0.1:%d", dnsPort)},
+		Servers:   []engine.DNSServer{{Tag: "local", Transport: engine.DNSPlain, Address: "127.0.0.1", Port: 9}}}
+	if err := (driver{}).Prepare(rt, binary); err != nil {
+		t.Fatal(err)
+	}
+	resolver := &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, p.DNS.HijackTun[0])
+	}}
+	lookup := func() netip.Addr {
+		t.Helper()
+		ips, err := resolver.LookupNetIP(ctx, "ip4", "persistent-cache.example")
+		if err != nil || len(ips) != 1 {
+			t.Fatalf("fake-IP DNS response = %v, %v", ips, err)
+		}
+		return ips[0].Unmap()
+	}
+	// Run the actual engine without Sora's migration, then kill it before
+	// its shutdown handler writes the offset used for upstream pool detection.
+	rawStart := func() *supervise.Process {
+		t.Helper()
+		cfg, err := (driver{}).Render(p, rt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		proc, err := supervise.Start(ctx, supervise.Spec{Name: "mihomo-cache", Path: path,
+			Args: (driver{}).RunArgs(rt), Dir: home, Config: cfg})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = proc.Stop(context.Background(), 0) })
+		for {
+			if _, err := (driver{}).Handshake(ctx, rt); err == nil {
+				return proc
+			}
+			if proc.Exited() || ctx.Err() != nil {
+				t.Fatalf("engine not ready: %v %s", proc.Err(), proc.Output().Last(8))
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+	old := rawStart()
+	cached := lookup()
+	if !netip.MustParsePrefix("172.19.0.0/16").Contains(cached) {
+		t.Fatalf("old pool returned %s", cached)
+	}
+	if err := old.Stop(ctx, 0); err != nil {
+		t.Fatal(err)
+	}
+	p.DNS.FakeIPRange = "198.18.0.0/16"
+	unfixed := rawStart()
+	if got := lookup(); got != cached {
+		t.Fatalf("old-cache reproduction returned %s, want %s", got, cached)
+	}
+	t.Logf("unmigrated engine returned legacy cached address %s after pool change", cached)
+	if err := unfixed.Stop(ctx, 0); err != nil {
+		t.Fatal(err)
+	}
+	fixed, err := New(supervise.Config{Binary: binary, HomeDir: home, StartTimeout: 10 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = fixed.Close() }()
+	for _, pool := range []string{"198.18.0.0/16", "198.19.0.0/16"} {
+		p.DNS.FakeIPRange = pool
+		if err := fixed.Apply(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+		if got := lookup(); !netip.MustParsePrefix(pool).Contains(got) {
+			t.Fatalf("migrated %s returned %s", pool, got)
+		}
+		t.Logf("migrated pool %s returned a current fake address", pool)
+	}
 }

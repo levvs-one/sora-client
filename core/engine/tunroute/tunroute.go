@@ -14,6 +14,11 @@ import (
 // after adapter recreation.
 func Route(ctx context.Context, tun engine.Tun, uid int) error { return route(ctx, tun, uid) }
 
+// Cleanup removes routing and addresses left by a previous core run.
+func Cleanup(ctx context.Context) error {
+	return cleanup(ctx, engine.Tun{DeviceName: engine.TunDevice})
+}
+
 // Unroute removes routing rules and the table. It succeeds when nothing is
 // installed.
 func Unroute(ctx context.Context) error { return unroute(ctx) }

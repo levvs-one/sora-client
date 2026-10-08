@@ -25,6 +25,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/registry"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/engine/tunroute"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/guard"
@@ -140,6 +141,10 @@ func New(ctx context.Context, opts Options) (*App, error) {
 
 	factory := opts.Factory
 	if factory == nil {
+		if err := tunroute.Cleanup(ctx); err != nil {
+			_ = store.Close()
+			return nil, err
+		}
 		app.engines = registry.Discover(ctx, opts.EnginesDir, supervise.Config{
 			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: int(tunnelPort), Logs: center,
 		})

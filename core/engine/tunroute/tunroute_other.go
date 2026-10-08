@@ -5,6 +5,7 @@ package tunroute
 import (
 	"context"
 	"errors"
+
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
@@ -13,3 +14,5 @@ func route(context.Context, engine.Tun, int) error {
 }
 
 func unroute(context.Context) error { return nil }
+
+func cleanup(context.Context, engine.Tun) error { return nil }

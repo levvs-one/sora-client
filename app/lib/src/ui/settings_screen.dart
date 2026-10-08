@@ -17,6 +17,7 @@ import 'logs.dart';
 import 'rules_screen.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
+import 'shell.dart';
 
 /// App settings, with common options first and advanced options in named
 /// groups.
@@ -212,6 +213,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.animations,
               onChanged: (v) => set((x) => x.animations = v, replan: false),
             ),
+            if (context.getInheritedWidgetOfExactType<ShellScope>() case final shell?)
+              LinkTile(title: s.tourReplay, onTap: shell.replayTour),
           ],
         ),
 

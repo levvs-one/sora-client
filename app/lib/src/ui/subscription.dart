@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:protobuf/well_known_types/google/protobuf/duration.pb.dart' as pb;
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../design/theme.dart';
@@ -34,7 +35,7 @@ class SubscriptionsScreen extends StatelessWidget {
             Tile(
               title: s.addSubscription,
               onTap: () => showSubscriptionSheet(context),
-              trailing: Icon(CupertinoIcons.plus, size: 18, color: palette.ink),
+              trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
             ),
           ],
         ),

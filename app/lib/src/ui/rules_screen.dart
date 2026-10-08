@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../design/theme.dart';
@@ -9,6 +9,7 @@ import '../rules.dart';
 import '../sora.dart';
 import 'kit.dart';
 import 'subscription_sheet.dart';
+import 'program_picker.dart';
 
 /// Edits user rules for domains, addresses and processes. These rules take
 /// precedence over the routing preset.
@@ -24,7 +25,7 @@ class RulesScreen extends StatelessWidget {
     void save(List<UserRule> next) => unawaited(sora.change((x) => x.rules = [for (final r in next) r.stored]));
     return Screen(
       title: s.rules,
-      actions: [RoundButton(icon: CupertinoIcons.plus, label: s.ruleAdd, onTap: () => _add(context, rules, save))],
+      actions: [RoundButton(icon: Symbols.add_rounded, label: s.ruleAdd, onTap: () => _add(context, rules, save))],
       children: [
         Group(
           children: [
@@ -38,7 +39,7 @@ class RulesScreen extends StatelessWidget {
               Tile(
                 title: s.ruleAdd,
                 onTap: () => _add(context, rules, save),
-                trailing: Icon(CupertinoIcons.plus, size: 18, color: palette.ink),
+                trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
               ),
           ],
         ),
@@ -49,6 +50,8 @@ class RulesScreen extends StatelessWidget {
   void _add(BuildContext context, List<UserRule> rules, void Function(List<UserRule>) save) {
     final s = S.of(context);
     final target = ValueNotifier(RuleTarget.direct);
+    final field = TextEditingController();
+    String? program;
     unawaited(
       showFieldSheet(
         context,
@@ -56,13 +59,30 @@ class RulesScreen extends StatelessWidget {
         hint: s.ruleHint,
         action: s.add,
         keyboard: TextInputType.url,
+        controller: field,
         extra: ValueListenableBuilder(
           valueListenable: target,
-          builder: (context, value, _) =>
+          builder: (context, value, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Segments<RuleTarget>(value: value, choices: _labels(s), onChanged: (t) => target.value = t),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Symbols.apps_rounded, size: 18),
+                label: Text(s.chooseProgram),
+                onPressed: () async {
+                  final selected = await chooseProgram(context);
+                  if (selected != null) {
+                    program = selected;
+                    field.text = selected;
+                  }
+                },
+              ),
+            ],
+          ),
         ),
         submit: (text) async {
-          final destination = UserRule.destinationOf(text);
+          final destination = program != null && text == program ? 'process:$program' : UserRule.destinationOf(text);
           if (destination == null) return s.ruleInvalid;
           // Replace an existing destination so each destination has only one
           // target.
@@ -73,7 +93,10 @@ class RulesScreen extends StatelessWidget {
           ]);
           return null;
         },
-      ).whenComplete(target.dispose),
+      ).whenComplete(() {
+        target.dispose();
+        field.dispose();
+      }),
     );
   }
 }
@@ -109,9 +132,7 @@ class _RuleTile extends StatelessWidget {
           MenuItemButton(
             onPressed: () => onTarget(entry.key),
             style: style(),
-            trailingIcon: entry.key == rule.target
-                ? Icon(CupertinoIcons.checkmark_alt, size: 18, color: palette.ink)
-                : null,
+            trailingIcon: entry.key == rule.target ? Icon(Symbols.check_rounded, size: 18, color: palette.ink) : null,
             child: Text(entry.value, style: Styles.secondary.copyWith(color: palette.ink)),
           ),
         MenuItemButton(
@@ -126,12 +147,9 @@ class _RuleTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              labels[rule.target]!,
-              style: Styles.secondary.copyWith(color: rule.target == RuleTarget.block ? palette.danger : palette.ink),
-            ),
+            Text(labels[rule.target]!, style: Styles.secondary.copyWith(color: palette.ink)),
             const SizedBox(width: 6),
-            Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: palette.ink3),
+            Icon(Symbols.unfold_more_rounded, size: 14, color: palette.ink3),
           ],
         ),
       ),

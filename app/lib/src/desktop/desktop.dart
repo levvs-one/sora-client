@@ -13,6 +13,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/strings.dart';
 import '../groups.dart';
+import '../notifications.dart';
 import '../sora.dart';
 import '../ui/kit.dart';
 import '../ui/servers.dart';
@@ -381,7 +382,19 @@ class Desktop with WindowListener {
 
   // Focused windows already display events, so notices are suppressed.
 
-  Future<void> _tell(String title, String body, {bool always = false}) async {
+  Future<void> _tell(
+    String title,
+    String body, {
+    bool always = false,
+    bool record = true,
+    String action = '',
+    String argument = '',
+  }) async {
+    if (record) {
+      await sora.recordNotification(
+        AppNotification(time: DateTime.now(), title: title, body: body, action: action, argument: argument),
+      );
+    }
     // Suppress duplicate notifications when the focused window already shows
     // the event.
     if (!sora.settings.notifications || (!always && _visible && _focused)) return;
@@ -397,14 +410,8 @@ class Desktop with WindowListener {
   }
 
   void _notice(Notice notice) {
-    final s = _s;
-    unawaited(switch (notice) {
-      ConnectionLost() => _tell(s.noticeLost, s.noticeLostBody),
-      ConnectionRestored() => _tell(s.noticeRestored, _serverText(s)),
-      ConnectionFailed(:final failure) => _tell(s.noticeFailed, describe(s, failure)),
-      ServerSwitched(:final entry, :final backup) => _tell(entry, backup ? s.noticeBackup : s.noticeNext),
-      ServerReturned(:final entry) => _tell(entry, s.noticeMainBack),
-    });
+    final entry = sora.notificationFor(notice);
+    unawaited(_tell(entry.title, entry.body, record: false));
   }
 
   void _warnAboutSubscriptions() {
@@ -417,7 +424,7 @@ class Desktop with WindowListener {
         _warned.remove(id);
       } else if (_warned[id] != warning) {
         _warned[id] = warning;
-        unawaited(_tell(s.noticeSubscription, warning));
+        unawaited(_tell(s.noticeSubscription, warning, action: 'subscription', argument: id));
       }
     }
   }

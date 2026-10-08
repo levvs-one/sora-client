@@ -49,8 +49,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project, start_hidden);
   Win32Window::Point origin(10, 10);
-  // A utility window: one column of controls, tall rather than wide.
-  Win32Window::Size size(420, 720);
+  // Start with enough room for the server and connection panes.
+  Win32Window::Size size(1120, 760);
   if (!window.Create(L"Sora", origin, size)) {
     return EXIT_FAILURE;
   }

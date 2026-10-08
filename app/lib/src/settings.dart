@@ -2,6 +2,8 @@ import 'dart:ui' show PlatformDispatcher;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'notifications.dart';
+
 /// Locally persisted app preferences. The core stores subscriptions and servers
 /// encrypted and updates them while the UI is closed.
 class Settings {
@@ -31,6 +33,9 @@ class Settings {
     'notifications',
     'proxySnapshot',
     'trayHintShown',
+    'sidebarExpanded',
+    'tourDone',
+    'notificationHistory',
   };
 
   final SharedPreferencesWithCache _store;
@@ -45,6 +50,11 @@ class Settings {
   }
 
   Future<void> _migrate() async {
+    if (!_store.containsKey('tourDone')) {
+      // Detect upgrades before migration writes its own defaults.
+      final existing = _keys.where((key) => key != 'tourDone').any(_store.containsKey);
+      await _store.setBool('tourDone', existing);
+    }
     final stored = _store.getInt('format') ?? 0;
     if (stored > format) {
       // Ignore keys from newer releases. Existing keys retain their meaning
@@ -87,7 +97,7 @@ class Settings {
   set animations(bool value) => _store.setBool('animations', value);
 
   /// Theme selection: system, light or dark.
-  String get theme => _store.getString('theme') ?? 'system';
+  String get theme => _store.getString('theme') ?? 'light';
   set theme(String value) => _store.setString('theme', value);
 
   /// Language selection: system or a supported locale code.
@@ -185,12 +195,29 @@ class Settings {
   bool get trayHintShown => _store.getBool('trayHintShown') ?? false;
   set trayHintShown(bool value) => _store.setBool('trayHintShown', value);
 
+  bool get sidebarExpanded => _store.getBool('sidebarExpanded') ?? false;
+  set sidebarExpanded(bool value) => _store.setBool('sidebarExpanded', value);
+
+  bool get tourDone => _store.getBool('tourDone') ?? false;
+  Future<void> completeTour() => _store.setBool('tourDone', true);
+
+  List<AppNotification> get notificationHistory => (_store.getStringList('notificationHistory') ?? const <String>[])
+      .map(AppNotification.parse)
+      .nonNulls
+      .take(100)
+      .toList();
+  Future<void> saveNotificationHistory(List<AppNotification> history) =>
+      _store.setStringList('notificationHistory', history.take(100).map((n) => n.stored).toList());
+
   /// Resets preferences to defaults while preserving the proxy snapshot.
   Future<void> reset() async {
     // Keep the proxy snapshot so the next disconnect can restore system
     // settings.
     final snapshot = proxySnapshot;
+    final history = notificationHistory;
     await _store.clear();
+    await completeTour();
+    await saveNotificationHistory(history);
     if (snapshot.isNotEmpty) await saveProxySnapshot(snapshot);
     await _migrate();
   }

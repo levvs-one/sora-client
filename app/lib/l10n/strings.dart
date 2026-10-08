@@ -1171,6 +1171,222 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'нет ответа'**
   String get noAnswer;
+
+  /// No description provided for @home.
+  ///
+  /// In ru, this message translates to:
+  /// **'Главная'**
+  String get home;
+
+  /// No description provided for @navRules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила'**
+  String get navRules;
+
+  /// No description provided for @navConnections.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключения'**
+  String get navConnections;
+
+  /// No description provided for @navLogs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логи'**
+  String get navLogs;
+
+  /// No description provided for @navAbout.
+  ///
+  /// In ru, this message translates to:
+  /// **'О программе'**
+  String get navAbout;
+
+  /// No description provided for @sidebarToggle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть меню'**
+  String get sidebarToggle;
+
+  /// No description provided for @more.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробнее'**
+  String get more;
+
+  /// No description provided for @less.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть'**
+  String get less;
+
+  /// No description provided for @currentServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущий сервер'**
+  String get currentServer;
+
+  /// No description provided for @trafficDown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Получено'**
+  String get trafficDown;
+
+  /// No description provided for @trafficUp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправлено'**
+  String get trafficUp;
+
+  /// No description provided for @perSecond.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value}/с'**
+  String perSecond(String value);
+
+  /// No description provided for @activeRules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активные правила: {count}'**
+  String activeRules(int count);
+
+  /// No description provided for @recentNotifications.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последние уведомления'**
+  String get recentNotifications;
+
+  /// No description provided for @markAllRead.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прочитать все'**
+  String get markAllRead;
+
+  /// No description provided for @notificationsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь появятся события подключения и подписок'**
+  String get notificationsEmpty;
+
+  /// No description provided for @retryConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключиться снова'**
+  String get retryConnect;
+
+  /// No description provided for @openLogs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть логи'**
+  String get openLogs;
+
+  /// No description provided for @tourReplay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать гайд снова'**
+  String get tourReplay;
+
+  /// No description provided for @tourStep.
+  ///
+  /// In ru, this message translates to:
+  /// **'Шаг {step} из 5'**
+  String tourStep(int step);
+
+  /// No description provided for @tourBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Назад'**
+  String get tourBack;
+
+  /// No description provided for @tourNext.
+  ///
+  /// In ru, this message translates to:
+  /// **'Далее'**
+  String get tourNext;
+
+  /// No description provided for @tourSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропустить'**
+  String get tourSkip;
+
+  /// No description provided for @tourFinish.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get tourFinish;
+
+  /// No description provided for @tourAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавьте ссылку на подписку от провайдера.'**
+  String get tourAdd;
+
+  /// No description provided for @tourServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите сервер. «Самый быстрый» подберёт его за вас.'**
+  String get tourServer;
+
+  /// No description provided for @tourConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите здесь, чтобы подключиться или отключиться.'**
+  String get tourConnect;
+
+  /// No description provided for @tourMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите режим. Kill switch блокирует интернет при обрыве VPN.'**
+  String get tourMode;
+
+  /// No description provided for @tourSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Откройте настройки. Здесь можно показать гайд снова.'**
+  String get tourSettings;
+
+  /// No description provided for @chooseProgram.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать программу'**
+  String get chooseProgram;
+
+  /// No description provided for @installedApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установленные программы'**
+  String get installedApps;
+
+  /// No description provided for @runningProcesses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запущенные процессы'**
+  String get runningProcesses;
+
+  /// No description provided for @programsFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось получить список программ'**
+  String get programsFailed;
+
+  /// No description provided for @programsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Программы не найдены. Попробуйте другое имя.'**
+  String get programsEmpty;
+
+  /// No description provided for @selectExe.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать файл .exe'**
+  String get selectExe;
+
+  /// No description provided for @trafficUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Счётчики пока недоступны'**
+  String get trafficUnavailable;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

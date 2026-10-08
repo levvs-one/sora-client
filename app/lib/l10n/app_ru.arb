@@ -331,5 +331,62 @@
   "importTitle": "Добавить подписку?",
   "importSealed": "Эта ссылка зашифрована для Happ, прочитать её может только Happ. Попросите у провайдера обычную ссылку на подписку.",
   "understood": "Понятно",
-  "noAnswer": "нет ответа"
+  "noAnswer": "нет ответа",
+  "home": "Главная",
+  "navRules": "Правила",
+  "navConnections": "Подключения",
+  "navLogs": "Логи",
+  "navAbout": "О программе",
+  "sidebarToggle": "Развернуть меню",
+  "more": "Подробнее",
+  "less": "Свернуть",
+  "currentServer": "Текущий сервер",
+  "trafficDown": "Получено",
+  "trafficUp": "Отправлено",
+  "perSecond": "{value}/с",
+  "activeRules": "Активные правила: {count}",
+  "recentNotifications": "Последние уведомления",
+  "markAllRead": "Прочитать все",
+  "notificationsEmpty": "Здесь появятся события подключения и подписок",
+  "retryConnect": "Подключиться снова",
+  "openLogs": "Открыть логи",
+  "tourReplay": "Показать гайд снова",
+  "tourStep": "Шаг {step} из 5",
+  "tourBack": "Назад",
+  "tourNext": "Далее",
+  "tourSkip": "Пропустить",
+  "tourFinish": "Готово",
+  "tourAdd": "Добавьте ссылку на подписку от провайдера.",
+  "tourServer": "Выберите сервер. «Самый быстрый» подберёт его за вас.",
+  "tourConnect": "Нажмите здесь, чтобы подключиться или отключиться.",
+  "tourMode": "Выберите режим. Kill switch блокирует интернет при обрыве VPN.",
+  "tourSettings": "Откройте настройки. Здесь можно показать гайд снова.",
+  "chooseProgram": "Выбрать программу",
+  "installedApps": "Установленные программы",
+  "runningProcesses": "Запущенные процессы",
+  "programsFailed": "Не удалось получить список программ",
+  "programsEmpty": "Программы не найдены. Попробуйте другое имя.",
+  "selectExe": "Выбрать файл .exe",
+  "trafficUnavailable": "Счётчики пока недоступны",
+  "@tourStep": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      }
+    }
+  },
+  "@activeRules": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@perSecond": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

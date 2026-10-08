@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -165,13 +166,13 @@ class _LogsScreenState extends State<LogsScreen> {
               ),
           ],
           builder: (context, controller, _) => RoundButton(
-            icon: CupertinoIcons.square_arrow_up,
+            icon: Symbols.ios_share_rounded,
             label: s.export,
             onTap: () => controller.isOpen ? controller.close() : controller.open(),
           ),
         ),
         const SizedBox(width: 4),
-        RoundButton(icon: CupertinoIcons.trash, label: s.clear, onTap: () => unawaited(_clear())),
+        RoundButton(icon: Symbols.delete_rounded, label: s.clear, onTap: () => unawaited(_clear())),
       ],
       fill: !_loaded
           ? const SizedBox()

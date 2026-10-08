@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -191,7 +192,7 @@ class _Row extends StatelessWidget {
               ),
             ),
           ),
-          RoundButton(icon: CupertinoIcons.xmark, label: s.close, onTap: onClose),
+          RoundButton(icon: Symbols.close_rounded, label: s.close, onTap: onClose),
         ],
       ),
     );

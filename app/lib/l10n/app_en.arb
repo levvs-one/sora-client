@@ -179,5 +179,62 @@
   "importTitle": "Add this subscription?",
   "importSealed": "This link is encrypted for Happ, and only Happ can read it. Ask your provider for the plain subscription link.",
   "understood": "OK",
-  "noAnswer": "no answer"
+  "noAnswer": "no answer",
+  "home": "Home",
+  "navRules": "Rules",
+  "navConnections": "Connections",
+  "navLogs": "Logs",
+  "navAbout": "About",
+  "sidebarToggle": "Toggle sidebar",
+  "more": "More",
+  "less": "Less",
+  "currentServer": "Current server",
+  "trafficDown": "Downloaded",
+  "trafficUp": "Uploaded",
+  "perSecond": "{value}/s",
+  "activeRules": "Active rules: {count}",
+  "recentNotifications": "Recent notifications",
+  "markAllRead": "Mark all read",
+  "notificationsEmpty": "Connection and subscription events will appear here",
+  "retryConnect": "Retry connection",
+  "openLogs": "Open logs",
+  "tourReplay": "Show guide again",
+  "tourStep": "Step {step} of 5",
+  "tourBack": "Back",
+  "tourNext": "Next",
+  "tourSkip": "Skip",
+  "tourFinish": "Done",
+  "tourAdd": "Add your provider’s subscription link.",
+  "tourServer": "Pick a server. “Fastest” selects one for you.",
+  "tourConnect": "Click here to connect or disconnect.",
+  "tourMode": "Choose a mode. Kill switch blocks internet if the VPN drops.",
+  "tourSettings": "Open settings. You can replay this guide there.",
+  "chooseProgram": "Choose a program",
+  "installedApps": "Installed applications",
+  "runningProcesses": "Running processes",
+  "programsFailed": "Could not load applications",
+  "programsEmpty": "No applications found. Try another name.",
+  "selectExe": "Choose an .exe file",
+  "trafficUnavailable": "Counters are not available yet",
+  "@tourStep": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      }
+    }
+  },
+  "@activeRules": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@perSecond": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

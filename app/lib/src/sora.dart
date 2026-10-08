@@ -4,11 +4,15 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/strings.dart';
+
 import 'core/link.dart';
 import 'generated/sora/core/v1/core_control.pbgrpc.dart';
 import 'groups.dart';
 import 'rules.dart';
 import 'settings.dart';
+import 'notifications.dart';
+import 'ui/kit.dart' show describe;
 
 /// Connection phases exposed to the UI.
 enum Phase { offline, off, connecting, connected, reconnecting, disconnecting }
@@ -55,9 +59,55 @@ final class ServerReturned extends Notice {
 /// App state and core operations. Screens access it through [SoraScope] and
 /// rebuild on notifications.
 class Sora extends ChangeNotifier {
-  Sora(this.settings);
+  Sora(this.settings) : history = settings.notificationHistory;
 
   final Settings settings;
+  List<AppNotification> history;
+  int get unreadCount => history.where((n) => !n.read).length;
+  Future<void> _historyWork = Future.value();
+
+  Future<void> recordNotification(AppNotification notice) {
+    history = [notice, ...history].take(100).toList();
+    notifyListeners();
+    return _saveHistory();
+  }
+
+  Future<void> markNotificationsRead() {
+    history = history.map((n) => n.markRead()).toList();
+    notifyListeners();
+    return _saveHistory();
+  }
+
+  Future<void> clearNotifications() {
+    history = [];
+    notifyListeners();
+    return _saveHistory();
+  }
+
+  Future<void> _saveHistory() {
+    final snapshot = [...history];
+    return _historyWork = _historyWork.then((_) => settings.saveNotificationHistory(snapshot));
+  }
+
+  AppNotification notificationFor(Notice notice) {
+    final chosen = settings.language == 'system'
+        ? WidgetsBinding.instance.platformDispatcher.locale
+        : Locale(settings.language);
+    final s = lookupS(S.delegate.isSupported(chosen) ? chosen : const Locale('en'));
+    final server = switch (selected) {
+      'auto' => s.serverAuto,
+      'bypass' => s.serverBypass,
+      final id => nameOf(id),
+    };
+    final (title, body, action) = switch (notice) {
+      ConnectionLost() => (s.noticeLost, s.noticeLostBody, 'logs'),
+      ConnectionRestored() => (s.noticeRestored, server, ''),
+      ConnectionFailed(:final failure) => (s.noticeFailed, describe(s, failure), 'connect'),
+      ServerSwitched(:final entry, :final backup) => (entry, backup ? s.noticeBackup : s.noticeNext, 'logs'),
+      ServerReturned(:final entry) => (entry, s.noticeMainBack, ''),
+    };
+    return AppNotification(time: DateTime.now(), title: title, body: body, action: action);
+  }
 
   /// App group IDs use "sora:", which never prefixes core-generated server IDs.
   static const autoGroup = 'sora:auto';
@@ -104,6 +154,7 @@ class Sora extends ChangeNotifier {
 
   void _emit(Notice notice) {
     _emitted++;
+    unawaited(recordNotification(notificationFor(notice)));
     _notices.add(notice);
   }
 
@@ -114,6 +165,42 @@ class Sora extends ChangeNotifier {
   Phase phase = Phase.offline;
   DateTime? since;
   String? sessionId;
+
+  StatsTick? stats;
+  double? speedUp, speedDown;
+  DateTime? _statsAt;
+  Timer? _statsTimer;
+  bool _readingStats = false;
+
+  Future<void> readStats() async {
+    final link = _link, id = sessionId;
+    if (link == null || id == null || _readingStats) return;
+    _readingStats = true;
+    try {
+      final answer = await link.stub.getStats(GetStatsRequest(apiVersion: apiVersion, sessionId: id));
+      if (id != sessionId || link != _link) return;
+      if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+      if (!answer.hasStats()) throw const CoreFailure('core.internal.unexpected');
+      final now = DateTime.now(), before = stats, at = _statsAt;
+      if (before != null && at != null) {
+        final seconds = now.difference(at).inMicroseconds / 1e6;
+        if (seconds > 0) {
+          speedUp = (answer.stats.bytesUp - before.bytesUp).toDouble().clamp(0, double.infinity) / seconds;
+          speedDown = (answer.stats.bytesDown - before.bytesDown).toDouble().clamp(0, double.infinity) / seconds;
+        }
+      }
+      stats = answer.stats;
+      _statsAt = now;
+      notifyListeners();
+    } catch (_) {
+      stats = null;
+      speedUp = speedDown = null;
+      _statsAt = null;
+      notifyListeners();
+    } finally {
+      _readingStats = false;
+    }
+  }
 
   /// Last displayed failure, cleared by the next action.
   CoreFailure? failure;
@@ -158,6 +245,7 @@ class Sora extends ChangeNotifier {
   /// Maintains the core connection and watches subscriptions and session state,
   /// reopening the connection after a drop until disposal.
   Future<void> run() async {
+    _statsTimer ??= Timer.periodic(const Duration(seconds: 1), (_) => unawaited(readStats()));
     while (!_disposed) {
       final link = await CoreLink.open();
       if (_disposed) {
@@ -197,6 +285,9 @@ class Sora extends ChangeNotifier {
       _link = null;
       await link.close();
       phase = Phase.offline;
+      stats = null;
+      speedUp = speedDown = null;
+      _statsAt = null;
       notifyListeners();
     }
   }
@@ -217,6 +308,13 @@ class Sora extends ChangeNotifier {
 
   void _applyState(ConnectionState state, {bool report = true}) {
     final before = phase;
+    if (state.sessionId.isNotEmpty && state.sessionId != sessionId ||
+        state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_DISCONNECTED ||
+        state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED) {
+      stats = null;
+      speedUp = speedDown = null;
+      _statsAt = null;
+    }
     phase = switch (state.value) {
       ConnectionStateValue.CONNECTION_STATE_VALUE_CONNECTING => Phase.connecting,
       ConnectionStateValue.CONNECTION_STATE_VALUE_CONNECTED => Phase.connected,
@@ -650,6 +748,7 @@ class Sora extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _statsTimer?.cancel();
     unawaited(_notices.close());
     unawaited(_cancelWatches());
     unawaited(_link?.close());

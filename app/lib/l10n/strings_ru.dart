@@ -611,4 +611,118 @@ class SRu extends S {
 
   @override
   String get noAnswer => 'нет ответа';
+
+  @override
+  String get home => 'Главная';
+
+  @override
+  String get navRules => 'Правила';
+
+  @override
+  String get navConnections => 'Подключения';
+
+  @override
+  String get navLogs => 'Логи';
+
+  @override
+  String get navAbout => 'О программе';
+
+  @override
+  String get sidebarToggle => 'Развернуть меню';
+
+  @override
+  String get more => 'Подробнее';
+
+  @override
+  String get less => 'Свернуть';
+
+  @override
+  String get currentServer => 'Текущий сервер';
+
+  @override
+  String get trafficDown => 'Получено';
+
+  @override
+  String get trafficUp => 'Отправлено';
+
+  @override
+  String perSecond(String value) {
+    return '$value/с';
+  }
+
+  @override
+  String activeRules(int count) {
+    return 'Активные правила: $count';
+  }
+
+  @override
+  String get recentNotifications => 'Последние уведомления';
+
+  @override
+  String get markAllRead => 'Прочитать все';
+
+  @override
+  String get notificationsEmpty => 'Здесь появятся события подключения и подписок';
+
+  @override
+  String get retryConnect => 'Подключиться снова';
+
+  @override
+  String get openLogs => 'Открыть логи';
+
+  @override
+  String get tourReplay => 'Показать гайд снова';
+
+  @override
+  String tourStep(int step) {
+    return 'Шаг $step из 5';
+  }
+
+  @override
+  String get tourBack => 'Назад';
+
+  @override
+  String get tourNext => 'Далее';
+
+  @override
+  String get tourSkip => 'Пропустить';
+
+  @override
+  String get tourFinish => 'Готово';
+
+  @override
+  String get tourAdd => 'Добавьте ссылку на подписку от провайдера.';
+
+  @override
+  String get tourServer => 'Выберите сервер. «Самый быстрый» подберёт его за вас.';
+
+  @override
+  String get tourConnect => 'Нажмите здесь, чтобы подключиться или отключиться.';
+
+  @override
+  String get tourMode => 'Выберите режим. Kill switch блокирует интернет при обрыве VPN.';
+
+  @override
+  String get tourSettings => 'Откройте настройки. Здесь можно показать гайд снова.';
+
+  @override
+  String get chooseProgram => 'Выбрать программу';
+
+  @override
+  String get installedApps => 'Установленные программы';
+
+  @override
+  String get runningProcesses => 'Запущенные процессы';
+
+  @override
+  String get programsFailed => 'Не удалось получить список программ';
+
+  @override
+  String get programsEmpty => 'Программы не найдены. Попробуйте другое имя.';
+
+  @override
+  String get selectExe => 'Выбрать файл .exe';
+
+  @override
+  String get trafficUnavailable => 'Счётчики пока недоступны';
 }

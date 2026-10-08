@@ -46,6 +46,7 @@ Future<void> showFieldSheet(
   TextInputType keyboard = TextInputType.text,
   bool allowEmpty = false,
   Widget? extra,
+  TextEditingController? controller,
 }) {
   final motion = Motion.enabled(context);
   return showGeneralDialog<void>(
@@ -63,6 +64,7 @@ Future<void> showFieldSheet(
       keyboard: keyboard,
       allowEmpty: allowEmpty,
       extra: extra,
+      controller: controller,
     ),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Motion.curve, reverseCurve: Curves.easeIn);
@@ -84,6 +86,7 @@ class _FieldSheet extends StatefulWidget {
     required this.keyboard,
     required this.allowEmpty,
     this.extra,
+    this.controller,
   });
 
   final String title;
@@ -98,13 +101,14 @@ class _FieldSheet extends StatefulWidget {
 
   /// An additional setting displayed below the field.
   final Widget? extra;
+  final TextEditingController? controller;
 
   @override
   State<_FieldSheet> createState() => _FieldSheetState();
 }
 
 class _FieldSheetState extends State<_FieldSheet> {
-  late final _field = TextEditingController(text: widget.initial);
+  late final _field = widget.controller ?? TextEditingController(text: widget.initial);
   String? _failure;
   bool _busy = false;
 
@@ -116,7 +120,7 @@ class _FieldSheetState extends State<_FieldSheet> {
 
   @override
   void dispose() {
-    _field.dispose();
+    if (widget.controller == null) _field.dispose();
     super.dispose();
   }
 

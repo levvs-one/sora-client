@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/strings.dart';
@@ -10,7 +9,7 @@ import 'src/design/theme.dart';
 import 'src/desktop/desktop.dart';
 import 'src/settings.dart';
 import 'src/sora.dart';
-import 'src/ui/home.dart';
+import 'src/ui/shell.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +56,11 @@ class _SoraAppState extends State<SoraApp> {
               _ => ThemeMode.system,
             },
             locale: sora.settings.language == 'system' ? null : Locale(sora.settings.language),
-            themeAnimationDuration: const Duration(milliseconds: 300),
+            themeAnimationDuration:
+                sora.settings.animations &&
+                    !WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations
+                ? const Duration(milliseconds: 150)
+                : Duration.zero,
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,
@@ -66,13 +69,7 @@ class _SoraAppState extends State<SoraApp> {
             ],
             supportedLocales: S.supportedLocales,
             navigatorKey: _navigator,
-            builder: (context, child) => CallbackShortcuts(
-              bindings: {
-                const SingleActivator(LogicalKeyboardKey.escape): () => unawaited(_navigator.currentState?.maybePop()),
-              },
-              child: child!,
-            ),
-            home: const HomeScreen(),
+            home: const DesktopShell(),
           ),
         ),
       ),

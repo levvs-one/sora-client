@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -11,66 +12,152 @@ import '../design/glow.dart';
 import '../design/logo.dart';
 import '../design/theme.dart';
 import '../groups.dart';
+import '../rules.dart';
 import '../sora.dart';
 import 'kit.dart';
+import 'notifications_screen.dart';
 import 'servers.dart';
-import 'settings_screen.dart';
+import 'shell.dart';
+import 'tour.dart';
 import 'subscription_sheet.dart';
 
-/// Main connection screen with session controls, status and server selection.
+/// Connection workspace, with independent panes on wide desktop windows.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final sora = SoraScope.of(context);
-    final working = sora.phase == Phase.connecting || sora.phase == Phase.reconnecting;
-    final reachable = sora.phase != Phase.offline && !sora.busy;
-    void settings() => unawaited(push<void>(context, const SettingsScreen()));
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.enter): () {
-          if (reachable) unawaited(sora.toggle());
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: {const SingleActivator(LogicalKeyboardKey.enter): () => unawaited(SoraScope.read(context).toggle())},
+    child: Focus(
+      autofocus: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (MediaQuery.sizeOf(context).width >= 1000) {
+            final width = (constraints.maxWidth * 0.43).clamp(360.0, 480.0);
+            return Row(
+              key: const ValueKey('wide-layout'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: width, child: const ServersScreen(embedded: true)),
+                VerticalDivider(width: 1, color: Palette.of(context).field),
+                const Expanded(child: SingleChildScrollView(child: _ConnectionPane())),
+              ],
+            );
+          }
+          return SingleChildScrollView(
+            key: ValueKey(MediaQuery.sizeOf(context).width >= 720 ? 'medium-layout' : 'compact-layout'),
+            child: const Column(children: [_ConnectionPane(), ServersScreen(embedded: true, scrollable: false)]),
+          );
         },
-        const SingleActivator(LogicalKeyboardKey.comma, control: true): settings,
-      },
-      child: Focus(
-        autofocus: true,
-        child: Glow(
-          radius: 12,
-          energy: working ? 0.9 : 0,
-          busy: true,
-          inFront: true,
-          child: Scaffold(
-            body: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 440),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      ),
+    ),
+  );
+}
+
+class _ConnectionPane extends StatelessWidget {
+  const _ConnectionPane();
+
+  @override
+  Widget build(BuildContext context) {
+    final sora = SoraScope.of(context), s = S.of(context), palette = Palette.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    String bytes(double value) => formatBytes(s, Int64(value.round()), locale);
+    final stats = sora.stats;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(s.sectionConnection, style: Styles.heading.copyWith(color: palette.ink)),
+          const SizedBox(height: 24),
+          const _Status(),
+          const SizedBox(height: 12),
+          const Center(child: TourTarget(step: 2, child: _Orb())),
+          const SizedBox(height: 32),
+          Text(s.currentServer, style: Styles.caption.copyWith(color: palette.ink2)),
+          const SizedBox(height: 8),
+          const _ServerCard(key: ValueKey('current-server')),
+          const SizedBox(height: 20),
+          TourTarget(
+            step: 3,
+            child: Column(
+              children: [
+                Segments<String>(
+                  value: sora.settings.tunnel,
+                  choices: {'tun': s.tunnelTun, 'proxy': s.tunnelProxy},
+                  onChanged: (v) => unawaited(sora.change((x) => x.tunnel = v)),
+                ),
+                const SizedBox(height: 8),
+                SwitchTile(
+                  title: s.killSwitch,
+                  value: sora.settings.killSwitch,
+                  onChanged: (v) => unawaited(sora.setKillSwitch(v)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (stats != null)
+            Row(
+              children: [
+                for (final (label, speed, total, icon) in [
+                  (s.trafficDown, sora.speedDown, stats.bytesDown, Symbols.south_rounded),
+                  (s.trafficUp, sora.speedUp, stats.bytesUp, Symbols.north_rounded),
+                ])
+                  Expanded(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Spacer(),
-                            RoundButton(icon: CupertinoIcons.gear_alt, label: S.of(context).settings, onTap: settings),
+                            Icon(icon, size: 16, color: palette.ink2),
+                            const SizedBox(width: 4),
+                            Text(label, style: Styles.caption.copyWith(color: palette.ink2)),
                           ],
                         ),
-                        const Spacer(flex: 3),
-                        const _Orb(),
-                        const SizedBox(height: 36),
-                        const _Status(),
-                        const Spacer(flex: 4),
-                        const _SubscriptionWarning(),
-                        const _ServerCard(),
+                        const SizedBox(height: 4),
+                        Text(
+                          speed == null ? s.trafficUnavailable : s.perSecond(bytes(speed)),
+                          style: Styles.figures(Styles.bodyStrong).copyWith(color: palette.ink),
+                        ),
+                        Text(
+                          formatBytes(s, total, locale),
+                          style: Styles.figures(Styles.secondary).copyWith(color: palette.ink3),
+                        ),
                       ],
                     ),
                   ),
+              ],
+            )
+          else
+            Text(s.trafficUnavailable, style: Styles.caption.copyWith(color: palette.ink3)),
+          if (MediaQuery.sizeOf(context).width >= 1000) ...[
+            const SizedBox(height: 24),
+            Group(
+              children: [
+                LinkTile(
+                  title: s.activeRules(sora.settings.rules.map(UserRule.parse).nonNulls.length),
+                  onTap: () => ShellScope.of(context).select(1),
                 ),
-              ),
+              ],
             ),
-          ),
-        ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(s.recentNotifications, style: Styles.bodyStrong.copyWith(color: palette.ink)),
+                ),
+                TextButton(
+                  onPressed: () => ShellScope.of(context).select(4),
+                  child: Text(s.notifications, style: Styles.secondary.copyWith(color: palette.ink)),
+                ),
+              ],
+            ),
+            if (sora.history.isEmpty)
+              Text(s.notificationsEmpty, style: Styles.caption.copyWith(color: palette.ink3))
+            else
+              Group(children: [for (final notice in sora.history.take(3)) NotificationRow(notice: notice)]),
+          ],
+        ],
       ),
     );
   }
@@ -200,7 +287,7 @@ class _Status extends StatelessWidget {
   }
 }
 
-/// Crossfades state text with a short upward slide to avoid abrupt changes.
+/// Crossfades state text when the connection phase changes.
 class _Swap extends StatelessWidget {
   const _Swap({required this.child});
 
@@ -213,13 +300,7 @@ class _Swap extends StatelessWidget {
       switchInCurve: Motion.curve,
       switchOutCurve: Curves.easeIn,
       layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: SlideTransition(
-          position: Tween(begin: const Offset(0, 0.25), end: Offset.zero).animate(animation),
-          child: child,
-        ),
-      ),
+      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
       child: child,
     );
   }
@@ -256,7 +337,7 @@ class _ElapsedState extends State<_Elapsed> {
 }
 
 class _ServerCard extends StatelessWidget {
-  const _ServerCard();
+  const _ServerCard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -280,16 +361,16 @@ class _ServerCard extends StatelessWidget {
       opacity: offline ? 0.4 : 1,
       duration: Motion.of(context, Motion.medium),
       child: Pressable(
-        radius: 22,
+        radius: 12,
         give: 0.98,
         wash: false,
         onTap: offline
             ? null
             : () => empty ? showSubscriptionSheet(context) : push<void>(context, const ServersScreen()),
         child: Container(
-          height: 64,
+          height: 56,
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(22)),
+          decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
               Expanded(
@@ -305,7 +386,7 @@ class _ServerCard extends StatelessWidget {
                 const SizedBox(width: 10),
               ],
               Icon(
-                empty ? CupertinoIcons.plus : CupertinoIcons.chevron_right,
+                empty ? Symbols.add_rounded : Symbols.chevron_right_rounded,
                 size: empty ? 20 : 16,
                 color: empty ? palette.ink : palette.ink3,
               ),
@@ -313,35 +394,6 @@ class _ServerCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Shows subscription expiry and traffic warnings on the main screen before
-/// service is interrupted.
-class _SubscriptionWarning extends StatelessWidget {
-  const _SubscriptionWarning();
-
-  @override
-  Widget build(BuildContext context) {
-    final sora = SoraScope.of(context);
-    final s = S.of(context);
-    final palette = Palette.of(context);
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    final warning = sora.subscriptions.map((sub) => subscriptionWarning(s, sub, locale)).nonNulls.firstOrNull;
-    return AnimatedSize(
-      duration: Motion.of(context, Motion.medium),
-      curve: Motion.curve,
-      child: warning == null
-          ? const SizedBox(width: double.infinity)
-          : Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-              child: Text(
-                warning,
-                textAlign: TextAlign.center,
-                style: Styles.secondary.copyWith(color: palette.danger),
-              ),
-            ),
     );
   }
 }

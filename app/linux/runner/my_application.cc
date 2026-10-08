@@ -59,8 +59,8 @@ static void my_application_activate(GApplication* application) {
   }
   gtk_window_set_title(window, "Sora");
 
-  // A utility window: one column of controls, tall rather than wide.
-  gtk_window_set_default_size(window, 420, 720);
+  // Start with enough room for the server and connection panes.
+  gtk_window_set_default_size(window, 1120, 760);
   GdkGeometry limits = {};
   limits.min_width = 360;
   limits.min_height = 560;

@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -34,6 +36,7 @@ class Pressable extends StatefulWidget {
 class _PressableState extends State<Pressable> {
   bool _hover = false;
   bool _down = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -43,27 +46,49 @@ class _PressableState extends State<Pressable> {
         ? Colors.transparent
         : _down
         ? palette.pressed
-        : _hover
+        : _hover || _focused
         ? palette.hover
         : Colors.transparent;
-    return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = _down = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: enabled ? (_) => setState(() => _down = true) : null,
-        onTapUp: enabled ? (_) => setState(() => _down = false) : null,
-        onTapCancel: enabled ? () => setState(() => _down = false) : null,
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _down ? widget.give : 1,
-          duration: Motion.of(context, Motion.fast),
-          curve: Motion.curve,
-          child: AnimatedContainer(
+    return FocusableActionDetector(
+      enabled: enabled,
+      onShowFocusHighlight: (value) => setState(() => _focused = value),
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+        SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+      },
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onTap?.call();
+            return null;
+          },
+        ),
+      },
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = _down = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: enabled ? (_) => setState(() => _down = true) : null,
+          onTapUp: enabled ? (_) => setState(() => _down = false) : null,
+          onTapCancel: enabled ? () => setState(() => _down = false) : null,
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            scale: _down ? widget.give : 1,
             duration: Motion.of(context, Motion.fast),
-            decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(widget.radius)),
-            child: widget.child,
+            curve: Motion.curve,
+            child: AnimatedContainer(
+              duration: Motion.of(context, Motion.fast),
+              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(widget.radius)),
+              foregroundDecoration: _focused
+                  ? BoxDecoration(
+                      border: Border.all(color: palette.ink3, width: 2),
+                      borderRadius: BorderRadius.circular(widget.radius),
+                    )
+                  : null,
+              child: widget.child,
+            ),
           ),
         ),
       ),
@@ -115,8 +140,8 @@ class Screen extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = Palette.of(context);
     final heading = Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 22),
-      child: Text(title, style: Styles.title.copyWith(color: palette.ink)),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
+      child: Text(title, style: Styles.heading.copyWith(color: palette.ink)),
     );
     return Scaffold(
       body: SafeArea(
@@ -127,11 +152,12 @@ class Screen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
               child: Row(
                 children: [
-                  RoundButton(
-                    icon: CupertinoIcons.chevron_left,
-                    label: MaterialLocalizations.of(context).backButtonTooltip,
-                    onTap: () => Navigator.of(context).maybePop(),
-                  ),
+                  if (Navigator.of(context).canPop())
+                    RoundButton(
+                      icon: Symbols.chevron_left_rounded,
+                      label: MaterialLocalizations.of(context).backButtonTooltip,
+                      onTap: () => Navigator.of(context).maybePop(),
+                    ),
                   const Spacer(),
                   ...actions,
                 ],
@@ -140,7 +166,7 @@ class Screen extends StatelessWidget {
             Expanded(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
+                  constraints: const BoxConstraints(maxWidth: 880),
                   child: fill == null
                       ? ListView(padding: const EdgeInsets.fromLTRB(20, 6, 20, 32), children: [heading, ...children])
                       : Padding(
@@ -174,9 +200,9 @@ class Group extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DecoratedBox(
-        decoration: BoxDecoration(color: Palette.of(context).surface, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: Palette.of(context).surface, borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
@@ -309,12 +335,12 @@ class Tile extends StatelessWidget {
     final palette = Palette.of(context);
     return Pressable(
       onTap: onTap,
-      radius: 16,
+      radius: 8,
       give: 0.99,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 52),
+        constraints: const BoxConstraints(minHeight: 40),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             children: [
               Expanded(
@@ -400,7 +426,7 @@ class ChoiceTile<T> extends StatelessWidget {
               overlayColor: WidgetStatePropertyAll(palette.hover),
               padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12)),
             ),
-            trailingIcon: entry.key == value ? Icon(CupertinoIcons.checkmark_alt, size: 18, color: palette.ink) : null,
+            trailingIcon: entry.key == value ? Icon(Symbols.check_rounded, size: 18, color: palette.ink) : null,
             child: Text(entry.value, style: Styles.secondary.copyWith(color: palette.ink)),
           ),
       ],
@@ -412,7 +438,7 @@ class ChoiceTile<T> extends StatelessWidget {
           children: [
             Text(choices[value] ?? '', style: Styles.secondary.copyWith(color: palette.ink)),
             const SizedBox(width: 6),
-            Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: palette.ink3),
+            Icon(Symbols.unfold_more_rounded, size: 14, color: palette.ink3),
           ],
         ),
       ),
@@ -439,7 +465,7 @@ class LinkTile extends StatelessWidget {
         children: [
           if (value != null) Text(value!, style: Styles.secondary.copyWith(color: palette.ink)),
           const SizedBox(width: 6),
-          Icon(CupertinoIcons.chevron_right, size: 15, color: palette.ink3),
+          Icon(Symbols.chevron_right_rounded, size: 15, color: palette.ink3),
         ],
       ),
     );
@@ -489,14 +515,12 @@ class Segments<T> extends StatelessWidget {
                   child: Semantics(
                     button: true,
                     selected: key == value,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                       onTap: () => onChanged(key),
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Center(
-                          child: Text(choices[key]!, style: Styles.caption.copyWith(color: palette.ink)),
-                        ),
+                      radius: 8,
+                      give: 1,
+                      child: Center(
+                        child: Text(choices[key]!, style: Styles.caption.copyWith(color: palette.ink)),
                       ),
                     ),
                   ),

@@ -592,4 +592,118 @@ class SEn extends S {
 
   @override
   String get noAnswer => 'no answer';
+
+  @override
+  String get home => 'Home';
+
+  @override
+  String get navRules => 'Rules';
+
+  @override
+  String get navConnections => 'Connections';
+
+  @override
+  String get navLogs => 'Logs';
+
+  @override
+  String get navAbout => 'About';
+
+  @override
+  String get sidebarToggle => 'Toggle sidebar';
+
+  @override
+  String get more => 'More';
+
+  @override
+  String get less => 'Less';
+
+  @override
+  String get currentServer => 'Current server';
+
+  @override
+  String get trafficDown => 'Downloaded';
+
+  @override
+  String get trafficUp => 'Uploaded';
+
+  @override
+  String perSecond(String value) {
+    return '$value/s';
+  }
+
+  @override
+  String activeRules(int count) {
+    return 'Active rules: $count';
+  }
+
+  @override
+  String get recentNotifications => 'Recent notifications';
+
+  @override
+  String get markAllRead => 'Mark all read';
+
+  @override
+  String get notificationsEmpty => 'Connection and subscription events will appear here';
+
+  @override
+  String get retryConnect => 'Retry connection';
+
+  @override
+  String get openLogs => 'Open logs';
+
+  @override
+  String get tourReplay => 'Show guide again';
+
+  @override
+  String tourStep(int step) {
+    return 'Step $step of 5';
+  }
+
+  @override
+  String get tourBack => 'Back';
+
+  @override
+  String get tourNext => 'Next';
+
+  @override
+  String get tourSkip => 'Skip';
+
+  @override
+  String get tourFinish => 'Done';
+
+  @override
+  String get tourAdd => 'Add your provider’s subscription link.';
+
+  @override
+  String get tourServer => 'Pick a server. “Fastest” selects one for you.';
+
+  @override
+  String get tourConnect => 'Click here to connect or disconnect.';
+
+  @override
+  String get tourMode => 'Choose a mode. Kill switch blocks internet if the VPN drops.';
+
+  @override
+  String get tourSettings => 'Open settings. You can replay this guide there.';
+
+  @override
+  String get chooseProgram => 'Choose a program';
+
+  @override
+  String get installedApps => 'Installed applications';
+
+  @override
+  String get runningProcesses => 'Running processes';
+
+  @override
+  String get programsFailed => 'Could not load applications';
+
+  @override
+  String get programsEmpty => 'No applications found. Try another name.';
+
+  @override
+  String get selectExe => 'Choose an .exe file';
+
+  @override
+  String get trafficUnavailable => 'Counters are not available yet';
 }

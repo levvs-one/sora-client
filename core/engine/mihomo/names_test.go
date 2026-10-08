@@ -9,8 +9,8 @@ import (
 func TestPlanNamesLeadBackToPlanIDs(t *testing.T) {
 	p := &engine.Plan{
 		Outbounds: []engine.Outbound{
-			{ID: "a1", Name: "VLESS · localhost", Protocol: engine.ProtocolDirect},
-			{ID: "b2", Name: "VLESS · localhost", Protocol: engine.ProtocolDirect},
+			{ID: "a1", Name: "VLESS \u00b7 localhost", Protocol: engine.ProtocolDirect},
+			{ID: "b2", Name: "VLESS \u00b7 localhost", Protocol: engine.ProtocolDirect},
 		},
 		Groups: []engine.Group{{Name: "sora:auto", Type: engine.GroupURLTest, Outbounds: []string{"a1", "b2"}}},
 	}

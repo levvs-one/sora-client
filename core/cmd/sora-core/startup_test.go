@@ -3,6 +3,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -32,7 +33,16 @@ func TestInstanceLockSurvivesUntilClose(t *testing.T) {
 }
 
 func TestFailedConstructionReleasesEndpointAndLock(t *testing.T) {
-	dir := t.TempDir()
+	// Keep the socket path below sockaddr_un's limit even with a long TMPDIR.
+	dir, err := os.MkdirTemp("", "sora-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	})
 	address := filepath.Join(dir, "core.sock")
 	if _, err := New(t.Context(), Options{DataDir: dir, Socket: address, LocalPort: -1}); err == nil {
 		t.Fatal("invalid port accepted")

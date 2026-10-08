@@ -65,7 +65,7 @@ func (*driver) Kind() engine.Kind { return engine.KindXray }
 // Route directs machine traffic through Xray's adapter, keeping the core
 // account's traffic on the main table.
 func (*driver) Route(ctx context.Context, p *engine.Plan) error {
-	return tunroute.Route(ctx, p.Tun.DeviceName, os.Getuid())
+	return tunroute.Route(ctx, p.Tun, os.Getuid())
 }
 
 func (*driver) Unroute(ctx context.Context) error { return tunroute.Unroute(ctx) }

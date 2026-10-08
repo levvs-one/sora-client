@@ -12,7 +12,6 @@ import (
 	"github.com/tailscale/wf"
 	"golang.org/x/sys/windows"
 
-	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
@@ -20,10 +19,11 @@ import (
 // neighbor-discovery traffic. Windows removes filters on close or process exit,
 // allowing traffic after crashes, as WireGuard and Tailscale do.
 type WFP struct {
-	mu         sync.Mutex
-	enginesDir string
-	bypass     []netip.Prefix
-	session    *wf.Session
+	mu          sync.Mutex
+	enginesDir  string
+	bypass      []netip.Prefix
+	tunNetworks []netip.Prefix
+	session     *wf.Session
 }
 
 // PlatformFirewall returns Windows WFP, matching engines by executable because
@@ -43,6 +43,13 @@ func PlatformFirewall(opts FirewallOptions) (Firewall, error) {
 		prefixes = append(prefixes, prefix.Masked())
 	}
 	return &WFP{enginesDir: opts.EnginesDir, bypass: prefixes}, nil
+}
+
+// SetTunNetworks receives the selected session subnets before arming.
+func (w *WFP) SetTunNetworks(networks []netip.Prefix) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.tunNetworks = append([]netip.Prefix(nil), networks...)
 }
 
 // Rule weights inside the sublayer: every permit outranks the final block.
@@ -159,8 +166,8 @@ func (w *WFP) install(session *wf.Session) error {
 	if err := permit("loopback", &wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsLoopback}); err != nil {
 		return err
 	}
-	for _, network := range engine.TunNetworks {
-		if err := permit("through the tunnel", &wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: netip.MustParsePrefix(network)}); err != nil {
+	for _, network := range w.tunNetworks {
+		if err := permit("through the tunnel", &wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {
 			return err
 		}
 	}

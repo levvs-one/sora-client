@@ -2,9 +2,13 @@ package mihomo
 
 import (
 	"context"
+	"net/netip"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/enginetest"
@@ -145,6 +149,28 @@ func TestRenderRefusesTunWithoutDNS(t *testing.T) {
 	plan.DNS.Enabled = false
 	if _, err := Render(plan, testRuntime(t)); err == nil {
 		t.Fatal("a tun plan without a resolver must be refused before the engine is started")
+	}
+}
+
+func TestTunUsesSelectedPoolEvenWithoutFakeDNS(t *testing.T) {
+	p := testPlan()
+	p.Tun.IPv4 = netip.MustParsePrefix("172.20.0.1/30")
+	p.Tun.IPv6 = netip.MustParsePrefix("fdfe:dcba:9877::1/126")
+	p.DNS.Mode = "redir-host"
+	p.DNS.FakeIPRange = "172.20.0.1/16"
+	out, err := Render(p, testRuntime(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c config
+	if err := yaml.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	if c.DNS.FakeIPRange != p.DNS.FakeIPRange || len(c.Tun.Inet6Address) != 1 || c.Tun.Inet6Address[0] != p.Tun.IPv6.String() {
+		t.Fatalf("DNS=%+v TUN=%+v", c.DNS, c.Tun)
+	}
+	if runtime.GOOS == "linux" && (*c.Tun.AutoRoute || *c.Tun.AutoDetectInterface) {
+		t.Fatal("Linux routing must belong to the core")
 	}
 }
 

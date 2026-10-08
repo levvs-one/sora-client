@@ -115,6 +115,9 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 	}
 	if p.Tun.Enabled {
 		c.Tun = buildTun(p.Tun, p.DNS)
+		if p.Tun.IPv4.IsValid() {
+			c.DNS.FakeIPRange = p.DNS.FakeIPRange
+		}
 	}
 
 	out, err := yaml.Marshal(&c) //nolint:gosec // the config carries the controller secret by design and is never written to disk

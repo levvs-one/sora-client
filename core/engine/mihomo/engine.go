@@ -6,11 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/clashapi"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/engine/tunroute"
 )
 
 // Prober recognizes "mihomo -v" output such as "Mihomo Meta v1.19.32 linux
@@ -136,3 +138,13 @@ func copyFile(src, dst string) error {
 	}
 	return os.Rename(tmp.Name(), dst)
 }
+
+// Route owns Linux policy routing so every engine shares the same exclusions.
+func (driver) Route(ctx context.Context, p *engine.Plan) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+	return tunroute.Route(ctx, p.Tun, os.Getuid())
+}
+
+func (driver) Unroute(ctx context.Context) error { return tunroute.Unroute(ctx) }

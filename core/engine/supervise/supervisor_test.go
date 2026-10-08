@@ -260,3 +260,42 @@ func TestRequestedStopDoesNotLogAnUnexpectedExit(t *testing.T) {
 		t.Fatalf("requested stop logged errors: %+v", entries)
 	}
 }
+
+type routingDriver struct {
+	fakeDriver
+	routes, removals int
+}
+
+func (d *routingDriver) Route(context.Context, *engine.Plan) error { d.routes++; return nil }
+func (d *routingDriver) Unroute(context.Context) error             { d.removals++; return nil }
+
+func TestOnlyTunOwnerRemovesRouting(t *testing.T) {
+	for _, tun := range []bool{false, true} {
+		t.Run(fmt.Sprint(tun), func(t *testing.T) {
+			sup := newFake(t, fakeConfig{}, 1)
+			driver := &routingDriver{}
+			sup.driver = driver
+			p := plan()
+			p.Tun.Enabled = tun
+			if err := sup.Apply(context.Background(), p); err != nil {
+				t.Fatal(err)
+			}
+			if err := sup.Stop(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if tun {
+				want = 1
+			}
+			if driver.routes != want || driver.removals != want {
+				t.Fatalf("routes=%d removals=%d, want %d", driver.routes, driver.removals, want)
+			}
+			if err := sup.Stop(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if driver.removals != want {
+				t.Fatal("routing removed twice")
+			}
+		})
+	}
+}

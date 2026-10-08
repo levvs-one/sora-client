@@ -129,6 +129,7 @@ type Supervisor struct {
 	plan     *engine.Plan
 	proc     *Process
 	stopping bool
+	routed   bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -285,6 +286,9 @@ func (s *Supervisor) Apply(ctx context.Context, p *engine.Plan) error {
 	if err := s.admit(p); err != nil {
 		return err
 	}
+	if err := engine.PrepareTun(p); err != nil {
+		return s.redactor.Err(err)
+	}
 	s.mu.Lock()
 	s.redactor.Add(p.Secrets()...)
 	s.plan = p
@@ -359,6 +363,11 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	if err == nil && p.Tun.Enabled {
 		if r, ok := s.driver.(Router); ok {
 			err = r.Route(ctx, p)
+			if err == nil {
+				s.mu.Lock()
+				s.routed = true
+				s.mu.Unlock()
+			}
 		}
 	}
 	if err != nil {
@@ -537,13 +546,25 @@ func (s *Supervisor) Stop(ctx context.Context) error {
 
 // unroute removes installed routes and logs errors without preventing shutdown.
 func (s *Supervisor) unroute(ctx context.Context) {
+	s.mu.Lock()
+	routed := s.routed
+	s.mu.Unlock()
+	if !routed {
+		return
+	}
 	r, ok := s.driver.(Router)
 	if !ok {
 		return
 	}
-	if err := r.Unroute(ctx); err != nil && s.cfg.Logs != nil {
-		s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+	if err := r.Unroute(ctx); err != nil {
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+		}
+		return
 	}
+	s.mu.Lock()
+	s.routed = false
+	s.mu.Unlock()
 }
 
 // Close stops the engine and releases the supervision context.

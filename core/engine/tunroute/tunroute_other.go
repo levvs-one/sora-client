@@ -5,9 +5,10 @@ package tunroute
 import (
 	"context"
 	"errors"
+	"github.com/levvs-one/sora-client/core/engine"
 )
 
-func route(context.Context, string, int) error {
+func route(context.Context, engine.Tun, int) error {
 	return errors.New("tunroute: routing into an adapter is implemented for Linux only")
 }
 

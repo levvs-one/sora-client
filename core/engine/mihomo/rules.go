@@ -2,6 +2,7 @@ package mihomo
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/levvs-one/sora-client/core/engine"
@@ -142,12 +143,15 @@ func buildTun(t engine.Tun, d engine.DNS) *tunConfig {
 		MTU:       orDefaultInt(t.MTU, 1500),
 		DNSHijack: orDefaultList(d.HijackTun, []string{"any:53"}),
 	}
-	auto := t.AutoRoute
+	auto := t.AutoRoute && runtime.GOOS != "linux"
 	out.AutoRoute = &auto
-	detect := true
+	detect := runtime.GOOS != "linux"
 	out.AutoDetectInterface = &detect
 	strict := t.StrictRoute
 	out.StrictRoute = &strict
+	if t.IPv6.IsValid() {
+		out.Inet6Address = []string{t.IPv6.String()}
+	}
 	out.RouteAddress = t.RouteAddressSets
 	out.IncludePackage = t.IncludeApps
 	out.ExcludePackage = t.ExcludeApps

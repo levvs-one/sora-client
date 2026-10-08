@@ -255,5 +255,5 @@ type tunConfig struct {
 	RouteExcludeAddress []string `yaml:"route-exclude-address,omitempty"`
 	IncludePackage      []string `yaml:"include-package,omitempty"`
 	ExcludePackage      []string `yaml:"exclude-package,omitempty"`
-	Inet6Address        string   `yaml:"inet6-address,omitempty"`
+	Inet6Address        []string `yaml:"inet6-address,omitempty"`
 }

@@ -578,9 +578,10 @@ func (s *Session) settings() Settings {
 // recursive lock acquisition.
 func (s *Session) settingsLocked() Settings {
 	return Settings{
-		KillSwitch: s.status.KillSwitch,
-		Bypass:     append([]string(nil), s.status.Bypass...),
-		TunnelMode: s.status.TunnelMode,
+		TunNetworks: s.cfg.Plan.Tun.Networks(),
+		KillSwitch:  s.status.KillSwitch,
+		Bypass:      append([]string(nil), s.status.Bypass...),
+		TunnelMode:  s.status.TunnelMode,
 	}
 }
 

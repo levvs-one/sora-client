@@ -1,6 +1,9 @@
 package engine
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"net/netip"
+)
 
 // Limits mirror the sora.core.v1 contract. A plan that exceeds them is
 // rejected before any engine sees it.
@@ -221,13 +224,10 @@ type DNS struct {
 // TunDevice names Sora's adapter to avoid collisions and allow startup checks.
 const TunDevice = "sora0"
 
-// TunNetworks identifies tunnel-local traffic: sing-box uses 172.19.0.1/30,
-// mihomo uses 198.18.0.1/30 from its fake-IP range, and both use
-// fdfe:dcba:9876::1/126 for IPv6.
-var TunNetworks = []string{"172.19.0.0/30", "198.18.0.0/30", "fdfe:dcba:9876::/126"}
-
 // Tun is the virtual network interface setup of the plan.
 type Tun struct {
+	IPv4             netip.Prefix
+	IPv6             netip.Prefix
 	Enabled          bool
 	Stack            string // system, gvisor, mixed
 	DeviceName       string

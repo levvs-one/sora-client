@@ -21,10 +21,10 @@ jobs:
     name: Vulnerable dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: core/go.mod
           cache: false
@@ -40,8 +40,8 @@ jobs:
     name: Advisory database
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: google/osv-scanner-action/osv-scanner-action@v2.3.1
+      - uses: actions/checkout@v7
+      - uses: google/osv-scanner-action/osv-scanner-action@v2.6.0
         with:
           # osv-scanner 2 reads Go dependencies from go.mod; go.sum alone has no
           # extractor, and --skip-gitignore no longer exists.
@@ -59,14 +59,14 @@ jobs:
       matrix:
         language: ['go']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
       - name: Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: '/language:${{ matrix.language }}'
 
@@ -80,17 +80,17 @@ jobs:
       # Fails the pull request on a licence that the project does not ship, on a
       # dependency with a known advisory, or on a package that is not from a
       # source the project trusts.
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
 
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Look for credentials in the tree
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -98,8 +98,8 @@ jobs:
     name: Core builds everywhere
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: core/go.mod
           cache: false

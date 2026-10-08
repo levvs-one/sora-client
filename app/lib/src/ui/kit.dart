@@ -9,8 +9,8 @@ import '../../l10n/strings.dart';
 import '../core/link.dart';
 import '../design/theme.dart';
 
-/// Anything that responds to a pointer: a hover wash, and a small give under
-/// the finger that springs back, as Apple controls do.
+/// A tappable surface with hover feedback and animated press scaling. A null
+/// callback disables interaction.
 class Pressable extends StatefulWidget {
   const Pressable({
     super.key,
@@ -71,14 +71,14 @@ class _PressableState extends State<Pressable> {
   }
 }
 
-/// A round icon button.
+/// A circular icon button with an optional accessibility label.
 class RoundButton extends StatelessWidget {
   const RoundButton({super.key, required this.icon, required this.onTap, this.label});
 
   final IconData icon;
   final VoidCallback? onTap;
 
-  /// Read by screen readers; never shown.
+  /// Screen-reader label; not displayed visually.
   final String? label;
 
   @override
@@ -100,12 +100,9 @@ class RoundButton extends StatelessWidget {
   }
 }
 
-/// A screen below the main one: a back button, a large title that sits on
-/// the page, and the content in one column of a comfortable width.
-///
-/// The content scrolls with the title, unless [fill] is given: then
-/// [children] stay under the title and [fill] scrolls on its own, as a long
-/// list does.
+/// A detail screen with back navigation, title and constrained content width.
+/// By default, title and content scroll together; [fill] keeps [children] below
+/// the title and provides a separate scroll area.
 class Screen extends StatelessWidget {
   const Screen({super.key, required this.title, required this.children, this.actions = const [], this.fill});
 
@@ -167,8 +164,8 @@ class Screen extends StatelessWidget {
   }
 }
 
-/// Rows that belong together, on one rounded surface. Space separates groups
-/// and rows; there are no rules between them.
+/// Groups related rows on a rounded surface, separated by spacing without
+/// dividers.
 class Group extends StatelessWidget {
   const Group({super.key, required this.children});
 
@@ -189,9 +186,7 @@ class Group extends StatelessWidget {
   }
 }
 
-/// The name of a group of settings: dark and in sentence case, set close to
-/// its group and far from the one before, so it reads as a label of what
-/// follows rather than a banner.
+/// A sentence-case settings group label, spaced closer to its group.
 class Heading extends StatelessWidget {
   const Heading(this.text, {super.key});
 
@@ -204,10 +199,9 @@ class Heading extends StatelessWidget {
   );
 }
 
-/// Asks before something that cannot be undone: the question, the action in
-/// red, and a way out. Answers true when the person goes ahead.
-/// [destructive] paints the action as one that cannot be undone; without
-/// [cancellable] the dialog only tells something and has its one button.
+/// Shows a dialog and returns true on confirmation. [destructive] colours the
+/// action red; disabling [cancellable] removes the cancel button for a
+/// single-action informational dialog.
 Future<bool> confirm(
   BuildContext context, {
   required String question,
@@ -291,7 +285,7 @@ Future<bool> confirm(
   return yes ?? false;
 }
 
-/// One row: a title, an optional detail under it, and what goes on the right.
+/// A tappable row with title, optional detail and trailing content.
 class Tile extends StatelessWidget {
   const Tile({
     super.key,
@@ -351,7 +345,7 @@ class Tile extends StatelessWidget {
   }
 }
 
-/// A row with a switch; the whole row toggles it.
+/// A switch row that toggles when any part of the row is tapped.
 class SwitchTile extends StatelessWidget {
   const SwitchTile({super.key, required this.title, required this.value, required this.onChanged});
 
@@ -376,8 +370,7 @@ class SwitchTile extends StatelessWidget {
   }
 }
 
-/// A row whose value is one of a few choices, picked from a menu that opens
-/// where the row is.
+/// A choice row with a menu anchored to the row.
 class ChoiceTile<T> extends StatelessWidget {
   const ChoiceTile({
     super.key,
@@ -427,7 +420,7 @@ class ChoiceTile<T> extends StatelessWidget {
   }
 }
 
-/// A row that opens another screen.
+/// A navigation row with an optional current value.
 class LinkTile extends StatelessWidget {
   const LinkTile({super.key, required this.title, required this.onTap, this.value});
 
@@ -453,8 +446,8 @@ class LinkTile extends StatelessWidget {
   }
 }
 
-/// A row of equal choices with a plate that slides to the chosen one. The
-/// built-in control draws rules between segments; this one has none.
+/// Equal-width choices with an animated selection indicator and no segment
+/// dividers.
 class Segments<T> extends StatelessWidget {
   const Segments({super.key, required this.value, required this.choices, required this.onChanged});
 
@@ -516,12 +509,12 @@ class Segments<T> extends StatelessWidget {
   }
 }
 
-/// How much of a subscription's traffic is spent: a short rounded track that
-/// fills with ink, and with red once less than a tenth is left.
+/// Displays the used share of subscription traffic; [alarm] colours it red for
+/// low remaining quota.
 class UsageBar extends StatelessWidget {
   const UsageBar({super.key, required this.share, this.alarm = false});
 
-  /// From 0 to 1.
+  /// Used fraction from 0 to 1.
   final double share;
   final bool alarm;
 
@@ -556,16 +549,16 @@ class UsageBar extends StatelessWidget {
   }
 }
 
-/// Opens a link a provider gave, in the browser or Telegram. Only the schemes
-/// the core lets through are opened.
+/// Opens a provider link externally. Allows only HTTP, HTTPS and Telegram
+/// schemes, matching core validation.
 Future<void> openLink(String link) async {
   final uri = Uri.tryParse(link.trim());
   if (uri == null || !const {'https', 'http', 'tg'}.contains(uri.scheme)) return;
   await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 
-/// Text from a provider with its links and Telegram names made tappable:
-/// "@sumivpn" opens the channel, an address opens the page.
+/// Provider text with clickable URLs and Telegram handles; @names open their
+/// t.me channel.
 class LinkedText extends StatefulWidget {
   const LinkedText(this.text, {super.key, required this.style});
 
@@ -617,7 +610,7 @@ class _LinkedTextState extends State<LinkedText> {
   }
 }
 
-/// A wide capsule button, ink on the page.
+/// A capsule action button with disabled and busy states.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({super.key, required this.label, required this.onTap, this.busy = false});
 
@@ -648,8 +641,8 @@ class PrimaryButton extends StatelessWidget {
   }
 }
 
-/// Pushes a screen with a short slide and fade, the way a Mac app moves to a
-/// detail; without motion it simply appears.
+/// Pushes a detail screen with slide and fade transitions. Disabled motion
+/// makes the transition immediate.
 Future<T?> push<T>(BuildContext context, Widget screen) {
   final motion = Motion.enabled(context);
   return Navigator.of(context).push<T>(
@@ -675,7 +668,7 @@ Future<T?> push<T>(BuildContext context, Widget screen) {
   );
 }
 
-/// The words for a failure, in the language of the interface.
+/// Returns a localized UI message for a core or app failure.
 String describe(S s, CoreFailure failure) {
   final key = failure.key;
   return switch (key) {

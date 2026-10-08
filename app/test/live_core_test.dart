@@ -1,6 +1,5 @@
-// Talks to a running core, the real one: the unix socket on Linux, the named
-// pipe on Windows. Runs only when SORA_CORE_LIVE is set, as CI does after it
-// installs the service.
+// Requires SORA_CORE_LIVE and an installed core, as configured in CI. Uses the
+// Linux Unix socket or Windows named pipe to verify the service.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +20,7 @@ void main() {
           if (e.installed) e.kind,
       };
       expect(installed, containsAll(Platform.environment['SORA_CORE_ENGINES']?.split(',') ?? const <String>[]));
-      // A call that needs the token proves the token is the right one.
+      // An authenticated request verifies that the Handshake token is accepted.
       final subs = await link.stub.listSubscriptions(
         ListSubscriptionsRequest(apiVersion: apiVersion, controlAuthenticator: link.token),
       );

@@ -4,23 +4,16 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 
-/// The system proxy of the person signed in, pointed at the core's local
-/// proxy while a session runs in the proxy mode and put back afterwards.
-///
-/// It is set here, by the interface, because it belongs to the person: the
-/// core runs as a service, and a service writing "the current user's" proxy
-/// writes its own account's, which no program the person runs reads.
-///
-/// What was there before is read first, for the caller to keep somewhere that
-/// survives a crash before anything changes, and given back to [restore].
+/// Controls the signed-in user's proxy in the UI process; the core service
+/// would change its own account's settings. Persist [read] before pointing at
+/// the core, then pass that snapshot to [restore], including after a crash.
 abstract interface class SystemProxy {
-  /// The proxy of this desktop, or null where the system has none to set:
-  /// on Linux outside GNOME-like desktops and KDE, programs take a proxy each
-  /// from their own settings.
+  /// Returns a proxy controller for Windows, GNOME-like desktops or KDE.
+  /// Returns null elsewhere; other Linux desktops use per-app proxy settings.
   static SystemProxy? forThisDesktop() {
     if (Platform.isWindows) return _WinInet();
     if (!Platform.isLinux) return null;
-    // The same split Chromium makes when it looks for the system proxy.
+    // Match Chromium's desktop detection for system proxy settings.
     final desktop = (Platform.environment['XDG_CURRENT_DESKTOP'] ?? '').toUpperCase().split(':');
     if (desktop.contains('KDE')) return _Kde();
     const gnomeLike = {'GNOME', 'UNITY', 'CINNAMON', 'X-CINNAMON', 'BUDGIE', 'PANTHEON'};
@@ -28,26 +21,25 @@ abstract interface class SystemProxy {
     return null;
   }
 
-  /// The proxy as it is now, as a snapshot [restore] takes.
+  /// Reads a proxy snapshot accepted by [restore].
   Future<String> read();
 
   /// Points the system proxy at [host]:[port].
   Future<void> point(String host, int port);
 
-  /// Whether the system proxy points at [host]:[port] now, as [point] left
-  /// it, rather than where the person or another program moved it since.
+  /// Checks whether the proxy still matches [host]:[port] before restoration,
+  /// preserving changes made by the user or another app.
   Future<bool> pointsAt(String host, int port);
 
-  /// Puts back what [read] returned.
+  /// Restores the snapshot returned by [read].
   Future<void> restore(String snapshot);
 }
 
-/// Destinations that never go through the proxy: the machine and its network.
+/// Local and private-network destinations excluded from proxying.
 final _bypass = ['localhost', '127.*', '10.*', for (var i = 16; i < 32; i++) '172.$i.*', '192.168.*', '<local>'];
 
-/// Windows: the per-connection options of WinINet, the API the Settings app
-/// itself uses. Unlike writing the registry values, it also tells every
-/// running program that the proxy changed.
+/// Uses WinINet per-connection options, like Windows Settings, to notify
+/// running apps of proxy changes as well as updating settings.
 final class _WinInet implements SystemProxy {
   static final _dll = DynamicLibrary.open('wininet.dll');
   static final _set = _dll
@@ -140,8 +132,8 @@ final class _WinInet implements SystemProxy {
 
   static Pointer<_OptionList> _list(Arena arena, Pointer<_Option> options, int count) => arena<_OptionList>()
     ..ref.size = sizeOf<_OptionList>()
-    // No connection name: the LAN settings, which every connection without
-    // settings of its own uses.
+    // A null connection selects LAN settings, inherited by connections without
+    // their own settings.
     ..ref.connection = nullptr
     ..ref.count = count
     ..ref.error = 0
@@ -173,7 +165,7 @@ final class _OptionList extends Struct {
   external Pointer<_Option> options;
 }
 
-/// GNOME and the desktops that read its settings.
+/// Proxy settings for GNOME and compatible desktops.
 final class _Gnome implements SystemProxy {
   static const _keys = [
     ('org.gnome.system.proxy', 'mode'),
@@ -215,7 +207,8 @@ final class _Gnome implements SystemProxy {
   @override
   Future<void> restore(String snapshot) async {
     final before = (jsonDecode(snapshot) as Map<String, dynamic>).cast<String, String>();
-    // The mode last, so the proxy is never on with half its old values.
+    // Restore the mode last to avoid enabling partially restored proxy
+    // settings.
     for (final (schema, key) in _keys.reversed) {
       final value = before['$schema $key'];
       if (value != null) await _gsettings(['set', schema, key, value]);
@@ -229,7 +222,7 @@ final class _Gnome implements SystemProxy {
   }
 }
 
-/// KDE Plasma: the proxy of KIO, which Plasma programs and Chromium read.
+/// KIO proxy settings used by KDE Plasma apps and Chromium.
 final class _Kde implements SystemProxy {
   static const _keys = ['ProxyType', 'httpProxy', 'httpsProxy', 'socksProxy', 'NoProxyFor'];
 
@@ -286,7 +279,7 @@ final class _Kde implements SystemProxy {
     if (result.exitCode != 0) throw OSError('kwriteconfig: ${result.stderr}'.trim());
   }
 
-  /// Running KIO programs read the file again on this signal.
+  /// Signals running KIO apps to reload their proxy configuration.
   static Future<void> _announce() => Process.run('dbus-send', [
     '--type=signal',
     '/KIO/Scheduler',

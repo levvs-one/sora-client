@@ -10,8 +10,8 @@ import '../sora.dart';
 import 'kit.dart';
 import 'servers.dart';
 
-/// The live connections of the session: where each goes, which program
-/// opened it, what carries it, and how much it moved. Any of them can be cut.
+/// Lists live session connections with destination, process, outbound and byte
+/// counters. Supports closing individual connections.
 class ConnectionsScreen extends StatefulWidget {
   const ConnectionsScreen({super.key});
 
@@ -20,8 +20,7 @@ class ConnectionsScreen extends StatefulWidget {
 }
 
 class _ConnectionsScreenState extends State<ConnectionsScreen> {
-  /// The engines keep their own counters; once a second reads them without
-  /// making the list jump.
+  /// Polls engine-owned counters once per second without resetting the list.
   static const _every = Duration(seconds: 1);
 
   final _search = TextEditingController();
@@ -65,7 +64,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
       if (!mounted) return;
       setState(() {
-        // Newest first: what was just opened is what a person is looking for.
+        // Show recent connections first to help locate newly opened traffic.
         _list = answer.connections.toList()..sort((a, b) => b.start.seconds.compareTo(a.start.seconds));
         _failure = null;
         _loaded = true;
@@ -181,7 +180,6 @@ class _Row extends StatelessWidget {
                     style: Styles.body.copyWith(color: palette.ink),
                   ),
                   const SizedBox(height: 2),
-                  // Space, not punctuation, keeps the facts apart.
                   Wrap(
                     spacing: 14,
                     children: [
@@ -200,7 +198,7 @@ class _Row extends StatelessWidget {
   }
 }
 
-/// The outbound that carried a connection, by the name a person knows it by.
+/// Resolves an outbound hop to its localized or configured display name.
 String _carrier(S s, Sora sora, String hop) => switch (hop) {
   'direct' || 'DIRECT' => s.chainDirect,
   'reject' || 'REJECT' || 'block' => s.chainBlocked,

@@ -8,10 +8,8 @@ import '../design/theme.dart';
 import '../sora.dart';
 import 'kit.dart';
 
-/// Asks for a subscription link. A link already on the clipboard is filled in,
-/// so adding one is usually a single press.
-/// Asks for a subscription link. [link] comes from an import link opened in
-/// a browser or a messenger; without it the clipboard offers one.
+/// Prompts for a subscription URL. Prefills [link] from a browser or messenger
+/// import; otherwise checks the clipboard for a URL.
 Future<void> showSubscriptionSheet(BuildContext context, {String? link, String name = ''}) async {
   final sora = SoraScope.read(context);
   final s = S.of(context);
@@ -36,9 +34,8 @@ Future<void> showSubscriptionSheet(BuildContext context, {String? link, String n
   );
 }
 
-/// A small sheet with one field and one action, centred over the window and
-/// grown out of it the way a Mac sheet appears. [submit] answers with the
-/// words to show under the field, or null to close.
+/// Shows a centred field sheet with a scale transition. [submit] returns an
+/// error to display below the field, or null to close the sheet.
 Future<void> showFieldSheet(
   BuildContext context, {
   required String title,
@@ -96,10 +93,10 @@ class _FieldSheet extends StatefulWidget {
   final String initial;
   final TextInputType keyboard;
 
-  /// An empty value means "use the default" rather than nothing at all.
+  /// Allows empty input to select the default value.
   final bool allowEmpty;
 
-  /// A choice that belongs with the value, under the field.
+  /// An additional setting displayed below the field.
   final Widget? extra;
 
   @override

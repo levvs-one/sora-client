@@ -20,16 +20,14 @@ import '../ui/subscription_sheet.dart';
 import 'links.dart';
 import 'system_proxy.dart';
 
-/// Sora on the desktop: the tray icon and its menu, the window that hides
-/// instead of closing, notices of what happened out of sight, the system
-/// proxy of the proxy mode, links opened from a browser, and the start with
-/// the system.
+/// Manages the tray, window visibility, background notifications, system proxy,
+/// import links and launch at login.
 class Desktop with WindowListener {
   Desktop(this.sora, this.navigator);
 
   final Sora sora;
 
-  /// Where the import of an opened link is shown.
+  /// Navigator used to display imported links.
   final GlobalKey<NavigatorState> navigator;
 
   final SystemProxy? _proxy = SystemProxy.forThisDesktop();
@@ -45,35 +43,32 @@ class Desktop with WindowListener {
   String _iconName = '';
   String _menuKey = '';
 
-  /// Whether something shows tray icons. Windows always has a tray; on Linux
-  /// it is the panel that owns the StatusNotifierWatcher name, and a panel
-  /// may have none, or start after Sora does at sign-in.
+  /// Tray availability: always true on Windows; on Linux, requires a panel
+  /// owning StatusNotifierWatcher, which may appear after app startup.
   bool _trayShown = Platform.isWindows;
   DBusClient? _bus;
 
-  /// Menus the tray showed earlier, released a moment after they are
-  /// replaced: one may still be open when the next one is set.
+  /// Replaced tray menus retained briefly because a menu may still be open.
   final List<tray.Menu> _oldMenus = [];
 
   bool _visible = true;
   bool _focused = true;
 
-  /// Set once Sora is ending; [_dropping] when the connection ends with it.
+  /// Tracks app shutdown; [_dropping] also requests session disconnection.
   bool _closing = false, _dropping = false;
 
-  /// Changes of the system proxy, one after another: a restore must never
-  /// overtake a change still being written.
+  /// Serializes proxy writes so restoration cannot overtake a pending change.
   Future<void> _proxyWork = Future.value();
 
-  /// The core answered at least once in this run. Before that, a session in
-  /// the proxy mode may still be running in it, and its proxy is left alone.
+  /// Whether the core has responded in this run. Until then, preserve the proxy
+  /// because an existing core session may still be active.
   bool _coreSeen = false;
 
-  /// The warning each subscription was last announced with.
+  /// Last notification text for each subscription, used to suppress duplicates.
   final Map<String, String> _warned = {};
 
-  /// Sets everything up. [hidden] is a start at sign-in, which stays in the
-  /// tray until the person opens the window.
+  /// Initializes desktop integration. [hidden] keeps a login launch in the tray
+  /// until the window is opened.
   Future<void> start({required bool hidden}) async {
     _visible = !hidden;
     _focused = !hidden;
@@ -110,7 +105,7 @@ class Desktop with WindowListener {
     return lookupS(S.delegate.isSupported(locale) ? locale : const Locale('en'));
   }
 
-  // The window.
+  // Showing a hidden window does not guarantee focus; request both.
 
   Future<void> show() async {
     await windowManager.show();
@@ -121,8 +116,8 @@ class Desktop with WindowListener {
   void onWindowClose() {
     if (_closing) return;
     if (!sora.settings.closeToTray || !_trayShown) {
-      // Without a tray there is nowhere to hide to: the window closes, and
-      // the connection stays with the core until Sora is opened again.
+      // Without a tray, hiding would make the app inaccessible. Close the
+      // window and leave the session running in the core.
       unawaited(quit(disconnect: _trayShown));
       return;
     }
@@ -146,15 +141,14 @@ class Desktop with WindowListener {
   @override
   void onWindowMinimize() => _focused = false;
 
-  /// Ends Sora. Quitting from the tray takes the connection down with it and
-  /// puts the system proxy back, so nothing is left running that the person
-  /// cannot see; closing a window that has no tray to hide in leaves the
-  /// connection to the core.
+  /// Exits the app. By default, disconnects and restores the system proxy.
+  /// Closing without a tray passes disconnect: false to preserve the core
+  /// session.
   Future<void> quit({bool disconnect = true}) async {
     _closing = true;
     _dropping = disconnect;
-    // Off may still be a failed session that keeps its kill switch on: the
-    // core is asked to end it all the same.
+    // An off session may still hold the kill switch after failure; disconnect
+    // releases it.
     if (disconnect && sora.phase != Phase.offline) await sora.disconnect();
     await (_proxyWork = _proxyWork.then((_) => _syncProxy()).catchError((Object _) {}));
     for (final watch in _watches) {
@@ -167,9 +161,9 @@ class Desktop with WindowListener {
     await windowManager.destroy();
   }
 
-  // The start with the system.
+  // Login launches stay hidden to avoid interrupting the desktop.
 
-  /// Makes the system start Sora, in the tray, when the setting says so.
+  /// Applies the launch-at-login setting, starting Sora in the tray.
   void syncLaunchAtLogin() {
     final login = LaunchAtLogin.createWithIdAndDisplayName('io.github.levvs_one.sora', 'Sora');
     if (login == null) return;
@@ -181,19 +175,19 @@ class Desktop with WindowListener {
     }
   }
 
-  // The tray.
+  // Linux panels may register their tray host after app startup.
 
   static const _watcher = 'org.kde.StatusNotifierWatcher';
 
-  /// Follows the panel that shows tray icons. The icon registers with it once,
-  /// when it is made, so a panel that comes later gets the icon made again.
+  /// Watches Linux tray-host availability. Recreates the icon when a panel
+  /// appears because registration happens only at icon creation.
   Future<void> _watchTrayHost() async {
     final bus = DBusClient.session();
     _bus = bus;
     try {
       _trayShown = await bus.nameHasOwner(_watcher);
     } on Object {
-      // No session bus, or it refused: no panel can show an icon either.
+      // Without an accessible session bus, no tray host is available.
       _trayShown = false;
       return;
     }
@@ -215,8 +209,8 @@ class Desktop with WindowListener {
   void _buildTray() {
     final icon = tray.TrayIcon.create();
     if (icon == null) return;
-    // A left click opens the window, as people expect of a tray icon on
-    // Windows; the menu is on the right click, and on the panels of Linux.
+    // Reserve left-click for opening the window and right-click for the menu,
+    // matching Windows tray behaviour and Linux panel menus.
     icon.setContextMenuTrigger(tray.ContextMenuTrigger.rightClicked);
     icon.addListener((event) {
       if (event is tray.TrayIconClickedEvent || event is tray.TrayIconDoubleClickedEvent) unawaited(show());
@@ -249,8 +243,8 @@ class Desktop with WindowListener {
     icon.setTooltip(server == null ? s.trayTooltip(state) : s.trayTooltipServer(state, server));
 
     final entries = [for (final sub in sora.subscriptions) ...entriesOf(sub)];
-    // The menu is built again only when something in it changed: rebuilding
-    // a menu the person may have open would close it under their pointer.
+    // Rebuilding an open menu closes it, so update only when its contents
+    // change.
     final key = [
       sora.phase,
       sora.selected,
@@ -323,8 +317,8 @@ class Desktop with WindowListener {
       servers.addItem(
         choice(s.serverAuto, checked: selected == 'auto', group: 1, onTap: () => unawaited(sora.select('auto'))),
       );
-      // A long list belongs in the window, where it can be searched and
-      // measured; the tray keeps what fits on a screen.
+      // Limit the tray list to fit on screen; the full list supports search and
+      // latency checks in the window.
       for (final e in entries.take(40)) {
         servers.addItem(choice(e.name, checked: selected == e.id, group: 1, onTap: () => unawaited(sora.select(e.id))));
       }
@@ -350,12 +344,10 @@ class Desktop with WindowListener {
     return menu;
   }
 
-  // The system proxy.
+  // Restore the proxy only after all pending writes complete.
 
-  /// Points the system proxy at the core while a session runs in the proxy
-  /// mode, and puts the old one back otherwise, also when the core is gone,
-  /// since a proxy pointing at a dead port cuts the person off. A snapshot
-  /// left by a crash is put back too.
+  /// Sets the core proxy for active proxy-mode sessions; otherwise restores it,
+  /// including after core loss or a crash, to avoid leaving an unusable proxy.
   Future<void> _syncProxy() async {
     final proxy = _proxy;
     if (proxy == null) return;
@@ -372,15 +364,14 @@ class Desktop with WindowListener {
         : jsonDecode(sora.settings.proxySnapshot) as Map<String, dynamic>;
     if (wanted) {
       if (saved != null && saved['host'] == local.host && saved['port'] == local.port) return;
-      // What was there is kept before anything changes. A proxy already
-      // pointed at the core, by this run or one that ended without putting
-      // it back, keeps the snapshot of what came before Sora.
+      // Persist the original proxy before changing it. Reuse any existing
+      // snapshot so a crash does not overwrite the pre-Sora settings.
       final before = saved?['before'] as String? ?? await proxy.read();
       await sora.settings.saveProxySnapshot(jsonEncode({'before': before, 'host': local.host, 'port': local.port}));
       await proxy.point(local.host, local.port);
     } else if (saved != null) {
-      // Only what Sora set is put back: a proxy the person or another
-      // program chose since is theirs to keep.
+      // Restore only if the proxy still matches Sora's endpoint, preserving
+      // subsequent changes by the user or another app.
       if (await proxy.pointsAt(saved['host'] as String, saved['port'] as int)) {
         await proxy.restore(saved['before'] as String);
       }
@@ -388,11 +379,11 @@ class Desktop with WindowListener {
     }
   }
 
-  // Notices.
+  // Focused windows already display events, so notices are suppressed.
 
   Future<void> _tell(String title, String body, {bool always = false}) async {
-    // What happens in front of the person needs no notice: the window shows
-    // it already.
+    // Suppress duplicate notifications when the focused window already shows
+    // the event.
     if (!sora.settings.notifications || (!always && _visible && _focused)) return;
     await _notifications.show(
       id: title.hashCode & 0x7fffffff,
@@ -430,7 +421,7 @@ class Desktop with WindowListener {
     }
   }
 
-  // Links.
+  // Show the window before presenting an import prompt.
 
   Future<void> _open(String text) async {
     final link = parseImportLink(text);
@@ -448,8 +439,8 @@ class Desktop with WindowListener {
   }
 }
 
-/// Hands [Desktop] to the screens that set what it does; absent where Sora
-/// runs without a desktop, as in tests.
+/// Provides desktop integration to descendant screens. Absent when running
+/// without a desktop, including tests.
 class DesktopScope extends InheritedWidget {
   const DesktopScope({super.key, required this.desktop, required super.child});
 

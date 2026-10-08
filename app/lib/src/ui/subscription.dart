@@ -12,7 +12,7 @@ import 'kit.dart';
 import 'servers.dart';
 import 'subscription_sheet.dart';
 
-/// Every subscription, each one step from its settings.
+/// Lists subscriptions with links to their settings.
 class SubscriptionsScreen extends StatelessWidget {
   const SubscriptionsScreen({super.key});
 
@@ -43,14 +43,14 @@ class SubscriptionsScreen extends StatelessWidget {
   }
 }
 
-/// What a person chooses for one subscription. The link itself is never shown:
-/// the core keeps it encrypted and does not send it back.
+/// Edits one subscription. Its URL remains hidden because the core stores it
+/// encrypted and never returns it.
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key, required this.id});
 
   final String id;
 
-  /// Hours between updates the person may pick; zero follows the provider.
+  /// Available update intervals in hours; zero uses the provider interval.
   static const _intervals = [0, 1, 3, 6, 12, 24];
 
   @override
@@ -60,7 +60,6 @@ class SubscriptionScreen extends StatelessWidget {
     final palette = Palette.of(context);
     final state = sora.subscriptions.where((x) => x.settings.id == id).firstOrNull;
     if (state == null) {
-      // Deleted from here or elsewhere: there is nothing left to set.
       return Screen(title: s.subscriptions, children: const []);
     }
     final chosen = state.settings;

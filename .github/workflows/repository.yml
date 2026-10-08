@@ -130,6 +130,7 @@ jobs:
 
   windows:
     name: Windows
+    timeout-minutes: 90
     # The whole chain on a real Windows: build, install the service with the
     # installer, reach it from the app over the named pipe, uninstall.
     runs-on: windows-latest
@@ -190,11 +191,21 @@ jobs:
             Start-Sleep -Seconds 2
           }
           Set-ItemProperty $theme AppsUseLightTheme 1 -Type DWord
-      - name: Install silently and check the service
+      - name: Check install.ps1
         shell: pwsh
         run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $found = Invoke-ScriptAnalyzer -Path packaging\install\install.ps1 -Severity Warning, Error
+          $found | Format-Table -AutoSize
+          if ($found) { throw "PSScriptAnalyzer found problems in install.ps1" }
+      - name: Install with install.ps1 and check the service
+        shell: pwsh
+        run: |
+          # The same script people run, on the installer this job built.
           $setup = Get-ChildItem dist\Sora-Setup-*.exe | Select-Object -First 1
-          Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install.log' -Wait
+          "$((Get-FileHash -Algorithm SHA256 $setup.FullName).Hash.ToLowerInvariant())  $($setup.Name)" | Set-Content -Encoding ascii dist\SHA256SUMS
+          $env:SORA_DIST = "$PWD\dist"
+          & .\packaging\install\install.ps1
           # A service reports StartPending before Running; give it time.
           for ($i = 0; $i -lt 30; $i++) {
             $service = Get-Service SoraCore -ErrorAction SilentlyContinue
@@ -272,6 +283,7 @@ jobs:
 
   linux-packages:
     name: Linux packages
+    timeout-minutes: 60
     # zapret is C linked against the distribution's netfilter libraries, so
     # each architecture is built natively on its own runner.
     runs-on: ${{ matrix.runner }}
@@ -304,6 +316,7 @@ jobs:
       - name: Fetch and verify the engines
         run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
       - name: Build zapret
+        timeout-minutes: 15
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq libcap-dev libnetfilter-queue-dev libnfnetlink-dev libmnl-dev zlib1g-dev
@@ -333,6 +346,24 @@ jobs:
               nfpm package --config "$config" --packager "$packager" --target dist/
             done
           done
+      - name: Install with install.sh on Ubuntu, Fedora and Arch
+        if: matrix.arch == 'amd64'
+        timeout-minutes: 20
+        # The same script people run, on the packages this job built.
+        run: |
+          shellcheck packaging/install/install.sh
+          mkdir -p install-test
+          cp dist/*.deb dist/*.rpm dist/*.pkg.tar.zst install-test/
+          (cd install-test && sha256sum -- * > SHA256SUMS)
+          SORA_DIST=install-test sh packaging/install/install.sh
+          for i in $(seq 1 30); do systemctl is-active --quiet sora-core && break; sleep 1; done
+          systemctl is-active sora-core
+          test -x /usr/bin/sora
+          /usr/bin/sora-core -version
+          docker run --rm -v "$PWD:/w" -w /w -e SORA_DIST=install-test -e SORA_VERSION fedora:latest \
+            sh -c 'dnf -y -q install systemd >/dev/null && sh packaging/install/install.sh && rpm -q sora sora-core'
+          docker run --rm -v "$PWD:/w" -w /w -e SORA_DIST=install-test -e SORA_VERSION archlinux:latest \
+            sh -c 'pacman -Sy --noconfirm >/dev/null && sh packaging/install/install.sh && pacman -Q sora sora-core'
       - uses: actions/upload-artifact@v6
         with:
           name: sora-linux-${{ matrix.arch }}
@@ -352,11 +383,14 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v8
         with:
           pattern: sora-*
           path: dist
           merge-multiple: true
+      - name: Install scripts
+        run: cp packaging/install/install.sh packaging/install/install.ps1 dist/
       - name: Checksums
         working-directory: dist
         run: sha256sum -- * > SHA256SUMS

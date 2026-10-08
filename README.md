@@ -30,13 +30,13 @@ curl -fsSL https://github.com/levvs-one/sora-client/releases/latest/download/ins
 - Kill switch: nftables на Linux, WFP на Windows.
 - Автовыбор самого быстрого сервера и переход на запасной при сбое.
 - Свои правила для сайтов, IP-адресов и программ: напрямую, через VPN или блокировать.
-- Обход DPI без сервера через zapret.
+- Обход DPI без сервера через zapret (на Linux).
 - Значок в трее, запуск вместе с системой, уведомления.
 - Ссылки `sora://`, `happ://add` и ссылки v2rayN, Clash, Hiddify, sing-box открывают добавление подписки.
 - Журнал и список активных соединений.
 - Русский и английский интерфейс, светлая и тёмная тема.
 
-Протоколы: VLESS (REALITY, XTLS Vision), VMess, Trojan, Shadowsocks (в том числе 2022), Hysteria2, TUIC, AnyTLS, WireGuard, AmneziaWG, SOCKS5, HTTP. Транспорты: raw, ws, grpc, httpupgrade, xhttp.
+Протоколы: VLESS (REALITY, XTLS Vision), VMess, Trojan, Shadowsocks (в том числе 2022), Hysteria2, TUIC, WireGuard, AmneziaWG, SOCKS5, HTTP(S). Транспорты: raw, ws, grpc, httpupgrade, xhttp.
 
 ## Провайдерам
 
@@ -98,7 +98,14 @@ SORA_SINGBOX_BIN=... SORA_XRAY_BIN=... SORA_MIHOMO_BIN=... SORA_ENGINES_DIR=... 
 | [`packaging`](packaging/README.md) | установщик для Windows и пакеты для Linux |
 | [`service`](service) | службы для Windows и systemd |
 
-Об устройстве службы: [docs/architecture](docs/architecture/core.md).
+Подробная документация: [docs](docs/README.md).
+
+- [Установка, обновление и удаление](docs/install.md)
+- [Как пользоваться](docs/usage.md)
+- [Для провайдеров](docs/providers.md)
+- [Если что-то не работает](docs/troubleshooting.md)
+- [Как устроена Sora](docs/architecture.md)
+- [Разработка и сборка](docs/development.md)
 
 ## Обратная связь
 

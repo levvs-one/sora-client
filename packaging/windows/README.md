@@ -1,33 +1,26 @@
 # packaging/windows
 
-Установщик Sora для Windows 10 (1809) и 11, x64: приложение, ядро с движками и
-служба `SoraCore`. Собирается [Inno Setup 6.7](https://jrsoftware.org/isinfo.php) или новее
-из `sora.iss`.
+Установщик для Windows 10 1809+ и 11, x64. Собирается Inno Setup 6.7 из `sora.iss`.
 
-- Ядро регистрирует себя службой само (`sora-core.exe -install-service`):
-  автозапуск, перезапуск после сбоя, данные в `%ProgramData%\Sora`. Повторная
-  установка обновляет службу на месте; удаление программы её снимает.
-- Приложение говорит с ядром через именованный канал `\\.\pipe\sora-core-v1`.
-  В канал пускает только систему, администраторов и того, кто сидит за
-  компьютером; токен выдаёт `Handshake`.
-- Движки — сборки для `windows-amd64` из
-  [`engines.lock`](../engines/engines.lock), проверенные по SHA-256.
+Что делает установщик:
+
+- кладёт приложение в `Program Files\Sora`, службу и ядра в `Program Files\Sora\core`;
+- регистрирует службу `SoraCore` (`sora-core.exe -install-service`): автозапуск, перезапуск после сбоя, данные в `ProgramData\Sora`;
+- регистрирует ссылки `sora://`, а `happ://` только если их ещё никто не открывает;
+- при обновлении останавливает службу перед заменой файлов;
+- при удалении удаляет службу, запись автозапуска и регистрацию `happ://`, если она принадлежит Sora.
+
+Вид: стиль Windows 11, светлая или тёмная тема по системе, фон из `art/`. Страниц две: выбор пунктов с кнопкой «Установить» и финал.
 
 ## Сборка
 
 ```powershell
 cd core; go build -trimpath -ldflags '-s -w' -o ..\dist\windows\sora-core.exe .\cmd\sora-core; cd ..
 bash packaging/engines/fetch.sh windows-amd64 dist/windows/engines
-cd app; flutter build windows --release --dart-define=SORA_VERSION=0.3.0; cd ..
-iscc /DAppVersion=0.3.0 packaging\windows\sora.iss
+cd app; flutter build windows --release --dart-define=SORA_VERSION=1.0.4; cd ..
+iscc /DAppVersion=1.0.4 packaging\windows\sora.iss
 ```
 
-CI делает то же в каждом pull request, ставит установщик молча, проверяет, что
-служба запущена, подключается к ней из приложения через канал и удаляет.
+Установщик не подписан, SmartScreen показывает предупреждение. MSI не собирается: для обычной установки хватает EXE, тихая установка работает с ключами `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`.
 
-## Чего пока нет
-
-- Kill switch на WFP: на Windows переключатель «Интернет только через VPN» не
-  блокирует трафик.
-- Подпись кода: установщик и программа не подписаны, SmartScreen предупредит.
-- Обход без сервера: zapret для Windows (`winws`, WinDivert) не встроен.
+Обход DPI без сервера (zapret) на Windows пока не встроен.

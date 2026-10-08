@@ -25,7 +25,18 @@ Sora их не изменяет.
 | protobuf, fixnum, http2, intl, ffi | 6.1.0, 1.1.1, 2.3.1, 0.20.3, 2.2.0 | BSD-3-Clause |
 | shared_preferences, file_selector, url_launcher | 2.5.6, 1.1.0, 6.3.3 | BSD-3-Clause |
 | win32 | 6.4.0 | BSD-3-Clause |
+| tray_manager, window_manager, nativeapi | 0.7.0, 0.5.2, 0.3.0 | MIT |
+| flutter_local_notifications | 22.3.1 | BSD-3-Clause |
+| app_links | 7.2.2 | Apache-2.0 |
+| dbus | 0.7.15 | MPL-2.0 |
 
-Тексты лицензий: GPL-3.0 — файл `LICENSE` рядом с этим; Inter — `Inter-LICENSE.txt`;
-zapret — `zapret-LICENSE.txt` в пакете ядра для Linux. Остальные лежат в исходном
-коде компонентов по ссылкам выше и на pub.dev.
+## Служба
+
+| Компонент | Лицензия |
+| --- | --- |
+| gRPC, protobuf для Go | Apache-2.0, BSD-3-Clause |
+| golang.org/x/sys | BSD-3-Clause |
+| go-winio | MIT |
+| tailscale/wf | BSD-3-Clause |
+
+Тексты лицензий: GPL-3.0 в файле `LICENSE`, Inter в `Inter-LICENSE.txt`, zapret в `zapret-LICENSE.txt` пакета `sora-core`. Лицензии остальных компонентов лежат в их исходном коде по ссылкам выше и на pub.dev.

@@ -1,6 +1,7 @@
 package guard_test
 
 import (
+	"net/netip"
 	"runtime"
 	"strings"
 	"testing"
@@ -31,7 +32,7 @@ func TestNftRulesetKeepsTheEngineAndCutsEverythingElse(t *testing.T) {
 	}
 	// The final drop must follow every exception to keep tunnel traffic
 	// working.
-	if strings.Index(ruleset, "counter drop") < strings.Index(ruleset, "meta skuid 999 accept") {
+	if strings.LastIndex(ruleset, "counter drop") < strings.Index(ruleset, "meta skuid 999 accept") {
 		t.Error("the drop rule comes before the engine exception")
 	}
 }
@@ -96,5 +97,18 @@ func TestPlatformFirewallIsUsable(t *testing.T) {
 	}
 	if err := firewall.Disarm(testContext()); err != nil {
 		t.Errorf("Disarm() = %v", err)
+	}
+}
+
+func TestDNSAndTunnelDestinationsPrecedeLANPermits(t *testing.T) {
+	rules := guard.NftRuleset(999, []string{"0.0.0.0/0", "::/0"},
+		netip.MustParsePrefix("192.0.2.0/30"), netip.MustParsePrefix("2001:db8:5340::/126"), netip.MustParsePrefix("198.18.0.0/16"))
+	permit := strings.Index(rules, "ip daddr 0.0.0.0/0 accept")
+	tunnel := strings.Index(rules, `oifname "sora0" accept`)
+	for _, block := range []string{"th dport 53 counter drop", "ip daddr 192.0.2.0/30 counter drop", "ip6 daddr 2001:db8:5340::/126 counter drop", "ip daddr 198.18.0.0/16 counter drop"} {
+		i := strings.Index(rules, block)
+		if i <= tunnel || i >= permit {
+			t.Fatalf("missing or misplaced block: %s", block)
+		}
 	}
 }

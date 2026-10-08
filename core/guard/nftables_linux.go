@@ -4,6 +4,7 @@ package guard
 
 import (
 	"context"
+	"net/netip"
 	"os/exec"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ type Nftables struct {
 	bypass  []string
 	command string
 	armed   bool
+	blocked []netip.Prefix
 }
 
 // NewNftables permits engine traffic owned by uid and the supplied bypass
@@ -34,11 +36,18 @@ func NewNftables(uid int, bypass []string) (*Nftables, error) {
 	return &Nftables{uid: uid, bypass: bypass, command: "nft"}, nil
 }
 
+// SetBlockedNetworks retains session destinations across engine crashes.
+func (n *Nftables) SetBlockedNetworks(networks []netip.Prefix) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.blocked = append([]netip.Prefix(nil), networks...)
+}
+
 // Arm installs or replaces the table, making repeated calls idempotent.
 func (n *Nftables) Arm(ctx context.Context, _ []uint16) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	if err := n.apply(ctx, NftRuleset(n.uid, n.bypass)); err != nil {
+	if err := n.apply(ctx, NftRuleset(n.uid, n.bypass, n.blocked...)); err != nil {
 		return err
 	}
 	n.armed = true

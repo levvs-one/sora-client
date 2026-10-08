@@ -19,11 +19,12 @@ import (
 // neighbor-discovery traffic. Windows removes filters on close or process exit,
 // allowing traffic after crashes, as WireGuard and Tailscale do.
 type WFP struct {
-	mu          sync.Mutex
-	enginesDir  string
-	bypass      []netip.Prefix
-	tunNetworks []netip.Prefix
-	session     *wf.Session
+	mu              sync.Mutex
+	enginesDir      string
+	bypass          []netip.Prefix
+	tunNetworks     []netip.Prefix
+	blockedNetworks []netip.Prefix
+	session         *wf.Session
 }
 
 // PlatformFirewall returns Windows WFP, matching engines by executable because
@@ -52,10 +53,19 @@ func (w *WFP) SetTunNetworks(networks []netip.Prefix) {
 	w.tunNetworks = append([]netip.Prefix(nil), networks...)
 }
 
+// SetBlockedNetworks prevents tunnel destinations from falling through LAN permits.
+func (w *WFP) SetBlockedNetworks(networks []netip.Prefix) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.blockedNetworks = append([]netip.Prefix(nil), networks...)
+}
+
 // Rule weights inside the sublayer: every permit outranks the final block.
 const (
-	weightPermit = 10
-	weightBlock  = 0
+	weightPermit       = 10
+	weightTunnelBlock  = 40
+	weightTunnelPermit = 50
+	weightBlock        = 0
 )
 
 var outbound = []wf.LayerID{wf.LayerALEAuthConnectV4, wf.LayerALEAuthConnectV6}
@@ -156,20 +166,33 @@ func (w *WFP) install(session *wf.Session) error {
 		if err != nil {
 			return err
 		}
-		if err := permit(filepath.Base(file),
+		if err := add(filepath.Base(file), wf.ActionPermit, 30,
 			&wf.Match{Field: wf.FieldALEAppID, Op: wf.MatchTypeEqual, Value: id},
 			&wf.Match{Field: wf.FieldALEUserID, Op: wf.MatchTypeEqual, Value: owner},
 		); err != nil {
 			return err
 		}
 	}
-	if err := permit("loopback", &wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsLoopback}); err != nil {
+	if err := add("loopback", wf.ActionPermit, 30, &wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsLoopback}); err != nil {
 		return err
 	}
 	for _, network := range w.tunNetworks {
-		if err := permit("through the tunnel", &wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {
+		if err := add("through the tunnel", wf.ActionPermit, weightTunnelPermit, &wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: network},
+			// Wintun is IF_TYPE_PROP_VIRTUAL (53); a bound source on a
+			// physical adapter must not inherit the tunnel permit.
+			&wf.Match{Field: wf.FieldNexthopInterfaceType, Op: wf.MatchTypeEqual, Value: uint32(53)}); err != nil {
 			return err
 		}
+	}
+	for _, network := range w.blockedNetworks {
+		if err := add("tunnel destination outside the tunnel", wf.ActionBlock, weightTunnelBlock,
+			&wf.Match{Field: wf.FieldIPRemoteAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {
+			return err
+		}
+	}
+	if err := add("DNS outside the tunnel", wf.ActionBlock, 20,
+		&wf.Match{Field: wf.FieldIPRemotePort, Op: wf.MatchTypeEqual, Value: uint16(53)}); err != nil {
+		return err
 	}
 	for _, network := range w.bypass {
 		if err := permit("local network", &wf.Match{Field: wf.FieldIPRemoteAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {

@@ -137,7 +137,8 @@ func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 func buildTun(t engine.Tun, d engine.DNS) *tunConfig {
 	stack := orDefault(t.Stack, "mixed")
 	out := &tunConfig{
-		Enable:    true,
+		Name:      "sora-tun",
+		Type:      "tun",
 		Stack:     stack,
 		Device:    t.DeviceName,
 		MTU:       orDefaultInt(t.MTU, 1500),
@@ -149,9 +150,15 @@ func buildTun(t engine.Tun, d engine.DNS) *tunConfig {
 	out.AutoDetectInterface = &detect
 	strict := t.StrictRoute
 	out.StrictRoute = &strict
-	if t.IPv6.IsValid() {
-		out.Inet6Address = []string{t.IPv6.String()}
+	addresses := t.Addresses()
+	out.Inet4Address = addresses[:1]
+	out.Inet6Address = addresses[1:]
+	if runtime.GOOS == "linux" {
+		// Its IPv6 bound-interface rule exists even with auto-route=false;
+		// keep it in Sora's table so crash cleanup can identify it exactly.
+		out.IPRoute2TableIndex = 5340
 	}
+
 	out.RouteAddress = t.RouteAddressSets
 	out.IncludePackage = t.IncludeApps
 	out.ExcludePackage = t.ExcludeApps

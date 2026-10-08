@@ -21,7 +21,7 @@ const (
 // NftRuleset renders testable kill-switch rules for the engine UID. Bypass
 // networks keep local resources reachable; empty uses private and link-local
 // ranges.
-func NftRuleset(engineUID int, bypass []string) string {
+func NftRuleset(engineUID int, bypass []string, blocked ...netip.Prefix) string {
 	networks := bypass
 	if len(networks) == 0 {
 		networks = DefaultBypassNetworks()
@@ -30,10 +30,20 @@ func NftRuleset(engineUID int, bypass []string) string {
 	b.WriteString("table inet " + nftTable + " {\n")
 	b.WriteString("\tchain " + nftChain + " {\n")
 	b.WriteString("\t\ttype filter hook output priority filter; policy accept;\n")
-	b.WriteString("\t\tmeta skuid " + itoa(engineUID) + " accept comment \"sora: the engine keeps its own traffic\"\n")
 	b.WriteString("\t\toif lo accept comment \"sora: the local engine is on loopback\"\n")
 	// Permit traffic through TUN; block only traffic bypassing it.
 	b.WriteString("\t\toifname \"" + engine.TunDevice + "\" accept comment \"sora: through the tunnel\"\n")
+	for _, network := range blocked {
+		family := "ip"
+		if network.Addr().Is6() {
+			family = "ip6"
+		}
+		b.WriteString("\t\t" + family + " daddr " + network.Masked().String() + " counter drop comment \"sora: tunnel destination outside the tunnel\"\n")
+	}
+	b.WriteString("\t\tmeta skuid " + itoa(engineUID) + " accept comment \"sora: the engine keeps its own traffic\"\n")
+	// Bound resolvers can remain on a physical device even after routing
+	// selects TUN. Never let the LAN exception release their queries.
+	b.WriteString("\t\tmeta l4proto { tcp, udp } th dport 53 counter drop comment \"sora: DNS outside the tunnel\"\n")
 	// Allow replies to inbound connections, but not pre-existing outbound
 	// flows that could bypass TUN.
 	b.WriteString("\t\tct direction reply ct state established,related accept comment \"sora: replies to incoming connections\"\n")

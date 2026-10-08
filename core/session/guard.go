@@ -12,6 +12,7 @@ import (
 // them and restores prior state on every exit path.
 type Settings struct {
 	TunNetworks []netip.Prefix
+	FakeIPRange netip.Prefix
 	// KillSwitch blocks non-session traffic and stays armed while the
 	// engine is down.
 	KillSwitch bool

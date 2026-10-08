@@ -7,7 +7,7 @@ import (
 )
 
 func TestChooseTunPrefixAvoidsOverlappingNetworks(t *testing.T) {
-	for _, occupied := range []string{"172.19.0.1/30", "172.19.0.3/32", "172.16.0.1/12", "172.19.200.1/24"} {
+	for _, occupied := range []string{"192.0.2.1/30", "192.0.2.3/32", "172.16.0.1/12"} {
 		used := []netip.Prefix{netip.MustParsePrefix(occupied)}
 		got, err := chooseTunPrefix(tunPools4, used)
 		if err != nil {
@@ -37,6 +37,9 @@ func TestChooseTunPrefixIPv6AndExhaustion(t *testing.T) {
 	if _, err := chooseTunPrefix([]string{"invalid"}, nil); err == nil {
 		t.Fatal("invalid pool accepted")
 	}
+	if _, err := chooseTunPrefix(tunPools4, []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}); err == nil {
+		t.Fatal("an occupied parent network must exhaust all its adapter subnets")
+	}
 }
 
 func TestPreparedTunKeepsSessionAddresses(t *testing.T) {
@@ -64,5 +67,35 @@ func TestPreparedTunKeepsSessionAddresses(t *testing.T) {
 	p.Tun.Enabled = false
 	if len(p.Tun.Networks()) != 0 {
 		t.Fatal("proxy mode grants tunnel network permits")
+	}
+}
+
+func TestTunAndFakeIPAvoidLANAndEachOther(t *testing.T) {
+	for _, fake := range []string{"", "198.18.0.0/15", "198.19.0.0/16"} {
+		p := &Plan{Tun: Tun{Enabled: true}, DNS: DNS{FakeIPRange: fake}}
+		if err := PrepareTun(p); err != nil {
+			t.Fatal(err)
+		}
+		pool := netip.MustParsePrefix(p.DNS.FakeIPRange)
+		if pool.Overlaps(p.Tun.IPv4) {
+			t.Fatal("adapter overlaps fake-IP pool")
+		}
+		for _, network := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "fc00::/7", "fe80::/10"} {
+			lan := netip.MustParsePrefix(network)
+			if pool.Overlaps(lan) || p.Tun.IPv4.Overlaps(lan) || p.Tun.IPv6.Overlaps(lan) {
+				t.Fatalf("session overlaps LAN %s", lan)
+			}
+		}
+	}
+	for _, fake := range []string{"172.19.0.0/16", "10.0.0.0/8", "198.18.0.0/14", "invalid"} {
+		if err := PrepareTun(&Plan{Tun: Tun{Enabled: true}, DNS: DNS{FakeIPRange: fake}}); err == nil {
+			t.Fatalf("unsafe pool accepted: %s", fake)
+		}
+	}
+	for _, address := range []string{"172.20.0.1/30", "169.254.0.1/30", "198.18.0.1/30", "192.0.2.1/1"} {
+		p := &Plan{Tun: Tun{Enabled: true, IPv4: netip.MustParsePrefix(address)}}
+		if err := PrepareTun(p); err == nil {
+			t.Fatalf("unsafe adapter accepted: %s", address)
+		}
 	}
 }

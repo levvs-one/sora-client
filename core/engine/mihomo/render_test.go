@@ -152,12 +152,12 @@ func TestRenderRefusesTunWithoutDNS(t *testing.T) {
 	}
 }
 
-func TestTunUsesSelectedPoolEvenWithoutFakeDNS(t *testing.T) {
+func TestTunUsesSeparateAddressesEvenWithoutFakeDNS(t *testing.T) {
 	p := testPlan()
-	p.Tun.IPv4 = netip.MustParsePrefix("172.20.0.1/30")
-	p.Tun.IPv6 = netip.MustParsePrefix("fdfe:dcba:9877::1/126")
+	p.Tun.IPv4 = netip.MustParsePrefix("192.0.2.5/30")
+	p.Tun.IPv6 = netip.MustParsePrefix("2001:db8:5341::1/126")
 	p.DNS.Mode = "redir-host"
-	p.DNS.FakeIPRange = "172.20.0.1/16"
+	p.DNS.FakeIPRange = "198.18.0.0/16"
 	out, err := Render(p, testRuntime(t))
 	if err != nil {
 		t.Fatal(err)
@@ -166,10 +166,25 @@ func TestTunUsesSelectedPoolEvenWithoutFakeDNS(t *testing.T) {
 	if err := yaml.Unmarshal([]byte(out), &c); err != nil {
 		t.Fatal(err)
 	}
-	if c.DNS.FakeIPRange != p.DNS.FakeIPRange || len(c.Tun.Inet6Address) != 1 || c.Tun.Inet6Address[0] != p.Tun.IPv6.String() {
-		t.Fatalf("DNS=%+v TUN=%+v", c.DNS, c.Tun)
+	if len(c.Listeners) != 1 {
+		t.Fatal("missing TUN listener")
 	}
-	if runtime.GOOS == "linux" && (*c.Tun.AutoRoute || *c.Tun.AutoDetectInterface) {
+	tun := c.Listeners[0]
+	if c.DNS.FakeIPRange != "" || tun.Type != "tun" || tun.Inet4Address[0] != p.Tun.IPv4.String() || tun.Inet6Address[0] != p.Tun.IPv6.String() {
+		t.Fatalf("DNS=%+v TUN=%+v", c.DNS, tun)
+	}
+	p.DNS.Mode = string(engine.DNSFakeIP)
+	out, err = Render(p, testRuntime(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	if c.DNS.FakeIPRange != p.DNS.FakeIPRange {
+		t.Fatal("fake-IP pool changed to adapter pool")
+	}
+	if runtime.GOOS == "linux" && (*tun.AutoRoute || *tun.AutoDetectInterface) {
 		t.Fatal("Linux routing must belong to the core")
 	}
 }

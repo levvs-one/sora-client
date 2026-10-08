@@ -60,7 +60,7 @@ type config struct {
 	GeoX               map[string]string        `yaml:"geox-url,omitempty"`
 	Profile            *profile                 `yaml:"profile,omitempty"`
 	DNS                *dnsConfig               `yaml:"dns,omitempty"`
-	Tun                *tunConfig               `yaml:"tun,omitempty"`
+	Listeners          []*tunConfig             `yaml:"listeners,omitempty"`
 	Proxies            []proxy                  `yaml:"proxies,omitempty"`
 	ProxyGroups        []proxyGroup             `yaml:"proxy-groups,omitempty"`
 	ProxyProviders     map[string]proxyProvider `yaml:"proxy-providers,omitempty"`
@@ -243,7 +243,8 @@ type dnsConfig struct {
 // tunConfig models the TUN block. Upstream defaults to gvisor; Sora uses mixed
 // unless the plan requests system.
 type tunConfig struct {
-	Enable              bool     `yaml:"enable"`
+	Name                string   `yaml:"name"`
+	Type                string   `yaml:"type"`
 	Stack               string   `yaml:"stack,omitempty"`
 	Device              string   `yaml:"device,omitempty"`
 	MTU                 int      `yaml:"mtu,omitempty"`
@@ -255,5 +256,7 @@ type tunConfig struct {
 	RouteExcludeAddress []string `yaml:"route-exclude-address,omitempty"`
 	IncludePackage      []string `yaml:"include-package,omitempty"`
 	ExcludePackage      []string `yaml:"exclude-package,omitempty"`
+	Inet4Address        []string `yaml:"inet4-address,omitempty"`
 	Inet6Address        []string `yaml:"inet6-address,omitempty"`
+	IPRoute2TableIndex  int      `yaml:"iproute2-table-index,omitempty"`
 }

@@ -113,3 +113,40 @@ func TestAProfileIsMeasuredThroughItsFirstOutbound(t *testing.T) {
 		t.Fatalf("probe = %s", out)
 	}
 }
+
+func TestAProfileCannotReachBackOrTouchFiles(t *testing.T) {
+	plan := profilePlan(false)
+	var cfg map[string]any
+	if err := json.Unmarshal(plan.Outbounds[0].Profile, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	cfg["reverse"] = map[string]any{"bridges": []any{map[string]any{"tag": "b", "domain": "r.example"}}}
+	outbounds := cfg["outbounds"].([]any)
+	stream := outbounds[0].(map[string]any)["streamSettings"].(map[string]any)
+	stream["tlsSettings"] = map[string]any{
+		"masterKeyLog": "/var/lib/sora/control.token",
+		"certificates": []any{map[string]any{"certificateFile": "/etc/ssl/private/k.pem", "keyFile": "/etc/ssl/private/k.key"}},
+	}
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.Outbounds[0].Profile = raw
+	out, err := Render(plan, supervise.Runtime{LocalPort: 4000}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, unwanted := range []string{`"reverse"`, "masterKeyLog", "certificateFile", "keyFile", "control.token"} {
+		if strings.Contains(string(out), unwanted) {
+			t.Errorf("the rendered profile still carries %s", unwanted)
+		}
+	}
+	outs, _, err := probeProfile(plan.Outbounds[0], 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe, _ := json.Marshal(outs)
+	if strings.Contains(string(probe), "masterKeyLog") {
+		t.Error("the latency check carries a file path from the profile")
+	}
+}

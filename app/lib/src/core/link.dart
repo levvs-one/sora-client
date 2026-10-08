@@ -39,7 +39,10 @@ class CoreLink {
   static Future<CoreLink> _openOnce() async {
     const options = ChannelOptions(credentials: ChannelCredentials.insecure());
     final api.ClientChannel channel = Platform.isWindows
-        ? ClientTransportConnectorChannel(PipeConnector(socketPath), options: options)
+        ? ClientTransportConnectorChannel(
+            PipeConnector(socketPath, requireService: Platform.environment['SORA_CORE_SOCKET'] == null),
+            options: options,
+          )
         : ClientChannel(InternetAddress(socketPath, type: InternetAddressType.unix), port: 0, options: options);
     try {
       final stub = CoreControlClient(channel);

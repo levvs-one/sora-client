@@ -21,7 +21,7 @@ func TestNftRulesetKeepsTheEngineAndCutsEverythingElse(t *testing.T) {
 		"meta skuid 999 accept",
 		"oif lo accept",
 		`oifname "sora0" accept`,
-		"ct state established,related accept",
+		"ct direction reply ct state established,related accept",
 		"ip daddr 192.168.0.0/16 accept",
 		"counter drop",
 	}

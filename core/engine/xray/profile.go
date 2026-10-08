@@ -21,7 +21,34 @@ const (
 // no listener of the provider opens on the machine, and the log, stats and
 // controller are the core's. The rest — outbounds, balancers, the observatory
 // that feeds them, routing — runs as the provider wrote it.
-var profileOwned = []string{"inbounds", "log", "api", "stats", "metrics", "policy", "remarks", "meta"}
+var profileOwned = []string{"inbounds", "log", "api", "stats", "metrics", "policy", "remarks", "meta", "reverse"}
+
+// "reverse" is dropped with them: a bridge would give the provider's server a
+// way back into the machine and its local network. Keys that name files are
+// dropped at any depth, because the engine runs with the service's rights: a
+// TLS key log path would let a subscription write into any file it can reach,
+// a certificate path would make it read one.
+var profileFileKeys = map[string]bool{"masterKeyLog": true, "certificateFile": true, "keyFile": true}
+
+// stripFiles removes the keys of profileFileKeys from a decoded JSON value.
+func stripFiles(v any) {
+	switch t := v.(type) {
+	case obj:
+		stripFiles(map[string]any(t))
+	case map[string]any:
+		for key, child := range t {
+			if profileFileKeys[key] {
+				delete(t, key)
+				continue
+			}
+			stripFiles(child)
+		}
+	case []any:
+		for _, child := range t {
+			stripFiles(child)
+		}
+	}
+}
 
 // renderProfile runs the configuration a provider wrote for one server inside
 // the frame of the session. The session's own rules — the DNS of a tun, the ad
@@ -37,6 +64,7 @@ func renderProfile(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	for _, key := range profileOwned {
 		delete(cfg, key)
 	}
+	stripFiles(cfg)
 	outbounds, _ := cfg["outbounds"].([]any)
 	cfg["outbounds"] = append(outbounds,
 		obj{"tag": profileDNS, "protocol": "dns"},
@@ -98,6 +126,9 @@ func probeProfile(o engine.Outbound, index int) (outbounds []obj, first string, 
 	}
 	if err := json.Unmarshal(o.Profile, &cfg); err != nil || len(cfg.Outbounds) == 0 {
 		return nil, "", fmt.Errorf("xray: profile %s has no outbounds", o.ID)
+	}
+	for _, ob := range cfg.Outbounds {
+		stripFiles(ob)
 	}
 	prefix := "p" + strconv.Itoa(index+1) + "-"
 	rename := func(tag string) string { return prefix + tag }

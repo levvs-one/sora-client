@@ -49,7 +49,10 @@ func NftRuleset(engineUID int, bypass []string) string {
 	// A tun session sends everyone's traffic out of its adapter; the kill
 	// switch exists to stop traffic that goes around it, not through it.
 	b.WriteString("\t\toifname \"" + engine.TunDevice + "\" accept comment \"sora: through the tunnel\"\n")
-	b.WriteString("\t\tct state established,related accept comment \"sora: an existing connection finishes\"\n")
+	// Replies of connections that came in, so a server on this machine keeps
+	// answering. An outgoing connection opened before the switch is not let
+	// through: it would keep a way around the tunnel open.
+	b.WriteString("\t\tct direction reply ct state established,related accept comment \"sora: replies to incoming connections\"\n")
 	for _, network := range networks {
 		// nft refuses a whole ruleset that matches an IPv4 network against
 		// IPv6 addresses or the other way round, so each network gets the rule

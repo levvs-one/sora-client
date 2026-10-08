@@ -249,6 +249,7 @@ class Desktop with WindowListener {
     final key = [
       sora.phase,
       sora.selected,
+      sora.serverlessAvailable,
       sora.settings.tunnel,
       sora.settings.language,
       for (final e in entries) '${e.id}=${e.name}',
@@ -286,9 +287,9 @@ class Desktop with WindowListener {
     tray.MenuItem? item(String label, {tray.MenuItemType type = tray.MenuItemType.normal, void Function()? onTap}) {
       final made = tray.MenuItem.createWithLabelAndType(label, type);
       if (made == null) return null;
-      if (onTap == null) {
+      if (onTap == null && type != tray.MenuItemType.submenu) {
         made.isEnabled = false;
-      } else {
+      } else if (onTap != null) {
         made.addListener((event) {
           if (event is tray.MenuItemClickedEvent) onTap();
         });
@@ -323,20 +324,30 @@ class Desktop with WindowListener {
       for (final e in entries.take(40)) {
         servers.addItem(choice(e.name, checked: selected == e.id, group: 1, onTap: () => unawaited(sora.select(e.id))));
       }
-      servers.addItem(
-        choice(s.serverBypass, checked: selected == 'bypass', group: 1, onTap: () => unawaited(sora.select('bypass'))),
-      );
-      menu.addItem(item(s.trayServer, type: tray.MenuItemType.submenu, onTap: () {})?..submenu = servers);
+      menu.addItem(item(s.trayServer, type: tray.MenuItemType.submenu)?..submenu = servers);
     }
     final modes = tray.Menu.create();
     if (modes != null) {
-      void mode(String value) => unawaited(sora.change((x) => x.tunnel = value));
-      modes
-        ..addItem(choice(s.tunnelTun, checked: sora.settings.tunnel == 'tun', group: 2, onTap: () => mode('tun')))
-        ..addItem(
-          choice(s.tunnelProxy, checked: sora.settings.tunnel == 'proxy', group: 2, onTap: () => mode('proxy')),
-        );
-      menu.addItem(item(s.tunnelMode, type: tray.MenuItemType.submenu, onTap: () {})?..submenu = modes);
+      final current = sora.selected == 'bypass' ? 'bypass' : sora.settings.tunnel;
+      void mode(String value) => unawaited(
+        sora.change((x) {
+          if (value == 'bypass') {
+            x.server = 'bypass';
+            x.tunnel = 'tun';
+          } else {
+            if (x.server == 'bypass') x.server = 'auto';
+            x.tunnel = value;
+          }
+        }),
+      );
+      for (final (value, label) in [
+        ('tun', s.tunMode),
+        ('proxy', s.tunnelProxy),
+        if (sora.serverlessAvailable) ('bypass', s.serverBypass),
+      ]) {
+        modes.addItem(choice(label, checked: current == value, group: 2, onTap: () => mode(value)));
+      }
+      menu.addItem(item(s.modes, type: tray.MenuItemType.submenu)?..submenu = modes);
     }
     menu
       ..addSeparator()

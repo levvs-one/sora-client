@@ -16,9 +16,12 @@ package subscription
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/levvs-one/sora-client/core/errs"
@@ -102,6 +105,7 @@ func New(opts Options) *Fetcher {
 			},
 			Transport: &http.Transport{
 				Proxy:                 http.ProxyFromEnvironment,
+				DialContext:           dialChecked,
 				ForceAttemptHTTP2:     true,
 				MaxIdleConns:          8,
 				IdleConnTimeout:       30 * time.Second,
@@ -136,6 +140,7 @@ func (f *Fetcher) Fetch(ctx context.Context, reference string, opts FetchOptions
 	}
 	ctx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
+	ctx = context.WithValue(ctx, privateKey{}, isPrivateHost(ctx, target.Hostname()))
 
 	for hop := 0; ; hop++ {
 		if hop > f.maxRedirects {
@@ -299,4 +304,65 @@ func UserAgentFor(asked string) (string, error) {
 		}
 	}
 	return trimmed, nil
+}
+
+// privateKey marks a fetch whose subscription lives on this machine or its
+// local network, which may then be dialled. A panel at home is a real setup;
+// a provider on the internet redirecting the service to a local address is
+// not, and is refused.
+type privateKey struct{}
+
+// isPrivateHost reports whether host is, or resolves to, an address that is
+// not on the internet.
+func isPrivateHost(ctx context.Context, host string) bool {
+	if addr, err := netip.ParseAddr(host); err == nil {
+		return !publicAddr(addr)
+	}
+	addrs, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	if err != nil {
+		return false
+	}
+	for _, addr := range addrs {
+		if !publicAddr(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+func publicAddr(addr netip.Addr) bool {
+	addr = addr.Unmap()
+	return addr.IsGlobalUnicast() && !addr.IsPrivate()
+}
+
+// dialChecked dials like the standard transport, but refuses an address that
+// is not on the internet unless the subscription itself is local. The check is
+// on the address actually dialled, after DNS, so a name that resolves to the
+// internet first and to a local address later does not get through.
+func dialChecked(ctx context.Context, network, address string) (net.Conn, error) {
+	allowPrivate, _ := ctx.Value(privateKey{}).(bool)
+	dialer := &net.Dialer{
+		Timeout: 30 * time.Second,
+		Control: func(_, address string, _ syscall.RawConn) error {
+			return checkDial(allowPrivate, address)
+		},
+	}
+	return dialer.DialContext(ctx, network, address)
+}
+
+// checkDial is the rule of dialChecked for one resolved address.
+func checkDial(allowPrivate bool, address string) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return err
+	}
+	if allowPrivate || publicAddr(addr) {
+		return nil
+	}
+	return errs.Newf(errs.CodePermissionDenied, errs.KeySubscriptionRedirect,
+		"subscription: the request was led to an address outside the internet")
 }

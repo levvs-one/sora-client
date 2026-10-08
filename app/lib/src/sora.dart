@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'core/link.dart';
 import 'generated/sora/core/v1/core_control.pbgrpc.dart';
@@ -548,6 +549,18 @@ class Sora extends ChangeNotifier {
       SaveSubscriptionRequest(apiVersion: apiVersion, controlAuthenticator: link.token, settings: chosen..url = ''),
     );
     if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+  });
+
+  /// Fetches the bearer link only for this action, without retaining it in state.
+  Future<CoreFailure?> openSubscriptionPage(String id) => _call(() async {
+    final link = _link!;
+    final answer = await link.stub.getSubscriptionLink(
+      GetSubscriptionLinkRequest(apiVersion: apiVersion, controlAuthenticator: link.token, id: id),
+    );
+    if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+    if (!await launchUrl(Uri.parse(answer.url), mode: LaunchMode.externalApplication)) {
+      throw const CoreFailure('core.internal.unexpected');
+    }
   });
 
   Future<CoreFailure?> refreshSubscription(String id) => _call(() async {

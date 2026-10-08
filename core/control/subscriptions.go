@@ -545,6 +545,10 @@ func (b *subscriptionBook) stateLocked(id string) *corev1.SubscriptionState {
 		Updating:    b.updating[id],
 		DisplayName: displayName(rec),
 	}
+	// Panels can repeat the bearer link in metadata; states must not expose it.
+	if link, err := normalizedLink(state.Info.GetWebPageUrl()); err == nil && link == rec.URL {
+		state.Info.WebPageUrl = ""
+	}
 	if !rec.LastSuccess.IsZero() {
 		state.LastUpdate = timestamppb.New(rec.LastSuccess)
 	}
@@ -615,6 +619,21 @@ func (s *Server) ListSubscriptions(_ context.Context, req *corev1.ListSubscripti
 		return nil, err
 	}
 	return &corev1.ListSubscriptionsResponse{Subscriptions: s.subs.list()}, nil
+}
+
+// GetSubscriptionLink keeps bearer links out of state snapshots and streams.
+func (s *Server) GetSubscriptionLink(_ context.Context, req *corev1.GetSubscriptionLinkRequest) (*corev1.GetSubscriptionLinkResponse, error) {
+	if err := s.authorize(req.GetApiVersion(), req.GetControlAuthenticator()); err != nil {
+		return nil, err
+	}
+	s.subs.mu.Lock()
+	defer s.subs.mu.Unlock()
+	rec, ok := s.subs.records[req.GetId()]
+	if !ok {
+		err := errs.Newf(errs.CodeNotFound, errs.KeySubscriptionNotFound, "control: subscription not found")
+		return &corev1.GetSubscriptionLinkResponse{Error: toWire(err, nil, "")}, nil
+	}
+	return &corev1.GetSubscriptionLinkResponse{Url: rec.URL}, nil
 }
 
 // DeleteSubscription removes a subscription with its servers and credentials.

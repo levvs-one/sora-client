@@ -43,12 +43,15 @@ service CoreControl {
 
   // Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
   // current while the interface is closed. The link of a subscription is its
-  // credential: the core stores it encrypted and never sends it back.
+  // credential: the core stores it encrypted and omits it from states.
   rpc SaveSubscription(SaveSubscriptionRequest) returns (SaveSubscriptionResponse);
   rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
   rpc DeleteSubscription(DeleteSubscriptionRequest) returns (DeleteSubscriptionResponse);
   rpc RefreshSubscription(RefreshSubscriptionRequest) returns (RefreshSubscriptionResponse);
   rpc WatchSubscriptions(WatchSubscriptionsRequest) returns (stream SubscriptionState);
+  // Since 1.6. Returns the stored subscription link only on an authenticated
+  // explicit request to open its page. Clients must not cache or log it.
+  rpc GetSubscriptionLink(GetSubscriptionLinkRequest) returns (GetSubscriptionLinkResponse);
   // PutSecret and DeleteSecret manage the credential material the core keeps.
   // They exist because the rest of the contract carries only references: a plan
   // names a secret, and these two calls are the only way a secret ever reaches
@@ -474,7 +477,7 @@ message SubscriptionSettings {
   google.protobuf.Duration update_interval = 6;
 }
 
-// SubscriptionState is a subscription as the core holds it.
+// SubscriptionState omits settings.url because it carries a bearer token.
 message SubscriptionState {
   SubscriptionSettings settings = 1;
   SubscriptionInfo info = 2;
@@ -501,6 +504,10 @@ message DeleteSubscriptionResponse { SoraError error = 1; }
 message RefreshSubscriptionRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string id = 3; }
 message RefreshSubscriptionResponse { SubscriptionState state = 1; SoraError error = 2; }
 message WatchSubscriptionsRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; }
+
+// Since 1.6. The link is available only through this authenticated request.
+message GetSubscriptionLinkRequest { ApiVersion api_version = 1; bytes control_authenticator = 2; string id = 3; }
+message GetSubscriptionLinkResponse { string url = 1; SoraError error = 2; }
 
 message GetAboutRequest { ApiVersion api_version = 1; }
 message GetAboutResponse { About about = 1; SoraError error = 2; }

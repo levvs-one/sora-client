@@ -893,8 +893,14 @@ abstract class S {
   /// No description provided for @website.
   ///
   /// In ru, this message translates to:
-  /// **'Сайт провайдера'**
+  /// **'Сайт подписки'**
   String get website;
+
+  /// No description provided for @providerWebsite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт провайдера'**
+  String get providerWebsite;
 
   /// No description provided for @support.
   ///

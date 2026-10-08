@@ -38,7 +38,7 @@ import (
 
 // Version defines the API contract served by this build. Contract changes must
 // update this value and the generated code together.
-var Version = control.Version{Major: 1, Minor: 5, MinSupportedMinor: 1}
+var Version = control.Version{Major: 1, Minor: 6, MinSupportedMinor: 1}
 
 // Options configures a core instance.
 type Options struct {

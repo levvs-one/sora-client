@@ -46,6 +46,7 @@ const (
 	CoreControl_DeleteSubscription_FullMethodName  = "/sora.core.v1.CoreControl/DeleteSubscription"
 	CoreControl_RefreshSubscription_FullMethodName = "/sora.core.v1.CoreControl/RefreshSubscription"
 	CoreControl_WatchSubscriptions_FullMethodName  = "/sora.core.v1.CoreControl/WatchSubscriptions"
+	CoreControl_GetSubscriptionLink_FullMethodName = "/sora.core.v1.CoreControl/GetSubscriptionLink"
 	CoreControl_PutSecret_FullMethodName           = "/sora.core.v1.CoreControl/PutSecret"
 	CoreControl_DeleteSecret_FullMethodName        = "/sora.core.v1.CoreControl/DeleteSecret"
 )
@@ -87,12 +88,15 @@ type CoreControlClient interface {
 	CloseConnection(ctx context.Context, in *CloseConnectionRequest, opts ...grpc.CallOption) (*CloseConnectionResponse, error)
 	// Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
 	// current while the interface is closed. The link of a subscription is its
-	// credential: the core stores it encrypted and never sends it back.
+	// credential: the core stores it encrypted and omits it from states.
 	SaveSubscription(ctx context.Context, in *SaveSubscriptionRequest, opts ...grpc.CallOption) (*SaveSubscriptionResponse, error)
 	ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error)
 	DeleteSubscription(ctx context.Context, in *DeleteSubscriptionRequest, opts ...grpc.CallOption) (*DeleteSubscriptionResponse, error)
 	RefreshSubscription(ctx context.Context, in *RefreshSubscriptionRequest, opts ...grpc.CallOption) (*RefreshSubscriptionResponse, error)
 	WatchSubscriptions(ctx context.Context, in *WatchSubscriptionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscriptionState], error)
+	// Since 1.6. Returns the stored subscription link only on an authenticated
+	// explicit request to open its page. Clients must not cache or log it.
+	GetSubscriptionLink(ctx context.Context, in *GetSubscriptionLinkRequest, opts ...grpc.CallOption) (*GetSubscriptionLinkResponse, error)
 	// PutSecret and DeleteSecret manage the credential material the core keeps.
 	// They exist because the rest of the contract carries only references: a plan
 	// names a secret, and these two calls are the only way a secret ever reaches
@@ -416,6 +420,16 @@ func (c *coreControlClient) WatchSubscriptions(ctx context.Context, in *WatchSub
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type CoreControl_WatchSubscriptionsClient = grpc.ServerStreamingClient[SubscriptionState]
 
+func (c *coreControlClient) GetSubscriptionLink(ctx context.Context, in *GetSubscriptionLinkRequest, opts ...grpc.CallOption) (*GetSubscriptionLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSubscriptionLinkResponse)
+	err := c.cc.Invoke(ctx, CoreControl_GetSubscriptionLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *coreControlClient) PutSecret(ctx context.Context, in *PutSecretRequest, opts ...grpc.CallOption) (*PutSecretResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PutSecretResponse)
@@ -473,12 +487,15 @@ type CoreControlServer interface {
 	CloseConnection(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error)
 	// Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
 	// current while the interface is closed. The link of a subscription is its
-	// credential: the core stores it encrypted and never sends it back.
+	// credential: the core stores it encrypted and omits it from states.
 	SaveSubscription(context.Context, *SaveSubscriptionRequest) (*SaveSubscriptionResponse, error)
 	ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error)
 	DeleteSubscription(context.Context, *DeleteSubscriptionRequest) (*DeleteSubscriptionResponse, error)
 	RefreshSubscription(context.Context, *RefreshSubscriptionRequest) (*RefreshSubscriptionResponse, error)
 	WatchSubscriptions(*WatchSubscriptionsRequest, grpc.ServerStreamingServer[SubscriptionState]) error
+	// Since 1.6. Returns the stored subscription link only on an authenticated
+	// explicit request to open its page. Clients must not cache or log it.
+	GetSubscriptionLink(context.Context, *GetSubscriptionLinkRequest) (*GetSubscriptionLinkResponse, error)
 	// PutSecret and DeleteSecret manage the credential material the core keeps.
 	// They exist because the rest of the contract carries only references: a plan
 	// names a secret, and these two calls are the only way a secret ever reaches
@@ -576,6 +593,9 @@ func (UnimplementedCoreControlServer) RefreshSubscription(context.Context, *Refr
 }
 func (UnimplementedCoreControlServer) WatchSubscriptions(*WatchSubscriptionsRequest, grpc.ServerStreamingServer[SubscriptionState]) error {
 	return status.Errorf(codes.Unimplemented, "method WatchSubscriptions not implemented")
+}
+func (UnimplementedCoreControlServer) GetSubscriptionLink(context.Context, *GetSubscriptionLinkRequest) (*GetSubscriptionLinkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSubscriptionLink not implemented")
 }
 func (UnimplementedCoreControlServer) PutSecret(context.Context, *PutSecretRequest) (*PutSecretResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PutSecret not implemented")
@@ -1062,6 +1082,24 @@ func _CoreControl_WatchSubscriptions_Handler(srv interface{}, stream grpc.Server
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type CoreControl_WatchSubscriptionsServer = grpc.ServerStreamingServer[SubscriptionState]
 
+func _CoreControl_GetSubscriptionLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSubscriptionLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreControlServer).GetSubscriptionLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreControl_GetSubscriptionLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreControlServer).GetSubscriptionLink(ctx, req.(*GetSubscriptionLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CoreControl_PutSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutSecretRequest)
 	if err := dec(in); err != nil {
@@ -1196,6 +1234,10 @@ var CoreControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RefreshSubscription",
 			Handler:    _CoreControl_RefreshSubscription_Handler,
+		},
+		{
+			MethodName: "GetSubscriptionLink",
+			Handler:    _CoreControl_GetSubscriptionLink_Handler,
 		},
 		{
 			MethodName: "PutSecret",

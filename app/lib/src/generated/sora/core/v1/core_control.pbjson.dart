@@ -1620,6 +1620,36 @@ final $typed_data.Uint8List watchSubscriptionsRequestDescriptor =
         '5jb3JlLnYxLkFwaVZlcnNpb25SCmFwaVZlcnNpb24SMwoVY29udHJvbF9hdXRoZW50aWNhdG9y'
         'GAIgASgMUhRjb250cm9sQXV0aGVudGljYXRvcg==');
 
+@$core.Deprecated('Use getSubscriptionLinkRequestDescriptor instead')
+const GetSubscriptionLinkRequest$json = {
+  '1': 'GetSubscriptionLinkRequest',
+  '2': [
+    {'1': 'api_version', '3': 1, '4': 1, '5': 11, '6': '.sora.core.v1.ApiVersion', '10': 'apiVersion'},
+    {'1': 'control_authenticator', '3': 2, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'id', '3': 3, '4': 1, '5': 9, '10': 'id'},
+  ],
+};
+
+/// Descriptor for `GetSubscriptionLinkRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getSubscriptionLinkRequestDescriptor =
+    $convert.base64Decode('ChpHZXRTdWJzY3JpcHRpb25MaW5rUmVxdWVzdBI5CgthcGlfdmVyc2lvbhgBIAEoCzIYLnNvcm'
+        'EuY29yZS52MS5BcGlWZXJzaW9uUgphcGlWZXJzaW9uEjMKFWNvbnRyb2xfYXV0aGVudGljYXRv'
+        'chgCIAEoDFIUY29udHJvbEF1dGhlbnRpY2F0b3ISDgoCaWQYAyABKAlSAmlk');
+
+@$core.Deprecated('Use getSubscriptionLinkResponseDescriptor instead')
+const GetSubscriptionLinkResponse$json = {
+  '1': 'GetSubscriptionLinkResponse',
+  '2': [
+    {'1': 'url', '3': 1, '4': 1, '5': 9, '10': 'url'},
+    {'1': 'error', '3': 2, '4': 1, '5': 11, '6': '.sora.core.v1.SoraError', '10': 'error'},
+  ],
+};
+
+/// Descriptor for `GetSubscriptionLinkResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getSubscriptionLinkResponseDescriptor =
+    $convert.base64Decode('ChtHZXRTdWJzY3JpcHRpb25MaW5rUmVzcG9uc2USEAoDdXJsGAEgASgJUgN1cmwSLQoFZXJyb3'
+        'IYAiABKAsyFy5zb3JhLmNvcmUudjEuU29yYUVycm9yUgVlcnJvcg==');
+
 @$core.Deprecated('Use getAboutRequestDescriptor instead')
 const GetAboutRequest$json = {
   '1': 'GetAboutRequest',

@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sora</title>
+<meta name="description" content="Sora: VPN-клиент для Windows и Linux. Вставь подписку и подключайся. Открытый код.">
+<link rel="icon" href="assets/sora.svg" type="image/svg+xml">
+<style>
+@font-face {
+  font-family: "Inter";
+  src: url("assets/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --field: #ebebef;
+  --ink: #1d1d1f;
+  --ink2: #6e6e73;
+  --ink3: #aeaeb2;
+  --line: rgba(29, 29, 31, 0.08);
+  --button: #1d1d1f;
+  --button-ink: #f5f5f7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 24px 64px rgba(0, 0, 0, 0.10);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0b0c;
+    --surface: #1c1c1e;
+    --field: #2c2c2e;
+    --ink: #f5f5f7;
+    --ink2: #98989f;
+    --ink3: #5a5a5f;
+    --line: rgba(245, 245, 247, 0.08);
+    --button: #f5f5f7;
+    --button-ink: #1d1d1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 24px 64px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.55 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 24px; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 72px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; text-decoration: none; }
+.brand img { width: 28px; height: 28px; border-radius: 7px; box-shadow: 0 0 0 1px var(--line); }
+nav { display: flex; gap: 28px; font-size: 14px; color: var(--ink2); }
+nav a { text-decoration: none; }
+nav a:hover { color: var(--ink); }
+
+.hero { padding-block: 72px 48px; max-width: 680px; }
+h1 {
+  margin: 0 0 20px;
+  font-size: clamp(36px, 6vw, 56px);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.lead { margin: 0 0 32px; font-size: 20px; line-height: 1.5; color: var(--ink2); max-width: 600px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.button {
+  display: inline-flex; align-items: center; height: 48px; padding-inline: 24px;
+  border-radius: 24px; background: var(--button); color: var(--button-ink);
+  font-weight: 600; font-size: 16px; text-decoration: none;
+  transition: transform 150ms ease-out, opacity 150ms ease-out;
+}
+.button:hover { opacity: 0.88; }
+.button:active { transform: scale(0.98); }
+.quiet { font-size: 15px; color: var(--ink2); text-decoration: none; }
+.quiet:hover { color: var(--ink); }
+.version { display: block; margin-top: 14px; font-size: 13px; color: var(--ink3); font-variant-numeric: tabular-nums; min-height: 20px; }
+
+.window { position: relative; margin-block: 24px 120px; }
+.window::before {
+  content: ""; position: absolute; inset: 6% 10% -4%;
+  background: conic-gradient(from var(--turn, 0deg), #bc82f3, #f5b9ea, #8d9fff, #ff6778, #ffba71, #c686ff, #bc82f3);
+  filter: blur(80px); opacity: 0.35; border-radius: 40%;
+  animation: turn 8s linear infinite;
+}
+@property --turn { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes turn { to { --turn: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .window::before { animation: none; } }
+.window picture, .window img {
+  position: relative; display: block; width: 100%; height: auto;
+  border-radius: 14px; box-shadow: var(--shadow);
+}
+
+section { padding-block: 24px 96px; }
+h2 { margin: 0 0 40px; font-size: 32px; line-height: 1.15; font-weight: 600; letter-spacing: -0.025em; }
+.features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 64px; }
+.feature h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.feature p { margin: 0; color: var(--ink2); max-width: 46ch; }
+
+.tabs { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--field); margin-bottom: 16px; }
+.tabs button {
+  border: 0; background: transparent; color: var(--ink2); font: inherit; font-size: 14px; font-weight: 500;
+  height: 34px; padding-inline: 16px; border-radius: 9px; cursor: pointer;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+.panel[hidden] { display: none; }
+.command {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border-radius: 12px; padding: 14px 14px 14px 20px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.command code {
+  flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap;
+  font: 14px/1.5 ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
+}
+.copy {
+  flex: none; border: 0; height: 34px; padding-inline: 14px; border-radius: 9px; cursor: pointer;
+  background: var(--field); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500;
+}
+.copy:hover { opacity: 0.8; }
+.note { margin: 14px 0 0; font-size: 14px; color: var(--ink2); }
+.note a { color: var(--ink); }
+
+footer {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+  padding-block: 32px 48px; border-top: 1px solid var(--line);
+  font-size: 14px; color: var(--ink2);
+}
+footer a { text-decoration: none; }
+footer a:hover { color: var(--ink); }
+
+@media (max-width: 720px) {
+  nav { gap: 18px; }
+  nav .optional { display: none; }
+  .hero { padding-block: 40px 32px; }
+  .lead { font-size: 18px; }
+  .window { margin-bottom: 72px; }
+  .features { grid-template-columns: 1fr; gap: 28px; }
+  section { padding-bottom: 72px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./"><img src="assets/sora.svg" alt="">Sora</a>
+    <nav>
+      <a class="optional" href="#features">Возможности</a>
+      <a href="#install">Установка</a>
+      <a href="https://github.com/levvs-one/sora-client">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Вставь подписку и нажми одну кнопку</h1>
+      <p class="lead">Sora подключает VLESS, Trojan, Shadowsocks и другие протоколы через sing-box, Xray или mihomo и сама выбирает ядро под сервер. Для Windows и Linux, с открытым кодом.</p>
+      <div class="actions">
+        <a class="button" id="download" href="https://github.com/levvs-one/sora-client/releases/latest">Скачать</a>
+        <a class="quiet" href="#install">Установка одной командой</a>
+      </div>
+      <span class="version" id="version"></span>
+    </div>
+
+    <div class="window">
+      <picture>
+        <source srcset="assets/window-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="assets/window-light.png" width="1440" height="900" alt="Главное окно Sora: список серверов подписки и кнопка подключения">
+      </picture>
+    </div>
+
+    <section id="features">
+      <h2>Что внутри</h2>
+      <div class="features">
+        <div class="feature">
+          <h3>Подписки</h3>
+          <p>Ссылка от провайдера, обычные ссылки на серверы и JSON-конфиги Xray. Sora обновляет подписку сама и показывает остаток трафика, срок и объявления провайдера.</p>
+        </div>
+        <div class="feature">
+          <h3>Весь трафик или только браузер</h3>
+          <p>Режим TUN заворачивает в VPN все программы, системный прокси трогает только те, что его слушают. Переключение в один клик.</p>
+        </div>
+        <div class="feature">
+          <h3>Интернет только через VPN</h3>
+          <p>Если соединение оборвалось, трафик не уходит мимо туннеля. На Linux это nftables, на Windows фильтры WFP.</p>
+        </div>
+        <div class="feature">
+          <h3>Свои правила</h3>
+          <p>Сайты, адреса и программы напрямую или через VPN. Готовые маршруты для России, Ирана и Китая, блокировка рекламы.</p>
+        </div>
+        <div class="feature">
+          <h3>Самый быстрый сервер</h3>
+          <p>Sora меряет задержку, выбирает быстрый сервер и переходит на запасной, если основной перестал отвечать.</p>
+        </div>
+        <div class="feature">
+          <h3>Не мешает работать</h3>
+          <p>Живёт в трее, запускается вместе с системой, переподключается после сна и смены сети. Ссылки sora:// открывают добавление подписки.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Установка</h2>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-linux" aria-controls="panel-linux" aria-selected="true">Linux</button>
+        <button role="tab" id="tab-windows" aria-controls="panel-windows" aria-selected="false">Windows</button>
+      </div>
+      <div class="panel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux">
+        <div class="command"><code>curl -fsSL https://github.com/levvs-one/sora-client/releases/latest/download/install.sh | sh</code><button class="copy" type="button">Копировать</button></div>
+        <p class="note">Debian, Ubuntu, Fedora, openSUSE и Arch. Скрипт сверяет файлы с SHA256SUMS и ставит пакеты приложения и службы.</p>
+      </div>
+      <div class="panel" id="panel-windows" role="tabpanel" aria-labelledby="tab-windows" hidden>
+        <div class="command"><code>irm https://github.com/levvs-one/sora-client/releases/latest/download/install.ps1 | iex</code><button class="copy" type="button">Копировать</button></div>
+        <p class="note">Windows 10 1809 и новее, Windows 11. Команда для PowerShell; можно и скачать <a href="https://github.com/levvs-one/sora-client/releases/latest">установщик</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Sora, лицензия GPL-3.0</span>
+    <span><a href="https://github.com/levvs-one/sora-client/releases">Все версии</a> &nbsp; <a href="https://github.com/levvs-one/sora-client/tree/main/docs">Документация</a></span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var windows = /Windows/i.test(navigator.userAgent);
+  var tabs = { linux: document.getElementById("tab-linux"), windows: document.getElementById("tab-windows") };
+  function show(name) {
+    for (var key in tabs) {
+      var on = key === name;
+      tabs[key].setAttribute("aria-selected", String(on));
+      document.getElementById("panel-" + key).hidden = !on;
+    }
+  }
+  tabs.linux.addEventListener("click", function () { show("linux"); });
+  tabs.windows.addEventListener("click", function () { show("windows"); });
+  if (windows) show("windows");
+
+  document.querySelectorAll(".copy").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var text = button.parentElement.querySelector("code").textContent;
+      var done = function () {
+        button.textContent = "Скопировано";
+        setTimeout(function () { button.textContent = "Копировать"; }, 1600);
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(done, function () { select(button); });
+      } else {
+        select(button);
+      }
+    });
+  });
+  function select(button) {
+    var range = document.createRange();
+    range.selectNodeContents(button.parentElement.querySelector("code"));
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  var download = document.getElementById("download");
+  var version = document.getElementById("version");
+  download.textContent = windows ? "Скачать для Windows" : "Скачать для Linux";
+  if (!windows) download.href = "#install";
+
+  // The installer file name carries the version, so the link comes from the latest release.
+  fetch("https://api.github.com/repos/levvs-one/sora-client/releases/latest")
+    .then(function (response) { return response.ok ? response.json() : null; })
+    .then(function (release) {
+      if (!release) return;
+      version.textContent = "Версия " + release.tag_name.replace(/^v/, "");
+      if (!windows) return;
+      var setup = (release.assets || []).find(function (asset) { return /^Sora-Setup-.*-x64\.exe$/.test(asset.name); });
+      if (setup) download.href = setup.browser_download_url;
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>

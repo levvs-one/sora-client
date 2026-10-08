@@ -64,6 +64,7 @@ void main() {
       expect(find.byKey(const ValueKey('drawer-button')), sidebar ? findsNothing : findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
     });
   }
 
@@ -94,6 +95,7 @@ void main() {
     await tester.runAsync(() async => await Future<void>.delayed(Duration.zero));
     expect((await Settings.load()).sidebarExpanded, isTrue);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('history records notices, survives reload and clears read count', (tester) async {
@@ -118,7 +120,7 @@ void main() {
     }
     await section(tester, 5);
     expect(sora.unreadCount, 4);
-    expect(find.text('Соединение прервалось'), findsOneWidget);
+    expect(find.text('Соединение прервалось'), findsNWidgets(2));
     final second = Sora(await Settings.load());
     addTearDown(second.dispose);
     expect(second.history.length, 4);
@@ -138,6 +140,7 @@ void main() {
     await tester.pumpAndSettle();
     expect((await Settings.load()).notificationHistory, isEmpty);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('tour starts on fresh install, resizes, skips and stays done', (tester) async {
@@ -167,6 +170,7 @@ void main() {
     expect(ShowcaseView.getNamed('sora-tour').isShowcaseRunning, isFalse);
     expect((await Settings.load()).tourDone, isTrue);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('upgrade does not start tour and settings can replay it', (tester) async {
@@ -191,6 +195,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('all tour steps remain positioned when crossing breakpoints with motion', (tester) async {
@@ -224,6 +229,7 @@ void main() {
     expect(ShowcaseView.getNamed('sora-tour').isShowcaseRunning, isFalse);
     expect((await Settings.load()).tourDone, isTrue);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('system reduced motion disables tour and sidebar animation', (tester) async {
@@ -241,6 +247,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('nested server screen and Escape keep the desktop shell', (tester) async {
@@ -263,6 +270,7 @@ void main() {
     expect(find.byKey(const ValueKey('wide-layout')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('program picker searches real desktop applications and saves the binary', (tester) async {
@@ -310,6 +318,7 @@ void main() {
     expect(settings.rules, ['direct process:${program.binary}']);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   }, skip: !Platform.isLinux);
 
   testWidgets('rule sheet closes safely with motion and respects theme motion preference', (tester) async {
@@ -333,6 +342,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).themeAnimationDuration, Duration.zero);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('new rule sheet accepts Unicode and sends Unicode in the plan', (tester) async {
@@ -362,5 +372,6 @@ void main() {
       expect(UserRule.destinationOf(invalid), isNull);
     }
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 }

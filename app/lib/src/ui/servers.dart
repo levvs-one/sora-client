@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
-import '../core/link.dart';
 import '../design/theme.dart';
 import '../generated/sora/core/v1/core_control.pb.dart';
 import '../groups.dart';
@@ -16,9 +15,9 @@ import 'kit.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
 import 'tour.dart';
+import 'announcement.dart';
 
-/// Lists subscription servers with automatic fastest-server selection and a
-/// bypass option.
+/// Keeps subscription order while building only visible server rows.
 class ServersScreen extends StatefulWidget {
   const ServersScreen({super.key, this.embedded = false, this.scrollable = true});
 
@@ -92,62 +91,75 @@ class _ServersScreenState extends State<ServersScreen> {
         ),
       ),
     );
-    final content = <Widget>[
-      _tourTarget(
-        1,
-        Group(
-          children: [
-            _ServerRow(id: 'auto', name: s.serverAuto),
-            _ServerRow(id: 'bypass', name: s.serverBypass),
-            if (sora.subscriptions.isEmpty)
-              Tile(
-                title: s.addSubscription,
-                onTap: () => showSubscriptionSheet(context),
-                trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
-              ),
-          ],
+    final items = <Widget Function()>[
+      () => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: _tourTarget(
+          1,
+          DecoratedBox(
+            decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: sora.servers.isNotEmpty
+                  ? _ServerRow(id: 'auto', name: s.serverAuto)
+                  : Tile(
+                      title: s.addSubscription,
+                      onTap: () => showSubscriptionSheet(context),
+                      trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
+                    ),
+            ),
+          ),
         ),
       ),
       for (final subscription in sora.subscriptions) ...[
-        if (query.isEmpty) _SubscriptionHeader(state: subscription),
-        if (_matching(entriesOf(subscription), query) case final shown when shown.isNotEmpty)
-          Group(
-            children: [for (final e in shown) _ServerRow(id: e.id, name: e.name, entry: e)],
+        if (query.isEmpty) () => _SubscriptionHeader(state: subscription),
+        for (final e in _matching(entriesOf(subscription), query))
+          () => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(8)),
+              child: _ServerRow(id: e.id, name: e.name, entry: e),
+            ),
           ),
+        () => const SizedBox(height: 16),
       ],
     ];
-    if (!widget.embedded) return Screen(title: s.servers, actions: actions, children: [search, ...content]);
     final toolbar = Row(
       children: [
-        Text(s.servers, style: Styles.heading.copyWith(color: palette.ink)),
+        if (!widget.embedded)
+          RoundButton(
+            icon: Symbols.chevron_left_rounded,
+            label: MaterialLocalizations.of(context).backButtonTooltip,
+            onTap: () => Navigator.of(context).maybePop(),
+          ),
         const Spacer(),
         ...actions,
       ],
     );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          toolbar,
-          const SizedBox(height: 12),
-          search,
-          if (widget.scrollable)
-            Expanded(
-              child: ListView(
-                key: const PageStorageKey('servers-list'),
-                padding: const EdgeInsets.only(bottom: 16),
-                children: content,
-              ),
-            )
-          else
-            ...content,
-        ],
-      ),
+    final slivers = <Widget>[
+      SliverToBoxAdapter(child: Column(children: [toolbar, const SizedBox(height: 8), search])),
+      SliverList.builder(itemCount: items.length, itemBuilder: (_, index) => items[index]()),
+    ];
+    if (!widget.scrollable) {
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        sliver: SliverMainAxisGroup(slivers: slivers),
+      );
+    }
+    final list = CustomScrollView(
+      key: const PageStorageKey('servers-list'),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          sliver: SliverMainAxisGroup(slivers: slivers),
+        ),
+      ],
     );
+    return widget.embedded ? list : Scaffold(backgroundColor: palette.background, body: list);
   }
 
-  Widget _tourTarget(int step, Widget child) => widget.embedded ? TourTarget(step: step, child: child) : child;
+  Widget _tourTarget(int step, Widget child) =>
+      widget.embedded ? TourTarget(step: step, radius: step == 0 ? 18 : 12, child: child) : child;
 }
 
 List<Entry> _matching(List<Entry> entries, String query) => query.isEmpty
@@ -177,10 +189,7 @@ class _ServerRow extends StatelessWidget {
     final measured = sora.latency.containsKey(measuredId);
     final ms = sora.latency[measuredId];
     final group = entry;
-    final protocol = group?.members.first.protocol;
-    final detail = group != null && group.isGroup
-        ? (group.ordered ? s.groupOrdered(group.members.length) : s.groupBest(group.members.length))
-        : protocol;
+    final detail = group?.members.map(protocolLine).toSet().join(' | ');
     return Semantics(
       selected: chosen,
       button: true,
@@ -221,13 +230,17 @@ class _ServerRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    !measured
-                        ? ''
-                        : ms == null
-                        ? s.noAnswer
-                        : s.milliseconds(ms),
-                    style: Styles.figures(Styles.caption).copyWith(color: palette.ink2),
+                  SizedBox(
+                    width: 76,
+                    child: Text(
+                      !measured
+                          ? ''
+                          : ms == null
+                          ? s.noAnswer
+                          : s.milliseconds(ms),
+                      textAlign: TextAlign.right,
+                      style: Styles.figures(Styles.caption).copyWith(color: palette.ink2),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   SizedBox(width: 16, child: chosen ? Icon(Symbols.check_rounded, size: 16, color: palette.ink) : null),
@@ -251,7 +264,6 @@ class _SubscriptionHeader extends StatefulWidget {
 }
 
 class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
-  bool _expanded = false;
   SubscriptionState get state => widget.state;
 
   @override
@@ -262,7 +274,6 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final info = state.info;
     final facts = <String>[];
-    var alarm = false;
     if (info.hasUsage) {
       final used = formatBytes(s, info.uploadBytes + info.downloadBytes, locale);
       facts.add(info.totalBytes == Int64.ZERO ? used : s.usage(used, formatBytes(s, info.totalBytes, locale)));
@@ -271,7 +282,6 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
       final expire = info.expire.toDateTime().toLocal();
       if (expire.isBefore(DateTime.now())) {
         facts.add(s.expired);
-        alarm = true;
       } else {
         // Include the year for expiry dates outside the current year to avoid
         // ambiguous dates.
@@ -279,13 +289,7 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
         facts.add(s.until(format.format(expire)));
       }
     }
-    final error = state.hasLastError() && state.lastError.userMessageKey.isNotEmpty;
-    if (error) {
-      facts
-        ..clear()
-        ..add(describe(s, CoreFailure(state.lastError.userMessageKey)));
-    }
-    final factStyle = Styles.caption.copyWith(color: error || alarm ? palette.danger : palette.ink);
+    final factStyle = Styles.caption.copyWith(color: palette.ink3);
 
     final used = (info.uploadBytes + info.downloadBytes).toDouble();
     final share = info.hasUsage && info.totalBytes > Int64.ZERO
@@ -326,9 +330,9 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
                     _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
                     _item(context, s.website, () => unawaited(sora.openSubscriptionPage(state.settings.id))),
                     if (info.webPageUrl.isNotEmpty)
-                      _item(context, s.providerWebsite, () => unawaited(openLink(info.webPageUrl))),
+                      _item(context, s.providerWebsite, () => unawaited(openLink(context, info.webPageUrl))),
                     if (info.supportUrl.isNotEmpty)
-                      _item(context, s.support, () => unawaited(openLink(info.supportUrl))),
+                      _item(context, s.support, () => unawaited(openLink(context, info.supportUrl))),
                     _item(
                       context,
                       s.subscriptionSettings,
@@ -344,33 +348,13 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
                 ),
             ],
           ),
-          if (share != null && !error)
+          if (share != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(0, 8, 10, 0),
-              child: UsageBar(share: share, alarm: share > 0.9),
+              child: UsageBar(share: share),
             ),
           if (announce.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 10, 10, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_expanded)
-                    LinkedText(announce, style: Styles.caption.copyWith(color: palette.ink2))
-                  else
-                    Text(
-                      announce,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Styles.caption.copyWith(color: palette.ink2),
-                    ),
-                  TextButton(
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    child: Text(_expanded ? s.less : s.more, style: Styles.caption.copyWith(color: palette.ink)),
-                  ),
-                ],
-              ),
-            ),
+            Padding(padding: const EdgeInsets.fromLTRB(0, 10, 10, 0), child: Announcement(announce)),
         ],
       ),
     );
@@ -432,3 +416,13 @@ String? subscriptionWarning(S s, SubscriptionState sub, String locale) {
   }
   return null;
 }
+
+String protocolLine(OutboundSpec server) => [
+  if (server.displayProtocol.isNotEmpty)
+    server.displayProtocol.toUpperCase()
+  else if (server.protocol.isNotEmpty)
+    server.protocol == 'xray-profile' ? 'XRAY' : server.protocol.toUpperCase(),
+  if (server.transport.isNotEmpty) server.transport.toUpperCase(),
+  if (server.security.isNotEmpty && server.security.toLowerCase() != 'none') server.security.toUpperCase(),
+  if (isProfile(server)) 'JSON',
+].join(' | ');

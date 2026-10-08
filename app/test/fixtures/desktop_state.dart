@@ -7,6 +7,7 @@ import 'package:sora/src/sora.dart';
 class DesktopState extends Sora {
   DesktopState(super.settings) {
     phase = Phase.connected;
+    serverlessAvailable = true;
     since = DateTime.now().subtract(const Duration(minutes: 14, seconds: 32));
     stats = StatsTick(bytesDown: Int64(482344960), bytesUp: Int64(25270681));
     speedDown = 2516582;
@@ -58,7 +59,7 @@ class DesktopState extends Sora {
       downloadBytes: Int64(27917287424),
       totalBytes: Int64(107374182400),
       expire: Timestamp.fromDateTime(DateTime(2026, 12, 20)),
-      announce: 'Добавлены серверы в Хельсинки и Варшаве. Перед поездкой обновите подписку. Служба поддержки: @travel_support',
+      announce: '**Обновление сети** 🌍\n\nДобавлены *Хельсинки* и Варшава.\n\n- Обновите подписку перед поездкой\n- [Связаться с поддержкой](https://example.org/support)',
     ),
     outbounds: [
       for (final (id, name, protocol) in [
@@ -75,7 +76,18 @@ class DesktopState extends Sora {
         ('tr-istanbul', '🇹🇷 Турция, Стамбул', 'vless'),
         ('ch-zurich', '🇨🇭 Швейцария, Цюрих', 'trojan'),
       ])
-        OutboundSpec(id: id, displayName: name, protocol: protocol),
+        OutboundSpec(
+          id: id,
+          displayName: name,
+          protocol: id == 'nl-amsterdam' ? 'xray-profile' : protocol,
+          displayProtocol: id == 'nl-amsterdam' ? 'vless' : '',
+          transport: protocol == 'vless' ? 'xhttp' : 'tcp',
+          security: protocol == 'vless'
+              ? 'reality'
+              : protocol == 'trojan'
+              ? 'tls'
+              : 'none',
+        ),
     ],
   );
 

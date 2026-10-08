@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -36,9 +35,13 @@ class _AboutScreenState extends State<AboutScreen> {
     if (link == null) return;
     try {
       final answer = await link.stub.getAbout(GetAboutRequest(apiVersion: apiVersion));
-      if (mounted && !answer.hasError()) setState(() => _about = answer.about);
-    } catch (_) {
-      // Keep the app version available even if core metadata cannot be read.
+      if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+      if (mounted) {
+        SoraScope.read(context).recovered('about');
+        setState(() => _about = answer.about);
+      }
+    } catch (error) {
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'about');
     }
   }
 
@@ -79,7 +82,7 @@ class _AboutScreenState extends State<AboutScreen> {
           Group(
             children: [
               if (about.sourceUrl.startsWith('https://'))
-                LinkTile(title: s.sourceCode, onTap: () => unawaited(launchUrl(Uri.parse(about.sourceUrl)))),
+                LinkTile(title: s.sourceCode, onTap: () => unawaited(openLink(context, about.sourceUrl))),
               Tile(title: s.license, trailing: _value(context, about.license)),
             ],
           ),

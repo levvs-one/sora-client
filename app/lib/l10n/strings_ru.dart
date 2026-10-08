@@ -631,7 +631,7 @@ class SRu extends S {
   String get sidebarToggle => 'Развернуть меню';
 
   @override
-  String get more => 'Подробнее';
+  String get more => 'Ещё';
 
   @override
   String get less => 'Свернуть';
@@ -786,4 +786,34 @@ class SRu extends S {
 
   @override
   String get speedtestRoutingNote => 'Маршрут зависит от правил Sora';
+
+  @override
+  String get modes => 'Режимы';
+
+  @override
+  String get proxyShort => 'Прокси';
+
+  @override
+  String get tunMode => 'Весь трафик (TUN)';
+
+  @override
+  String get tunExplanation => 'Все приложения через VPN';
+
+  @override
+  String get proxyExplanation => 'Трафик приложений с прокси';
+
+  @override
+  String get bypassExplanation => 'Обход DPI через zapret, без VPN';
+
+  @override
+  String get autoEngineExplanation => 'Ядро подбирает совместимый движок';
+
+  @override
+  String get singboxExplanation => 'Гибкая маршрутизация и TUN';
+
+  @override
+  String get xrayExplanation => 'VLESS, REALITY и TLS-фрагментация';
+
+  @override
+  String get mihomoExplanation => 'Группы серверов и авторезерв';
 }

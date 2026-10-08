@@ -136,8 +136,8 @@ abstract final class Styles {
 /// Shared animation durations and curves that respect the motion setting.
 abstract final class Motion {
   static const fast = Duration(milliseconds: 160);
-  static const medium = Duration(milliseconds: 280);
-  static const slow = Duration(milliseconds: 520);
+  static const medium = Duration(milliseconds: 180);
+  static const slow = Duration(milliseconds: 220);
 
   /// Navigation curve approximating an Apple critically damped spring.
   static const curve = Cubic(0.2, 0.9, 0.25, 1);
@@ -191,7 +191,7 @@ ThemeData buildTheme(Brightness brightness) {
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(palette.raised),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        elevation: const WidgetStatePropertyAll(24),
+        elevation: const WidgetStatePropertyAll(2),
         shadowColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: brightness == Brightness.dark ? 0.6 : 0.28)),
         padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),

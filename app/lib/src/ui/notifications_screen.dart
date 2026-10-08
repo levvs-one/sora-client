@@ -8,9 +8,11 @@ import '../../l10n/strings.dart';
 import '../design/theme.dart';
 import '../notifications.dart';
 import '../sora.dart';
+import '../speedtest_services.dart';
 import 'kit.dart';
 import 'logs.dart';
 import 'subscription.dart';
+import 'speedtest.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -32,11 +34,15 @@ class NotificationsScreen extends StatelessWidget {
           onTap: sora.history.isEmpty ? null : sora.clearNotifications,
         ),
       ],
+      fill: sora.history.isEmpty
+          ? null
+          : ListView.builder(
+              itemCount: sora.history.length,
+              itemBuilder: (_, index) => NotificationRow(notice: sora.history[index]),
+            ),
       children: [
         if (sora.history.isEmpty)
-          Text(s.notificationsEmpty, style: Styles.secondary.copyWith(color: Palette.of(context).ink2))
-        else
-          Group(children: [for (final notice in sora.history) NotificationRow(notice: notice)]),
+          Text(s.notificationsEmpty, style: Styles.secondary.copyWith(color: Palette.of(context).ink2)),
       ],
     );
   }
@@ -48,11 +54,12 @@ class NotificationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = S.of(context), palette = Palette.of(context), sora = SoraScope.read(context);
+    final s = S.of(context), palette = Palette.of(context);
     final action = switch (notice.action) {
       'connect' => s.retryConnect,
       'logs' => s.openLogs,
       'subscription' => s.subscription,
+      'speedtest' => s.refresh,
       _ => null,
     };
     return Padding(
@@ -84,20 +91,26 @@ class NotificationRow extends StatelessWidget {
           Text(notice.body, style: Styles.secondary.copyWith(color: palette.ink2)),
           if (action != null)
             TextButton(
-              onPressed: () {
-                switch (notice.action) {
-                  case 'connect':
-                    unawaited(sora.connect());
-                  case 'logs':
-                    unawaited(push<void>(context, const LogsScreen()));
-                  case 'subscription':
-                    unawaited(push<void>(context, SubscriptionScreen(id: notice.argument)));
-                }
-              },
+              onPressed: () => runNotificationAction(context, notice),
               child: Text(action, style: Styles.secondary.copyWith(color: palette.ink)),
             ),
         ],
       ),
     );
+  }
+}
+
+void runNotificationAction(BuildContext context, AppNotification notice) {
+  final sora = SoraScope.read(context);
+  switch (notice.action) {
+    case 'connect':
+      unawaited(sora.connect());
+    case 'logs':
+      unawaited(push<void>(context, const LogsScreen()));
+    case 'subscription':
+      unawaited(push<void>(context, SubscriptionScreen(id: notice.argument)));
+    case 'speedtest':
+      final service = speedtestServices.where((s) => s.url == notice.argument).firstOrNull;
+      if (service != null) unawaited(push<void>(context, Scaffold(body: SpeedtestScreen(initialService: service))));
   }
 }

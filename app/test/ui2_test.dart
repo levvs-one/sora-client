@@ -1,0 +1,318 @@
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:sora/main.dart';
+import 'package:sora/src/core/link.dart';
+import 'package:sora/src/generated/sora/core/v1/core_control.pb.dart';
+import 'package:sora/src/notifications.dart';
+import 'package:sora/src/settings.dart';
+import 'package:sora/src/sora.dart';
+import 'package:sora/src/ui/announcement.dart';
+import 'package:sora/src/ui/home.dart';
+import 'package:sora/src/ui/servers.dart';
+import 'package:sora/src/ui/speedtest.dart';
+import 'package:sora/src/ui/tour.dart';
+
+import 'desktop_shell_test.dart' show section, size;
+import 'fixtures/desktop_state.dart';
+
+class _EmptySora extends Sora {
+  _EmptySora(super.settings) {
+    phase = Phase.off;
+  }
+  int connects = 0;
+  @override
+  Future<void> connect({bool retry = false}) async {
+    connects++;
+  }
+}
+
+void main() {
+  setUp(() => SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty());
+
+  Future<Sora> start(WidgetTester tester, {bool empty = false, bool bypass = true, double width = 1440}) async {
+    size(tester, width, width == 420 ? 800 : 900);
+    addTearDown(tester.view.reset);
+    final settings = await Settings.load();
+    await settings.completeTour();
+    settings
+      ..language = 'ru'
+      ..animations = false;
+    final sora = empty ? _EmptySora(settings) : DesktopState(settings);
+    sora.serverlessAvailable = bypass;
+    addTearDown(sora.dispose);
+    await tester.pumpWidget(SoraApp(sora: sora));
+    await tester.pumpAndSettle();
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+    return sora;
+  }
+
+  Future<AppNotification> message(
+    WidgetTester tester,
+    Sora sora, {
+    String title = 'Событие',
+    String action = '',
+  }) async {
+    final notice = AppNotification(time: DateTime.now(), title: title, body: 'Подробности события', action: action);
+    await sora.recordNotification(notice);
+    await tester.pumpAndSettle();
+    return notice;
+  }
+
+  testWidgets('toasts stack at top right, expire in five seconds and keep history', (tester) async {
+    final sora = await start(tester);
+    final first = await message(tester, sora, title: 'Первое');
+    final second = await message(tester, sora, title: 'Второе');
+    final rect = tester.getRect(find.byKey(ObjectKey(second)));
+    expect(rect.left, greaterThan(1000));
+    expect(rect.top, lessThan(100));
+    expect(tester.getTopLeft(find.byKey(ObjectKey(first))).dy, greaterThan(rect.top));
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.byKey(ObjectKey(first)), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(first)), findsNothing);
+    expect(find.byKey(ObjectKey(second)), findsNothing);
+    expect(sora.history.length, 5);
+  });
+
+  testWidgets('hover pauses remaining toast lifetime', (tester) async {
+    final sora = await start(tester);
+    final notice = await message(tester, sora);
+    await tester.pump(const Duration(seconds: 2));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.byKey(ObjectKey(notice))));
+    await tester.pump(const Duration(seconds: 8));
+    expect(find.byKey(ObjectKey(notice)), findsOneWidget);
+    await mouse.moveTo(Offset.zero);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.byKey(ObjectKey(notice)), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(notice)), findsNothing);
+    await mouse.removePointer();
+  });
+
+  testWidgets('toast supports right swipe, close and retry action', (tester) async {
+    final sora = await start(tester, empty: true) as _EmptySora;
+    final notice = await message(tester, sora);
+    final toast = find.ancestor(of: find.byKey(ObjectKey(notice)), matching: find.byType(Dismissible));
+    await tester.drag(toast, const Offset(-240, 0));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(notice)), findsOneWidget);
+    await tester.drag(toast, const Offset(420, 0));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(notice)), findsNothing);
+    final close = await message(tester, sora);
+    final closeToast = find.ancestor(of: find.byKey(ObjectKey(close)), matching: find.byType(Dismissible));
+    await tester.tap(find.descendant(of: closeToast, matching: find.byIcon(Symbols.close_rounded)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(close)), findsNothing);
+    final retry = await message(tester, sora, action: 'connect');
+    await tester.tap(find.byKey(ObjectKey(retry)));
+    await tester.pumpAndSettle();
+    expect(sora.connects, 1);
+    expect(find.byKey(ObjectKey(retry)), findsNothing);
+    expect(sora.history.length, 3);
+  });
+
+  testWidgets('burst of notices is safe with reduced motion', (tester) async {
+    final sora = await start(tester);
+    for (var i = 0; i < 25; i++) {
+      await sora.recordNotification(AppNotification(time: DateTime.now(), title: 'Событие $i', body: 'Связь'));
+    }
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Событие 24'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home failures use toast without moving controls or inline error', (tester) async {
+    final sora = await start(tester);
+    final before = tester.getRect(find.byKey(const ValueKey('current-server')));
+    sora.failure = const CoreFailure('core.engine.start_failed');
+    sora.reportFailure(sora.failure!);
+    await tester.pumpAndSettle();
+    final home = find.descendant(of: find.byType(HomeScreen), matching: find.byType(Text));
+    expect(
+      home.evaluate().map((e) => (e.widget as Text).data).whereType<String>(),
+      isNot(contains('Движок не запустился')),
+    );
+    expect(tester.getRect(find.byKey(const ValueKey('current-server'))), before);
+    expect(find.byType(Dismissible), findsOneWidget);
+    expect(find.text('Подключение'), findsNothing);
+    expect(find.text('Текущий сервер'), findsNothing);
+    expect(find.text('Системный прокси'), findsNothing);
+    expect(find.text('Без сервера'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+  });
+
+  test('protocol line preserves all parts and does not guess profile protocol', () {
+    expect(
+      protocolLine(
+        OutboundSpec(protocol: 'xray-profile', displayProtocol: 'vless', transport: 'xhttp', security: 'reality'),
+      ),
+      'VLESS | XHTTP | REALITY | JSON',
+    );
+    expect(
+      protocolLine(OutboundSpec(protocol: 'shadowsocks', transport: 'tcp', security: 'none')),
+      'SHADOWSOCKS | TCP',
+    );
+    expect(protocolLine(OutboundSpec(protocol: 'xray-profile')), 'XRAY | JSON');
+  });
+
+  for (final width in [1440.0, 1000.0, 420.0]) {
+    testWidgets('protocol text and latency grid at $width', (tester) async {
+      await start(tester, width: width);
+      final line = find.text('VLESS | XHTTP | REALITY | JSON');
+      await tester.scrollUntilVisible(
+        line,
+        200,
+        scrollable: find.descendant(of: find.byType(HomeScreen), matching: find.byType(Scrollable)).first,
+      );
+      await tester.ensureVisible(line);
+      await tester.pumpAndSettle();
+      final widget = tester.widget<Text>(line);
+      expect(widget.maxLines, 1);
+      expect(widget.overflow, TextOverflow.ellipsis);
+      expect(widget.style!.fontSize, 12);
+      final search = find.byType(ServersScreen).first;
+      final latency = find.descendant(of: search, matching: find.text('42 мс'));
+      expect(tester.getTopLeft(latency).dx, greaterThan(tester.getTopLeft(line).dx));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('modes change route, bypass, kill switch and all engine choices', (tester) async {
+    final sora = await start(tester);
+    await tester.tap(find.byKey(const ValueKey('mode-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Режимы'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('mode-proxy')));
+    await tester.pumpAndSettle();
+    expect(sora.settings.tunnel, 'proxy');
+    await tester.tap(find.byKey(const ValueKey('mode-bypass')));
+    await tester.pumpAndSettle();
+    expect(sora.selected, 'bypass');
+    expect(sora.settings.tunnel, 'tun');
+    await tester.tap(find.text('Интернет только через VPN'));
+    await tester.pumpAndSettle();
+    expect(sora.settings.killSwitch, isTrue);
+    for (final engine in ['xray', 'mihomo', '']) {
+      await tester.tap(find.byKey(ValueKey('engine-$engine')));
+      await tester.pumpAndSettle();
+      expect(sora.settings.engine, engine);
+    }
+    await tester.tap(find.byKey(const ValueKey('engine-sing-box')));
+    await tester.pumpAndSettle();
+    expect(sora.settings.engine, '');
+    await tester.tap(find.text('Выбрать sing-box'));
+    await tester.pumpAndSettle();
+    expect(sora.settings.engine, 'sing-box');
+    expect(sora.settings.controlPort, isTrue);
+    await tester.tap(find.byKey(const ValueKey('mode-tun')));
+    await tester.pumpAndSettle();
+    expect(sora.selected, 'auto');
+  });
+
+  for (final available in [false, true]) {
+    testWidgets('empty connect offers subscription and supported bypass: $available', (tester) async {
+      final sora = await start(tester, empty: true, bypass: available) as _EmptySora;
+      await tester.tap(find.byKey(const ValueKey('mode-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('mode-bypass')), available ? findsOneWidget : findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('connect-control')));
+      await tester.pumpAndSettle();
+      expect(find.descendant(of: find.byType(Dialog), matching: find.text('Добавить подписку')), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(Dialog), matching: find.text('Без сервера')),
+        available ? findsOneWidget : findsNothing,
+      );
+      expect(sora.history, isEmpty);
+      if (available) {
+        await tester.tap(find.text('Без сервера'));
+        await tester.pumpAndSettle();
+        expect(sora.selected, 'bypass');
+        expect(sora.connects, 1);
+      } else {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async => call.method == 'Clipboard.getData' ? <String, String>{'text': ''} : null,
+        );
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await tester.tap(find.descendant(of: find.byType(Dialog), matching: find.text('Добавить подписку')));
+        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
+        expect(find.byType(TextField), findsNWidgets(2));
+      }
+    });
+  }
+
+  testWidgets('announcement renders markdown, emoji, link and lists with three-line preview', (tester) async {
+    await start(tester);
+    final announcement = find.byType(Announcement).first;
+    final body = tester.widget<MarkdownBody>(find.descendant(of: announcement, matching: find.byType(MarkdownBody)));
+    expect(body.data, contains('🌍'));
+    expect(body.styleSheet!.textAlign, WrapAlignment.center);
+    expect(body.styleSheet!.strong!.fontWeight, FontWeight.w600);
+    expect(body.styleSheet!.em!.fontStyle, FontStyle.italic);
+    expect(body.onTapLink, isNotNull);
+    expect(find.descendant(of: announcement, matching: find.byType(RichText)), findsWidgets);
+    expect(tester.getSize(find.byKey(const ValueKey('announcement-preview'))).height, closeTo(46.8, .1));
+    await tester.tap(find.descendant(of: announcement, matching: find.text('Ещё')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('announcement-preview')), findsNothing);
+    expect(find.descendant(of: announcement, matching: find.text('Свернуть')), findsOneWidget);
+  });
+
+  testWidgets('tour cutout uses circle and card radii', (tester) async {
+    await start(tester);
+    await section(tester, 6);
+    await tester.scrollUntilVisible(find.text('Показать гайд снова'), 250);
+    await tester.tap(find.text('Показать гайд снова'));
+    await tester.pumpAndSettle();
+    for (final radius in [18.0, 12.0, 88.0, 8.0, 8.0]) {
+      final scrim = tester.widget<TourScrim>(find.byType(TourScrim));
+      expect(scrim.radius, radius);
+      if (radius == 88) expect(scrim.rect.size, const Size(176, 176));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('native browser yields to toast and returns after timeout', (tester) async {
+    final sora = await start(tester);
+    await section(tester, 8);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    final notice = await message(tester, sora);
+    expect(tester.widget<SpeedtestBrowser>(find.byType(SpeedtestBrowser)).visible, isFalse);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(notice)), findsNothing);
+    expect(tester.widget<SpeedtestBrowser>(find.byType(SpeedtestBrowser)).visible, isTrue);
+  });
+}

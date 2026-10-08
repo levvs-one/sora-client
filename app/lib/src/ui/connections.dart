@@ -27,7 +27,6 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   final _search = TextEditingController();
   Timer? _timer;
   List<Connection> _list = [];
-  CoreFailure? _failure;
   bool _loaded = false;
 
   @override
@@ -67,11 +66,11 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
       setState(() {
         // Show recent connections first to help locate newly opened traffic.
         _list = answer.connections.toList()..sort((a, b) => b.start.seconds.compareTo(a.start.seconds));
-        _failure = null;
+        SoraScope.read(context).recovered('connections');
         _loaded = true;
       });
     } catch (error) {
-      if (mounted) setState(() => _failure = CoreFailure.from(error));
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'connections');
     }
   }
 
@@ -96,7 +95,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
       );
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
     } catch (error) {
-      if (mounted) setState(() => _failure = CoreFailure.from(error));
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'connections');
     }
   }
 
@@ -136,11 +135,6 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           itemColor: palette.ink3,
         ),
         const SizedBox(height: 14),
-        if (_failure != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-            child: Text(describe(s, _failure!), style: Styles.caption.copyWith(color: palette.danger)),
-          ),
       ],
     );
   }

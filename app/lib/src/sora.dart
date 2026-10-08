@@ -61,6 +61,38 @@ final class ServerReturned extends Notice {
 class Sora extends ChangeNotifier {
   Sora(this.settings) : history = settings.notificationHistory;
 
+  final _messages = StreamController<AppNotification>.broadcast();
+  Stream<AppNotification> get messages => _messages.stream;
+  final _reported = <String, String>{};
+  bool serverlessAvailable = false;
+
+  S get strings {
+    final chosen = settings.language == 'system'
+        ? WidgetsBinding.instance.platformDispatcher.locale
+        : Locale(settings.language);
+    return lookupS(S.delegate.isSupported(chosen) ? chosen : const Locale('en'));
+  }
+
+  void reportFailure(Object error, {String source = 'request', String action = 'logs', String argument = ''}) {
+    if (_disposed) return;
+    final failed = CoreFailure.from(error);
+    if (_reported[source] == failed.key) return;
+    _reported[source] = failed.key;
+    unawaited(
+      recordNotification(
+        AppNotification(
+          time: DateTime.now(),
+          title: strings.errGeneric,
+          body: describe(strings, failed),
+          action: action,
+          argument: argument,
+        ),
+      ),
+    );
+  }
+
+  void recovered(String source) => _reported.remove(source);
+
   final Settings settings;
   List<AppNotification> history;
   int get unreadCount => history.where((n) => !n.read).length;
@@ -68,6 +100,7 @@ class Sora extends ChangeNotifier {
 
   Future<void> recordNotification(AppNotification notice) {
     history = [notice, ...history].take(100).toList();
+    _messages.add(notice);
     notifyListeners();
     return _saveHistory();
   }
@@ -191,12 +224,12 @@ class Sora extends ChangeNotifier {
       }
       stats = answer.stats;
       _statsAt = now;
-      notifyListeners();
-    } catch (_) {
+      recovered('stats');
+    } catch (error) {
+      reportFailure(error, source: 'stats');
       stats = null;
       speedUp = speedDown = null;
       _statsAt = null;
-      notifyListeners();
     } finally {
       _readingStats = false;
     }
@@ -226,7 +259,8 @@ class Sora extends ChangeNotifier {
   /// no longer present.
   String get selected {
     final chosen = settings.server;
-    if (chosen == 'auto' || chosen == 'bypass') return chosen;
+    if (chosen == 'auto') return chosen;
+    if (chosen == 'bypass') return serverlessAvailable ? chosen : 'auto';
     if (chosen.startsWith(groupPrefix)) return entryOf(chosen, _subscriptions.values) != null ? chosen : 'auto';
     return servers.any((o) => o.id == chosen) ? chosen : 'auto';
   }
@@ -247,7 +281,15 @@ class Sora extends ChangeNotifier {
   Future<void> run() async {
     _statsTimer ??= Timer.periodic(const Duration(seconds: 1), (_) => unawaited(readStats()));
     while (!_disposed) {
-      final link = await CoreLink.open();
+      final CoreLink link;
+      try {
+        link = await CoreLink.open(onRetry: (error) => reportFailure(error, source: 'core'));
+      } catch (error) {
+        failure = CoreFailure.from(error);
+        reportFailure(error, source: 'core');
+        notifyListeners();
+        return;
+      }
       if (_disposed) {
         await link.close();
         return;
@@ -255,12 +297,16 @@ class Sora extends ChangeNotifier {
       _link = link;
       final dropped = Completer<void>();
       _drop = (error) {
+        reportFailure(error, source: 'core');
         if (!dropped.isCompleted && CoreFailure.from(error).key == CoreFailure.unavailable.key) dropped.complete();
       };
       try {
         await _readStatus(report: false);
         final about = await link.stub.getAbout(GetAboutRequest(apiVersion: apiVersion));
+        if (about.hasError()) throw CoreFailure(about.error.userMessageKey);
+        serverlessAvailable = about.about.contract.capabilities.contains('serverless');
         localProxy = about.about.hasLocalProxy() ? about.about.localProxy : null;
+        recovered('core');
         _watchSubscriptions();
         _watchSession();
         notifyListeners();
@@ -277,12 +323,14 @@ class Sora extends ChangeNotifier {
         await dropped.future;
       } catch (error) {
         failure = CoreFailure.from(error);
+        reportFailure(error, source: 'core');
         notifyListeners();
         // Delay retries after post-handshake failures to avoid a tight loop.
         await Future<void>.delayed(const Duration(seconds: 3));
       }
       await _cancelWatches();
       _link = null;
+      serverlessAvailable = false;
       await link.close();
       phase = Phase.offline;
       stats = null;
@@ -303,6 +351,7 @@ class Sora extends ChangeNotifier {
   Future<void> _readStatus({bool report = true}) async {
     final link = _link!;
     final answer = await link.stub.getStatus(GetStatusRequest(apiVersion: apiVersion));
+    if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
     _applyState(answer.status.connection, report: report);
   }
 
@@ -387,6 +436,12 @@ class Sora extends ChangeNotifier {
         _subscriptions.remove(id);
       } else {
         _subscriptions[id] = state;
+      }
+      final key = state.hasLastError() ? state.lastError.userMessageKey : '';
+      if (key.isNotEmpty) {
+        reportFailure(CoreFailure(key), source: 'subscription:$id', action: 'subscription', argument: id);
+      } else {
+        recovered('subscription:$id');
       }
       notifyListeners();
     }, onError: _drop);
@@ -534,6 +589,7 @@ class Sora extends ChangeNotifier {
     final link = _link;
     if (link == null) return;
     failure = null;
+    recovered('disconnect');
     phase = Phase.disconnecting;
     _stopping = true;
     _lostAnnounced = false;
@@ -546,6 +602,7 @@ class Sora extends ChangeNotifier {
       _applyState(answer.status.connection);
     } catch (error) {
       failure = CoreFailure.from(error);
+      reportFailure(error, source: 'disconnect');
       await _readStatus().catchError((Object _) {});
     } finally {
       _stopping = false;
@@ -581,6 +638,7 @@ class Sora extends ChangeNotifier {
   }
 
   Future<void> setKillSwitch(bool value) async {
+    recovered('kill-switch');
     settings.killSwitch = value;
     notifyListeners();
     final link = _link, id = sessionId;
@@ -590,9 +648,14 @@ class Sora extends ChangeNotifier {
       // A failed session may retain the kill switch after its ID is cleared;
       // disconnecting it releases the block.
       if (!value && phase != Phase.connecting) {
-        await link.stub
-            .disconnect(DisconnectRequest(apiVersion: apiVersion, controlAuthenticator: link.token))
-            .catchError((Object _) => DisconnectResponse());
+        try {
+          final answer = await link.stub.disconnect(
+            DisconnectRequest(apiVersion: apiVersion, controlAuthenticator: link.token),
+          );
+          if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+        } catch (error) {
+          reportFailure(error, source: 'kill-switch');
+        }
       }
       return;
     }
@@ -603,15 +666,20 @@ class Sora extends ChangeNotifier {
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
     } catch (error) {
       failure = CoreFailure.from(error);
+      reportFailure(error, source: 'kill-switch');
       notifyListeners();
     }
   }
 
   /// Saves a subscription; the core fetches it and streams its servers. Returns
-  /// null on success or a failure for display beside the input.
+  /// null on success; failures are reported through the notification stream.
   Future<CoreFailure?> addSubscription(String url, {String name = ''}) async {
+    recovered('request');
     final link = _link;
-    if (link == null) return CoreFailure.unavailable;
+    if (link == null) {
+      reportFailure(CoreFailure.unavailable);
+      return CoreFailure.unavailable;
+    }
     try {
       final answer = await link.stub.saveSubscription(
         SaveSubscriptionRequest(
@@ -620,11 +688,12 @@ class Sora extends ChangeNotifier {
           settings: SubscriptionSettings(url: url.trim(), name: name.trim(), autoUpdate: true),
         ),
       );
-      if (answer.hasError()) return CoreFailure(answer.error.userMessageKey);
+      if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
       _subscriptions[answer.state.settings.id] = answer.state;
       notifyListeners();
       return null;
     } catch (error) {
+      reportFailure(error);
       return CoreFailure.from(error);
     }
   }
@@ -682,13 +751,18 @@ class Sora extends ChangeNotifier {
   /// Runs a core request; returns null on success or stores and returns its
   /// failure.
   Future<CoreFailure?> _call(Future<void> Function() body) async {
-    if (_link == null) return CoreFailure.unavailable;
+    recovered('request');
+    if (_link == null) {
+      reportFailure(CoreFailure.unavailable);
+      return CoreFailure.unavailable;
+    }
     failure = null;
     try {
       await body();
       return null;
     } catch (error) {
       failure = CoreFailure.from(error);
+      reportFailure(error);
       notifyListeners();
       return failure;
     }
@@ -701,6 +775,7 @@ class Sora extends ChangeNotifier {
     final all = servers;
     if (link == null || probing || all.isEmpty) return;
     probing = true;
+    recovered('probe');
     notifyListeners();
     try {
       await for (final r in link.stub.probeServers(
@@ -721,7 +796,8 @@ class Sora extends ChangeNotifier {
         latency[r.serverId] = r.reachable ? r.latencyMs : null;
         notifyListeners();
       }
-    } catch (_) {
+    } catch (error) {
+      reportFailure(error, source: 'probe');
       // Keep partial results; unmeasured servers remain unknown instead of
       // being marked unreachable.
     }
@@ -750,6 +826,7 @@ class Sora extends ChangeNotifier {
     _disposed = true;
     _statsTimer?.cancel();
     unawaited(_notices.close());
+    unawaited(_messages.close());
     unawaited(_cancelWatches());
     unawaited(_link?.close());
     super.dispose();

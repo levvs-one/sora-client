@@ -12,6 +12,7 @@ import '../sora.dart';
 import 'kit.dart';
 import 'servers.dart';
 import 'subscription_sheet.dart';
+import 'announcement.dart';
 
 /// Lists subscriptions with links to their settings.
 class SubscriptionsScreen extends StatelessWidget {
@@ -67,7 +68,7 @@ class SubscriptionScreen extends StatelessWidget {
       final next = chosen.deepCopy();
       apply(next);
       final failure = await sora.saveSubscription(next);
-      return failure == null ? null : describe(s, failure);
+      return failure == null ? null : '';
     }
 
     final hours = chosen.hasUpdateInterval() ? chosen.updateInterval.seconds.toInt() ~/ 3600 : 0;
@@ -125,10 +126,7 @@ class SubscriptionScreen extends StatelessWidget {
           ],
         ),
         if (state.info.announce.trim().isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
-            child: LinkedText(state.info.announce.trim(), style: Styles.secondary.copyWith(color: palette.ink)),
-          ),
+          Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 20), child: Announcement(state.info.announce.trim())),
         Group(
           children: [
             LinkTile(title: s.website, onTap: () => unawaited(sora.openSubscriptionPage(id))),
@@ -136,10 +134,10 @@ class SubscriptionScreen extends StatelessWidget {
               LinkTile(
                 title: s.providerWebsite,
                 value: Uri.tryParse(state.info.webPageUrl)?.host,
-                onTap: () => openLink(state.info.webPageUrl),
+                onTap: () => openLink(context, state.info.webPageUrl),
               ),
             if (state.info.supportUrl.isNotEmpty)
-              LinkTile(title: s.support, onTap: () => openLink(state.info.supportUrl)),
+              LinkTile(title: s.support, onTap: () => openLink(context, state.info.supportUrl)),
           ],
         ),
         Group(

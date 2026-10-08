@@ -28,11 +28,11 @@ class CoreLink {
 
   /// Opens a core connection with increasing retry delays while the service
   /// starts or restarts after an update.
-  static Future<CoreLink> open() {
+  static Future<CoreLink> open({void Function(Exception)? onRetry}) {
     return const RetryOptions(
       maxAttempts: 1 << 30,
       maxDelay: Duration(seconds: 5),
-    ).retry(_openOnce, retryIf: (e) => e is GrpcError && e.code != StatusCode.permissionDenied);
+    ).retry(_openOnce, retryIf: (e) => e is GrpcError && e.code != StatusCode.permissionDenied, onRetry: onRetry);
   }
 
   static Future<CoreLink> _openOnce() async {

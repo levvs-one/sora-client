@@ -29,7 +29,7 @@ Future<void> showSubscriptionSheet(BuildContext context, {String? link, String n
     keyboard: TextInputType.url,
     submit: (url) async {
       final failure = await sora.addSubscription(url, name: name);
-      return failure == null ? null : describe(s, failure);
+      return failure == null ? null : '';
     },
   );
 }
@@ -135,7 +135,7 @@ class _FieldSheetState extends State<_FieldSheet> {
     } else {
       setState(() {
         _busy = false;
-        _failure = failure;
+        _failure = failure.isEmpty ? null : failure;
       });
     }
   }
@@ -149,7 +149,7 @@ class _FieldSheetState extends State<_FieldSheet> {
         padding: const EdgeInsets.all(20),
         child: Material(
           color: palette.raised,
-          elevation: 24,
+          elevation: 0,
           shadowColor: palette.shadow,
           borderRadius: BorderRadius.circular(26),
           child: SizedBox(

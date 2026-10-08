@@ -109,7 +109,17 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
         _scrim = OverlayEntry(
           builder: (_) => _targetRect == null
               ? const SizedBox()
-              : TourScrim(rect: _targetRect!, duration: Motion.of(context, const Duration(milliseconds: 220))),
+              : TourScrim(
+                  rect: _targetRect!,
+                  radius: _tourStep == 2
+                      ? 88
+                      : _tourStep == 0
+                      ? 18
+                      : _tourStep == 1 || MediaQuery.sizeOf(context).width < 720 && _tourStep == 4
+                      ? 12
+                      : 8,
+                  duration: Motion.of(context, const Duration(milliseconds: 220)),
+                ),
         );
         Overlay.of(context, rootOverlay: true).insert(_scrim!);
         _focus.requestFocus();
@@ -332,6 +342,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
             floatingActionButton: compact && _section != 7
                 ? TourTarget(
                     step: 4,
+                    radius: 12,
                     child: Material(
                       color: palette.surface,
                       elevation: 2,

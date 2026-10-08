@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
+import '../sora.dart';
 import '../design/theme.dart';
 
 /// A tappable surface with hover feedback and animated press scaling. A null
@@ -253,7 +253,7 @@ Future<bool> confirm(
     pageBuilder: (context, _, _) => Center(
       child: Material(
         color: palette.raised,
-        elevation: 24,
+        elevation: 0,
         shadowColor: palette.shadow,
         borderRadius: BorderRadius.circular(26),
         child: SizedBox(
@@ -575,62 +575,15 @@ class UsageBar extends StatelessWidget {
 
 /// Opens a provider link externally. Allows only HTTP, HTTPS and Telegram
 /// schemes, matching core validation.
-Future<void> openLink(String link) async {
+Future<void> openLink(BuildContext context, String link) async {
   final uri = Uri.tryParse(link.trim());
   if (uri == null || !const {'https', 'http', 'tg'}.contains(uri.scheme)) return;
-  await launchUrl(uri, mode: LaunchMode.externalApplication);
-}
-
-/// Provider text with clickable URLs and Telegram handles; @names open their
-/// t.me channel.
-class LinkedText extends StatefulWidget {
-  const LinkedText(this.text, {super.key, required this.style});
-
-  final String text;
-  final TextStyle style;
-
-  @override
-  State<LinkedText> createState() => _LinkedTextState();
-}
-
-class _LinkedTextState extends State<LinkedText> {
-  static final _links = RegExp(r'https?://[^\s]+[^\s.,!?)]|@[A-Za-z0-9_]{4,32}');
-  final _recognizers = <TapGestureRecognizer>[];
-
-  @override
-  void dispose() {
-    for (final r in _recognizers) {
-      r.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    for (final r in _recognizers) {
-      r.dispose();
-    }
-    _recognizers.clear();
-    final spans = <InlineSpan>[];
-    var at = 0;
-    for (final m in _links.allMatches(widget.text)) {
-      if (m.start > at) spans.add(TextSpan(text: widget.text.substring(at, m.start)));
-      final token = m.group(0)!;
-      final target = token.startsWith('@') ? 'https://t.me/${token.substring(1)}' : token;
-      final tap = TapGestureRecognizer()..onTap = () => unawaited(openLink(target));
-      _recognizers.add(tap);
-      spans.add(
-        TextSpan(
-          text: token,
-          recognizer: tap,
-          mouseCursor: SystemMouseCursors.click,
-          style: const TextStyle(fontVariations: [FontVariation('wght', 620)]),
-        ),
-      );
-      at = m.end;
-    }
-    if (at < widget.text.length) spans.add(TextSpan(text: widget.text.substring(at)));
-    return Text.rich(TextSpan(style: widget.style, children: spans));
+  final sora = SoraScope.read(context);
+  sora.recovered('browser');
+  try {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) throw const CoreFailure('app.browser_unavailable');
+  } catch (_) {
+    sora.reportFailure(const CoreFailure('app.browser_unavailable'), source: 'browser', action: '');
   }
 }
 
@@ -698,6 +651,7 @@ String describe(S s, CoreFailure failure) {
   return switch (key) {
     'app.core_unavailable' => s.errCore,
     'app.no_servers' => s.errNoServers,
+    'app.browser_unavailable' => s.speedtestExternalFailed,
     'core.auth.unauthenticated' || 'core.auth.permission_denied' => s.errAuth,
     'core.api.version_mismatch' => s.errVersion,
     'core.session.busy' => s.errBusy,

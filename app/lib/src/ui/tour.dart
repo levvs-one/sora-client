@@ -15,9 +15,10 @@ class TourScope extends InheritedWidget {
 }
 
 class TourTarget extends StatelessWidget {
-  const TourTarget({super.key, required this.step, required this.child});
+  const TourTarget({super.key, required this.step, required this.child, this.radius = 8});
   final int step;
   final Widget child;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +29,10 @@ class TourTarget extends StatelessWidget {
     TooltipActionButton action(TooltipDefaultActionType type, String name) => TooltipActionButton(
       type: type,
       name: name,
-      backgroundColor: palette.raised,
-      textStyle: Styles.secondary.copyWith(color: palette.ink),
+      backgroundColor: type == TooltipDefaultActionType.next ? palette.ink : Colors.transparent,
+      textStyle: Styles.secondary.copyWith(
+        color: type == TooltipDefaultActionType.next ? palette.raised : palette.ink2,
+      ),
       borderRadius: BorderRadius.circular(6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     );
@@ -47,6 +50,7 @@ class TourTarget extends StatelessWidget {
       tooltipBorderRadius: BorderRadius.circular(12),
       overlayColor: Colors.black,
       overlayOpacity: 0,
+      targetBorderRadius: BorderRadius.circular(radius),
       onTargetRectUpdate: (rect) => tour.targetRect(step, rect, context),
       blurValue: 0,
       disableBarrierInteraction: true,
@@ -69,9 +73,10 @@ class TourTarget extends StatelessWidget {
 
 // Showcase owns target measurements and controls; Flutter interpolates the cutout between targets.
 class TourScrim extends StatelessWidget {
-  const TourScrim({super.key, required this.rect, required this.duration});
+  const TourScrim({super.key, required this.rect, required this.duration, this.radius = 8});
   final Rect rect;
   final Duration duration;
+  final double radius;
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
@@ -79,23 +84,24 @@ class TourScrim extends StatelessWidget {
       tween: RectTween(begin: rect, end: rect),
       duration: duration,
       curve: Curves.easeOutCubic,
-      builder: (_, value, _) => CustomPaint(painter: _Cutout(value!), size: Size.infinite),
+      builder: (_, value, _) => CustomPaint(painter: _Cutout(value!, radius), size: Size.infinite),
     ),
   );
 }
 
 class _Cutout extends CustomPainter {
-  const _Cutout(this.rect);
+  const _Cutout(this.rect, this.radius);
   final Rect rect;
+  final double radius;
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path()
       ..fillType = PathFillType.evenOdd
       ..addRect(Offset.zero & size)
-      ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)));
+      ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius)));
     canvas.drawPath(path, Paint()..color = const Color(0xB3000000));
   }
 
   @override
-  bool shouldRepaint(_Cutout oldDelegate) => rect != oldDelegate.rect;
+  bool shouldRepaint(_Cutout oldDelegate) => rect != oldDelegate.rect || radius != oldDelegate.radius;
 }

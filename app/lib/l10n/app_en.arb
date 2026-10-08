@@ -269,5 +269,15 @@
         "type": "String"
       }
     }
-  }
+  },
+  "modes": "Modes",
+  "proxyShort": "Proxy",
+  "tunMode": "All traffic (TUN)",
+  "tunExplanation": "Every application through the VPN",
+  "proxyExplanation": "Apps that use the system proxy",
+  "bypassExplanation": "DPI bypass with zapret, without a VPN",
+  "autoEngineExplanation": "The core picks a compatible engine",
+  "singboxExplanation": "Flexible routing and TUN",
+  "xrayExplanation": "VLESS, REALITY and TLS fragmentation",
+  "mihomoExplanation": "Server groups and automatic failover"
 }

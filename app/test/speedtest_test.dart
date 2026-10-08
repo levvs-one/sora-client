@@ -73,6 +73,7 @@ void main() {
     expect(find.byKey(const ValueKey('speedtest-service-https://speed.cloudflare.com/')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('last service and filter survive a fresh Settings and app', (tester) async {
@@ -84,6 +85,7 @@ void main() {
     expect(settings.speedtestService, 'https://yandex.ru/internet');
     expect(settings.speedtestFilter, 'cis');
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
     final restored = Sora(settings);
     addTearDown(restored.dispose);
     await tester.pumpWidget(SoraApp(sora: restored));
@@ -93,6 +95,7 @@ void main() {
     expect(tester.widget<ChoiceChip>(find.byKey(const ValueKey('speedtest-filter-cis'))).selected, isTrue);
     expect(sora.settings.speedtestService, settings.speedtestService);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('native startup failure shows a message and external browser action', (tester) async {
@@ -110,14 +113,17 @@ void main() {
     expect(find.text('Встроенный браузер не запустился. Откройте сервис в системном браузере.'), findsOneWidget);
     expect(find.byKey(const ValueKey('speedtest-external')), findsOneWidget);
     expect(find.byKey(const ValueKey('speedtest-fallback')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('speedtest-reload')));
     await tester.pumpAndSettle();
     expect(attempts, 2);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
-  testWidgets('narrow list opens full pane, returns, and home link opens speed', (tester) async {
+  testWidgets('narrow list opens full pane, returns, and sidebar opens speed', (tester) async {
     final sora = await start(tester, width: 420);
     expect(find.byType(SpeedtestBrowser), findsNothing);
     await tester.tap(find.byKey(const ValueKey('speedtest-service-https://yandex.ru/internet')));
@@ -133,12 +139,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('speedtest-search')), findsOneWidget);
     await section(tester, 1);
-    await tester.ensureVisible(find.byKey(const ValueKey('check-speed')));
-    await tester.tap(find.byKey(const ValueKey('check-speed')));
+    await section(tester, 8);
     await tester.pumpAndSettle();
     expect(find.byType(SpeedtestScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('root dialogs and narrow navigation hide the native browser area', (tester) async {
@@ -166,6 +172,7 @@ void main() {
     expect(tester.widget<SpeedtestBrowser>(find.byType(SpeedtestBrowser)).visible, isTrue);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('speed section light and dark screenshots', (tester) async {
@@ -182,7 +189,7 @@ void main() {
     addTearDown(tester.view.reset);
     final capture = GlobalKey();
     for (final theme in ['light', 'dark']) {
-      for (final (width, height) in [(1440.0, 900.0), (420.0, 800.0)]) {
+      for (final (width, height) in [(1440.0, 900.0), (1000.0, 720.0), (420.0, 800.0)]) {
         SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
         final settings = await Settings.load();
         await settings.completeTour();
@@ -200,6 +207,8 @@ void main() {
         );
         await tester.pumpAndSettle();
         await section(tester, 8);
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pumpAndSettle();
         for (final pane in width == 420 ? ['list', 'browser'] : ['list-browser']) {
           if (pane == 'browser') {
             await tester.tap(find.byKey(const ValueKey('speedtest-service-https://www.speedtest.net/')));
@@ -217,6 +226,7 @@ void main() {
           });
         }
         await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
         sora.dispose();
       }
     }

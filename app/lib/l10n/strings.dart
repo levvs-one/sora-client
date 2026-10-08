@@ -1211,7 +1211,7 @@ abstract class S {
   /// No description provided for @more.
   ///
   /// In ru, this message translates to:
-  /// **'Подробнее'**
+  /// **'Ещё'**
   String get more;
 
   /// No description provided for @less.
@@ -1501,6 +1501,66 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Маршрут зависит от правил Sora'**
   String get speedtestRoutingNote;
+
+  /// No description provided for @modes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Режимы'**
+  String get modes;
+
+  /// No description provided for @proxyShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прокси'**
+  String get proxyShort;
+
+  /// No description provided for @tunMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Весь трафик (TUN)'**
+  String get tunMode;
+
+  /// No description provided for @tunExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все приложения через VPN'**
+  String get tunExplanation;
+
+  /// No description provided for @proxyExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Трафик приложений с прокси'**
+  String get proxyExplanation;
+
+  /// No description provided for @bypassExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обход DPI через zapret, без VPN'**
+  String get bypassExplanation;
+
+  /// No description provided for @autoEngineExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро подбирает совместимый движок'**
+  String get autoEngineExplanation;
+
+  /// No description provided for @singboxExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Гибкая маршрутизация и TUN'**
+  String get singboxExplanation;
+
+  /// No description provided for @xrayExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'VLESS, REALITY и TLS-фрагментация'**
+  String get xrayExplanation;
+
+  /// No description provided for @mihomoExplanation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Группы серверов и авторезерв'**
+  String get mihomoExplanation;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

@@ -10,13 +10,16 @@ import 'package:webview_all_windows/webview_all_windows.dart';
 import '../../l10n/strings.dart';
 import '../design/theme.dart';
 import '../settings.dart';
+import '../notifications.dart';
 import '../sora.dart';
 import '../speedtest_services.dart';
 import 'kit.dart';
 import 'shell.dart';
+import 'toasts.dart';
 
 class SpeedtestScreen extends StatefulWidget {
-  const SpeedtestScreen({super.key});
+  const SpeedtestScreen({super.key, this.initialService});
+  final SpeedtestService? initialService;
 
   @override
   State<SpeedtestScreen> createState() => _SpeedtestScreenState();
@@ -31,6 +34,7 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _selected ??=
+        widget.initialService ??
         speedtestServices.where((s) => s.url == SoraScope.read(context).settings.speedtestService).firstOrNull ??
         speedtestServices.first;
   }
@@ -54,13 +58,14 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
     final palette = Palette.of(context);
     final settings = SoraScope.of(context).settings;
     final shell = context.dependOnInheritedWidgetOfExactType<ShellScope>();
+    final toastVisible = ToastVisibility.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
         final browser = SpeedtestBrowser(
           key: ValueKey(_selected!.url),
           service: _selected!,
-          visible: (shell?.nativeContentVisible ?? true) && (wide || _opened),
+          visible: !toastVisible && (shell?.nativeContentVisible ?? true) && (wide || _opened),
           onReturn: wide ? null : () => setState(() => _opened = false),
         );
         if (!wide && _opened) {
@@ -219,7 +224,6 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
   bool _ready = false;
   bool _canGoBack = false;
   String? _failure;
-  String? _externalFailure;
   int _progress = 0;
   String? _mainUrl;
   Timer? _deadline;
@@ -262,6 +266,17 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
       _failure = message;
       _ready = false;
     });
+    unawaited(
+      SoraScope.read(context).recordNotification(
+        AppNotification(
+          time: DateTime.now(),
+          title: widget.service.name,
+          body: message,
+          action: 'speedtest',
+          argument: _url,
+        ),
+      ),
+    );
     unawaited(_release());
   }
 
@@ -353,9 +368,13 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
           !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         throw const FormatException('Browser did not open');
       }
-      if (mounted) setState(() => _externalFailure = null);
     } catch (_) {
-      if (mounted) setState(() => _externalFailure = message);
+      if (mounted) {
+        unawaited(
+          SoraScope.read(context)
+              .recordNotification(AppNotification(time: DateTime.now(), title: widget.service.name, body: message)),
+        );
+      }
     }
   }
 
@@ -438,8 +457,6 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
                       : Uri.parse(_url).host,
                   style: Styles.caption.copyWith(color: palette.ink3),
                 ),
-                if (_externalFailure != null)
-                  Text(_externalFailure!, style: Styles.caption.copyWith(color: palette.danger)),
               ],
             ),
           ),
@@ -461,22 +478,11 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
                   padding: const EdgeInsets.all(24),
                   child: Align(
                     alignment: Alignment.topLeft,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _failure!,
-                          key: const ValueKey('speedtest-fallback'),
-                          style: Styles.body.copyWith(color: palette.ink),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: () => unawaited(_open()),
-                          icon: const Icon(Symbols.open_in_new_rounded, size: 18),
-                          label: Text(s.speedtestOpenBrowser),
-                        ),
-                      ],
+                    child: TextButton.icon(
+                      key: const ValueKey('speedtest-fallback'),
+                      onPressed: () => unawaited(_open()),
+                      icon: const Icon(Symbols.open_in_new_rounded, size: 18),
+                      label: Text(s.speedtestOpenBrowser),
                     ),
                   ),
                 )

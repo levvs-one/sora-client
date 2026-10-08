@@ -10,6 +10,7 @@ import '../../l10n/strings.dart';
 import '../desktop/programs.dart';
 import '../design/theme.dart';
 import 'kit.dart';
+import '../sora.dart';
 
 Future<String?> chooseProgram(BuildContext context) =>
     showDialog<String>(context: context, builder: (_) => const _ProgramPicker());
@@ -35,6 +36,7 @@ class _ProgramPickerState extends State<_ProgramPicker> {
   }
 
   Future<void> _load() async {
+    SoraScope.read(context).recovered('programs');
     final request = ++_request;
     setState(() {
       _programs = null;
@@ -43,8 +45,11 @@ class _ProgramPickerState extends State<_ProgramPicker> {
     try {
       final programs = _running ? await runningPrograms() : await installedPrograms();
       if (mounted && request == _request) setState(() => _programs = programs);
-    } catch (_) {
-      if (mounted && request == _request) setState(() => _failed = true);
+    } catch (error) {
+      if (mounted && request == _request) {
+        setState(() => _failed = true);
+        SoraScope.read(context).reportFailure(error, source: 'programs');
+      }
     }
   }
 
@@ -136,10 +141,7 @@ class _ProgramPickerState extends State<_ProgramPicker> {
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(s.programsFailed, style: Styles.secondary.copyWith(color: palette.danger)),
-                            TextButton(onPressed: _load, child: Text(s.refresh)),
-                          ],
+                          children: [TextButton(onPressed: _load, child: Text(s.refresh))],
                         ),
                       )
                     : shown == null

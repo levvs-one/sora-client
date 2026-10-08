@@ -338,7 +338,7 @@
   "navLogs": "Логи",
   "navAbout": "О программе",
   "sidebarToggle": "Развернуть меню",
-  "more": "Подробнее",
+  "more": "Ещё",
   "less": "Свернуть",
   "currentServer": "Текущий сервер",
   "trafficDown": "Получено",
@@ -421,5 +421,15 @@
         "type": "String"
       }
     }
-  }
+  },
+  "modes": "Режимы",
+  "proxyShort": "Прокси",
+  "tunMode": "Весь трафик (TUN)",
+  "tunExplanation": "Все приложения через VPN",
+  "proxyExplanation": "Трафик приложений с прокси",
+  "bypassExplanation": "Обход DPI через zapret, без VPN",
+  "autoEngineExplanation": "Ядро подбирает совместимый движок",
+  "singboxExplanation": "Гибкая маршрутизация и TUN",
+  "xrayExplanation": "VLESS, REALITY и TLS-фрагментация",
+  "mihomoExplanation": "Группы серверов и авторезерв"
 }

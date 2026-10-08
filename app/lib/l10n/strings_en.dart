@@ -767,4 +767,34 @@ class SEn extends S {
 
   @override
   String get speedtestRoutingNote => 'Routing follows Sora rules';
+
+  @override
+  String get modes => 'Modes';
+
+  @override
+  String get proxyShort => 'Proxy';
+
+  @override
+  String get tunMode => 'All traffic (TUN)';
+
+  @override
+  String get tunExplanation => 'Every application through the VPN';
+
+  @override
+  String get proxyExplanation => 'Apps that use the system proxy';
+
+  @override
+  String get bypassExplanation => 'DPI bypass with zapret, without a VPN';
+
+  @override
+  String get autoEngineExplanation => 'The core picks a compatible engine';
+
+  @override
+  String get singboxExplanation => 'Flexible routing and TUN';
+
+  @override
+  String get xrayExplanation => 'VLESS, REALITY and TLS fragmentation';
+
+  @override
+  String get mihomoExplanation => 'Server groups and automatic failover';
 }

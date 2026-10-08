@@ -233,11 +233,26 @@ func TestLiveLegacyFakeIPCacheMigration(t *testing.T) {
 	}}
 	lookup := func() netip.Addr {
 		t.Helper()
-		ips, err := resolver.LookupNetIP(ctx, "ip4", "persistent-cache.example")
-		if err != nil || len(ips) != 1 {
-			t.Fatalf("fake-IP DNS response = %v, %v", ips, err)
+		lookupCtx, stop := context.WithTimeout(ctx, 5*time.Second)
+		defer stop()
+		ticker := time.NewTicker(50 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			ips, err := resolver.LookupNetIP(lookupCtx, "ip4", "persistent-cache.example")
+			if err == nil {
+				if len(ips) != 1 {
+					t.Fatalf("fake-IP DNS response = %v, want one address", ips)
+				}
+				return ips[0].Unmap()
+			}
+			// The controller can answer before the DNS listener has opened.
+			// Retry readiness errors, never a successful but stale address.
+			select {
+			case <-lookupCtx.Done():
+				t.Fatalf("fake-IP DNS listener not ready: %v", err)
+			case <-ticker.C:
+			}
 		}
-		return ips[0].Unmap()
 	}
 	// Run the actual engine without Sora's migration, then kill it before
 	// its shutdown handler writes the offset used for upstream pool detection.

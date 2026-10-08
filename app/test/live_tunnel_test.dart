@@ -1,7 +1,6 @@
-// Carries real traffic through the installed core on Windows: a VLESS server
-// on this machine, the tunnel and the system proxy in front of it, and the
-// server's access log as the witness that the traffic went through it. Runs
-// only when SORA_TUNNEL_LIVE names the server, as CI does after the install.
+// Requires SORA_TUNNEL_LIVE to identify a local Windows VLESS server, as
+// configured after installation in CI. Its access log verifies real traffic
+// through both the tunnel and system proxy.
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -29,15 +28,15 @@ void main() {
     if (server != null) await link.close();
   });
 
-  /// Connects with the imported server in [mode] and reports how long the
-  /// core took to say connected.
+  /// Connects the imported server in [mode] and returns time to connected
+  /// state.
   Future<Duration> connect(TunnelMode mode) async {
     final out = imported.outbounds.single;
     final plan = SessionPlan(
       tunnelMode: mode,
       outbounds: [out],
-      // The server is a program on this machine too: its own way out must not
-      // go back into the tunnel that leads to it.
+      // Route the local server process directly to avoid looping its outbound
+      // traffic back through its own tunnel.
       routes: [RoutingRule(destination: 'process:xray.exe', outboundId: 'direct')],
       routing: RoutingOptions(preset: 'global', proxyTarget: out.id),
     );
@@ -60,8 +59,7 @@ void main() {
     await link.stub.disconnect(DisconnectRequest(apiVersion: apiVersion, controlAuthenticator: link.token));
   }
 
-  /// Whether the server's access log names [host], waiting a moment for it
-  /// to be written.
+  /// Checks whether the access log contains [host], polling for delayed writes.
   Future<bool> serverSaw(String host) async {
     for (var i = 0; i < 20; i++) {
       if (File(log).existsSync() && File(log).readAsStringSync().contains(host)) return true;
@@ -126,7 +124,8 @@ void main() {
       try {
         expect(await setting(), contains('0x1'));
         expect(await proxy.pointsAt(local.host, local.port), isTrue);
-        // .NET takes the system proxy of WinINet, as browsers do.
+        // PowerShell's .NET request uses WinINet system proxy settings, like
+        // browsers.
         final web = await Process.run('powershell.exe', [
           '-NoProfile',
           '-Command',

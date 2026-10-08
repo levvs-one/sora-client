@@ -18,8 +18,8 @@ import 'rules_screen.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
 
-/// Everything a person may choose. What most people touch sits on top
-/// without a heading; the rest follows in named groups.
+/// App settings, with common options first and advanced options in named
+/// groups.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -28,14 +28,13 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  /// The core's log settings; null until read or while the core is away.
+  /// Core log settings; null until loaded or when unavailable.
   LogSettings? _log;
 
-  /// The proxy address was just copied; the row says so for a moment.
+  /// Temporarily shows confirmation after copying the proxy address.
   bool _copied = false;
 
-  // The same grammar the core checks, so a value is refused while the field is
-  // still open instead of at the next connection.
+  // Match core validation to reject invalid settings before connection.
   static final _range = RegExp(r'^\d{1,5}-\d{1,5}$');
   static final _packets = RegExp(r'^(tlshello|\d{1,3}-\d{1,3})$');
   static final _position = RegExp(r'^(-?\d{1,4}|(method|host|endhost|sld|midsld|endsld|sniext)([+-]\d{1,4})?)$');
@@ -56,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (mounted && !answer.hasError()) setState(() => _log = answer.settings);
     } catch (_) {
-      // Without the core the log group shows only its links.
+      // Keep log navigation available when core settings cannot be loaded.
     }
   }
 
@@ -77,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Opens a field for a text setting; an empty value returns to the default.
+  /// Edits a text setting; empty input restores the default.
   void _edit({
     required String title,
     required String hint,
@@ -142,8 +141,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (v) => set((x) => x.tunnel = v),
             ),
             if (settings.tunnel == 'proxy' && local != null)
-              // Programs that ignore the system proxy, and every program on
-              // a desktop without one, are pointed here by hand.
+              // Expose the endpoint for manual configuration when apps or
+              // desktops do not use the system proxy.
               LinkTile(
                 title: s.proxyAddress,
                 value: _copied ? s.copied : '${local.host}:${local.port}',
@@ -203,8 +202,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ChoiceTile<String>(
               title: s.language,
               value: settings.language,
-              // Each language is named in itself, so a person who cannot read
-              // the current one still finds their own.
+              // Use native language names so the current UI language does not
+              // prevent selection.
               choices: {'system': s.languageSystem, 'ru': 'Русский', 'en': 'English'},
               onChanged: (v) => set((x) => x.language = v, replan: false),
             ),
@@ -224,8 +223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.engine,
               choices: {'': s.engineAuto, 'sing-box': 'sing-box', 'xray': 'Xray', 'mihomo': 'mihomo'},
               onChanged: (v) async {
-                // sing-box can only be controlled over a loopback port, which
-                // other programs can find; the person decides, once.
+                // sing-box requires a discoverable loopback control port;
+                // request consent before enabling it.
                 if (v == 'sing-box' && !settings.controlPort) {
                   final yes = await confirm(
                     context,

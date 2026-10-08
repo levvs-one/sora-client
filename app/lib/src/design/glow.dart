@@ -5,14 +5,9 @@ import 'package:flutter/widgets.dart';
 
 import 'theme.dart';
 
-/// Light along the edge of a rounded shape, in the manner of Apple
-/// Intelligence: four strokes of the same spectrum, each wider and softer
-/// than the one before, whose colours drift to new places every 0.4 s while
-/// the whole ring turns.
-///
-/// [energy] fades the light in and out (0 is dark, 1 is full). [busy] makes
-/// it turn and drift quickly, for work in progress; otherwise it breathes
-/// slowly. Without motion the light holds still.
+/// An Apple Intelligence-style border with four progressively wider, softer
+/// strokes. [energy] sets intensity (0 to 1); [busy] rotates faster and shifts
+/// colours every 0.4 s. Disabled motion keeps it static.
 class Glow extends StatefulWidget {
   const Glow({
     super.key,
@@ -29,11 +24,10 @@ class Glow extends StatefulWidget {
   final double energy;
   final bool busy;
 
-  /// Multiplies the stroke widths and blurs: the ring of a button is finer
-  /// than the edge of a window.
+  /// Scales stroke widths and blur radii for button or window borders.
   final double scale;
 
-  /// Paints over the child, for the edge of a window, instead of behind it.
+  /// Paints the border over the child when true, behind it otherwise.
   final bool inFront;
 
   @override
@@ -112,7 +106,6 @@ class _GlowState extends State<Glow> with SingleTickerProviderStateMixin {
     final dt = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
     final now = _clock.value + dt;
-    // A full turn in 2.6 s while busy and in 16 s at rest.
     _turn += dt * 2 * math.pi / (widget.busy ? 2.6 : 16);
     if (now >= _nextShuffle) {
       _nextShuffle = now + (widget.busy ? _interval : _interval * 4);
@@ -188,8 +181,8 @@ class _GlowPainter extends CustomPainter {
       final order = List.generate(colors.length, (i) => i)..sort((a, b) => places[a].compareTo(places[b]));
       final stops = [for (final i in order) places[i]];
       final ordered = [for (final i in order) colors[i]];
-      // The sweep has to meet itself at the seam, so both ends take the colour
-      // between the last stop and the first.
+      // Interpolate the seam colour between the last and first stops to avoid a
+      // visible break in the sweep.
       final gap = 1 - stops.last + stops.first;
       final seam = Color.lerp(ordered.last, ordered.first, gap == 0 ? 0 : (1 - stops.last) / gap)!;
       final paint = Paint()

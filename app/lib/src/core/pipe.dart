@@ -8,19 +8,17 @@ import 'package:grpc/grpc.dart';
 import 'package:http2/transport.dart';
 import 'package:win32/win32.dart';
 
-/// Carries gRPC to the core over its named pipe on Windows, where dart:io
-/// has no pipes. The pipe is opened for overlapped I/O, so a read waiting for
-/// the core never holds up a write: HTTP/2 talks both ways at once. Reading
-/// and writing each wait on the system in an isolate of their own, so the
-/// interface never does.
+/// Windows named-pipe transport for gRPC, unsupported by dart:io. Overlapped
+/// I/O permits concurrent HTTP/2 reads and writes; separate isolates keep
+/// blocking waits off the UI isolate.
 class PipeConnector implements ClientTransportConnector {
   PipeConnector(this.path, {this.requireService = true});
 
   /// For example r"\\.\pipe\sora-core-v1".
   final String path;
 
-  /// Whether the other end must be the Sora service, which runs as
-  /// LocalSystem. Off only for a core started by hand on a path of its own.
+  /// Requires the pipe server to run as LocalSystem, like the Sora service.
+  /// Disable only for a manually started core on a separate path.
   final bool requireService;
 
   final _done = Completer<void>();
@@ -48,9 +46,8 @@ class PipeConnector implements ClientTransportConnector {
   String get authority => 'localhost';
 }
 
-/// Read, write and attributes, the rights the service grants: GENERIC_WRITE
-/// would also ask for the right to create instances of the pipe, which the
-/// service gives nobody but itself.
+/// Service-granted read, write and attribute rights. GENERIC_WRITE also
+/// requests pipe-instance creation, reserved for the service.
 const _pipeAccess = 0x0012018B;
 
 final _serverProcessId = DynamicLibrary.open('kernel32.dll')
@@ -58,11 +55,10 @@ final _serverProcessId = DynamicLibrary.open('kernel32.dll')
       'GetNamedPipeServerProcessId',
     );
 
-/// The security identifier of LocalSystem, S-1-5-18, as it sits in memory.
+/// The binary LocalSystem SID, S-1-5-18.
 const _localSystem = [1, 1, 0, 0, 0, 0, 0, 5, 18, 0, 0, 0];
 
-/// Whether the process at the other end of [pipe] runs as LocalSystem, as the
-/// Sora service does.
+/// Checks whether the server process for [pipe] runs as LocalSystem.
 bool _servedBySystem(HANDLE pipe) => using((arena) {
   final pid = arena<Uint32>();
   if (_serverProcessId(pipe.cast(), pid) == 0) return false;
@@ -77,7 +73,7 @@ bool _servedBySystem(HANDLE pipe) => using((arena) {
       final info = arena<Uint8>(size);
       final returned = arena<Uint32>();
       if (!GetTokenInformation(tokenHandle, TokenUser, info, size, returned).value) return false;
-      // TOKEN_USER starts with the pointer to the SID, which lies in the buffer.
+      // TOKEN_USER begins with a pointer to the SID inside the buffer.
       final sid = info.cast<Pointer<Uint8>>().value;
       for (final (i, byte) in _localSystem.indexed) {
         if (sid[i] != byte) return false;
@@ -91,8 +87,8 @@ bool _servedBySystem(HANDLE pipe) => using((arena) {
   }
 });
 
-/// How long to wait for a pipe instance while all of them are busy: the core
-/// opens a new one right after accepting a client.
+/// Retry limit for busy pipe instances; the core creates a new instance after
+/// accepting each client.
 const _busyRetries = 50;
 const _busyPause = Duration(milliseconds: 40);
 
@@ -113,9 +109,8 @@ class _Pipe {
 
   static Future<_Pipe> open(String path, {required bool requireService}) async {
     final handle = await _create(path);
-    // Anyone signed in could otherwise create a pipe of the same name before
-    // the service does, and receive the app's requests and the system proxy
-    // it would point at the answer.
+    // A signed-in user could create this pipe before the service, intercept
+    // requests and supply a malicious local proxy endpoint.
     if (requireService && !_servedBySystem(HANDLE(Pointer.fromAddress(handle)))) {
       CloseHandle(HANDLE(Pointer.fromAddress(handle)));
       throw const GrpcError.unavailable('the core pipe is not served by the Sora service');
@@ -140,7 +135,6 @@ class _Pipe {
       if (message is TransferableTypedData) {
         incoming.add(message.materialize().asUint8List());
       } else {
-        // The core closed its end, or a read failed: the line is over.
         reads.close();
         unawaited(incoming.close());
         unawaited(pipe.close());
@@ -154,7 +148,7 @@ class _Pipe {
     return pipe;
   }
 
-  /// Opens the client end, waiting while every instance is busy.
+  /// Opens the client pipe handle, retrying while all instances are busy.
   static Future<int> _create(String path) async {
     final name = path.toPcwstr();
     try {
@@ -175,8 +169,8 @@ class _Pipe {
     if (_closing) return _closed.future;
     _closing = true;
     final handle = HANDLE(Pointer.fromAddress(_handle));
-    // Pending reads and writes end with an error once cancelled, which lets
-    // both isolates leave their loops before the handle goes away.
+    // Cancellation lets pending reads and writes exit their isolate loops
+    // before the handle is closed.
     CancelIoEx(handle, null);
     _writes.send(null);
     await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -188,11 +182,9 @@ class _Pipe {
   }
 }
 
-/// NtReadFile and NtWriteFile answer with the status of the call itself, and
-/// a call that waited leaves its status in the IO_STATUS_BLOCK, which is the
-/// head of the OVERLAPPED. Nothing depends on GetLastError: read through the
-/// win32 package in these isolates it was sometimes 0 for a read that was
-/// only pending, and a working line was taken for a closed one.
+/// Native I/O returns NTSTATUS; pending calls store completion status in the
+/// IO_STATUS_BLOCK at the start of OVERLAPPED. GetLastError via win32 sometimes
+/// returned 0 for pending reads in these isolates.
 typedef _NtIoNative = Int32 Function(
   Pointer<Void> file,
   Pointer<Void> event,
@@ -220,17 +212,16 @@ final _ntReadFile = _ntdll.lookupFunction<_NtIoNative, _NtIo>('NtReadFile');
 final _ntWriteFile = _ntdll.lookupFunction<_NtIoNative, _NtIo>('NtWriteFile');
 const _statusPending = 0x103;
 
-/// Starts one read or write and waits for it. Answers the bytes it moved, or
-/// null when the line is over: the core closed its end, or [_Pipe.close]
-/// cancelled the call.
+/// Transfers bytes, waiting for completion. Returns the byte count, or null on
+/// failure, peer closure or cancellation by [_Pipe.close].
 int? _transfer(_NtIo call, HANDLE file, HANDLE event, Pointer<OVERLAPPED> block, Pointer<Uint8> buffer, int length) {
-  // A pipe has no position; the offset is there because the call takes one,
-  // and it is the zeroed Offset fields of the OVERLAPPED.
+  // Named pipes have no position; use the zeroed OVERLAPPED Offset fields for
+  // the required offset argument.
   final offset = Pointer<Int64>.fromAddress(block.address + 16);
   var status = call(file.cast(), event.cast(), nullptr, nullptr, block, buffer, length, offset, nullptr);
   if (status == _statusPending) {
-    // A wait that fails leaves the call running in the buffer and the block:
-    // the line cannot be used again, so it is over.
+    // A failed wait leaves I/O using the buffer and status block, so the
+    // connection cannot be reused.
     if (WaitForSingleObject(event, INFINITE).value != WAIT_OBJECT_0) return null;
     status = block.ref.Internal.toSigned(32);
   }
@@ -238,8 +229,7 @@ int? _transfer(_NtIo call, HANDLE file, HANDLE event, Pointer<OVERLAPPED> block,
   return status < 0 ? null : block.ref.InternalHigh;
 }
 
-/// Reads until the pipe closes, sending each chunk to the main isolate and a
-/// null at the end.
+/// Reads pipe chunks into the main isolate until closure, then sends null.
 void _readLoop((int, SendPort) args) {
   final (address, out) = args;
   final handle = HANDLE(Pointer.fromAddress(address));
@@ -249,7 +239,7 @@ void _readLoop((int, SendPort) args) {
   final event = CreateEvent(null, true, false, null).value;
   overlapped.ref.hEvent = event;
   try {
-    // Without an event no call can be waited for: the line is over at once.
+    // Without a valid event, pending I/O cannot be awaited.
     while (event.isValid) {
       final read = _transfer(_ntReadFile, handle, event, overlapped, buffer, size);
       if (read == null) break;
@@ -265,7 +255,7 @@ void _readLoop((int, SendPort) args) {
   }
 }
 
-/// Writes every chunk it receives, in order, until it receives null.
+/// Writes received chunks in order; null closes the writer.
 void _writeLoop((int, SendPort) args) {
   final (address, ready) = args;
   final handle = HANDLE(Pointer.fromAddress(address));

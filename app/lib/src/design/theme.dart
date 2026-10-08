@@ -1,9 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// The palette: neutrals with a cool bias, red for failures, and the
-/// Apple Intelligence spectrum, which appears only as light around the
-/// connection and nowhere else.
+/// Cool neutral UI colours, red for failures and an Apple Intelligence-style
+/// spectrum for the connection glow.
 @immutable
 class Palette extends ThemeExtension<Palette> {
   const Palette({
@@ -29,12 +28,11 @@ class Palette extends ThemeExtension<Palette> {
   final Color danger;
   final Color shadow;
 
-  /// Surfaces above the page: sheets and menus. In the dark they are lighter
-  /// than the page, the way Apple lifts elevated material.
+  /// Elevated sheet and menu surfaces, lighter than the page in dark mode.
   final Color raised;
   final Color raisedField;
 
-  /// The dimming behind a sheet.
+  /// The backdrop colour used to dim content behind a sheet.
   final Color scrim;
 
   Color get hover => ink.withValues(alpha: 0.05);
@@ -68,7 +66,7 @@ class Palette extends ThemeExtension<Palette> {
     scrim: Color(0x8C000000),
   );
 
-  /// The spectrum of the Apple Intelligence glow.
+  /// Colours for the Apple Intelligence-style connection glow.
   static const spectrum = <Color>[
     Color(0xFFBC82F3),
     Color(0xFFF5B9EA),
@@ -102,11 +100,9 @@ class Palette extends ThemeExtension<Palette> {
   }
 }
 
-/// Five sizes, Inter with its optical size axis, tracking tightened as the
-/// size grows, the way Apple sets SF Pro.
+/// Inter text styles with optical sizing and tighter tracking at larger sizes.
 abstract final class Styles {
-  /// Flags in server names are emoji; a colour emoji font is named first, so a
-  /// monochrome font that happens to have the letters never draws them.
+  /// Prefer colour emoji fonts for server flags to avoid monochrome glyphs.
   static const _emoji = ['Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji'];
 
   static TextStyle _inter(double size, double weight, double tracking, double height) => TextStyle(
@@ -118,9 +114,8 @@ abstract final class Styles {
     fontVariations: [FontVariation('wght', weight), FontVariation('opsz', size.clamp(14, 32))],
   );
 
-  /// Figures of equal width, for numbers that change in place or line up:
-  /// latency, the timer, times in the log. Only there, because the feature
-  /// also widens the hyphen and other punctuation.
+  /// Uses tabular figures for latency, timers and log timestamps. Apply
+  /// selectively because this feature also widens hyphens and punctuation.
   static TextStyle figures(TextStyle style) => style.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 
   static final status = _inter(34, 640, -0.9, 1.12);
@@ -131,14 +126,13 @@ abstract final class Styles {
   static final caption = _inter(13, 480, 0, 1.3);
 }
 
-/// Shared durations and curves. Everything that moves takes them from here,
-/// so turning motion off is one switch.
+/// Shared animation durations and curves that respect the motion setting.
 abstract final class Motion {
   static const fast = Duration(milliseconds: 160);
   static const medium = Duration(milliseconds: 280);
   static const slow = Duration(milliseconds: 520);
 
-  /// Close to the critically damped spring Apple uses for navigation.
+  /// Navigation curve approximating an Apple critically damped spring.
   static const curve = Cubic(0.2, 0.9, 0.25, 1);
 
   static Duration of(BuildContext context, Duration d) => enabled(context) ? d : Duration.zero;
@@ -146,8 +140,7 @@ abstract final class Motion {
   static bool enabled(BuildContext context) => MotionScope.of(context);
 }
 
-/// Carries whether motion is on: the user's switch and the system's
-/// reduce-motion setting together.
+/// Enables motion only when allowed by both app and system settings.
 class MotionScope extends InheritedWidget {
   const MotionScope({super.key, required this.enabled, required super.child});
 

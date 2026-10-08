@@ -11,8 +11,8 @@ import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import '../sora.dart';
 import 'kit.dart';
 
-/// Stamped by a release build with --dart-define=SORA_VERSION; a build that
-/// was not stamped says so rather than claiming a version.
+/// Release version supplied by --dart-define=SORA_VERSION; defaults to dev for
+/// unstamped builds.
 const appVersion = String.fromEnvironment('SORA_VERSION', defaultValue: 'dev');
 
 class AboutScreen extends StatefulWidget {
@@ -38,7 +38,7 @@ class _AboutScreenState extends State<AboutScreen> {
       final answer = await link.stub.getAbout(GetAboutRequest(apiVersion: apiVersion));
       if (mounted && !answer.hasError()) setState(() => _about = answer.about);
     } catch (_) {
-      // Without the core the screen still shows the app's own version.
+      // Keep the app version available even if core metadata cannot be read.
     }
   }
 

@@ -1,32 +1,27 @@
 import 'generated/sora/core/v1/core_control.pb.dart';
 
-/// A provider steers Sora through the names of its servers, the one field
-/// every panel lets it set and every client shows as it is. Servers of one
-/// subscription with the same name are one entry in Sora: the fastest that
-/// answers carries the traffic. A name ending in a role, such as "Netherlands
-/// (main)" or "Нидерланды (запасной)", orders them instead: the main ones
-/// first, the backups when the main ones fail. Happ and others show the same
-/// names, which read naturally there too.
+/// Server-name suffixes such as "(main)" or "(запасной)" set failover priority
+/// within same-name subscription groups. Without roles, use the fastest
+/// reachable member. Names remain compatible with Happ and other clients.
 enum Role { main, backup }
 
-/// One line of the server list: a server, or the servers sharing a name.
+/// A server-list entry for one server or a same-name group in a subscription.
 class Entry {
   Entry._(this.id, this.name, this.members, this.roles);
 
-  /// A server's own id, or `group:<subscription>:<name>` for several.
+  /// The server ID, or `group:<subscription>:<name>` for a group.
   final String id;
   final String name;
   final List<OutboundSpec> members;
 
-  /// The role each member's name carries; empty when none carries one.
+  /// Roles parsed from member names; empty when no name specifies a role.
   final Map<String, Role> roles;
 
   bool get isGroup => members.length > 1;
   bool get ordered => roles.isNotEmpty;
 
-  /// Members in the order they are tried when the names carry roles: the main
-  /// ones, then the rest. A member without a role in an ordered group is a
-  /// backup: the provider named the main ones.
+  /// Returns main members first, then backups. Unlabelled members of a group
+  /// with roles are treated as backups.
   List<OutboundSpec> get byRole => [
     for (final o in members)
       if (roles[o.id] == Role.main) o,
@@ -43,7 +38,7 @@ final _role = RegExp(
   unicode: true,
 );
 
-/// The name without its role, and the role, if it ends in one.
+/// Splits a trailing role suffix from a server name; returns null for no role.
 (String, Role?) splitRole(String name) {
   final m = _role.firstMatch(name);
   if (m == null || m.start == 0) return (name.trim(), null);
@@ -55,7 +50,7 @@ final _role = RegExp(
   return (name.substring(0, m.start).trim(), role);
 }
 
-/// The entries of one subscription, in the order of its servers.
+/// Groups subscription servers by name, preserving their list order.
 List<Entry> entriesOf(SubscriptionState subscription) {
   final byName = <String, List<OutboundSpec>>{};
   final roles = <String, Role>{};
@@ -75,7 +70,7 @@ List<Entry> entriesOf(SubscriptionState subscription) {
   ];
 }
 
-/// The entry a choice names, among every subscription.
+/// Finds the entry matching a selection across subscriptions; null if absent.
 Entry? entryOf(String choice, Iterable<SubscriptionState> subscriptions) {
   for (final s in subscriptions) {
     for (final e in entriesOf(s)) {

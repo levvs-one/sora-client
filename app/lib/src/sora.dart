@@ -9,34 +9,33 @@ import 'groups.dart';
 import 'rules.dart';
 import 'settings.dart';
 
-/// Where the connection is, in the terms the interface shows.
+/// Connection phases exposed to the UI.
 enum Phase { offline, off, connecting, connected, reconnecting, disconnecting }
 
-/// Something that happened to the connection on its own, worth telling a
-/// person who is not looking at the window.
+/// An unsolicited connection event for background notifications.
 sealed class Notice {
   const Notice();
 }
 
-/// The connection dropped and the core is bringing it back.
+/// A connection drop while the core attempts reconnection.
 final class ConnectionLost extends Notice {
   const ConnectionLost();
 }
 
-/// The connection is back after a drop.
+/// A connection restored after a drop.
 final class ConnectionRestored extends Notice {
   const ConnectionRestored();
 }
 
-/// The connection ended, or never came up, with [failure].
+/// A connection that ended or failed to start with [failure].
 final class ConnectionFailed extends Notice {
   const ConnectionFailed(this.failure);
 
   final CoreFailure failure;
 }
 
-/// A server of the group [entry] failed and the next one took over;
-/// [backup] when the names said which one is the backup.
+/// A failover within group [entry]. [backup] indicates role-based failover to a
+/// backup server.
 final class ServerSwitched extends Notice {
   const ServerSwitched(this.entry, {required this.backup});
 
@@ -44,15 +43,14 @@ final class ServerSwitched extends Notice {
   final bool backup;
 }
 
-/// The state of the app and everything it asks the core to do. Screens read
-/// it through [SoraScope] and rebuild when it notifies.
+/// App state and core operations. Screens access it through [SoraScope] and
+/// rebuild on notifications.
 class Sora extends ChangeNotifier {
   Sora(this.settings);
 
   final Settings settings;
 
-  /// Group names never collide with server ids, which the core derives from
-  /// the server itself and never starts with "sora:".
+  /// App group IDs use "sora:", which never prefixes core-generated server IDs.
   static const autoGroup = 'sora:auto';
   static const bypassId = 'sora:bypass';
   static const failoverGroup = 'sora:failover';
@@ -62,29 +60,28 @@ class Sora extends ChangeNotifier {
   bool _disposed = false;
   bool _startedOnce = false;
 
-  /// The profile of a named group the session runs, and how many other
-  /// members are left to try when it fails.
+  /// Active profile in a named group, followed by the remaining retry count.
   String? _member;
   int _memberSpare = 0;
   StreamSubscription<SubscriptionState>? _subscriptionWatch;
   StreamSubscription<CoreEvent>? _sessionWatch;
 
-  /// Ends the current line to the core when a call finds it gone.
+  /// Drops the core connection when a request detects it is unavailable.
   void Function(Object error) _drop = (_) {};
 
-  /// Set while the person ends the session, so its end is not news.
+  /// Suppresses failure notices during an explicit disconnect.
   bool _stopping = false;
 
-  /// A drop was announced, so the return is worth announcing too.
+  /// Tracks a reported drop so restoration also emits a notice.
   bool _lostAnnounced = false;
 
   final _notices = StreamController<Notice>.broadcast();
 
-  /// What happened to the connection on its own.
+  /// Unsolicited connection events for notification subscribers.
   Stream<Notice> get notices => _notices.stream;
 
-  /// How many notices went out, so a caller can tell whether one already
-  /// said what it is about to say.
+  /// Notice count used to avoid reporting a failure already announced by state
+  /// handling.
   int _emitted = 0;
 
   void _emit(Notice notice) {
@@ -92,25 +89,25 @@ class Sora extends ChangeNotifier {
     _notices.add(notice);
   }
 
-  /// Where the core's local proxy listens; the system proxy points here in
-  /// the proxy mode. Null until the core said.
+  /// The core's local proxy endpoint, used by system proxy mode. Null until
+  /// reported by the core.
   Endpoint? localProxy;
 
   Phase phase = Phase.offline;
   DateTime? since;
   String? sessionId;
 
-  /// The last failure worth showing, cleared by the next action.
+  /// Last displayed failure, cleared by the next action.
   CoreFailure? failure;
 
   final Map<String, SubscriptionState> _subscriptions = {};
   List<SubscriptionState> get subscriptions => _subscriptions.values.toList();
 
-  /// Latency of each server in milliseconds; null where it did not answer.
+  /// Server latency in milliseconds; null means the server did not respond.
   final Map<String, int?> latency = {};
   bool probing = false;
 
-  /// Every server of every subscription, each id once, in list order.
+  /// All subscription servers in list order, deduplicated by ID.
   List<OutboundSpec> get servers {
     final seen = <String>{};
     return [
@@ -120,8 +117,8 @@ class Sora extends ChangeNotifier {
     ];
   }
 
-  /// The server the person picked, falling back to the fastest when the one
-  /// they picked left its subscription.
+  /// Current selection; falls back to auto if the selected server or group is
+  /// no longer present.
   String get selected {
     final chosen = settings.server;
     if (chosen == 'auto' || chosen == 'bypass') return chosen;
@@ -140,8 +137,8 @@ class Sora extends ChangeNotifier {
     if (!_disposed) super.notifyListeners();
   }
 
-  /// Keeps a line to the core for as long as the app runs: opens it, follows
-  /// the subscriptions and the session, and opens it again when it drops.
+  /// Maintains the core connection and watches subscriptions and session state,
+  /// reopening the connection after a drop until disposal.
   Future<void> run() async {
     while (!_disposed) {
       final link = await CoreLink.open();
@@ -162,10 +159,11 @@ class Sora extends ChangeNotifier {
         _watchSession();
         notifyListeners();
         if (settings.connectOnStart && !_startedOnce && phase == Phase.off) {
-          // Once per launch: a line that drops and comes back must not
-          // reconnect a person who disconnected on purpose.
+          // Auto-connect only once per launch so core reconnection cannot undo
+          // an explicit disconnect.
           _startedOnce = true;
-          // The servers arrive through the watch a moment after it opens.
+          // Allow time for the initial server list to arrive through the
+          // subscription watch.
           await Future<void>.delayed(const Duration(milliseconds: 600));
           if (phase == Phase.off) unawaited(connect());
         }
@@ -174,8 +172,7 @@ class Sora extends ChangeNotifier {
       } catch (error) {
         failure = CoreFailure.from(error);
         notifyListeners();
-        // A core that answers the handshake and then refuses keeps refusing;
-        // asking again at once would only spin.
+        // Delay retries after post-handshake failures to avoid a tight loop.
         await Future<void>.delayed(const Duration(seconds: 3));
       }
       await _cancelWatches();
@@ -192,9 +189,8 @@ class Sora extends ChangeNotifier {
     _subscriptionWatch = _sessionWatch = null;
   }
 
-  /// Reads where the session is. [report] shows a failure the state carries;
-  /// on opening it is off, because a failure from before the window opened is
-  /// not news to whoever just opened it.
+  /// Reads session state. [report] enables failure reporting; startup disables
+  /// it to suppress failures predating the current UI session.
   Future<void> _readStatus({bool report = true}) async {
     final link = _link!;
     final answer = await link.stub.getStatus(GetStatusRequest(apiVersion: apiVersion));
@@ -209,8 +205,8 @@ class Sora extends ChangeNotifier {
       ConnectionStateValue.CONNECTION_STATE_VALUE_RECONNECTING => Phase.reconnecting,
       _ => Phase.off,
     };
-    // Events of a session carry its state without its id, so an empty id
-    // keeps the one already known; only the end of the session clears it.
+    // Session events may omit the ID. Retain the known ID until the session
+    // ends.
     if (phase == Phase.off) {
       sessionId = null;
     } else if (state.sessionId.isNotEmpty) {
@@ -221,8 +217,8 @@ class Sora extends ChangeNotifier {
         state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
         _member != null &&
         _memberSpare > 0) {
-      // The profile in use failed: mark it unreachable and run the next one
-      // of its group, the way the core moves along a fallback group.
+      // Profiles need client-side failover because they cannot share a core
+      // fallback group.
       latency[_member!] = null;
       _memberSpare--;
       final entry = entryOf(settings.server, _subscriptions.values);
@@ -233,15 +229,14 @@ class Sora extends ChangeNotifier {
     if (report &&
         state.value == ConnectionStateValue.CONNECTION_STATE_VALUE_FAILED &&
         state.reason != SoraErrorCode.SORA_ERROR_CODE_UNSPECIFIED) {
-      // The answer of the call that failed names the cause better than the
-      // code the state carries, so it is kept when there is one.
+      // Preserve the request's detailed error over the less specific state
+      // reason.
       failure ??= CoreFailure(_keyOfCode(state.reason));
     }
     if (report) _announce(before, state);
   }
 
-  /// Tells listeners what the session did on its own: a drop, a return, an
-  /// end nobody asked for.
+  /// Emits notices for unsolicited drops, restorations and failures.
   void _announce(Phase before, ConnectionState state) {
     if (before == Phase.connected && phase == Phase.reconnecting) {
       _lostAnnounced = true;
@@ -281,20 +276,21 @@ class Sora extends ChangeNotifier {
     }, onError: _drop);
   }
 
-  /// Follows the running session, replacing the watch of an earlier one.
-  /// Events from before [since] are history: state to show, not news.
+  /// Replaces the current session watch. Events before [since] update state
+  /// without triggering notices or failover.
   void _watchSession({DateTime? since}) {
     unawaited(_sessionWatch?.cancel());
     _sessionWatch = null;
     final link = _link, id = sessionId;
     if (link == null || id == null) return;
-    // The session ended or was replaced: the status says which.
+    // Refresh status because a closed watch may mean the session ended or was
+    // replaced.
     void resync() {
       if (_link == link) unawaited(_readStatus().then((_) => notifyListeners(), onError: _drop));
     }
 
-    // A watch starts with the history of the session; what happened before
-    // [since] is state to show, not news to announce or to act on again.
+    // The stream replays history; old events must not trigger notices or repeat
+    // failover.
     final opened = (since ?? DateTime.now()).subtract(const Duration(seconds: 1));
     final stream = link.stub.watchEvents(WatchEventsRequest(apiVersion: apiVersion, sessionId: id));
     _sessionWatch = stream.listen(
@@ -313,7 +309,7 @@ class Sora extends ChangeNotifier {
     );
   }
 
-  /// Connects when off and disconnects when on.
+  /// Connects when off; disconnects an active or connecting session.
   Future<void> toggle() async {
     if (phase == Phase.off) {
       await connect();
@@ -322,8 +318,8 @@ class Sora extends ChangeNotifier {
     }
   }
 
-  /// [retry] is set when a failed member of a named group hands over to the
-  /// next one: the count of members left to try then carries on.
+  /// Connects using the current selection and settings. [retry] preserves the
+  /// remaining attempt count during profile-group failover.
   Future<void> connect({bool retry = false}) async {
     final link = _link;
     if (link == null) return;
@@ -337,14 +333,12 @@ class Sora extends ChangeNotifier {
     final choice = selected;
     final entry = choice.startsWith(groupPrefix) ? entryOf(choice, _subscriptions.values) : null;
     final plan = buildPlan(servers: servers, choice: choice, settings: settings, latency: latency, entry: entry);
-    // A group of profiles runs one member at a time; remember which, so a
-    // failure can move to the next.
+    // Track the active profile because profile groups fail over in the client.
     _member = entry != null && entry.members.any(isProfile) ? plan.outbounds.single.id : null;
     if (!retry) _memberSpare = entry == null ? 0 : entry.members.length - 1;
     phase = Phase.connecting;
     notifyListeners();
-    // Whatever the session does from here is news, however long the calls
-    // below take before the watch opens.
+    // Include events emitted during these requests, before the watch opens.
     final started = DateTime.now();
     try {
       final answer = await link.stub.connect(
@@ -359,12 +353,12 @@ class Sora extends ChangeNotifier {
         if (kill.hasError()) failure = CoreFailure(kill.error.userMessageKey);
       }
       _watchSession(since: started);
-      // The person picked another server while this one was coming up.
+      // Apply a selection changed while the connection request was pending.
       if (selected != choice && phase == Phase.connected) unawaited(connect());
     } catch (error) {
       failure = CoreFailure.from(error);
-      // The state says whether a profile of a group failed, which moves on to
-      // the next member, and announces the failure when it is final.
+      // Read state to trigger profile failover or report a final failure
+      // without duplicating notices.
       final before = _emitted;
       await _readStatus().catchError((Object _) {});
       if (phase == Phase.connecting) phase = Phase.off;
@@ -396,8 +390,7 @@ class Sora extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Applies a change of plan at once when connected, so a new server or
-  /// preset takes effect without a second press.
+  /// Reconnects with the updated plan while connected or reconnecting.
   Future<void> _replan() async {
     if (phase == Phase.connected || phase == Phase.reconnecting) await connect();
   }
@@ -409,15 +402,15 @@ class Sora extends ChangeNotifier {
     await _replan();
   }
 
-  /// Changes settings. A change that alters the plan applies at once while
-  /// connected; a change of looks only redraws.
+  /// Applies settings and notifies listeners. [replan] also reconnects an
+  /// active session; disable for appearance-only changes.
   Future<void> change(void Function(Settings) apply, {bool replan = true}) async {
     apply(settings);
     notifyListeners();
     if (replan) await _replan();
   }
 
-  /// Forgets every choice and starts from the defaults again.
+  /// Resets settings to defaults and reapplies the active connection plan.
   Future<void> reset() async {
     await settings.reset();
     notifyListeners();
@@ -430,8 +423,8 @@ class Sora extends ChangeNotifier {
     final link = _link, id = sessionId;
     if (link == null) return;
     if (id == null) {
-      // A session that failed keeps the block on, and the interface no longer
-      // knows it: ending it is what lifts the block.
+      // A failed session may retain the kill switch after its ID is cleared.
+      // Disconnect it to release the block.
       if (!value) {
         await link.stub
             .disconnect(DisconnectRequest(apiVersion: apiVersion, controlAuthenticator: link.token))
@@ -450,8 +443,8 @@ class Sora extends ChangeNotifier {
     }
   }
 
-  /// Saves a new subscription; the core fetches it and announces the servers
-  /// through the watch. Returns the failure to show next to the field.
+  /// Saves a subscription; the core fetches it and streams its servers. Returns
+  /// null on success or a failure for display beside the input.
   Future<CoreFailure?> addSubscription(String url, {String name = ''}) async {
     final link = _link;
     if (link == null) return CoreFailure.unavailable;
@@ -483,7 +476,7 @@ class Sora extends ChangeNotifier {
     if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
   });
 
-  /// Saves what the person chose for a subscription; the link stays as stored.
+  /// Saves subscription settings without replacing the stored URL.
   Future<CoreFailure?> saveSubscription(SubscriptionSettings chosen) => _call(() async {
     final link = _link!;
     final answer = await link.stub.saveSubscription(
@@ -510,7 +503,8 @@ class Sora extends ChangeNotifier {
     notifyListeners();
   });
 
-  /// Runs a request and answers with its failure, which is also kept to show.
+  /// Runs a core request; returns null on success or stores and returns its
+  /// failure.
   Future<CoreFailure?> _call(Future<void> Function() body) async {
     if (_link == null) return CoreFailure.unavailable;
     failure = null;
@@ -524,8 +518,8 @@ class Sora extends ChangeNotifier {
     }
   }
 
-  /// Measures every server through an engine where one carries it; results
-  /// arrive one by one as they finish.
+  /// Probes all servers, using their engine where applicable, and publishes
+  /// results as they arrive.
   Future<void> probe() async {
     final link = _link;
     final all = servers;
@@ -552,18 +546,19 @@ class Sora extends ChangeNotifier {
         notifyListeners();
       }
     } catch (_) {
-      // A measurement that stopped halfway leaves the values it got; the
-      // rest stay unknown rather than marked as failures.
+      // Keep partial results; unmeasured servers remain unknown instead of
+      // being marked unreachable.
     }
     probing = false;
     notifyListeners();
   }
 
-  /// The client for screens that talk to the core themselves, such as the
-  /// log, with the token they need. Null while the core is out of reach.
+  /// Core client and authentication token for direct screen requests, such as
+  /// logs. Null while the core is unavailable.
   CoreLink? get link => _link;
 
-  /// Bytes as one short number with a unit, in steps of 1024.
+  /// Scales bytes by powers of 1024, returning the value and unit index (B to
+  /// TB).
   static (double, int) scaleBytes(Int64 bytes) {
     var value = bytes.toDouble();
     var unit = 0;
@@ -584,14 +579,9 @@ class Sora extends ChangeNotifier {
   }
 }
 
-/// The plan for a connection: every server, and what carries the traffic the
-/// routing preset does not send direct. [choice] is "auto" for the fastest
-/// server, picked by the core, "bypass" for no server at all, or a server id.
-///
-/// A profile, a whole Xray configuration a provider wrote for one server,
-/// runs alone: it is the plan's only outbound when picked, and the fastest of
-/// the ordinary servers is chosen among the others. A subscription of profiles
-/// only picks the profile that answered fastest, from [latency].
+/// Builds routing for [choice]: auto selects the fastest ordinary server,
+/// bypass uses no server, or an ID selects one. A provider Xray profile runs as
+/// the sole outbound; profile-only auto selection uses [latency].
 SessionPlan buildPlan({
   required List<OutboundSpec> servers,
   required String choice,
@@ -613,8 +603,8 @@ SessionPlan buildPlan({
       fragmentInterval: settings.fragmentInterval,
     ),
   );
-  // The person's own rules come before the preset; "through VPN" points at
-  // whatever carries the rest, which is known once the target is.
+  // User rules take precedence over the preset; resolve proxy rules after the
+  // default traffic target is known.
   void addRules(String proxy) {
     for (final rule in settings.rules.map(UserRule.parse).nonNulls) {
       final target = switch (rule.target) {
@@ -653,13 +643,12 @@ SessionPlan buildPlan({
       if (!isProfile(o)) o,
   ];
   if (entry != null && entry.members.any(isProfile)) {
-    // Profiles cannot share one engine, so of a named group of them the
-    // interface runs one: the first main one that answers, or the fastest.
+    // Profiles cannot share an engine. Select one reachable member by role
+    // priority or latency.
     choice = pickMember(entry, latency).id;
   } else if (entry != null) {
-    // Servers of one name: the core keeps them as a group. Roles order them
-    // where the engine has fallback groups (mihomo); elsewhere the main ones
-    // alone are measured against each other.
+    // mihomo supports role-ordered fallback groups. Other engines compare only
+    // main members by latency; unlabelled groups compare all members.
     final fallback = entry.ordered && (settings.engine.isEmpty || settings.engine == 'mihomo');
     final members = fallback
         ? entry.byRole
@@ -702,10 +691,9 @@ SessionPlan buildPlan({
     );
     plan.routing.proxyTarget = Sora.autoGroup;
   } else if (settings.failover && ordinary.length > 1 && (settings.engine.isEmpty || settings.engine == 'mihomo')) {
-    // Only mihomo has fallback groups; a pinned sing-box or Xray keeps the
-    // picked server alone rather than refusing to connect.
-    // The picked server first, then the others from the fastest: the core
-    // moves to the next one that answers and back once the first does.
+    // Only mihomo supports fallback groups; pinned sing-box or Xray uses the
+    // selected server alone. Try it first, then alternatives by latency, and
+    // return to it when reachable.
     final others = [
       for (final o in ordinary)
         if (o.id != choice) o,
@@ -725,9 +713,9 @@ SessionPlan buildPlan({
   return plan;
 }
 
-/// The member of a named group to run: the first that has not been measured
-/// as unreachable: in role order when the names carry roles, otherwise the
-/// fastest.
+/// Picks a member not measured as unreachable: first by role priority,
+/// otherwise by latency. If all are down, uses the first by role or the fastest
+/// measured member.
 OutboundSpec pickMember(Entry entry, Map<String, int?> latency) {
   bool down(OutboundSpec o) => latency.containsKey(o.id) && latency[o.id] == null;
   if (entry.ordered) return entry.byRole.firstWhere((o) => !down(o), orElse: () => entry.byRole.first);
@@ -738,10 +726,11 @@ OutboundSpec pickMember(Entry entry, Map<String, int?> latency) {
   return _fastest(up.isEmpty ? entry.members : up, latency);
 }
 
-/// Whether a server is a whole Xray configuration from a JSON subscription.
+/// Checks whether a server is a full Xray profile from a JSON subscription.
 bool isProfile(OutboundSpec o) => o.protocol == 'xray-profile';
 
-/// The profile that answered fastest; the first one when none was measured.
+/// Returns the lowest-latency profile, or the first if none has a measurement.
+/// Requires a nonempty list.
 OutboundSpec _fastest(List<OutboundSpec> profiles, Map<String, int?> latency) {
   var best = profiles.first;
   for (final o in profiles) {
@@ -751,12 +740,12 @@ OutboundSpec _fastest(List<OutboundSpec> profiles, Map<String, int?> latency) {
   return best;
 }
 
-/// Hands [Sora] to the widgets below and rebuilds them when it changes.
+/// Provides [Sora] to descendants and rebuilds dependents when state changes.
 class SoraScope extends InheritedNotifier<Sora> {
   const SoraScope({super.key, required Sora sora, required super.child}) : super(notifier: sora);
 
   static Sora of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<SoraScope>()!.notifier!;
 
-  /// For callbacks, which must not subscribe to changes.
+  /// Reads [Sora] without subscribing, for use in callbacks.
   static Sora read(BuildContext context) => context.getInheritedWidgetOfExactType<SoraScope>()!.notifier!;
 }

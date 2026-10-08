@@ -66,7 +66,6 @@ class _SoraAppState extends State<SoraApp> {
             ],
             supportedLocales: S.supportedLocales,
             navigatorKey: _navigator,
-            // Escape steps back from any screen, as it does on a Mac.
             builder: (context, child) => CallbackShortcuts(
               bindings: {
                 const SingleActivator(LogicalKeyboardKey.escape): () => unawaited(_navigator.currentState?.maybePop()),

@@ -1,9 +1,9 @@
-/// What a link opened from a browser or a messenger asks Sora to do.
+/// An action requested by a browser or messenger import link.
 sealed class ImportLink {
   const ImportLink();
 }
 
-/// Add the subscription at [url], under [name] when the link gives one.
+/// A request to add [url] with the optional subscription [name].
 final class AddSubscription extends ImportLink {
   const AddSubscription(this.url, {this.name = ''});
 
@@ -11,28 +11,19 @@ final class AddSubscription extends ImportLink {
   final String name;
 }
 
-/// A link Happ encrypted with its own key. Nothing but Happ can read it: the
-/// provider has to hand out the plain subscription link.
+/// A Happ-encrypted link that only Happ can decrypt. Import requires the
+/// provider's plain subscription URL.
 final class SealedForHapp extends ImportLink {
   const SealedForHapp();
 }
 
-/// The schemes Sora registers. The others below are read when a link of
-/// theirs is handed to Sora, but Sora does not claim them.
+/// Registered schemes. Other supported import schemes are parsed when passed to
+/// Sora, without registering them.
 const ownSchemes = ['sora', 'happ'];
 
-/// Reads an import link of Sora or of the clients people move from:
-///
-/// ```text
-/// sora://add/<url>            happ://add/<url>
-/// sora://add?url=<url>&name=  v2rayn://install-config?url=<url>
-/// clash://install-config?url=<url>&name=<name>
-/// hiddify://import/<url>#<name>
-/// sing-box://import-remote-profile?url=<url>#<name>
-/// ```
-///
-/// The subscription itself must be http or https. Anything else is null,
-/// a broken percent-encoding included: the link comes from anywhere.
+/// Parses add, install-config, import and import-remote-profile links from
+/// Sora, Happ, v2rayn, Clash, Hiddify and sing-box. Requires an HTTP(S)
+/// subscription URL; returns null for invalid links or percent-encoding.
 ImportLink? parseImportLink(String text) {
   try {
     return _parse(text.trim());
@@ -49,8 +40,8 @@ ImportLink? _parse(String link) {
   final scheme = link.substring(0, colon).toLowerCase();
   final rest = link.substring(colon + 3);
 
-  // The target is pasted after the prefix as it is, with its own "?" and "#",
-  // so it is cut out of the text rather than parsed out of a Uri.
+  // Extract the embedded URL verbatim to preserve its own query and fragment
+  // instead of parsing them as part of the import URI.
   String? after(String prefix) => rest.toLowerCase().startsWith(prefix) ? rest.substring(prefix.length) : null;
 
   if (scheme == 'happ' && RegExp(r'^crypt\d*/', caseSensitive: false).hasMatch(rest)) {
@@ -63,8 +54,8 @@ ImportLink? _parse(String link) {
     _ => null,
   };
   if (pasted != null) {
-    // Hiddify puts the name after a "#"; a subscription link has no fragment
-    // worth keeping, so the last one is taken as the name.
+    // Hiddify stores the name after the last "#"; subscription URL fragments
+    // are not needed.
     final hash = scheme == 'hiddify' ? pasted.lastIndexOf('#') : -1;
     final target = hash < 0 ? pasted : pasted.substring(0, hash);
     final name = hash < 0 ? '' : Uri.decodeComponent(pasted.substring(hash + 1));

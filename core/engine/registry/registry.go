@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync"
 	"time"
@@ -101,6 +102,11 @@ func (r *Registry) Binaries() []supervise.Binary {
 
 // Usable reports whether at least one engine can be started.
 func (r *Registry) Usable() bool { return len(r.binaries) > 0 }
+
+// BypassAvailable reports whether the serverless engine can run on this platform.
+func (r *Registry) BypassAvailable() bool {
+	return runtime.GOOS == "linux" && r.tpws != "" && r.Usable()
+}
 
 // LastSelection returns the latest engine choice and rejection reasons for
 // diagnostics.

@@ -398,6 +398,7 @@ const OutboundSpec$json = {
     {'1': 'security', '3': 5, '4': 1, '5': 9, '10': 'security'},
     {'1': 'endpoint', '3': 6, '4': 1, '5': 11, '6': '.sora.core.v1.Endpoint', '10': 'endpoint'},
     {'1': 'credentials', '3': 7, '4': 1, '5': 11, '6': '.sora.core.v1.CredentialsRef', '10': 'credentials'},
+    {'1': 'display_protocol', '3': 9, '4': 1, '5': 9, '10': 'displayProtocol'},
   ],
 };
 
@@ -408,7 +409,8 @@ final $typed_data.Uint8List outboundSpecDescriptor =
         'UgZieXBhc3MSGgoIcHJvdG9jb2wYAyABKAlSCHByb3RvY29sEhwKCXRyYW5zcG9ydBgEIAEoCV'
         'IJdHJhbnNwb3J0EhoKCHNlY3VyaXR5GAUgASgJUghzZWN1cml0eRIyCghlbmRwb2ludBgGIAEo'
         'CzIWLnNvcmEuY29yZS52MS5FbmRwb2ludFIIZW5kcG9pbnQSPgoLY3JlZGVudGlhbHMYByABKA'
-        'syHC5zb3JhLmNvcmUudjEuQ3JlZGVudGlhbHNSZWZSC2NyZWRlbnRpYWxz');
+        'syHC5zb3JhLmNvcmUudjEuQ3JlZGVudGlhbHNSZWZSC2NyZWRlbnRpYWxzEikKEGRpc3BsYXlf'
+        'cHJvdG9jb2wYCSABKAlSD2Rpc3BsYXlQcm90b2NvbA==');
 
 @$core.Deprecated('Use endpointDescriptor instead')
 const Endpoint$json = {

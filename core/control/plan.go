@@ -701,13 +701,14 @@ func referenceOf(spec parser.OutboundSpec) (string, error) {
 // credential reference. The core resolves it when applying the plan.
 func outboundToProto(spec parser.OutboundSpec, reference string) *corev1.OutboundSpec {
 	return &corev1.OutboundSpec{
-		Id:          spec.StableKey(),
-		DisplayName: spec.DisplayName,
-		Protocol:    spec.Protocol,
-		Transport:   spec.Transport,
-		Security:    spec.Security,
-		Endpoint:    &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
-		Credentials: &corev1.CredentialsRef{Reference: reference},
+		Id:              spec.StableKey(),
+		DisplayName:     spec.DisplayName,
+		Protocol:        spec.Protocol,
+		DisplayProtocol: spec.DisplayProtocol,
+		Transport:       spec.Transport,
+		Security:        spec.Security,
+		Endpoint:        &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
+		Credentials:     &corev1.CredentialsRef{Reference: reference},
 	}
 }
 

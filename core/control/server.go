@@ -264,11 +264,15 @@ func (s *Server) SetDiagnostics(collector Diagnostics) {
 
 // apiVersion returns the core's wire API version.
 func (s *Server) apiVersion() *corev1.ApiVersion {
+	capabilities := Capabilities()
+	if provider, ok := s.measurer.(interface{ BypassAvailable() bool }); ok && provider.BypassAvailable() {
+		capabilities = append(capabilities, "serverless")
+	}
 	return &corev1.ApiVersion{
 		Major:             s.version.Major,
 		Minor:             s.version.Minor,
 		MinSupportedMinor: s.version.MinSupportedMinor,
-		Capabilities:      Capabilities(),
+		Capabilities:      capabilities,
 	}
 }
 

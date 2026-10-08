@@ -362,3 +362,26 @@ func TestGroupSwitchReachesTheWire(t *testing.T) {
 		t.Errorf("event = %v", out)
 	}
 }
+
+func TestProfileDisplayMetadataKeepsAdapterAndCredentialsPrivate(t *testing.T) {
+	payload := `{"remarks":"Edge","outbounds":[{"protocol":"vless","settings":{"vnext":[{"address":"edge.example.com","port":443,"users":[{"id":"b831381d-6324-4d53-ad4f-8cda48b30811"}]}]},"streamSettings":{"network":"xhttp","security":"reality"}},{"protocol":"freedom"}]}`
+	result, err := parser.LinkParser{}.Parse([]byte(payload))
+	if err != nil || len(result.Servers) != 1 {
+		t.Fatalf("Parse = %+v, %v", result, err)
+	}
+	wire := outboundToProto(result.Servers[0], "vault:edge")
+	if wire.Protocol != "xray-profile" || wire.DisplayProtocol != "vless" || wire.Transport != "xhttp" || wire.Security != "reality" {
+		t.Fatalf("display metadata = %v", wire)
+	}
+	if wire.Credentials.Reference != "vault:edge" {
+		t.Fatal("the display model must retain only the credential reference")
+	}
+	encoded, err := proto.Marshal(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded corev1.OutboundSpec
+	if err := proto.Unmarshal(encoded, &decoded); err != nil || !proto.Equal(wire, &decoded) {
+		t.Fatalf("display metadata round trip: %v, %v", &decoded, err)
+	}
+}

@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -122,5 +123,23 @@ func TestAPlanNoInstalledEngineCarriesSaysSo(t *testing.T) {
 	}})
 	if errs.KeyOf(err) != errs.KeyEngineBinaryMissing {
 		t.Fatalf("err = %v, key %q: no installed engine is a missing engine", err, errs.KeyOf(err))
+	}
+}
+
+func TestBypassAvailabilityRequiresPlatformReshaperAndEngine(t *testing.T) {
+	for _, tc := range []struct {
+		tpws    string
+		engines bool
+		want    bool
+	}{
+		{"", false, false}, {"/tpws", false, false}, {"", true, false}, {"/tpws", true, runtime.GOOS == "linux"},
+	} {
+		r := &Registry{tpws: tc.tpws, binaries: map[engine.Kind]supervise.Binary{}}
+		if tc.engines {
+			r.binaries[engine.KindXray] = supervise.Binary{}
+		}
+		if got := r.BypassAvailable(); got != tc.want {
+			t.Errorf("tpws %q, engines %v: got %v, want %v", tc.tpws, tc.engines, got, tc.want)
+		}
 	}
 }

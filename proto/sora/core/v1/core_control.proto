@@ -181,6 +181,8 @@ message OutboundSpec {
   string security = 5;
   Endpoint endpoint = 6;
   CredentialsRef credentials = 7;
+  // Display metadata for full profiles; protocol still selects the adapter.
+  string display_protocol = 9;
 }
 message Endpoint { string host = 1; uint32 port = 2; }
 message CredentialsRef { string reference = 1; }

@@ -175,6 +175,7 @@ func decodeBase64(s string) ([]byte, bool) {
 // retains additional fields to avoid silently losing unsupported settings
 // during import.
 type OutboundSpec struct {
+	DisplayProtocol                                                                                 string
 	ID, DisplayName, Protocol, Transport, Security                                                  string
 	Host                                                                                            string
 	Port                                                                                            uint16
@@ -230,7 +231,7 @@ func (o OutboundSpec) ToProto() (*corev1.OutboundSpec, error) {
 	if err := o.validate(); err != nil {
 		return nil, err
 	}
-	return &corev1.OutboundSpec{Id: o.ID, DisplayName: o.DisplayName, Protocol: o.Protocol, Transport: o.Transport, Security: o.Security, Endpoint: &corev1.Endpoint{Host: o.Host, Port: uint32(o.Port)}, Credentials: &corev1.CredentialsRef{Reference: o.UUID}}, nil
+	return &corev1.OutboundSpec{Id: o.ID, DisplayName: o.DisplayName, Protocol: o.Protocol, DisplayProtocol: o.DisplayProtocol, Transport: o.Transport, Security: o.Security, Endpoint: &corev1.Endpoint{Host: o.Host, Port: uint32(o.Port)}, Credentials: &corev1.CredentialsRef{Reference: o.UUID}}, nil
 }
 
 // ItemReason identifies a skipped source position and a stable readable reason.
@@ -671,6 +672,7 @@ func profileSpec(m map[string]any) (OutboundSpec, error) {
 			continue
 		}
 		o.Host, o.Port = xrayEndpoint(ob)
+		o.DisplayProtocol = stringValue(ob["protocol"])
 		if ss, ok := ob["streamSettings"].(map[string]any); ok {
 			o.Transport = stringValue(ss["network"])
 			o.Security = stringValue(ss["security"])

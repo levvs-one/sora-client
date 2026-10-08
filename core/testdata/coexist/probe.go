@@ -4,7 +4,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -18,6 +20,14 @@ import (
 )
 
 func main() {
+	if os.Args[1] == "dns-server" {
+		dnsServer()
+		return
+	}
+	if os.Args[1] == "dns" {
+		dnsQuery(os.Args[2], os.Args[3], os.Args[4])
+		return
+	}
 	seconds := 0
 	if os.Args[2] == "hold" {
 		var err error
@@ -56,7 +66,7 @@ func main() {
 		}
 		p.Routing = &corev1.RoutingOptions{ProxyTarget: p.GetOutbounds()[0].GetId()}
 		p.DnsPolicy = &corev1.DnsPolicy{Servers: []string{"192.168.0.1"}}
-		r, err := c.Connect(ctx, &corev1.ConnectRequest{ApiVersion: api, ControlAuthenticator: auth, SessionPlan: p})
+		r, err := c.Connect(ctx, &corev1.ConnectRequest{ApiVersion: api, ControlAuthenticator: auth, SessionPlan: p, KillSwitch: len(os.Args) > 5 && os.Args[5] == "kill"})
 		must(err)
 		wire(r.GetError())
 		fmt.Println(r.GetStatus().GetConnection().GetValue())
@@ -87,13 +97,16 @@ func main() {
 		// State events reveal a restart even if polling missed its short outage.
 		watchCtx, stopWatch := context.WithTimeout(ctx, 2*time.Second)
 		defer stopWatch()
+		watchDeadline, _ := watchCtx.Deadline()
 		events, err := c.WatchEvents(watchCtx, &corev1.WatchEventsRequest{ApiVersion: api})
 		must(err)
 		connected := false
 		for {
 			event, err := events.Recv()
 			if err != nil {
-				if watchCtx.Err() != nil || status.Code(err) == codes.DeadlineExceeded {
+				// The server can finish first at the same deadline and return
+				// EOF before the client's context cancellation is scheduled.
+				if watchCtx.Err() != nil || status.Code(err) == codes.DeadlineExceeded || errors.Is(err, io.EOF) && !time.Now().Before(watchDeadline) {
 					break
 				}
 				must(err)

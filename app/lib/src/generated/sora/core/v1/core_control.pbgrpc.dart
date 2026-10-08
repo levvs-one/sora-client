@@ -196,7 +196,7 @@ class CoreControlClient extends $grpc.Client {
 
   /// Since 1.3. Subscriptions the core keeps and updates by itself, so they stay
   /// current while the interface is closed. The link of a subscription is its
-  /// credential: the core stores it encrypted and never sends it back.
+  /// credential: the core stores it encrypted and omits it from states.
   $grpc.ResponseFuture<$0.SaveSubscriptionResponse> saveSubscription(
     $0.SaveSubscriptionRequest request, {
     $grpc.CallOptions? options,
@@ -230,6 +230,15 @@ class CoreControlClient extends $grpc.Client {
     $grpc.CallOptions? options,
   }) {
     return $createStreamingCall(_$watchSubscriptions, $async.Stream.fromIterable([request]), options: options);
+  }
+
+  /// Since 1.6. Returns the stored subscription link only on an authenticated
+  /// explicit request to open its page. Clients must not cache or log it.
+  $grpc.ResponseFuture<$0.GetSubscriptionLinkResponse> getSubscriptionLink(
+    $0.GetSubscriptionLinkRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getSubscriptionLink, request, options: options);
   }
 
   /// PutSecret and DeleteSecret manage the credential material the core keeps.
@@ -360,6 +369,11 @@ class CoreControlClient extends $grpc.Client {
       '/sora.core.v1.CoreControl/WatchSubscriptions',
       ($0.WatchSubscriptionsRequest value) => value.writeToBuffer(),
       $0.SubscriptionState.fromBuffer);
+  static final _$getSubscriptionLink =
+      $grpc.ClientMethod<$0.GetSubscriptionLinkRequest, $0.GetSubscriptionLinkResponse>(
+          '/sora.core.v1.CoreControl/GetSubscriptionLink',
+          ($0.GetSubscriptionLinkRequest value) => value.writeToBuffer(),
+          $0.GetSubscriptionLinkResponse.fromBuffer);
   static final _$putSecret = $grpc.ClientMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
       '/sora.core.v1.CoreControl/PutSecret',
       ($0.PutSecretRequest value) => value.writeToBuffer(),
@@ -564,6 +578,13 @@ abstract class CoreControlServiceBase extends $grpc.Service {
         true,
         ($core.List<$core.int> value) => $0.WatchSubscriptionsRequest.fromBuffer(value),
         ($0.SubscriptionState value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetSubscriptionLinkRequest, $0.GetSubscriptionLinkResponse>(
+        'GetSubscriptionLink',
+        getSubscriptionLink_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetSubscriptionLinkRequest.fromBuffer(value),
+        ($0.GetSubscriptionLinkResponse value) => value.writeToBuffer()));
     $addMethod($grpc.ServiceMethod<$0.PutSecretRequest, $0.PutSecretResponse>(
         'PutSecret',
         putSecret_Pre,
@@ -775,6 +796,14 @@ abstract class CoreControlServiceBase extends $grpc.Service {
   }
 
   $async.Stream<$0.SubscriptionState> watchSubscriptions($grpc.ServiceCall call, $0.WatchSubscriptionsRequest request);
+
+  $async.Future<$0.GetSubscriptionLinkResponse> getSubscriptionLink_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.GetSubscriptionLinkRequest> $request) async {
+    return getSubscriptionLink($call, await $request);
+  }
+
+  $async.Future<$0.GetSubscriptionLinkResponse> getSubscriptionLink(
+      $grpc.ServiceCall call, $0.GetSubscriptionLinkRequest request);
 
   $async.Future<$0.PutSecretResponse> putSecret_Pre(
       $grpc.ServiceCall $call, $async.Future<$0.PutSecretRequest> $request) async {

@@ -241,8 +241,9 @@ class _SubscriptionHeader extends StatelessWidget {
                   alignmentOffset: const Offset(-150, 4),
                   menuChildren: [
                     _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
+                    _item(context, s.website, () => unawaited(sora.openSubscriptionPage(state.settings.id))),
                     if (info.webPageUrl.isNotEmpty)
-                      _item(context, s.website, () => unawaited(openLink(info.webPageUrl))),
+                      _item(context, s.providerWebsite, () => unawaited(openLink(info.webPageUrl))),
                     if (info.supportUrl.isNotEmpty)
                       _item(context, s.support, () => unawaited(openLink(info.supportUrl))),
                     _item(

@@ -1,9 +1,13 @@
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:sora/l10n/strings_ru.dart';
+import 'package:sora/l10n/strings.dart';
+import 'package:sora/src/design/theme.dart';
+import 'package:sora/src/ui/subscription.dart';
 import 'package:sora/main.dart';
 import 'package:sora/src/core/link.dart';
 import 'package:sora/src/generated/sora/core/v1/core_control.pb.dart';
@@ -210,6 +214,38 @@ void main() {
     sora.dispose();
   });
 
+  testWidgets('subscription page tile and menu exist without provider metadata', (tester) async {
+    SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+    final sora = _SubscriptionSora(await Settings.load());
+    addTearDown(sora.dispose);
+    Widget screen(Widget child) => SoraScope(
+      sora: sora,
+      child: MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: S.localizationsDelegates,
+        supportedLocales: S.supportedLocales,
+        theme: buildTheme(Brightness.light),
+        home: child,
+      ),
+    );
+    await tester.pumpWidget(screen(const SubscriptionScreen(id: 'subscription-id')));
+    await tester.pumpAndSettle();
+    expect(find.text('Сайт подписки'), findsOneWidget);
+    expect(find.text('Сайт провайдера'), findsNothing);
+    await tester.tap(find.text('Сайт подписки'));
+    expect(sora.opened, ['subscription-id']);
+
+    await tester.pumpWidget(screen(const ServersScreen()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(CupertinoIcons.ellipsis));
+    await tester.pumpAndSettle();
+    expect(find.text('Сайт подписки'), findsOneWidget);
+    expect(find.text('Сайт провайдера'), findsNothing);
+    await tester.tap(find.text('Сайт подписки'));
+    await tester.pumpAndSettle();
+    expect(sora.opened, ['subscription-id', 'subscription-id']);
+  });
+
   test('what a person types becomes a rule', () {
     expect(UserRule.destinationOf('bank.ru'), 'domain:bank.ru');
     expect(UserRule.destinationOf('*.Bank.RU'), 'domain:bank.ru');
@@ -303,4 +339,24 @@ void main() {
       expect(pickMember(best, {'x': 90, 'y': null}).id, 'x');
     });
   });
+}
+
+class _SubscriptionSora extends Sora {
+  _SubscriptionSora(super.settings);
+
+  final opened = <String>[];
+
+  @override
+  List<SubscriptionState> get subscriptions => [
+    SubscriptionState(
+      settings: SubscriptionSettings(id: 'subscription-id'),
+      displayName: 'Subscription',
+    ),
+  ];
+
+  @override
+  Future<CoreFailure?> openSubscriptionPage(String id) async {
+    opened.add(id);
+    return null;
+  }
 }

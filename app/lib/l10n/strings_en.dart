@@ -433,7 +433,10 @@ class SEn extends S {
   String get invalidValue => 'This value will not work';
 
   @override
-  String get website => 'Provider website';
+  String get website => 'Subscription page';
+
+  @override
+  String get providerWebsite => 'Provider website';
 
   @override
   String get support => 'Support';

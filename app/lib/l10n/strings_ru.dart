@@ -433,7 +433,10 @@ class SRu extends S {
   String get invalidValue => 'Такое значение не подойдёт';
 
   @override
-  String get website => 'Сайт провайдера';
+  String get website => 'Сайт подписки';
+
+  @override
+  String get providerWebsite => 'Сайт провайдера';
 
   @override
   String get support => 'Поддержка';

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/levvs-one/sora-client/core/engine"
@@ -287,5 +289,53 @@ func TestDisplayNameIsNeverEmpty(t *testing.T) {
 		if got := displayName(rec); got != want {
 			t.Errorf("display name = %q, want %q", got, want)
 		}
+	}
+}
+
+func TestGetSubscriptionLinkRequiresAuthenticator(t *testing.T) {
+	const link = "https://panel.example/sub/private-token"
+	srv, _ := bookServer(t, t.TempDir(), &panel{body: servers("a"), info: subscription.Info{WebPageURL: link}})
+	state := saveAndWait(t, srv.subs, &corev1.SubscriptionSettings{Url: link})
+	id := state.GetSettings().GetId()
+	version := &corev1.ApiVersion{Major: 1, Minor: 6}
+	for _, token := range [][]byte{nil, []byte("invalid"), []byte(strings.Repeat("x", TokenLen))} {
+		response, err := srv.GetSubscriptionLink(context.Background(), &corev1.GetSubscriptionLinkRequest{ApiVersion: version, ControlAuthenticator: token, Id: id})
+		if status.Code(err) != codes.Unauthenticated || response != nil {
+			t.Fatal("an invalid authenticator must receive no response and an unauthenticated error")
+		}
+	}
+	response, err := srv.GetSubscriptionLink(context.Background(), &corev1.GetSubscriptionLinkRequest{ApiVersion: version, ControlAuthenticator: make([]byte, TokenLen), Id: id})
+	if err != nil || response.GetError() != nil || response.GetUrl() != link {
+		t.Fatal("authenticated request did not return the stored link")
+	}
+	response, err = srv.GetSubscriptionLink(context.Background(), &corev1.GetSubscriptionLinkRequest{ApiVersion: version, ControlAuthenticator: make([]byte, TokenLen), Id: "unknown"})
+	if err != nil || response.GetError().GetCode() != corev1.SoraErrorCode_SORA_ERROR_CODE_NOT_FOUND || response.GetUrl() != "" {
+		t.Fatal("unknown subscription must return not found without a link")
+	}
+	if state.GetSettings().GetUrl() != "" || state.GetInfo().GetWebPageUrl() != "" {
+		t.Fatal("subscription states must omit the bearer link, including repeated provider metadata")
+	}
+	listed, err := srv.ListSubscriptions(context.Background(), &corev1.ListSubscriptionsRequest{ApiVersion: version, ControlAuthenticator: make([]byte, TokenLen)})
+	if err != nil || len(listed.GetSubscriptions()) != 1 || listed.GetSubscriptions()[0].GetSettings().GetUrl() != "" || listed.GetSubscriptions()[0].GetInfo().GetWebPageUrl() != "" {
+		t.Fatal("listing subscriptions must not expose the bearer link")
+	}
+	changes, stop := srv.subs.watch()
+	defer stop()
+	if _, err := srv.subs.refresh(context.Background(), id); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		changed := <-changes
+		if changed.GetSettings().GetUrl() != "" || changed.GetInfo().GetWebPageUrl() != "" {
+			t.Fatal("watched states must not expose the bearer link")
+		}
+	}
+}
+
+func TestSubscriptionPreservesDistinctProviderWebsite(t *testing.T) {
+	srv, _ := bookServer(t, t.TempDir(), &panel{body: servers("a"), info: subscription.Info{WebPageURL: "https://provider.example"}})
+	state := saveAndWait(t, srv.subs, &corev1.SubscriptionSettings{Url: "https://panel.example/sub/token"})
+	if state.GetInfo().GetWebPageUrl() != "https://provider.example" {
+		t.Fatal("distinct provider website must remain available")
 	}
 }

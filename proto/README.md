@@ -12,3 +12,6 @@ buf generate
 
 Go output is written to `core/gen`. Dart output is written to `app/lib/src/generated`.
 The repository workflow and the pull request autofix workflow use the pinned generator versions.
+
+Contract 1.6 adds authenticated `GetSubscriptionLink` for opening a subscription page.
+Subscription states omit the bearer link; clients request it only for this action and never cache or log it.

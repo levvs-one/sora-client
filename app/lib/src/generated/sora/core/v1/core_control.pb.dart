@@ -6539,7 +6539,7 @@ class SubscriptionSettings extends $pb.GeneratedMessage {
   $1.Duration ensureUpdateInterval() => $_ensure(5);
 }
 
-/// SubscriptionState is a subscription as the core holds it.
+/// SubscriptionState omits settings.url because it carries a bearer token.
 class SubscriptionState extends $pb.GeneratedMessage {
   factory SubscriptionState({
     SubscriptionSettings? settings,
@@ -7333,6 +7333,155 @@ class WatchSubscriptionsRequest extends $pb.GeneratedMessage {
   $core.bool hasControlAuthenticator() => $_has(1);
   @$pb.TagNumber(2)
   void clearControlAuthenticator() => $_clearField(2);
+}
+
+/// Since 1.6. The link is available only through this authenticated request.
+class GetSubscriptionLinkRequest extends $pb.GeneratedMessage {
+  factory GetSubscriptionLinkRequest({
+    ApiVersion? apiVersion,
+    $core.List<$core.int>? controlAuthenticator,
+    $core.String? id,
+  }) {
+    final result = GetSubscriptionLinkRequest._();
+    if (apiVersion != null) result.apiVersion = apiVersion;
+    if (controlAuthenticator != null) result.controlAuthenticator = controlAuthenticator;
+    if (id != null) result.id = id;
+    return result;
+  }
+
+  GetSubscriptionLinkRequest._();
+
+  factory GetSubscriptionLinkRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSubscriptionLinkRequest()..mergeFromBuffer(data, registry);
+  factory GetSubscriptionLinkRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSubscriptionLinkRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetSubscriptionLinkRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'),
+      createEmptyInstance: GetSubscriptionLinkRequest.$_createMessage)
+    ..aOM<ApiVersion>(1, _omitFieldNames ? '' : 'apiVersion', subBuilder: ApiVersion.$_createMessage)
+    ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..aOS(3, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSubscriptionLinkRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSubscriptionLinkRequest copyWith(void Function(GetSubscriptionLinkRequest) updates) =>
+      super.copyWith((message) => updates(message as GetSubscriptionLinkRequest)) as GetSubscriptionLinkRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GetSubscriptionLinkRequest() / GetSubscriptionLinkRequest.new instead')
+  static GetSubscriptionLinkRequest create() => GetSubscriptionLinkRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetSubscriptionLinkRequest._();
+  @$core.override
+  GetSubscriptionLinkRequest createEmptyInstance() => GetSubscriptionLinkRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetSubscriptionLinkRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetSubscriptionLinkRequest>(GetSubscriptionLinkRequest.$_createMessage);
+  static GetSubscriptionLinkRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ApiVersion get apiVersion => $_getN(0);
+  @$pb.TagNumber(1)
+  set apiVersion(ApiVersion value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasApiVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearApiVersion() => $_clearField(1);
+  @$pb.TagNumber(1)
+  ApiVersion ensureApiVersion() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get controlAuthenticator => $_getN(1);
+  @$pb.TagNumber(2)
+  set controlAuthenticator($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasControlAuthenticator() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearControlAuthenticator() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get id => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set id($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearId() => $_clearField(3);
+}
+
+class GetSubscriptionLinkResponse extends $pb.GeneratedMessage {
+  factory GetSubscriptionLinkResponse({
+    $core.String? url,
+    SoraError? error,
+  }) {
+    final result = GetSubscriptionLinkResponse._();
+    if (url != null) result.url = url;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  GetSubscriptionLinkResponse._();
+
+  factory GetSubscriptionLinkResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSubscriptionLinkResponse()..mergeFromBuffer(data, registry);
+  factory GetSubscriptionLinkResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetSubscriptionLinkResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetSubscriptionLinkResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'),
+      createEmptyInstance: GetSubscriptionLinkResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'url')
+    ..aOM<SoraError>(2, _omitFieldNames ? '' : 'error', subBuilder: SoraError.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSubscriptionLinkResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetSubscriptionLinkResponse copyWith(void Function(GetSubscriptionLinkResponse) updates) =>
+      super.copyWith((message) => updates(message as GetSubscriptionLinkResponse)) as GetSubscriptionLinkResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GetSubscriptionLinkResponse() / GetSubscriptionLinkResponse.new instead')
+  static GetSubscriptionLinkResponse create() => GetSubscriptionLinkResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetSubscriptionLinkResponse._();
+  @$core.override
+  GetSubscriptionLinkResponse createEmptyInstance() => GetSubscriptionLinkResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetSubscriptionLinkResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetSubscriptionLinkResponse>(GetSubscriptionLinkResponse.$_createMessage);
+  static GetSubscriptionLinkResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get url => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set url($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUrl() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  SoraError get error => $_getN(1);
+  @$pb.TagNumber(2)
+  set error(SoraError value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasError() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearError() => $_clearField(2);
+  @$pb.TagNumber(2)
+  SoraError ensureError() => $_ensure(1);
 }
 
 class GetAboutRequest extends $pb.GeneratedMessage {

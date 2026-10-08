@@ -7,8 +7,7 @@
 //
 // Render turns an engine.Plan into the YAML mihomo reads, and the client of
 // package clashapi talks to the external controller bound to the loopback
-// interface only. Facts about keys, endpoints and flags are recorded with
-// sources in docs/research/mihomo-engine.md.
+// interface only.
 package mihomo
 
 // Ports and limits used when Sora starts one engine process.

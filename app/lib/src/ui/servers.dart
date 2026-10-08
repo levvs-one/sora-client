@@ -144,7 +144,7 @@ class _ServerRow extends StatelessWidget {
           AnimatedSwitcher(
             duration: Motion.of(context, Motion.medium),
             child: Text(
-              !measured ? '' : (ms == null ? '—' : s.milliseconds(ms)),
+              !measured ? '' : (ms == null ? s.noAnswer : s.milliseconds(ms)),
               key: ValueKey(ms ?? (measured ? -1 : -2)),
               style: Styles.figures(Styles.secondary).copyWith(color: palette.ink),
             ),

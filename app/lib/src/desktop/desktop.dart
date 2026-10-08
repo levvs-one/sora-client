@@ -353,7 +353,7 @@ class Desktop with WindowListener {
   // The system proxy.
 
   /// Points the system proxy at the core while a session runs in the proxy
-  /// mode, and puts the old one back otherwise — also when the core is gone,
+  /// mode, and puts the old one back otherwise, also when the core is gone,
   /// since a proxy pointing at a dead port cuts the person off. A snapshot
   /// left by a crash is put back too.
   Future<void> _syncProxy() async {

@@ -24,8 +24,8 @@ func ListenAddress() string { return pipeName }
 
 // pipeSecurityDescriptor builds the access list of the pipe: the local system,
 // the administrators, the account this core runs as, and the person signed in at
-// the machine. Everyone else — services, network logons, other sessions' batch
-// jobs — is refused by the kernel before a single byte of the protocol is read.
+// the machine. Everyone else (services, network logons, other sessions' batch
+// jobs) is refused by the kernel before a single byte of the protocol is read.
 //
 // The interactive users are what lets the interface in at all: the core runs as
 // LocalSystem, and the person's token under UAC carries the administrators group

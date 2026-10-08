@@ -19,8 +19,8 @@ const (
 
 // profileOwned are the parts of a provider's configuration the session owns:
 // no listener of the provider opens on the machine, and the log, stats and
-// controller are the core's. The rest — outbounds, balancers, the observatory
-// that feeds them, routing — runs as the provider wrote it.
+// controller are the core's. The rest (outbounds, balancers, the observatory
+// that feeds them, routing) runs as the provider wrote it.
 var profileOwned = []string{"inbounds", "log", "api", "stats", "metrics", "policy", "remarks", "meta", "reverse"}
 
 // "reverse" is dropped with them: a bridge would give the provider's server a
@@ -51,8 +51,8 @@ func stripFiles(v any) {
 }
 
 // renderProfile runs the configuration a provider wrote for one server inside
-// the frame of the session. The session's own rules — the DNS of a tun, the ad
-// block, the routing preset — come first; the provider's rules follow, and
+// the frame of the session. The session's own rules (the DNS of a tun, the ad
+// block, the routing preset) come first; the provider's rules follow, and
 // whatever none of them matches goes where the provider's configuration sends
 // it, its first outbound.
 func renderProfile(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {

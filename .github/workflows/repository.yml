@@ -356,7 +356,7 @@ jobs:
           cp dist/*.deb dist/*.rpm dist/*.pkg.tar.zst install-test/
           (cd install-test && sha256sum -- * > SHA256SUMS)
           SORA_DIST=install-test sh packaging/install/install.sh
-          for i in $(seq 1 30); do systemctl is-active --quiet sora-core && break; sleep 1; done
+          for _ in $(seq 1 30); do systemctl is-active --quiet sora-core && break; sleep 1; done
           systemctl is-active sora-core
           test -x /usr/bin/sora
           /usr/bin/sora-core -version

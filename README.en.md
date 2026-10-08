@@ -1,219 +1,111 @@
 # Sora
 
-[Русский](README.md) | English
+[Русский](README.md)
 
-Sora is an open-source proxy client built around one core that drives three
-engines — sing-box, Xray-core and mihomo — and runs each connection on the engine
-that can carry it. It is designed for networks that block, throttle and inspect:
-the core picks the transport the network lets through, keeps nothing on the machine
-that could give the user away, and explains every failure in plain words.
+A VPN client for Windows and Linux. It opens regular subscriptions (VLESS, VMess, Trojan, Shadowsocks and others, plus Xray JSON subscriptions) and picks the engine for each connection on its own: sing-box, Xray or mihomo.
 
-The client runs on Linux (.deb, .rpm and Arch packages) and on Windows 10 and 11
-(an installer). Android is in progress. The previous client, Sora Legacy, lives on the
-[`legacy`](https://github.com/levvs-one/sora-client/tree/legacy) branch.
+## Install
 
-## What the app does
+Windows 10 (1809 or later) and Windows 11, x64. In PowerShell:
 
-- **One button.** Connecting, the state in a few words and the chosen server, on
-  one screen. The button and the window edge glow while it connects; a failure is
-  explained in words, not codes.
-- **Subscriptions that look after themselves.** The core updates them on schedule,
-  even with the window closed, and keeps them encrypted. You see how much traffic is
-  spent, until when the subscription runs and what the provider says, with its links
-  and `@names` tappable. Three days before it ends, or with a tenth of the traffic
-  left, Sora says so on the home screen.
-- **Xray JSON subscriptions (Remnawave).** Each profile runs as the provider wrote
-  it, with its balancers, observatory and routing; Sora adds its own inbound, DNS,
-  ad block and routing preset.
-- **The fastest server, and a spare.** "Fastest" is picked by the core from
-  measurements; a server picked by hand is backed by the others and switched on
-  failure. Latency is measured over a warm connection, the way a person feels it.
-- **Your own rules.** A site, an address, a network or a program — direct, through
-  the VPN, or blocked. Rules by program work on all three engines.
-- **No server.** DPI bypass through zapret (tpws) without a VPN server, with a
-  configurable strategy.
-- **Log center and connection center** one step away, with export and closing any
-  connection.
-- **At home on the desktop.** A tray icon with the state, the server and the
-  mode; closing the window keeps Sora in the tray, and it starts with the system
-  without a window. Notices only for what happened out of sight: a drop, a
-  return, a switch to the backup server, a subscription about to end.
-- **Links from a browser or a messenger.** `sora://`, "Add to Happ" buttons
-  (`happ://add`) and the links of v2rayN, Clash, Hiddify and sing-box open the
-  import of a subscription.
-- **All traffic or the system proxy.** TUN carries every program through the
-  adapter; the system proxy mode points the programs that honour it at Sora and
-  puts the old settings back on disconnect. The service brings the tunnel up
-  without asking for administrator rights.
-- Simple settings first, fine ones below: engine, IPv6, DNS, TLS fragmentation, how
-  latency is measured, how often subscriptions update. Light and dark, Russian and
-  English, animations can be turned off.
-
-## For providers: steering through server names
-
-Sora reads an ordinary subscription — the same link Happ, v2rayN and Hiddify open.
-Nothing has to be added to the panel: Sora understands server names.
-
-**Same name, one line.** Servers of one subscription that share a name are one
-entry in Sora. The fastest that answered carries the traffic; a server that did not
-answer the measurement is never picked.
-
-**A role at the end of the name sets the order.** The main ones first, the backups
-when the main ones do not answer.
-
-| Name in the subscription | In Sora |
-| --- | --- |
-| `Netherlands (main)` | **Netherlands**: traffic goes here |
-| `Netherlands (backup)` | …and here when the main one does not answer |
-| `Germany`, `Germany` | **Germany**: the faster of the two |
-| `Белые списки · основной`, `Белые списки · запасной` | **Белые списки**: the same order in Russian |
-
-Main: `main`, `primary`, `основной`, `главный`. Backup: `backup`, `reserve`,
-`fallback`, `запасной`, `резерв`, `резервный`. Case does not matter; brackets, a
-dash, a dot or a colon may come before the word. A server without a role in a group
-that has roles is a backup.
-
-mihomo keeps the order by role, and with the engine chosen automatically Sora runs
-the group on it. With the engine pinned to sing-box or Xray only the main ones run —
-the fastest of them. Profiles of an Xray JSON subscription switch in the app: the
-next one takes over when the current one does not come up.
-
-Other clients show the same servers one by one, under the same readable names.
-
-## What the core does
-
-**One plan, three engines.** A session is described once, independently of any
-engine. The core knows what each engine build can carry — every entry of that
-matrix is checked by the engine's own validator — and runs the plan on the first
-engine, in the user's order, that carries all of it.
-
-| Only here | Engine |
-| --- | --- |
-| XHTTP, VLESS Encryption, the Xray flavour of REALITY, observatory-driven balancing | Xray-core |
-| AnyTLS, tun with its own routing table on every platform, the smallest footprint | sing-box |
-| AmneziaWG 1.x and 2.0, fallback groups, controller over a socket, live reload | mihomo |
-
-Protocols: VLESS (REALITY, XTLS Vision), VMess, Trojan, Shadowsocks (incl. 2022),
-Hysteria2, TUIC, AnyTLS, WireGuard, AmneziaWG, SOCKS5, HTTP. Transports: raw, ws,
-grpc, httpupgrade, xhttp.
-
-**Built for censored networks.**
-
-- TLS ClientHello fragmentation against SNI-based DPI, with tunable segment ranges.
-- Latency measured with a real request through the engine that carries each server,
-  streamed to the interface as results arrive; a connection check where no engine
-  fits, and the result says which of the two it is.
-- Geo databases ship with Sora, so the first connection never waits for a download
-  from a host that is blocked.
-
-**Nothing to find from the outside.**
-
-- In tun mode there is no local proxy port: an app scanning loopback ports cannot
-  route through the tunnel to learn the server address. A port for chosen apps is
-  opt-in and can require a login.
-- Engine control runs over a unix socket or a named pipe by default — no TCP port
-  answers a scan.
-- Credentials are stored encrypted (AES-256-GCM; the key is protected by DPAPI on
-  Windows) and reach the engine over stdin, never through arguments or files.
-- Server addresses, UUIDs, passwords and subscription links are masked in every
-  log, event and diagnostic archive.
-
-**Log center and connection center.** One in-memory record of the service and every
-engine: filter by level, engine, text, RE2 pattern and time, follow it live, fold
-repeats, export to text, JSON Lines or CSV. The log level changes on every engine
-at once, without a reconnect. Visited destinations are hidden unless the user turns
-them on, and nothing is written to disk. The connection center lists live
-connections with their rule, group chain and traffic, and closes any of them.
-
-**Recovery.** Engines are supervised child processes: a crash restarts the engine
-with backoff inside a restart budget, every system change goes through a guard that
-restores it on every exit path, and a kill switch — an nftables table of its own on
-Linux, WFP filters on Windows — keeps traffic from leaking while the tunnel is down.
-When the network changes, a new address arrives or the machine wakes from sleep,
-the session drops the connections left on the old path, so programs reconnect at
-once instead of waiting for a timeout.
-
-## How it is verified
-
-| Check | What it proves |
-| --- | --- |
-| Engine validators | every rendered plan is accepted by `sing-box check`, `xray run -test` and `mihomo -t` |
-| Interop | a real HTTP request goes through each engine over each transport to a local Xray server; a wrong UUID must fail on every engine, so a pass cannot be traffic that went around the proxy |
-| Isolation | without a local proxy in the plan nothing listens; a locked listener refuses a request without its login — on all three engines |
-| Masking | engine output reaches the log center and no credential does |
-| Supervision | a fake engine built from the test binary crashes, gets restarted and exhausts its budget — in CI, with no engine installed |
-| The whole tunnel | in a network namespace the real core brings tun up on every engine, a program of another user gets a page through a VLESS server, and after disconnecting no rule and no adapter is left |
-| Kill switch | the ruleset loads into a real nftables: around the tunnel is refused, through `sora0`, loopback and the local network passes |
-| Windows | in CI on windows-latest the installer sets up the service, the app reaches it over the named pipe, real traffic goes through TUN and through the system proxy to a local VLESS server, the WFP kill switch lets loopback through and blocks an unknown program, and uninstalling removes the service |
-| CI | race detector, builds for Windows, Linux and macOS on amd64 and arm64, golangci-lint, CodeQL, govulncheck, OSV, gitleaks, proto lint and breaking-change checks |
-
-Engine builds verified: sing-box 1.14.2, Xray-core 26.3.27, mihomo 1.19.32.
-
-## Architecture
-
-```mermaid
-flowchart TB
-    ui["Interface<br/>Flutter, unprivileged"]
-    subgraph core["sora-core service"]
-        control["control<br/>sora.core.v1, versioned, token-authenticated"]
-        session["session<br/>state machine, journal, guard"]
-        registry["engine registry<br/>capability matrix, engine choice, latency"]
-        supervise["supervisor<br/>stdin config, validation, restarts"]
-        logs["log center<br/>memory only"]
-    end
-    ui -- "gRPC over a unix socket or a named pipe" --> control
-    control --> session --> registry --> supervise
-    supervise --> sb["sing-box"]
-    supervise --> xr["Xray-core"]
-    supervise --> mh["mihomo"]
-    supervise -. "masked output" .-> logs
+```powershell
+irm https://github.com/levvs-one/sora-client/releases/latest/download/install.ps1 | iex
 ```
 
-Design notes: [core](docs/architecture/core.md), [engines](docs/architecture/engines.md),
-[log and connection centers](docs/architecture/logs.md).
+Linux: Debian, Ubuntu, Fedora, openSUSE, Arch.
 
-## Repository
+```sh
+curl -fsSL https://github.com/levvs-one/sora-client/releases/latest/download/install.sh | sh
+```
 
-| Directory | Contents |
+The scripts take the latest release, check the files against `SHA256SUMS` and install them. On Linux they go through apt, dnf, zypper or pacman, so Sora updates and uninstalls like any other package.
+
+You can also download the Windows installer and the Linux packages from the [releases](https://github.com/levvs-one/sora-client/releases) page.
+
+## Features
+
+- Subscriptions by link: scheduled updates, traffic used, expiry date, provider announcements.
+- Xray JSON subscriptions (Remnawave): each profile runs as written, with its own balancers and routing.
+- Modes: all traffic through TUN, or the system proxy.
+- Kill switch: nftables on Linux, WFP on Windows.
+- Automatic fastest server and failover to a backup.
+- Your own rules for sites, IP addresses and programs: direct, through the VPN, or blocked.
+- DPI bypass without a server via zapret.
+- Tray icon, start with the system, notifications.
+- `sora://`, `happ://add` and the links of v2rayN, Clash, Hiddify and sing-box open the subscription import.
+- Log viewer and a list of active connections.
+- Russian and English, light and dark theme.
+
+Protocols: VLESS (REALITY, XTLS Vision), VMess, Trojan, Shadowsocks (including 2022), Hysteria2, TUIC, AnyTLS, WireGuard, AmneziaWG, SOCKS5, HTTP. Transports: raw, ws, grpc, httpupgrade, xhttp.
+
+## For providers
+
+No special subscription format is needed: Sora opens the same link as Happ and other clients. Grouping is controlled through server names.
+
+Servers of one subscription with the same name show up as one entry. Traffic goes through the fastest of them, and a server that failed the check is never picked.
+
+If a name ends with a role, the main server is used first and the backup takes over when the main one stops answering.
+
+| Name in the subscription | How Sora uses it |
 | --- | --- |
-| [`core`](core/README.md) | `sora-core` in Go: engines, control plane, subscriptions, secret store, guard, diagnostics, log center |
-| [`proto`](proto/README.md) | The `sora.core.v1` contract between the interface and the core |
-| [`app`](app/README.md) | The Flutter application for Windows, Linux, Android and Android TV |
-| [`service`](service) | Installation and lifecycle of the core service on Windows and Linux |
-| [`packaging`](packaging/README.md) | Installers and packages |
+| `Netherlands (main)` | entry "Netherlands", traffic goes here |
+| `Netherlands (backup)` | used when the main one does not answer |
+| `Germany`, `Germany` | entry "Germany", the faster of the two |
+
+Main: `main`, `primary`, `основной`, `главный`. Backup: `backup`, `reserve`, `fallback`, `запасной`, `резерв`, `резервный`. Case does not matter; the role can be in brackets or follow a space, a hyphen or a colon. A server without a role in a group that has roles counts as a backup.
+
+Role order is handled by the mihomo engine, which Sora picks for such groups automatically. If sing-box or Xray is pinned in the settings, only the main servers are used.
+
+Other clients show these servers one by one, under the same names.
 
 ## Platforms
 
-| System | What there is |
+| System | What is available |
 | --- | --- |
-| Linux x64 | app and core: .deb, .rpm and Arch packages ([packaging/linux](packaging/linux/README.md)) |
-| Linux ARM64 | core (Flutter publishes no Linux SDK for ARM64) |
-| Windows 10 1809+ and 11, x64 | app, core as a service, installer ([packaging/windows](packaging/windows/README.md)) |
-| Windows 7 SP1, x32 | Sora Legacy on the [`legacy`](https://github.com/levvs-one/sora-client/tree/legacy) branch; the new core and engines already build for Windows 7, the interface needs a build of its own — Flutter does not support Windows 7 |
-| Android, Android TV | in progress |
+| Windows 10 1809+ and 11, x64 | app and service, installer |
+| Linux x64 | app and service, .deb, .rpm and Arch packages |
+| Linux ARM64 | service only (Flutter does not build the app for Linux ARM64) |
+| Windows 7 SP1, x32 | the old client on the [`legacy`](https://github.com/levvs-one/sora-client/tree/legacy) branch |
+| Android | in development |
 
-## Building the core
+## Building
 
-Go 1.26 or later.
+You need Go 1.26 and Flutter 3.47.
 
 ```sh
 cd core
-go test -race ./...
+go test ./...
+go build -o sora-core ./cmd/sora-core
+
+cd ../app
+flutter pub get
+flutter build linux --release
 ```
 
-With engine builds at hand, the tests also run every plan through the engines and
-send traffic through them:
+With engine builds at hand, the tests also push real traffic through them:
 
 ```sh
 SORA_SINGBOX_BIN=... SORA_XRAY_BIN=... SORA_MIHOMO_BIN=... SORA_ENGINES_DIR=... go test ./...
 ```
 
-## Contributing and security
+Packaging is described in [packaging](packaging/README.md).
 
-Development rules are in [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities
-privately as described in [SECURITY.md](SECURITY.md).
+| Directory | Contents |
+| --- | --- |
+| [`core`](core/README.md) | the `sora-core` service in Go: engines, subscriptions, secret store, kill switch |
+| [`app`](app/README.md) | the Flutter app |
+| [`proto`](proto/README.md) | the gRPC contract between the app and the service |
+| [`packaging`](packaging/README.md) | the Windows installer and Linux packages |
+| [`service`](service) | the Windows service and the systemd unit |
+
+How the service works: [docs/architecture](docs/architecture/core.md).
+
+## Feedback
+
+Report bugs and ideas in [issues](https://github.com/levvs-one/sora-client/issues). Report vulnerabilities privately, see [SECURITY.md](SECURITY.md). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[GNU GPL-3.0](LICENSE). Third-party components are listed in [NOTICE.md](NOTICE.md)
-and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[GPL-3.0](LICENSE). Third-party components are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+Sora is not affiliated with OpenAI, the developers of Happ or other clients mentioned here.

@@ -1,11 +1,11 @@
 # packaging
 
-Рецепты установщиков и пакетов нового клиента.
-
-| Каталог | Результат |
+| Каталог | Что собирается |
 | --- | --- |
-| `windows` | MSI для x64 и ARM64 и переносимый архив |
-| `linux` | Пакеты deb и rpm и AppImage |
-| `android` | APK по ABI и AAB для Google Play, метаданные F-Droid |
+| [`windows`](windows/README.md) | установщик для Windows x64 (Inno Setup) |
+| [`linux`](linux/README.md) | пакеты .deb, .rpm и для Arch (nfpm) |
+| [`engines`](engines) | список сборок sing-box, Xray и mihomo с контрольными суммами и скрипт загрузки |
+| [`zapret`](zapret) | сборка tpws и nfqws |
+| [`install`](install) | установка одной командой: `install.sh` для Linux, `install.ps1` для Windows |
 
-Все артефакты подписываются и сопровождаются контрольными суммами. Требования к пакетам Linux описаны в [linux/README.md](linux/README.md).
+В релизах всё это собирает CI по тегу `v*`, вместе с файлом `SHA256SUMS`. Установщик и пакеты пока не подписаны.

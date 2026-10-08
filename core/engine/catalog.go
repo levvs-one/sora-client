@@ -20,7 +20,7 @@ type Availability struct {
 // matrix is static knowledge about upstream engines; Availability is what the
 // machine actually has. Every entry was checked against the engine's own
 // validator: mihomo v1.19.32 (-t), sing-box v1.14.2 (check) and Xray-core
-// v26.3.27 (run -test). See docs/architecture/engines.md.
+// v26.3.27 (run -test).
 var Catalog = map[Kind]Capabilities{
 	KindMihomo: {
 		Kind:       KindMihomo,

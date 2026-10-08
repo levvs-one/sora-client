@@ -30,13 +30,13 @@ You can also download the Windows installer and the Linux packages from the [rel
 - Kill switch: nftables on Linux, WFP on Windows.
 - Automatic fastest server and failover to a backup.
 - Your own rules for sites, IP addresses and programs: direct, through the VPN, or blocked.
-- DPI bypass without a server via zapret.
+- DPI bypass without a server via zapret (on Linux).
 - Tray icon, start with the system, notifications.
 - `sora://`, `happ://add` and the links of v2rayN, Clash, Hiddify and sing-box open the subscription import.
 - Log viewer and a list of active connections.
 - Russian and English, light and dark theme.
 
-Protocols: VLESS (REALITY, XTLS Vision), VMess, Trojan, Shadowsocks (including 2022), Hysteria2, TUIC, AnyTLS, WireGuard, AmneziaWG, SOCKS5, HTTP. Transports: raw, ws, grpc, httpupgrade, xhttp.
+Protocols: VLESS (REALITY, XTLS Vision), VMess, Trojan, Shadowsocks (including 2022), Hysteria2, TUIC, WireGuard, AmneziaWG, SOCKS5, HTTP(S). Transports: raw, ws, grpc, httpupgrade, xhttp.
 
 ## For providers
 
@@ -98,7 +98,7 @@ Packaging is described in [packaging](packaging/README.md).
 | [`packaging`](packaging/README.md) | the Windows installer and Linux packages |
 | [`service`](service) | the Windows service and the systemd unit |
 
-How the service works: [docs/architecture](docs/architecture/core.md).
+Detailed documentation, in Russian: [docs](docs/README.md).
 
 ## Feedback
 

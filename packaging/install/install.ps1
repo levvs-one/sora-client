@@ -50,10 +50,10 @@ try {
     $actual = (Get-FileHash -Algorithm SHA256 (Join-Path $work $name)).Hash.ToLowerInvariant()
     if ($actual -ne $expected) { throw "$name does not match SHA256SUMS; nothing was installed." }
 
-    Write-Host "sora: installing $version"
+    Write-Output "sora: installing $version"
     $setup = Start-Process (Join-Path $work $name) -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
     if ($setup.ExitCode -ne 0) { throw "The installer ended with code $($setup.ExitCode)." }
-    Write-Host 'sora: installed. Sora is in the Start menu; its icon lives in the tray.'
+    Write-Output 'sora: installed. Sora is in the Start menu; its icon lives in the tray.'
 } finally {
     Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 }

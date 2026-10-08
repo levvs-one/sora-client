@@ -11,9 +11,8 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// fakeEngine is an engine.Engine that records what it was asked to do and can be
-// told to fail, so the session logic is tested without a process, a device or a
-// network.
+// fakeEngine records engine requests and injects failures without processes,
+// devices, or network access.
 type fakeEngine struct {
 	mu       sync.Mutex
 	bus      *engine.EventBus
@@ -317,8 +316,8 @@ func TestAnEngineStateIsNoSessionState(t *testing.T) {
 		t.Fatalf("Start() error = %v", err)
 	}
 	defer func() { _ = session.Stop(context.Background()) }()
-	// A hot reload reports "applying" and "running" from the engine; the
-	// session is connected all along, and its journal must not say otherwise.
+	// Hot reload engine states must not change the session's connected
+	// state in the journal.
 	eng.bus.Publish(engine.Event{Kind: engine.EventState, State: engine.StateApplying})
 	eng.bus.Publish(engine.Event{Kind: engine.EventState, State: engine.StateRunning, Message: "plan applied"})
 	time.Sleep(50 * time.Millisecond)
@@ -383,8 +382,8 @@ func TestKillSwitchFollowsTheSession(t *testing.T) {
 	}
 }
 
-// waitFor polls until cond holds or the budget runs out. A session runs its own
-// goroutine, so the tests wait for the machine instead of reaching into it.
+// waitFor polls until cond succeeds or times out, allowing the session
+// goroutine to update state independently.
 func waitFor(t *testing.T, budget time.Duration, cond func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(budget)

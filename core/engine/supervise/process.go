@@ -1,11 +1,7 @@
-// Package supervise owns the life of an engine child process: probing the
-// binary, handing it the configuration over stdin, waiting for its controller,
-// restarting it inside a budget and stopping it on every exit path.
-//
-// Every engine Sora drives (mihomo, sing-box, Xray) is a separate GPL binary
-// started as a child process. What differs between them is the configuration
-// grammar and the control API; that part is a Driver. Everything else is the
-// same code, so a fix to supervision reaches every engine at once.
+// Package supervise manages separate engine processes: discovery, stdin
+// configuration, readiness, bounded restarts, and shutdown. Drivers supply
+// engine-specific grammar, arguments, and control handshakes; supervision is
+// shared across mihomo, sing-box, and Xray.
 package supervise
 
 import (
@@ -20,8 +16,8 @@ import (
 	"time"
 )
 
-// KillWait bounds how long Stop waits for the operating system to reap a killed
-// engine before it reports that the child process is stuck.
+// KillWait bounds the wait for a killed child to be reaped before reporting it
+// stuck.
 const KillWait = 5 * time.Second
 
 // Spec describes one engine process to start.
@@ -31,9 +27,8 @@ type Spec struct {
 	Path string
 	Args []string
 	Dir  string
-	// Config is written to the child over stdin and closed. Every supported
-	// engine reads its configuration from stdin, which keeps credentials out of
-	// both the process arguments and the disk.
+	// Config is sent over stdin, then closed, keeping credentials off disk
+	// and out of process arguments.
 	Config []byte
 	// Lines receives every complete output line of the engine, when set.
 	Lines func(string)
@@ -49,9 +44,8 @@ type Process struct {
 	err    error
 }
 
-// Start launches the engine. ctx owns the process: when it ends, the child is
-// stopped on a context that cannot be cancelled, so the engine never outlives
-// both the caller and the supervisor watching it.
+// Start launches a context-owned engine. Cancellation stops it using an
+// independent shutdown context so the child cannot outlive supervision.
 func Start(ctx context.Context, spec Spec) (*Process, error) {
 	if spec.Path == "" || spec.Dir == "" {
 		return nil, fmt.Errorf("%s: binary and working directory are required", spec.Name)
@@ -66,8 +60,8 @@ func Start(ctx context.Context, spec Spec) (*Process, error) {
 	cmd.Env = SafeEnv()
 	cmd.Stdin = bytes.NewReader(spec.Config)
 	tail := NewTail(80)
-	// Engines log to either stream depending on build and level; both feed the
-	// same bounded tail, which explains a crash, and the log center.
+	// Capture both streams because engine output varies by build and level;
+	// retain a bounded tail for crash reports.
 	var out io.Writer = tail
 	if spec.Lines != nil {
 		out = io.MultiWriter(tail, &lineWriter{emit: spec.Lines})
@@ -96,7 +90,7 @@ func Start(ctx context.Context, spec Spec) (*Process, error) {
 	return p, nil
 }
 
-// PID is the operating system process id.
+// PID returns the operating system process ID.
 func (p *Process) PID() int { return p.cmd.Process.Pid }
 
 // Output returns the tail of the engine output.
@@ -140,10 +134,9 @@ func (p *Process) Wait(ctx context.Context) error {
 	}
 }
 
-// Stop terminates the engine: an interrupt where the platform has one, a grace
-// period, then a kill. None of the engines keeps state worth preserving, since
-// the configuration is rebuilt from the plan on every start. A cancelled ctx
-// ends the wait, not the shutdown: the engine is killed either way.
+// Stop sends an interrupt, waits a grace period, then kills the engine.
+// Cancellation ends the wait but still kills the child; configuration is
+// rebuilt on restart.
 func (p *Process) Stop(ctx context.Context, grace time.Duration) error {
 	if p.Exited() {
 		return nil
@@ -173,9 +166,8 @@ func (p *Process) Stop(ctx context.Context, grace time.Duration) error {
 	}
 }
 
-// Check runs the engine's own validator on cfg. The engine is the only party
-// that knows its grammar, so this is what catches a key Sora got wrong, before
-// any listener is opened.
+// Check runs the engine's validator on cfg before opening listeners, catching
+// grammar errors.
 func Check(ctx context.Context, spec Spec) error {
 	if err := os.MkdirAll(spec.Dir, 0o700); err != nil {
 		return fmt.Errorf("%s: create engine home: %w", spec.Name, err)
@@ -196,12 +188,11 @@ func Check(ctx context.Context, spec Spec) error {
 	return nil
 }
 
-// maxLine bounds a line the engine never ends, so a runaway write cannot grow
-// the buffer without limit.
+// maxLine limits unterminated engine output to prevent unbounded buffering.
 const maxLine = 64 << 10
 
-// lineWriter turns output chunks into complete lines. exec serializes the
-// writes of one stream, and both streams share this writer, so it locks.
+// lineWriter assembles complete lines and locks because stdout and stderr share
+// it.
 type lineWriter struct {
 	mu   sync.Mutex
 	buf  []byte

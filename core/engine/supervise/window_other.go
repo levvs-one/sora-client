@@ -8,11 +8,9 @@ import (
 	"syscall"
 )
 
-// HideWindow keeps the engine in the process group of the core service. Off
-// Windows there is no window to hide, and the child must stay in the same
-// process group so that a shutdown signal reaches it too.
+// HideWindow preserves the core's process group on non-Windows platforms so
+// shutdown signals also reach the child.
 func HideWindow(*exec.Cmd) {}
 
-// interrupt asks the engine to shut down cleanly; all three engines close their
-// listeners and the tun device on SIGTERM.
+// interrupt sends SIGTERM so engines close listeners and the TUN device.
 func interrupt(p *os.Process) error { return p.Signal(syscall.SIGTERM) }

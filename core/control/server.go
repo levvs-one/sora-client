@@ -1,12 +1,7 @@
-// Package control is the control plane of the Sora core: it implements the
-// sora.core.v1 service, translates the contract into the core types and enforces
-// the limits a client may not exceed.
-//
-// Everything that crosses this boundary is untrusted. A request is checked for
-// contract version, authenticator, limits and shape before any work is done, and
-// every answer is masked through the plan redactor. The package holds no state of
-// its own beyond the authenticator: sessions live in the session manager, secrets
-// in the secret store, so a control plane can be rebuilt without touching either.
+// Package control implements sora.core.v1, validates untrusted requests, and
+// redacts responses. It checks versions, authentication, shape, and limits
+// before work. Sessions and credentials remain in their manager and store
+// across control-plane rebuilds.
 package control
 
 import (
@@ -35,12 +30,9 @@ import (
 	"github.com/levvs-one/sora-client/core/subscription"
 )
 
-// sessionSettings reads the system settings a session owns from the request.
-//
-// The core decides what the machine needs; the client only says what it asked
-// for. Bypass rules mean private destinations must skip the tunnel; the kill
-// switch is the guard's business, and the system proxy is the interface's,
-// which runs as the person it belongs to.
+// sessionSettings derives system settings from the request. Bypass rules exempt
+// private destinations; the guard owns the kill switch, and the user UI owns
+// the system proxy.
 func sessionSettings(in *corev1.SessionPlan) session.Settings {
 	settings := session.Settings{TunnelMode: "system"}
 	if in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_APPLICATION {
@@ -50,12 +42,12 @@ func sessionSettings(in *corev1.SessionPlan) session.Settings {
 	return settings
 }
 
-// SessionIDLen is the length of a session identifier minted by the core. The
-// client may bring its own, and then it is checked against the same length.
+// SessionIDLen is the length of core-generated session identifiers and the
+// bound used to validate client identifiers.
 const SessionIDLen = 16
 
-// maxSessionIDLen bounds a client supplied identifier, because it is used in a
-// log line, in an event stream and in a file name of the engine home directory.
+// maxSessionIDLen bounds client identifiers used in logs, events, and engine
+// directory names.
 const maxSessionIDLen = 64
 
 // Version is the contract version the core serves.
@@ -65,12 +57,12 @@ type Version struct {
 	MinSupportedMinor uint32
 }
 
-// String renders the version for a log line.
+// String returns the version for logging.
 func (v Version) String() string {
 	return strings.Join([]string{itoa(v.Major), itoa(v.Minor)}, ".")
 }
 
-// itoa renders a small unsigned number without pulling in fmt for one call.
+// itoa formats a small unsigned number without fmt.
 func itoa(v uint32) string {
 	if v == 0 {
 		return "0"
@@ -85,8 +77,8 @@ func itoa(v uint32) string {
 	return string(buf[i:])
 }
 
-// Capabilities lists what this core can do. The interface shows them in its
-// settings and uses them to hide what an older core cannot do.
+// Capabilities lists supported features so clients can hide unavailable
+// settings.
 func Capabilities() []string {
 	return []string{
 		"import-parse",
@@ -101,33 +93,27 @@ func Capabilities() []string {
 	}
 }
 
-// Measurer times a real request through each outbound with the engine that
-// carries it. An outbound no engine carries gets engine.ErrNoEngine.
+// Measurer times requests through compatible engines. Unsupported outbounds
+// return engine.ErrNoEngine.
 type Measurer interface {
 	Measure(ctx context.Context, outbounds []engine.Outbound, opts engine.MeasureOptions) (<-chan engine.Measurement, error)
 }
 
-// Prober measures whether an endpoint answers. It is an interface so the control
-// plane does not depend on how a probe is performed: a direct dial on the desktop
-// and a probe through the tunnel on Android are different implementations of the
-// same question.
+// Prober checks endpoint reachability. Implementations may dial directly or
+// through a platform tunnel.
 type Prober interface {
 	Probe(ctx context.Context, endpoints []*corev1.Endpoint, serverIDs []string) (<-chan *corev1.ProbeResult, error)
 }
 
-// Diagnostics collects the report and the archive the interface can send to
-// support. Both operations are redacted by the core before they return.
+// Diagnostics collects reports and archives, redacting both before returning
+// them.
 type Diagnostics interface {
 	Run(ctx context.Context, status session.Status) ([]string, error)
 	Export(ctx context.Context, status session.Status) ([]byte, error)
 }
 
-// Fetcher retrieves subscriptions by reference.
-//
-// The reference is a bearer token, so the retrieval is deliberately narrow: only
-// https, a bounded number of redirects, a bounded body, and no cache. The
-// interface is declared here because the control plane only needs the one method,
-// and because the retrieval belongs behind it rather than inside the transport.
+// Fetcher retrieves subscriptions using bearer references. Fetches allow only
+// HTTPS, bound redirects and body size, and do not cache responses.
 type Fetcher interface {
 	Fetch(ctx context.Context, reference string, opts subscription.FetchOptions) (subscription.Result, error)
 }
@@ -151,30 +137,27 @@ type Server struct {
 	fetcher     Fetcher
 }
 
-// SecretStore is what the control plane needs from the credential store. The
-// interface is smaller than the store itself on purpose: the control plane may
-// resolve, write and delete material, and nothing else.
+// SecretStore exposes credential resolution, writes, deletion, and reference
+// listing to the control plane.
 type SecretStore interface {
 	Get(reference string) ([]byte, error)
 	Put(reference string, material []byte) error
 	Delete(reference string) error
 	// Apply stores puts and removes deletes in one write, all or nothing.
 	Apply(puts map[string][]byte, deletes []string) error
-	// Refs lists the stored references, so the core can find its own records.
+	// Refs lists stored references used to locate core records.
 	Refs() []string
 }
 
-// redactorCache holds one redactor per session, because a redactor is seeded with
-// the secrets of the plan it masks. Dropping the plan and keeping the redactor
-// would leak; keeping the plan and dropping the redactor would leak too.
+// redactorCache keeps each session's credential-seeded redactor available after
+// its plan is discarded, preventing unmasked responses.
 type redactorCache struct {
 	mu    sync.Mutex
 	byRef map[string]*engine.Redactor
 }
 
-// Config configures a control plane. Only the sessions manager is required: a
-// core that cannot tunnel is still a core that answers a handshake and refuses
-// everything else with a proper error.
+// Config configures the control plane. Only Sessions is required; missing
+// optional components report unavailable features.
 type Config struct {
 	// Version is the contract version the core serves.
 	Version Version
@@ -182,9 +165,8 @@ type Config struct {
 	Authenticator *Authenticator
 	// Sessions owns the tunnel lifecycle.
 	Sessions *session.Manager
-	// Secrets stores credential material. A nil store disables the import and
-	// the secret methods, which then answer with a proper failure instead of
-	// failing on a nil pointer.
+	// Secrets stores credentials. Nil disables import and secret methods
+	// with explicit errors.
 	Secrets SecretStore
 	// MaxImportItems bounds one import.
 	MaxImportItems int
@@ -198,15 +180,16 @@ type Config struct {
 	// About describes the build of the core for the "About" screen; the
 	// contract version is filled in here.
 	About func() *corev1.About
-	// Diagnostics collects reports and archives; nil answers that the feature is
+	// Diagnostics collects reports and archives; nil answers that the
+	// feature is
 	// unavailable.
 	Diagnostics Diagnostics
-	// Fetcher retrieves subscriptions; nil answers that fetching is unavailable.
+	// Fetcher retrieves subscriptions; nil answers that fetching is
+	// unavailable.
 	Fetcher Fetcher
 }
 
-// New builds a control plane. The version is filled in when a caller left it
-// empty, because a core with an unset version could not negotiate with anyone.
+// New creates a control plane, supplying the default version when unset.
 func New(cfg Config) (*Server, error) {
 	if cfg.Sessions == nil {
 		return nil, errs.Newf(errs.CodeFailedPrecondition, errs.KeySessionRequired,
@@ -237,7 +220,7 @@ func New(cfg Config) (*Server, error) {
 	return server, nil
 }
 
-// GetAbout answers what the "About" screen shows about the core.
+// GetAbout returns core build information for the client's About screen.
 func (s *Server) GetAbout(_ context.Context, req *corev1.GetAboutRequest) (*corev1.GetAboutResponse, error) {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
@@ -251,8 +234,8 @@ func (s *Server) GetAbout(_ context.Context, req *corev1.GetAboutRequest) (*core
 	return &corev1.GetAboutResponse{About: about}, nil
 }
 
-// GetRoutingPresets answers every routing preset with what it sends direct, in
-// the destination form the routes of a plan use.
+// GetRoutingPresets returns presets and their direct destinations in plan
+// routing syntax.
 func (s *Server) GetRoutingPresets(_ context.Context, req *corev1.GetRoutingPresetsRequest) (*corev1.GetRoutingPresetsResponse, error) {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
@@ -268,23 +251,17 @@ func (s *Server) GetRoutingPresets(_ context.Context, req *corev1.GetRoutingPres
 	return out, nil
 }
 
-// Run does the work of the core that belongs to no request: it updates the
-// subscriptions on schedule until ctx ends.
+// Run updates subscriptions on schedule until ctx ends.
 func (s *Server) Run(ctx context.Context) { s.subs.run(ctx) }
 
-// SetDiagnostics attaches the collector after the plane was built. A collector
-// needs the session manager and the engine build, both of which exist before the
-// control plane does, so the composition root hands it over here instead of
-// threading it through a constructor argument it cannot fill yet.
-//
-// It is a construction step, not a runtime one: calling it while the plane serves
-// requests is a race, and a composition root that does it late has a design
-// problem that a lock would only hide.
+// SetDiagnostics attaches the collector during construction, after its session
+// and engine dependencies exist. Call it before serving requests; concurrent
+// calls are unsafe.
 func (s *Server) SetDiagnostics(collector Diagnostics) {
 	s.diagnostics = collector
 }
 
-// apiVersion renders the version the core serves.
+// apiVersion returns the core's wire API version.
 func (s *Server) apiVersion() *corev1.ApiVersion {
 	return &corev1.ApiVersion{
 		Major:             s.version.Major,
@@ -294,8 +271,8 @@ func (s *Server) apiVersion() *corev1.ApiVersion {
 	}
 }
 
-// checkVersion refuses a client that cannot be served, and names both versions so
-// a mismatched client can report something better than "failed".
+// checkVersion rejects incompatible clients and includes both versions in the
+// error.
 func (s *Server) checkVersion(client *corev1.ApiVersion) (uint32, error) {
 	if client == nil {
 		return 0, errs.Newf(errs.CodeVersionMismatch, errs.KeyAPIVersionMismatch,
@@ -310,8 +287,8 @@ func (s *Server) checkVersion(client *corev1.ApiVersion) (uint32, error) {
 	return negotiated, nil
 }
 
-// requestID returns the identifier the client sent, or mints one so an answer
-// always carries something a log can be searched by.
+// requestID returns the client's identifier or generates one for log
+// correlation.
 func requestID(sent string) string {
 	if trimmed := strings.TrimSpace(sent); trimmed != "" {
 		return trimmed
@@ -323,9 +300,8 @@ func requestID(sent string) string {
 	return "req_" + hex.EncodeToString(buf[:])
 }
 
-// newSessionID mints a session identifier. The client may bring its own, and then
-// it must look like one: the identifier reaches a log line, an event stream and a
-// file name, so it is limited to a short opaque alphabet.
+// newSessionID generates or validates a session identifier. Client identifiers
+// use a bounded opaque alphabet because they appear in logs, events, and paths.
 func newSessionID(proposed string) (string, error) {
 	trimmed := strings.TrimSpace(proposed)
 	if trimmed == "" {
@@ -351,12 +327,8 @@ func newSessionID(proposed string) (string, error) {
 	return trimmed, nil
 }
 
-// mask returns a masking function for a plan, or nil when there is no plan. Every
-// answer built from a plan goes through it.
-//
-// The redactor is seeded with credentials and with identifiers: a plan that names
-// the server de1.example.com would otherwise let that name leave the core inside
-// an error detail or an event, which is a report about one user.
+// mask returns a plan redactor or nil without a plan. It masks credentials and
+// server identifiers in errors and events.
 func (s *Server) mask(plan *engine.Plan) func(string) string {
 	if plan == nil {
 		return nil
@@ -367,8 +339,7 @@ func (s *Server) mask(plan *engine.Plan) func(string) string {
 	return redactor.String
 }
 
-// put records the redactor of a session, so a later answer can mask with the same
-// values after the plan object itself is gone.
+// put caches a session redactor for responses after the plan is discarded.
 func (c *redactorCache) put(sessionID string, redactor *engine.Redactor) {
 	if sessionID == "" {
 		return
@@ -376,9 +347,8 @@ func (c *redactorCache) put(sessionID string, redactor *engine.Redactor) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.byRef) >= maxCachedRedactors {
-		// A core that has seen this many sessions is cycling, not failing. The map
-		// is emptied rather than ordered by age: the oldest entry is the one most
-		// likely to belong to a session that has ended.
+		// Clear the cache at the bound to limit memory across repeated
+		// sessions.
 		clear(c.byRef)
 	}
 	c.byRef[sessionID] = redactor
@@ -398,14 +368,12 @@ func (c *redactorCache) drop(sessionID string) {
 	delete(c.byRef, sessionID)
 }
 
-// maxCachedRedactors bounds the redactor cache. Eight sessions in flight is far
-// more than a machine ever runs, and a bounded cache cannot grow without limit in
-// a process that runs for weeks.
+// maxCachedRedactors limits memory usage across sessions in a long-running
+// core.
 const maxCachedRedactors = 8
 
-// wireStateValue renders a session state onto the contract. The mapping is one to
-// one, so an unknown state can only be a bug in this package and is reported as
-// disconnected rather than as a value the interface does not know.
+// wireStateValue maps session states to the contract. Unknown states fall back
+// to disconnected instead of exposing an invalid enum.
 func wireStateValue(state session.State) corev1.ConnectionStateValue {
 	switch state {
 	case session.StateDisconnected:
@@ -423,7 +391,7 @@ func wireStateValue(state session.State) corev1.ConnectionStateValue {
 	}
 }
 
-// wireStatus renders a session status onto the contract.
+// wireStatus converts session status to the wire format.
 func wireStatus(status session.Status) *corev1.ConnectionState {
 	out := &corev1.ConnectionState{
 		Value:      wireStateValue(status.State),
@@ -437,9 +405,8 @@ func wireStatus(status session.Status) *corev1.ConnectionState {
 	return out
 }
 
-// requestDeadline returns the deadline of a request, or a default one when the
-// client sent none. A control plane that waits forever for a client is a control
-// plane that keeps a session alive after the user has left.
+// requestDeadline preserves the request deadline or supplies a default to bound
+// session operations.
 func requestDeadline(ctx context.Context, fallback time.Duration) (context.Context, context.CancelFunc) {
 	if _, ok := ctx.Deadline(); ok {
 		return ctx, func() {}
@@ -447,10 +414,7 @@ func requestDeadline(ctx context.Context, fallback time.Duration) (context.Conte
 	return context.WithTimeout(ctx, fallback)
 }
 
-// Deadlines of the methods, used when the client sends none. They are generous
-// enough for a slow machine and short enough that a forgotten caller cannot hold a
-// system change open: the engine answers on the loopback interface, so a connect
-// that takes longer than this is already broken.
+// Default deadlines bound system changes when clients omit a deadline.
 const (
 	connectTimeout    = 30 * time.Second
 	disconnectTimeout = 15 * time.Second
@@ -459,28 +423,20 @@ const (
 	importTimeout     = 60 * time.Second
 )
 
-// Limits of the transport. A service that sets them once, in one place, is a
-// service whose client and server cannot drift apart: the numbers the core checks
-// in a plan are the numbers the transport refuses a message over.
+// Shared transport limits keep client and server message bounds consistent with
+// plan limits.
 const (
-	// MaxRecvMsgBytes is the largest message the core accepts from a client. It is
-	// the plan limit plus the envelope around it, so a client cannot send a plan
-	// that is over the limit and still be believed.
+	// MaxRecvMsgBytes limits requests to the plan limit plus its message
+	// envelope.
 	MaxRecvMsgBytes = MaxPlanBytes + (1 << 20)
-	// MaxSendMsgBytes is the largest message the core answers with. The largest
-	// answer the contract defines is a diagnostic archive, which the collector
-	// bounds, and the room left here is what a client needs to read it.
+	// MaxSendMsgBytes limits responses, allowing the collector's bounded
+	// diagnostic archive plus its envelope.
 	MaxSendMsgBytes = 16 << 20
 )
 
-// Handshake answers with the contract version the core serves. It is the only
-// method that does not require an authenticator, because a client must learn the
-// version before it can ask for anything else.
-//
-// It also negotiates, and it is the method where the negotiation matters: a
-// client that is too old finds out here, and the answer carries the version the
-// core speaks even when it refuses, because a client that cannot be served still
-// has to learn what it should update to.
+// Handshake negotiates the API version without a token so clients can
+// initialize. Incompatible clients still receive the core's version to
+// determine the required update.
 func (s *Server) Handshake(_ context.Context, req *corev1.HandshakeRequest) (*corev1.HandshakeResponse, error) {
 	negotiated, err := s.checkVersion(req.GetClientVersion())
 	if err != nil {
@@ -494,11 +450,9 @@ func (s *Server) Handshake(_ context.Context, req *corev1.HandshakeRequest) (*co
 	return &corev1.HandshakeResponse{NegotiatedVersion: answer, ControlAuthenticator: s.auth.Token()}, nil
 }
 
-// Connect starts a session for the plan of the request.
-//
-// The order of the checks is the design: version, then authenticator, then limits,
-// then the plan itself. A caller that fails any of them has not touched the
-// system, so a mistyped plan cannot cost a user their current connection.
+// Connect starts a session after checking version, authentication, limits, and
+// plan validity. Failed checks leave the current session and system settings
+// unchanged.
 func (s *Server) Connect(ctx context.Context, req *corev1.ConnectRequest) (*corev1.ConnectResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -536,9 +490,8 @@ func (s *Server) Connect(ctx context.Context, req *corev1.ConnectRequest) (*core
 	}, nil
 }
 
-// Disconnect stops the session. A client that names a session which is not the
-// running one is refused rather than silently stopping whatever is running: two
-// interfaces on one machine must not be able to cut each other's tunnel.
+// Disconnect stops the running session. Requests naming another session are
+// rejected to avoid stopping another client's tunnel.
 func (s *Server) Disconnect(ctx context.Context, req *corev1.DisconnectRequest) (*corev1.DisconnectResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -571,9 +524,8 @@ func (s *Server) Disconnect(ctx context.Context, req *corev1.DisconnectRequest) 
 	}, nil
 }
 
-// GetStatus answers with the current state of the session and the contract version
-// that applies to it. A client that names a session which is not the current one
-// is told so instead of being handed the state of somebody else's tunnel.
+// GetStatus returns session state and API version. Requests naming a different
+// session are rejected.
 func (s *Server) GetStatus(_ context.Context, req *corev1.GetStatusRequest) (*corev1.GetStatusResponse, error) {
 	id := requestID("")
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -595,9 +547,8 @@ func (s *Server) GetStatus(_ context.Context, req *corev1.GetStatusRequest) (*co
 	}}, nil
 }
 
-// checkSession refuses a request that names a session other than the running one.
-// An empty name means the caller does not care, which the contract allows and a
-// client that just opened does.
+// checkSession rejects requests naming a different running session. Empty
+// identifiers accept the current session, as allowed by the contract.
 func (s *Server) checkSession(named string) error {
 	wanted := strings.TrimSpace(named)
 	if wanted == "" {
@@ -634,9 +585,8 @@ func (s *Server) SetKillSwitch(ctx context.Context, req *corev1.SetKillSwitchReq
 	return &corev1.SetKillSwitchResponse{Enabled: req.GetEnabled()}, nil
 }
 
-// GetStats answers with the traffic counters of the running session. A core with
-// no session answers with zeroes and no error: statistics of nothing are not a
-// failure.
+// GetStats returns session traffic counters. With no session, it returns zero
+// counters without an error.
 func (s *Server) GetStats(ctx context.Context, req *corev1.GetStatsRequest) (*corev1.GetStatsResponse, error) {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return nil, transportStatus(err)
@@ -671,14 +621,9 @@ func (s *Server) GetStats(ctx context.Context, req *corev1.GetStatsRequest) (*co
 	}}, nil
 }
 
-// WatchEvents streams the events of the session and then keeps streaming.
-//
-// The order of the two halves is the whole point. The subscription is taken
-// first and the journal head is remembered; the history is replayed up to that
-// head, and the live channel then delivers everything that arrived after it. An
-// event appended between the two halves is in both, and the sequence numbers drop
-// the duplicate, so a client that reconnects with the sequence it last saw sees
-// every event exactly once and never a hole.
+// WatchEvents subscribes before replaying history up to the journal head, then
+// streams live events. Sequence deduplication prevents gaps and repeats across
+// replay and reconnects.
 func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerStreamingServer[corev1.CoreEvent]) error {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return transportStatus(err)
@@ -686,8 +631,7 @@ func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerS
 	ctx := stream.Context()
 	running := s.sessions.Current()
 	if running == nil {
-		// Without a session there is nothing to stream, and a stream that ends
-		// immediately is how a client learns that.
+		// End the stream immediately when there is no session.
 		return errs.Newf(errs.CodeFailedPrecondition, errs.KeySessionRequired,
 			"control: there is no session to watch")
 	}
@@ -718,9 +662,8 @@ func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerS
 	}
 }
 
-// eventFeed is the seam between the journal and the event stream. It exists so
-// the rule "subscribe first, replay up to the head, drop the duplicates" is a
-// thing a test can read and check instead of a comment nobody can verify.
+// eventFeed coordinates journal replay and live delivery with
+// subscription-first ordering and sequence deduplication.
 type eventFeed struct {
 	journal     *session.Journal
 	redactor    *engine.Redactor
@@ -740,21 +683,21 @@ func newEventFeed(journal *session.Journal, after uint64, redactor *engine.Redac
 		unsubscribe: unsubscribe,
 		after:       after,
 	}
-	// The head is read after the subscription is in place, which is what makes the
-	// two halves cover the journal between them without a hole.
+	// Read the head after subscribing so replay and live delivery cover
+	// every event.
 	feed.head = journal.Latest()
 	return feed
 }
 
-// history returns the events a reconnecting client has not seen: the ones above
-// the sequence it named and at or below the head that existed when it subscribed.
+// history returns events after the client's cursor through the head captured at
+// subscription.
 func (f *eventFeed) history() []session.Event {
 	events := f.journal.Since(f.after, 0)
 	out := make([]session.Event, 0, len(events))
 	for _, event := range events {
 		if event.Sequence > f.head {
-			// Beyond the head the live channel already holds it, and sending it
-			// twice would make a client count it twice.
+			// Events above the captured head already belong to live
+			// delivery.
 			continue
 		}
 		out = append(out, event)
@@ -769,12 +712,11 @@ func (f *eventFeed) close() {
 	}
 }
 
-// streamBuffer is the queue of one event subscriber. It matches the batching
-// limits of the contract: enough for a burst of counters and state changes, small
-// enough that a client that stopped reading loses events instead of memory.
+// streamBuffer bounds each subscriber's queue to contract batch limits. Slow
+// clients lose events without unbounded memory growth.
 const streamBuffer = 128
 
-// toWireEvent renders one journal event onto the contract.
+// toWireEvent converts a journal event to the contract format.
 func toWireEvent(event session.Event, redactor *engine.Redactor) *corev1.CoreEvent {
 	var mask func(string) string
 	if redactor != nil {
@@ -824,8 +766,7 @@ func toWireEvent(event session.Event, redactor *engine.Redactor) *corev1.CoreEve
 	return out
 }
 
-// reasonCode renders a catalog class onto the contract, or nothing when the event
-// carries no cause.
+// reasonCode maps an event's error class to the contract, or returns no cause.
 func reasonCode(reason errs.Code) corev1.SoraErrorCode {
 	if code, ok := wireCodes[reason]; ok {
 		return code
@@ -833,8 +774,8 @@ func reasonCode(reason errs.Code) corev1.SoraErrorCode {
 	return corev1.SoraErrorCode_SORA_ERROR_CODE_UNSPECIFIED
 }
 
-// errOrNil rebuilds a catalog error from an event, so the masking and the key
-// rules of toWire apply to a failure that travels on the stream as well.
+// errOrNil reconstructs an event error so toWire applies the same redaction and
+// key handling as for responses.
 func errOrNil(event session.Event) error {
 	if event.Key == "" && event.Reason == "" {
 		return nil
@@ -850,12 +791,9 @@ func maskText(mask func(string) string, text string) string {
 	return mask(text)
 }
 
-// ParseImport turns a subscription body into a plan the core can run and returns
-// it with references instead of credentials.
-//
-// This is the moment a secret stops travelling in clear: the parsed credentials go
-// straight into the vault, and the client receives only the references. A body
-// that cannot be parsed leaves nothing behind in the store.
+// ParseImport parses a subscription into a plan with credential references.
+// Credentials go directly to the vault; failed parsing leaves the store
+// unchanged.
 func (s *Server) ParseImport(_ context.Context, req *corev1.ParseImportRequest) (*corev1.ParseImportResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -890,9 +828,8 @@ func (s *Server) ParseImport(_ context.Context, req *corev1.ParseImportRequest) 
 	if err := s.secrets.Apply(puts, nil); err != nil {
 		return &corev1.ParseImportResponse{Error: toWire(err, nil, id)}, nil
 	}
-	// No routing rule is invented here. A rule names an outbound, and the only
-	// outbounds in this plan are the imported servers; a client that wants a
-	// particular split adds the rules it wants, with the targets it can name.
+	// Routing remains client-defined because only the imported outbounds
+	// are known here.
 	return &corev1.ParseImportResponse{SessionPlan: plan}, nil
 }
 
@@ -903,14 +840,9 @@ type importedServer struct {
 	document  []byte
 }
 
-// parsePayload detects and parses an import and prepares every server for the
-// vault without writing anything, so the caller stores all of them in one
-// change. refFor names the vault entry of a server.
-//
-// The payload is detected before it is parsed. A parser that tries every format
-// in turn would accept anything and answer "no servers" for a file of plain
-// text; detecting first turns that into the honest answer, which is that the
-// core does not know what this is.
+// parsePayload detects the format before parsing, rejecting unknown input
+// instead of returning an empty import. It prepares servers without writing;
+// refFor supplies vault references for one atomic update.
 func (s *Server) parsePayload(payload []byte, refFor func(parser.OutboundSpec) (string, error)) ([]importedServer, error) {
 	if _, err := (parser.ImportDetector{MaxItems: s.parser.MaxItems}).Detect(payload); err != nil {
 		return nil, importError(err)
@@ -938,8 +870,8 @@ func (s *Server) parsePayload(payload []byte, refFor func(parser.OutboundSpec) (
 	return out, nil
 }
 
-// importError maps a parser failure onto the catalog. The parser speaks in its own
-// sentinel errors; the control plane is the only place that knows both vocabularies.
+// importError maps parser sentinel errors to catalog errors at the control
+// boundary.
 func importError(err error) error {
 	switch {
 	case errors.Is(err, parser.ErrEmptySource):
@@ -974,8 +906,7 @@ func (s *Server) PutSecret(_ context.Context, req *corev1.PutSecretRequest) (*co
 	return &corev1.PutSecretResponse{Credentials: req.GetCredentials()}, nil
 }
 
-// DeleteSecret removes stored material. Removing a reference that holds nothing
-// succeeds, so a cleanup path may run twice.
+// DeleteSecret removes stored material and succeeds for missing references.
 func (s *Server) DeleteSecret(_ context.Context, req *corev1.DeleteSecretRequest) (*corev1.DeleteSecretResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -993,10 +924,9 @@ func (s *Server) DeleteSecret(_ context.Context, req *corev1.DeleteSecretRequest
 	return &corev1.DeleteSecretResponse{}, nil
 }
 
-// FetchSubscription retrieves a subscription by reference and returns its servers
-// with credentials already in the store, exactly as ParseImport does. The
-// reference itself is a bearer token, so it is never logged, never returned and
-// never used to build a file name.
+// FetchSubscription fetches servers with credentials stored as references. The
+// subscription reference is a bearer token and is never logged, returned, or
+// used in filenames.
 func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscriptionRequest) (*corev1.FetchSubscriptionResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -1013,9 +943,8 @@ func (s *Server) FetchSubscription(ctx context.Context, req *corev1.FetchSubscri
 	if err != nil {
 		return &corev1.FetchSubscriptionResponse{Error: toWire(err, nil, id)}, nil
 	}
-	// The import does the work and returns a plan; a fetch answers with the
-	// servers of that plan, because a client that asked for a subscription wants
-	// the list, not a session it never asked for.
+	// Reuse import validation and storage, but return the server list
+	// required by fetch.
 	imported, importErr := s.ParseImport(ctx, &corev1.ParseImportRequest{
 		ApiVersion: req.GetApiVersion(),
 		RequestId:  req.GetRequestId(),
@@ -1048,17 +977,9 @@ func subscriptionInfoToWire(info subscription.Info) *corev1.SubscriptionInfo {
 	return out
 }
 
-// ProbeServers measures servers and streams the results as they arrive, so the
-// interface fills a list in instead of waiting for all of it.
-//
-// Endpoints are measured with a TCP connection. Outbounds are measured as the
-// options say: by default with a real request through the first engine that
-// carries the server, and with a connection where no engine does; the result
-// says which of the two it is.
-//
-// The method takes no context: a server streaming call receives it from the
-// stream, and passing one separately would let a caller measure against a deadline
-// that does not belong to the connection.
+// ProbeServers streams results using the stream context. Endpoints use TCP;
+// outbounds use a compatible engine with optional TCP fallback. Each result
+// identifies its method.
 func (s *Server) ProbeServers(req *corev1.ProbeServersRequest, stream grpc.ServerStreamingServer[corev1.ProbeResult]) error {
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
 		return transportStatus(err)
@@ -1142,8 +1063,8 @@ func (s *Server) measureOutbounds(ctx context.Context, req *corev1.ProbeServersR
 		return connect(endpoints, ids)
 	}
 
-	// Engine errors may quote a server or a credential, so every value of the
-	// measured outbounds is masked in the results.
+	// Mask measured outbound values because engine errors may include
+	// servers or credentials.
 	redactor := engine.NewRedactor()
 	outbounds := make([]engine.Outbound, 0, len(specs))
 	bySpec := make(map[string]*corev1.OutboundSpec, len(specs))
@@ -1168,8 +1089,8 @@ func (s *Server) measureOutbounds(ctx context.Context, req *corev1.ProbeServersR
 		return err
 	}
 	auto := opts.GetMethod() == corev1.ProbeMethod_PROBE_METHOD_UNSPECIFIED
-	// The results are forwarded as they come; this goroutine holds the wait
-	// group, so the fallback below may still add to it.
+	// Keep a wait-group member active while forwarding results so fallback
+	// tasks can still be added.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -1198,7 +1119,7 @@ func (s *Server) measureOutbounds(ctx context.Context, req *corev1.ProbeServersR
 	return nil
 }
 
-// latencyMS converts a latency for the wire, saturating rather than wrapping.
+// latencyMS converts latency to wire milliseconds, clamping overflow.
 func latencyMS(d time.Duration) uint32 {
 	ms := d.Milliseconds()
 	switch {
@@ -1220,7 +1141,7 @@ func endpointsOf(specs []*corev1.OutboundSpec) ([]*corev1.Endpoint, []string) {
 	return endpoints, ids
 }
 
-// RunDiagnostics answers with a redacted report of the running session.
+// RunDiagnostics returns a redacted report of the running session.
 func (s *Server) RunDiagnostics(ctx context.Context, req *corev1.RunDiagnosticsRequest) (*corev1.RunDiagnosticsResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {
@@ -1243,9 +1164,8 @@ func (s *Server) RunDiagnostics(ctx context.Context, req *corev1.RunDiagnosticsR
 	return &corev1.RunDiagnosticsResponse{Report: &corev1.DiagnosticReport{Lines: lines}}, nil
 }
 
-// ExportDiagnostics answers with a redacted archive that can be attached to a bug
-// report. The archive is built inside the core from values that are already
-// masked, so a client cannot widen what it contains.
+// ExportDiagnostics returns an archive built from already-redacted core values.
+// Clients cannot expand its contents.
 func (s *Server) ExportDiagnostics(ctx context.Context, req *corev1.ExportDiagnosticsRequest) (*corev1.ExportDiagnosticsResponse, error) {
 	id := requestID(req.GetRequestId())
 	if _, err := s.checkVersion(req.GetApiVersion()); err != nil {

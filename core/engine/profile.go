@@ -8,8 +8,7 @@ var profileKeys = map[string]bool{
 	"shortId": true, "preSharedKey": true, "secretKey": true, "spiderX": true, "seed": true,
 }
 
-// profileSecrets walks an Xray profile and returns every credential in it, so
-// a log line that quotes the engine is masked the way any plan is.
+// profileSecrets extracts profile credentials for redacting engine output.
 func profileSecrets(raw json.RawMessage) []string {
 	if len(raw) == 0 {
 		return nil

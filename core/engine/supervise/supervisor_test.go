@@ -15,9 +15,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
-// The test binary doubles as a fake engine, so supervision is tested in CI
-// where no real engine is installed. It is started as
-// "<test binary> -sora-fake-engine run|check" with the configuration on stdin.
+// The test executable runs as "<test binary> -sora-fake-engine run|check" with
+// configuration on stdin, covering supervision without installed engines.
 const fakeFlag = "-sora-fake-engine"
 
 type fakeConfig struct {
@@ -147,7 +146,8 @@ func TestApplyStartsAndAdoptsTheReportedVersion(t *testing.T) {
 	if _, err := sup.Running(); err != nil {
 		t.Fatal(err)
 	}
-	// A second plan restarts an engine that cannot reload and keeps running.
+	// A second plan restarts an engine that cannot reload and keeps
+	// running.
 	if err := sup.Apply(context.Background(), plan()); err != nil {
 		t.Fatalf("second Apply: %v", err)
 	}

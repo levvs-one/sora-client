@@ -19,9 +19,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
-// Connections is the answer of GET /connections, the plain HTTP source of the
-// traffic counters. The websocket stream stays a later optimization: polling
-// this endpoint is cheap and needs no extra dependency.
+// Connections models GET /connections, the polled HTTP source for traffic
+// counters.
 type Connections struct {
 	DownloadTotal uint64       `json:"downloadTotal"`
 	UploadTotal   uint64       `json:"uploadTotal"`
@@ -65,8 +64,8 @@ func (c *Client) ListConnections(ctx context.Context) ([]engine.Connection, erro
 		if in.Payload != "" {
 			rule += " " + in.Payload
 		}
-		// Chains run from the outbound that carried the flow to the group the
-		// rule chose; the interface reads them the other way.
+		// Reverse the engine's outbound-to-group chain into the
+		// client-facing group-to-outbound order.
 		chain := slices.Clone(in.Chains)
 		slices.Reverse(chain)
 		out = append(out, engine.Connection{
@@ -92,14 +91,14 @@ func firstOf(values ...string) string {
 	return ""
 }
 
-// ReloadConfig points a running engine at a config file inside its home
-// directory. force=true is what makes mihomo replace the live configuration.
+// ReloadConfig loads a config file inside the engine home. force=true replaces
+// mihomo's live configuration.
 func (c *Client) ReloadConfig(ctx context.Context, path string) error {
 	return c.call(ctx, http.MethodPut, "/configs?force=true", map[string]string{"path": path}, nil)
 }
 
-// ReloadPayload applies a configuration given inline, so Sora does not have to
-// keep a file with credentials on disk.
+// ReloadPayload applies inline configuration without keeping credentials on
+// disk.
 func (c *Client) ReloadPayload(ctx context.Context, yamlText string) error {
 	return c.call(ctx, http.MethodPut, "/configs?force=true", map[string]string{"payload": yamlText}, nil)
 }
@@ -119,8 +118,8 @@ func (c *Client) Counters(ctx context.Context) (engine.Counters, error) {
 	}, nil
 }
 
-// CloseConnections drops every live connection, for example right after a
-// server switch so that no stale flow keeps using the old outbound.
+// CloseConnections drops all flows, preventing old connections from retaining a
+// previous outbound after a switch.
 func (c *Client) CloseConnections(ctx context.Context) error {
 	return c.call(ctx, http.MethodDelete, "/connections", nil, nil)
 }
@@ -138,11 +137,9 @@ func (c *Client) UpdateProvider(ctx context.Context, name string) error {
 	return c.call(ctx, http.MethodPut, "/providers/proxies/"+url.PathEscape(name), nil, nil)
 }
 
-// call performs one controller request. body is nil, a map or a struct that is
-// marshalled as JSON; out is nil or a pointer to unmarshal into.
-//
-// The secret never appears in an error: the URL is rebuilt without query
-// credentials and the response body is capped before it is read.
+// call performs a controller request with an optional JSON body and response
+// destination. It excludes the secret from errors, strips URL credentials, and
+// bounds response bodies.
 func (c *Client) call(ctx context.Context, method, path string, body any, out any) error {
 	var reader io.Reader
 	if body != nil {
@@ -207,8 +204,8 @@ func isRefused(err error) bool {
 	return errors.As(err, &syscallErr)
 }
 
-// snippet keeps at most one line of engine output, so a message that carries a
-// credential cannot be spread over a log line.
+// snippet limits engine output to one line to prevent credentials from spanning
+// log lines.
 func snippet(b []byte) string {
 	s := string(b)
 	if i := strings.IndexAny(s, "\r\n"); i >= 0 {

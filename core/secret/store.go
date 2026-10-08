@@ -1,21 +1,7 @@
-// Package secret stores the credential material of a session.
-//
-// The control plane never carries a secret. A plan holds a reference, the core
-// resolves it here, and the interface never learns the value. That split is
-// the reason this package exists: an unprivileged interface that can start a
-// tunnel should not be able to read every password the user owns, and a
-// diagnostic archive that quotes no secrets can still be attached to a bug
-// report.
-//
-// The store is one encrypted file plus one wrapped master key. The file is
-// AES-256-GCM with a fresh nonce per write, and the wrapped key is handed to
-// the operating system on Windows and kept in a file only the owner may read
-// elsewhere. The plaintext of the payload is a JSON map from reference to
-// material, so the file stays inspectable in structure and opaque in content.
-//
-// Every write is atomic: the new file is written next to the old one, flushed,
-// and renamed over it. A crash therefore leaves either the previous state or
-// the new one, never a half-written vault.
+// Package secret stores a reference-to-credential JSON map encrypted with
+// AES-256-GCM and a fresh nonce per write. Windows DPAPI or owner-only files
+// protect the master key. Clients receive references, not stored values.
+// Flushed, atomic replacement preserves either old or new state after crashes.
 package secret
 
 import (
@@ -37,8 +23,7 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// Limits of one store. They exist so a hostile or broken caller cannot turn
-// the store into an unbounded file or an unbounded allocation.
+// Store limits bound file size and allocations from untrusted requests.
 const (
 	// MaxSecretBytes is the largest single secret the store accepts.
 	MaxSecretBytes = 64 << 10
@@ -46,14 +31,12 @@ const (
 	MaxSecrets = 4096
 	// MaxVaultBytes is the largest encrypted file the store writes.
 	MaxVaultBytes = 8 << 20
-	// MaxReferenceLen bounds a reference so a caller cannot use it to make the
-	// file large through its keys alone.
+	// MaxReferenceLen bounds key size as well as stored material.
 	MaxReferenceLen = 64
 )
 
-// File names inside the data directory. They are fixed: the core finds its
-// state by convention, and a caller that could choose the names could point the
-// store at something else.
+// Fixed data filenames prevent callers from redirecting the store to arbitrary
+// files.
 const (
 	vaultFile  = "secrets.vault"
 	masterFile = "master.key"
@@ -62,8 +45,8 @@ const (
 	fileMode   = 0o600
 )
 
-// aadPrefix binds a ciphertext to this format version, so a file written by a
-// future version cannot be decrypted by an older core even if the key matches.
+// aadPrefix binds ciphertext to the format version so older cores reject future
+// formats even with matching keys.
 const aadPrefix = "sora.secret.v1"
 
 // Store is the encrypted credential store of one core process. It is safe for
@@ -76,20 +59,18 @@ type Store struct {
 	id     []byte
 	items  map[string][]byte
 	closed bool
-	// writeFile replaces a file atomically. It is a field so a test can make a
-	// write fail and check that memory and disk never drift apart; production
-	// always uses writeFileAtomic.
+	// writeFile permits failure injection to verify memory/disk
+	// consistency. Production uses writeFileAtomic.
 	writeFile func(path string, data []byte, mode os.FileMode) error
 }
 
-// Options configures how a store is opened. The zero value is not useful:
-// Protector is required, because how the master key is protected is a decision
-// of the platform and not something a store may guess.
+// Options configures store opening. Protector is required because the platform
+// must explicitly choose master-key protection.
 type Options struct {
 	// Protector wraps the master key before it touches the disk.
 	Protector Protector
-	// Now supplies timestamps for the file header. Tests replace it; the zero
-	// value means time.Now.
+	// Now supplies file-header timestamps. Nil uses time.Now; tests can
+	// override it.
 	Now func() time.Time
 }
 
@@ -129,9 +110,8 @@ func Open(dir string, opts Options) (*Store, error) {
 	return s, nil
 }
 
-// Put stores material under a reference and replaces whatever was there. The
-// caller keeps ownership of the slice it passes: the store copies it and wipes
-// its own copy when the value is replaced or deleted.
+// Put replaces material under a reference, copying the caller's slice. The
+// store wipes its copy on replacement or deletion.
 func (s *Store) Put(reference string, material []byte) error {
 	if err := ValidateReference(reference); err != nil {
 		return err
@@ -158,8 +138,8 @@ func (s *Store) Put(reference string, material []byte) error {
 	previous, had := s.items[reference]
 	s.items[reference] = stored
 	if err := s.writeLocked(); err != nil {
-		// A failed write must not leave the in-memory state ahead of the file,
-		// or the running session would use a secret the next start cannot read.
+		// Failed writes must preserve memory/disk consistency across
+		// restarts.
 		if had {
 			s.items[reference] = previous
 		} else {
@@ -192,8 +172,8 @@ func (s *Store) Get(reference string) ([]byte, error) {
 	return append([]byte(nil), stored...), nil
 }
 
-// Delete removes a reference and wipes the material it held. Deleting a
-// reference that is not there succeeds, so a cleanup path can run twice.
+// Delete removes a reference and wipes its material. Missing references succeed
+// for repeatable cleanup.
 func (s *Store) Delete(reference string) error {
 	if err := ValidateReference(reference); err != nil {
 		return err
@@ -216,10 +196,9 @@ func (s *Store) Delete(reference string) error {
 	return nil
 }
 
-// Apply stores every value of puts and removes every reference of deletes in
-// one write of the vault: either all of it reaches the disk or none of it does,
-// so an update of many secrets never leaves a half-applied state behind, and
-// it costs one write instead of one per secret.
+// Apply atomically stores puts and removes deletes in one vault write. Failed
+// writes apply none of the changes, avoiding partial updates and per-secret
+// writes.
 func (s *Store) Apply(puts map[string][]byte, deletes []string) error {
 	for reference, material := range puts {
 		if err := ValidateReference(reference); err != nil {
@@ -270,8 +249,8 @@ func (s *Store) Apply(puts map[string][]byte, deletes []string) error {
 		}
 		return err
 	}
-	// Values that were replaced or removed are wiped; values still in use are
-	// shared between the two maps and stay.
+	// Wipe replaced and removed values; unchanged values are shared by both
+	// maps.
 	for reference, material := range previous {
 		if kept, ok := next[reference]; !ok || &kept[0] != &material[0] {
 			wipe(material)
@@ -291,9 +270,8 @@ func (s *Store) Has(reference string) bool {
 	return ok
 }
 
-// Refs returns every stored reference in sorted order. Diagnostics and tests
-// use it to compare the store with the plan; nothing else needs the list, and
-// the interface never receives it.
+// Refs returns sorted references for plan/store comparisons in diagnostics and
+// tests. The client never receives this list.
 func (s *Store) Refs() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -312,8 +290,7 @@ func (s *Store) Len() int {
 	return len(s.items)
 }
 
-// Close wipes the key material in memory. The file stays on disk: the next
-// start of the core needs it, and it is encrypted at rest.
+// Close wipes in-memory keys and retains the encrypted file for the next start.
 func (s *Store) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -330,7 +307,7 @@ func (s *Store) Close() error {
 	return nil
 }
 
-// readLocked loads the vault, treating a missing file as an empty store.
+// read loads the vault, treating a missing file as an empty store.
 func (s *Store) read() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -424,9 +401,8 @@ func (s *Store) header(nonce []byte) []byte {
 	return append(out, nonce...)
 }
 
-// aad is the additional data every seal and open binds. It carries the format
-// version and the store identifier, so a ciphertext cannot be opened under a
-// different store even when both hold the same master key.
+// aad binds encryption to the format version and store ID, preventing another
+// store from opening ciphertext even with the same master key.
 func (s *Store) aad() []byte {
 	out := make([]byte, 0, len(aadPrefix)+len(s.id))
 	out = append(out, aadPrefix...)

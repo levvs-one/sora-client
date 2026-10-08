@@ -14,19 +14,20 @@ import (
 	"github.com/levvs-one/sora-client/core/ipc"
 )
 
-// endpointAddress returns an address inside the temporary directory of the test, so
-// a test never touches the real endpoint of a running core.
+// endpointAddress uses test-specific temporary paths to avoid touching a
+// running core's endpoint.
 func endpointAddress(t *testing.T) string {
 	t.Helper()
 	if strings.HasPrefix(ipc.ListenAddress(), `\\.\pipe\`) {
-		// A named pipe has no directory, so the name carries the test instead.
+		// Named pipes have no directory, so include the test identity
+		// in the pipe name.
 		return `\\.\pipe\sora-core-test-` + strings.ReplaceAll(t.Name(), "/", "-")
 	}
 	return filepath.Join(t.TempDir(), "core.sock")
 }
 
-// TestEndpointCarriesAConnection proves the transport works end to end on this
-// platform: a listener, a client, a decision about the peer and the bytes.
+// TestEndpointCarriesAConnection checks listener, dialing, peer authorization,
+// and byte transfer on this platform.
 func TestEndpointCarriesAConnection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -65,17 +66,16 @@ func TestEndpointCarriesAConnection(t *testing.T) {
 		t.Errorf("the endpoint carried %q, want %q", buffer, payload)
 	}
 	cancel()
-	// A cancelled serve ends with the context error, which is how a caller knows
-	// the endpoint was closed on purpose rather than by a failure.
+	// Cancelled serving must return the context error to distinguish
+	// requested shutdown from failure.
 	if err := <-servedErr; !errors.Is(err, context.Canceled) {
 		t.Errorf("Serve() = %v, want the cancellation", err)
 	}
 	served.Wait()
 }
 
-// TestRefusedPeerGetsNothing proves the rule is real: a caller that the allow
-// function refuses is closed without a byte, because an answer of any kind tells it
-// that a core is listening.
+// TestRefusedPeerGetsNothing checks that rejected peers receive no bytes,
+// avoiding endpoint disclosure.
 func TestRefusedPeerGetsNothing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -98,7 +98,7 @@ func TestRefusedPeerGetsNothing(t *testing.T) {
 
 	connection, err := ipc.Dial(ctx, address)
 	if err != nil {
-		// The kernel may refuse the connection outright, which is the best outcome.
+		// Kernel-level connection refusal is also valid.
 		return
 	}
 	defer func() { _ = connection.Close() }()
@@ -114,8 +114,8 @@ func TestRefusedPeerGetsNothing(t *testing.T) {
 	}
 }
 
-// TestDialFailsFastWhenNothingListens proves a client is told quickly rather than
-// hanging on an endpoint that will never answer.
+// TestDialFailsFastWhenNothingListens checks that absent endpoints fail within
+// the dial budget.
 func TestDialFailsFastWhenNothingListens(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

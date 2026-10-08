@@ -182,9 +182,9 @@ func TestSanitizeNameNeutralizesEngineNameInjection(t *testing.T) {
 	}
 }
 
-// TestEngineAcceptsRenderedPlans hands rendered plans to "mihomo -t". mihomo
-// ignores keys it does not know, so this catches wrong types and values, not
-// misspelled keys; the key names are pinned to the engine source in proxy.go.
+// TestEngineAcceptsRenderedPlans runs "mihomo -t" to check types and values.
+// Unknown keys are ignored upstream, so proxy.go pins key names to engine
+// source.
 func TestEngineAcceptsRenderedPlans(t *testing.T) {
 	path := os.Getenv(Prober.EnvVar)
 	if path == "" {

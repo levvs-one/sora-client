@@ -1,10 +1,6 @@
-// Command sora-core is the Sora network core.
-//
-// It is the whole product without an interface: it owns the credentials, supervises
-// the engine, changes the system settings a tunnel needs, and serves the control
-// plane that any client speaks. The desktop interface is one such client. Nothing in
-// this package depends on a client existing, which is what makes the core testable
-// and scriptable on its own.
+// Command sora-core runs the Sora network core without a UI. It owns
+// credentials, supervises engines, manages tunnel settings, and serves the
+// control API independently of clients.
 package main
 
 import (
@@ -40,45 +36,44 @@ import (
 	"github.com/levvs-one/sora-client/core/subscription"
 )
 
-// Version is the contract this build serves. It is the same number the interface
-// checks, and a build that changes the contract changes it here and in the
-// generated code together.
+// Version defines the API contract served by this build. Contract changes must
+// update this value and the generated code together.
 var Version = control.Version{Major: 1, Minor: 4, MinSupportedMinor: 1}
 
-// Options is everything a running core needs to know about itself.
+// Options configures a core instance.
 type Options struct {
-	// DataDir holds the token, the secret store and the engine home directory.
+	// DataDir holds the token, the secret store and the engine home
+	// directory.
 	DataDir string
-	// EnginesDir is where the engine binaries are looked for first.
+	// EnginesDir is searched first for engine binaries.
 	EnginesDir string
-	// Engine pins one engine kind. Empty lets the core pick, per plan, the
-	// first engine in preference order that can carry the plan.
+	// Engine pins an engine kind. Empty selects the first compatible engine
+	// in preference order for each plan.
 	Engine engine.Kind
-	// LocalPort is the loopback port the tunnel is served on and the system proxy
-	// is pointed at. Zero picks a free one.
+	// LocalPort is the tunnel's loopback port, used by the system proxy.
+	// Zero selects a free port.
 	LocalPort int
 	// Bypass lists destinations that skip the tunnel.
 	Bypass []string
-	// Socket is where the control plane listens. Empty is the platform address;
-	// a core run by hand without root cannot create that one.
+	// Socket sets the control endpoint. Empty uses the platform address,
+	// which requires root for manual runs.
 	Socket string
-	// Log receives what the core does. Nil means the default handler.
+	// Log receives core logs. Nil uses the default handler.
 	Log *slog.Logger
-	// Factory overrides the engine. Nil means mihomo, and a test uses it to run
-	// the whole service without a binary and without touching the machine.
+	// Factory overrides engine creation. Nil uses mihomo; tests can supply
+	// an engine without a binary or system changes.
 	Factory session.Factory
 	// NoDiagnostics builds a core that cannot produce a report.
 	NoDiagnostics bool
-	// AllowFileKeys falls back to a key file when the machine key store refuses
-	// to protect the master key. It is off by default and it says so in the log:
-	// a key file is weaker than the platform store, and the operator is the one
-	// who has to accept that, not the core.
+	// AllowFileKeys enables a logged fallback when the platform key store
+	// fails. Disabled by default because file keys provide weaker
+	// protection.
 	AllowFileKeys bool
 }
 
-// App is a built core. Building it opens the store, the token and the endpoint;
-// serving it runs the control plane. The two are separate so that a check can
-// build everything, report on it and close it again without ever listening.
+// App holds an initialized core. Construction opens the store, token, and
+// endpoint; Serve starts the control API, allowing readiness checks without
+// listening.
 type App struct {
 	opts     Options
 	log      *slog.Logger
@@ -103,13 +98,12 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	if log == nil {
 		log = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	}
-	// The log center records the service and every engine in memory only; the
-	// service log keeps writing where it wrote before.
+	// The log center keeps core and engine logs in memory; the existing log
+	// output remains active.
 	center := logs.New(logs.DefaultSettings())
 	log = slog.New(logs.NewHandler(center, log.Handler()))
-	// The data directory is created here, owner-only, before anything is written
-	// into it. Creating it per component would work too, and would leave the
-	// question of who owns it to whoever happened to be first.
+	// Create the owner-only directory before any component writes to it, so
+	// ownership is consistent.
 	if err := os.MkdirAll(opts.DataDir, 0o700); err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
 	}
@@ -123,16 +117,15 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		return nil, err
 	}
 	app.local = local
-	// The port is decided once, here, and every component that needs it reads
-	// it from this value: the engines bind it and the kill switch lets it pass.
+	// Engines and the kill switch must use the same port, chosen before
+	// either starts.
 	tunnelPort, err := portOf(local)
 	if err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyEngineStartFailed)
 	}
 
-	// The token is what stands between a local process and the tunnel, so it is
-	// generated once, stored with owner-only rights and printed by nothing but an
-	// explicit request.
+	// The control token persists with owner-only permissions and is printed
+	// only on explicit request.
 	auth, err := control.LoadOrCreateToken(opts.DataDir)
 	if err != nil {
 		return nil, err
@@ -155,10 +148,8 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		}
 		factory = app.engines.Factory()
 		if !app.engines.Usable() {
-			// A core without an engine is still a core: it answers status,
-			// diagnostics and the import, and it says plainly that it cannot
-			// connect. Refusing to start would leave an operator with nothing to
-			// look at and no way to see why.
+			// Keep status, diagnostics, and import available when
+			// no engine is installed.
 			log.Warn("no engine binary found; connecting fails until one is installed",
 				"engines_dir", opts.EnginesDir)
 		}
@@ -198,8 +189,8 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		}
 		app.report = collector
 	}
-	// A nil registry must stay a nil interface, or the control plane would
-	// call into a nil pointer instead of answering that it cannot measure.
+	// Keep a nil registry as a nil interface to avoid calling through a nil
+	// pointer.
 	var measurer control.Measurer
 	if app.engines != nil {
 		measurer = app.engines
@@ -230,8 +221,8 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	app.listener = listener
 	app.address = listener.Address()
 	app.server = grpc.NewServer(
-		// The contract allows a plan of at most four megabytes; a larger request is
-		// refused by the transport before anything is allocated for it.
+		// The transport rejects requests above the four-megabyte plan
+		// limit before allocating their payload.
 		grpc.MaxRecvMsgSize(control.MaxRecvMsgBytes),
 		grpc.MaxSendMsgSize(control.MaxSendMsgBytes),
 	)
@@ -239,15 +230,9 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	return app, nil
 }
 
-// protectorFor decides how the master key of the store is protected, and it says
-// out loud when the answer is the weaker one.
-//
-// The machine key store is the right answer and it is the only one that is on by
-// default. It is also the answer that fails on a machine where the account has no
-// profile key to bind to: a service account created by a script, a profile that was
-// never loaded, a machine whose user profile store was rebuilt. In that case a
-// core that refused to start would be a core nobody could diagnose, so the failure
-// is checked here, once, at build time, and reported as what it is.
+// protectorFor selects master-key protection and checks it during construction.
+// Missing profile keys can break the platform store; only explicit opt-in
+// permits a logged file-key fallback.
 func protectorFor(opts Options, log *slog.Logger) secret.Protector {
 	platform := platformProtector()
 	_, err := platform.Protect([]byte("sora-core protector probe"))
@@ -276,7 +261,6 @@ func (a *App) about() *corev1.About {
 	if port, err := portOf(a.local); err == nil {
 		out.LocalProxy = &corev1.Endpoint{Host: "127.0.0.1", Port: uint32(port)}
 	}
-	// The Go toolchain records the commit of a build made from a git checkout.
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, setting := range info.Settings {
 			switch setting.Key {
@@ -346,13 +330,12 @@ func (s *source) EngineLines() []string {
 // Serve runs the control plane until the context ends.
 func (a *App) Serve(ctx context.Context) error {
 	a.log.Info("core listening", "endpoint", a.address, "tunnel", a.local)
-	// Subscriptions update on schedule for as long as the core serves, whether
-	// or not an interface is connected.
+	// Subscription updates must continue without a connected UI.
 	go a.plane.Run(ctx)
 	err := a.server.Serve(a.listener)
 	if ctx.Err() != nil {
-		// The listener closes with the context, so a server that stops because the
-		// service was told to stop has done its job.
+		// Closing the listener on cancellation is a normal service
+		// shutdown.
 		return nil //nolint:nilerr // the error is the closed listener of a requested stop
 	}
 	if errors.Is(err, grpc.ErrServerStopped) {
@@ -361,13 +344,11 @@ func (a *App) Serve(ctx context.Context) error {
 	return err
 }
 
-// Close shuts the core down: the session first, so the system settings go back
-// where they were, then the endpoint, then the store.
+// Close restores session settings, then closes the endpoint and secret store.
 func (a *App) Close() error {
 	var problems []error
-	// The shutdown budget is detached from the caller's context on purpose: a core
-	// that is stopping must be able to restore the proxy even when whoever asked it
-	// to stop has already gone.
+	// Shutdown needs an independent deadline to restore the proxy after
+	// caller cancellation.
 	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), 20*time.Second)
 	defer cancel()
 	if err := a.sessions.Shutdown(stopCtx); err != nil {
@@ -389,14 +370,14 @@ func (a *App) Close() error {
 	return errors.Join(problems...)
 }
 
-// Address is the endpoint clients dial.
+// Address returns the endpoint clients dial.
 func (a *App) Address() string { return a.address }
 
-// TunnelAddress is the loopback address the system proxy is pointed at.
+// TunnelAddress returns the loopback address used by the system proxy.
 func (a *App) TunnelAddress() string { return a.local }
 
-// localAddress decides the loopback address of the tunnel. The guard needs it
-// before the engine runs, so it is decided here and never per session.
+// localAddress selects the tunnel's loopback address before the engine starts,
+// so the guard can use it across sessions.
 func localAddress(port int) (string, error) {
 	if port == 0 {
 		free, err := supervise.FreePort()
@@ -412,7 +393,7 @@ func localAddress(port int) (string, error) {
 	return net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), nil
 }
 
-// portOf reads the port back out of an address.
+// portOf extracts the port from an address.
 func portOf(address string) (uint16, error) {
 	_, portText, err := net.SplitHostPort(address)
 	if err != nil {

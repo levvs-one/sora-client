@@ -16,8 +16,7 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// timeoutError is a net.Error whose only interesting property is that it timed
-// out, which is what the standard library hands back on a stalled dial.
+// timeoutError implements net.Error for a stalled-dial timeout.
 type timeoutError struct{}
 
 func (timeoutError) Error() string   { return "i/o timeout" }

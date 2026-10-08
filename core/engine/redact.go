@@ -7,12 +7,9 @@ import (
 	"sync"
 )
 
-// Redactor masks secret material before text leaves the core process: engine
-// stderr, controller errors and event messages all pass through it.
-//
-// Two mechanisms work together. Exact values come from the active plan, so any
-// credential Sora knows about is masked wherever it appears. Patterns cover
-// what Sora does not know in advance, such as a token the engine prints itself.
+// Redactor masks credentials in engine output, controller errors, and events
+// before they leave the core. It matches plan values exactly and uses patterns
+// for unknown values such as engine-generated tokens.
 type Redactor struct {
 	mu     sync.Mutex
 	values []string
@@ -26,8 +23,8 @@ func NewRedactor(values ...string) *Redactor {
 	return r
 }
 
-// Add records more values to mask. Short values are ignored: masking a three
-// character string would turn ordinary log text into noise.
+// Add registers values to mask. Values shorter than four characters are ignored
+// to preserve ordinary log text.
 func (r *Redactor) Add(values ...string) {
 	added := false
 	r.mu.Lock()
@@ -48,8 +45,8 @@ func (r *Redactor) Add(values ...string) {
 		}
 	}
 	if added {
-		// Longest first: strings.Replacer picks the earliest alternative, and a
-		// shorter secret must not hide a longer one that contains it.
+		// Match longest secrets first so strings.Replacer cannot
+		// partially mask a longer value.
 		sort.SliceStable(r.values, func(i, j int) bool { return len(r.values[i]) > len(r.values[j]) })
 		r.build = nil
 	}
@@ -96,8 +93,8 @@ var (
 	userInfoPattern = regexp.MustCompile(`(?i)\b(https?|socks5|vless|vmess|trojan|ss)://[^/\s:@]+:[^@\s]+@`)
 )
 
-// maskPatterns hides the shapes Sora recognizes even when the exact value is
-// unknown: identifiers, key-value pairs and credentials inside a URL.
+// maskPatterns masks identifiers, credential pairs, and URL credentials whose
+// exact values are unknown.
 func maskPatterns(s string) string {
 	s = userInfoPattern.ReplaceAllString(s, "${1}://[masked]@")
 	s = keyValuePattern.ReplaceAllString(s, "${1}${2}[masked]")

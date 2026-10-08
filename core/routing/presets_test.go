@@ -50,8 +50,7 @@ func TestAUserCatchAllWinsAndPresetsNeedATarget(t *testing.T) {
 	}
 }
 
-// TestPresetsPassThePlanCheck runs every preset through the plan check, so a
-// preset can never produce a plan the core refuses.
+// TestPresetsPassThePlanCheck validates all preset-generated plans.
 func TestPresetsPassThePlanCheck(t *testing.T) {
 	for _, preset := range Presets() {
 		rules, err := Apply(nil, Options{Preset: preset.ID, ProxyTarget: "out", BlockAds: true})
@@ -66,9 +65,8 @@ func TestPresetsPassThePlanCheck(t *testing.T) {
 	}
 }
 
-// TestEveryEngineAcceptsEveryPreset hands each preset to the validator of each
-// engine, with the geo databases Sora ships, so a preset never names a geosite
-// tag or a rule set an engine cannot load.
+// TestEveryEngineAcceptsEveryPreset validates presets against each engine with
+// shipped geo databases, checking geosite tags and rule-set support.
 func TestEveryEngineAcceptsEveryPreset(t *testing.T) {
 	dir := os.Getenv("SORA_ENGINES_DIR")
 	if dir == "" {

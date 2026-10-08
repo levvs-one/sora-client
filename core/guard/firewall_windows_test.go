@@ -12,8 +12,8 @@ import (
 	"github.com/levvs-one/sora-client/core/guard"
 )
 
-// fetch asks curl, a program the kill switch does not know, for a page and
-// reports the HTTP status, or the empty string when no connection was made.
+// fetch uses curl, which has no kill-switch exemption, and returns HTTP status
+// or empty on connection failure.
 func fetch(t *testing.T, url string) string {
 	t.Helper()
 	out, _ := exec.CommandContext(t.Context(), "curl.exe", "-s", "-o", "NUL", "-m", "5", "-w", "%{http_code}", url).Output() //nolint:gosec // fixed test addresses

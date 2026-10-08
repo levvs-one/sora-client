@@ -9,15 +9,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// socketMode opens the socket to every account, because the identity below is
-// the boundary: connecting needs write permission on the socket file, and the
-// person polkit admits is not in the service group. A connection is refused on
-// accept unless the kernel's identity passes the allow rule.
+// socketMode permits connections from polkit users outside the service group.
+// Accept enforces kernel-verified peer identity before admitting them.
 const socketMode = 0o666
 
-// peerOf reads the identity of the other end from the kernel. Linux answers
-// SO_PEERCRED on a unix socket, so the uid and the pid here are the kernel's word
-// and not a value the client sent.
+// peerOf obtains UID and PID from Linux SO_PEERCRED, never client-supplied
+// values.
 func peerOf(connection net.Conn) Peer {
 	unixConn, ok := connection.(*net.UnixConn)
 	if !ok {

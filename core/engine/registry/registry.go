@@ -52,17 +52,17 @@ type Registry struct {
 	preference []engine.Kind
 	// base is the configuration every engine instance starts from.
 	base supervise.Config
-	// tpws is zapret's proxy for bypass outbounds; empty when not installed.
+	// tpws is zapret's proxy for bypass outbounds; empty when not
+	// installed.
 	tpws string
 
 	mu   sync.Mutex
 	last engine.Selection
 }
 
-// Discover probes every known engine in enginesDir, the per-engine environment
-// override and PATH. A missing engine is recorded, not treated as an error:
-// one engine is enough to connect. base is the configuration every engine
-// instance starts from; each engine gets its own directory under base.HomeDir.
+// Discover searches environment overrides, enginesDir, and PATH for each
+// engine. Missing builds are recorded without failing discovery. Instances
+// inherit base and use separate directories under base.HomeDir.
 func Discover(ctx context.Context, enginesDir string, base supervise.Config) *Registry {
 	r := &Registry{binaries: map[engine.Kind]supervise.Binary{}, preference: engine.DefaultPreference, base: base}
 	if enginesDir != "" {
@@ -74,8 +74,8 @@ func Discover(ctx context.Context, enginesDir string, base supervise.Config) *Re
 	for _, kind := range engine.DefaultPreference {
 		b, err := drivers[kind].prober.Discover(ctx, enginesDir)
 		if err != nil {
-			// The probe error names local paths, which must not reach a
-			// diagnostic report; "sora-core -check" shows the details.
+			// Probe errors contain local paths; expose them only
+			// through sora-core -check, not diagnostics.
 			r.availability = append(r.availability, engine.Availability{Kind: kind, Reason: "not installed"})
 			continue
 		}
@@ -85,7 +85,7 @@ func Discover(ctx context.Context, enginesDir string, base supervise.Config) *Re
 	return r
 }
 
-// Availability lists every known engine with what this machine has of it.
+// Availability returns discovery results for all known engines.
 func (r *Registry) Availability() []engine.Availability { return slices.Clone(r.availability) }
 
 // Binaries returns the usable builds in default preference order.
@@ -102,16 +102,15 @@ func (r *Registry) Binaries() []supervise.Binary {
 // Usable reports whether at least one engine can be started.
 func (r *Registry) Usable() bool { return len(r.binaries) > 0 }
 
-// LastSelection is the choice made for the most recent plan, with the reasons
-// every other engine was passed over. Diagnostics show it.
+// LastSelection returns the latest engine choice and rejection reasons for
+// diagnostics.
 func (r *Registry) LastSelection() engine.Selection {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.last
 }
 
-// Pin narrows the default order to one engine, as the -engine flag of the
-// service asks. A pinned service ignores the order a plan brings.
+// Pin restricts the service to one engine, overriding plan preference order.
 func (r *Registry) Pin(kind engine.Kind) error {
 	if kind == "" {
 		return nil
@@ -123,8 +122,7 @@ func (r *Registry) Pin(kind engine.Kind) error {
 	return nil
 }
 
-// order resolves the engine order for one request: the service pin wins,
-// then the order the request brings, then the default.
+// order selects service pin, request order, or default order, in that priority.
 func (r *Registry) order(requested []engine.Kind) ([]engine.Kind, error) {
 	if len(r.preference) == 1 || len(requested) == 0 {
 		return r.preference, nil
@@ -137,8 +135,8 @@ func (r *Registry) order(requested []engine.Kind) ([]engine.Kind, error) {
 	return requested, nil
 }
 
-// Factory returns the engine factory of the core service: each plan runs on
-// the first engine of its order that carries all of it.
+// Factory creates the first engine in preference order that supports the entire
+// plan.
 func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine, error) {
 	return func(_ context.Context, p *engine.Plan) (engine.Engine, error) {
 		if p == nil {
@@ -152,14 +150,14 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 			order = engine.PrivatePreference
 		}
 		withBypass := bypass.Has(p)
-		// Both refusals below are about what is installed, not about the
-		// plan, so they carry the key the interface explains as a missing engine.
+		// Missing installations use the missing-engine key rather than
+		// an invalid-plan error.
 		if withBypass && r.tpws == "" {
 			return nil, errs.Newf(errs.CodeFailedPrecondition, errs.KeyEngineBinaryMissing,
 				"registry: bypass outbounds need zapret's tpws in the engines directory")
 		}
-		// Bypass outbounds reach the engine as SOCKS5 outbounds to tpws, so
-		// the engine is chosen for that plan.
+		// Select capabilities against the SOCKS5 plan produced by
+		// bypass rewriting.
 		sel, err := engine.SelectEngine(bypass.Rewrite(p, nil), r.availability, order)
 		r.mu.Lock()
 		r.last = sel
@@ -178,11 +176,9 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 	}
 }
 
-// Measure times a real request through every outbound, each through the
-// first engine of the order that carries it, and streams the results as they
-// arrive. An outbound no available engine carries gets ErrNoEngine, so the
-// caller can fall back to a plain connection check. The channel closes when
-// every outbound has a result.
+// Measure streams request timings through each outbound's first compatible
+// engine. Unsupported outbounds return ErrNoEngine for TCP fallback; the
+// channel closes after all results.
 func (r *Registry) Measure(ctx context.Context, outbounds []engine.Outbound, opts engine.MeasureOptions) (<-chan engine.Measurement, error) {
 	order, err := r.order(opts.Engines)
 	if err != nil {
@@ -210,12 +206,12 @@ func (r *Registry) Measure(ctx context.Context, outbounds []engine.Outbound, opt
 			cfg.Binary = r.binaries[kind]
 			cfg.HomeDir = filepath.Join(r.base.HomeDir, "measure-"+string(kind))
 			cfg.LocalPort = 0
-			// A measurement reports through its results; its engine chatter
-			// would bury the session in the log center.
+			// Suppress measurement engine logs; results already
+			// report probe outcomes.
 			cfg.Logs = nil
 			if err := drivers[kind].measure(ctx, cfg, group, opts, out); err != nil {
-				// The engine never came up; every server of the group gets
-				// the reason instead of silently missing from the list.
+				// Startup failures must produce a result for
+				// every affected server.
 				for _, o := range group {
 					out <- engine.Measurement{OutboundID: o.ID, Engine: kind, Err: err}
 				}
@@ -232,9 +228,8 @@ func (r *Registry) Measure(ctx context.Context, outbounds []engine.Outbound, opt
 	return out, nil
 }
 
-// measureThroughController measures with an engine controlled over the Clash
-// API: one short-lived instance carries every outbound under a probe name, and
-// the controller times each of them.
+// measureThroughController starts one temporary Clash API engine for all
+// outbounds and times each through the controller.
 func measureThroughController(build func(supervise.Config) (engine.Engine, error)) measureFunc {
 	return func(ctx context.Context, cfg supervise.Config, outbounds []engine.Outbound, opts engine.MeasureOptions, out chan<- engine.Measurement) error {
 		if opts.Concurrency <= 0 {
@@ -248,8 +243,8 @@ func measureThroughController(build func(supervise.Config) (engine.Engine, error
 			Rules:     []engine.Rule{{Type: engine.RuleMatchAll, Target: "direct"}},
 			Options:   engine.Options{LogLevel: "error", TestURL: opts.URL},
 		}
-		// Probe names are plain and unique, so the engine keeps them as they
-		// are and the controller finds each outbound by the name it was given.
+		// Plain unique probe names keep controller lookup consistent
+		// with rendered names.
 		ids := make(map[string]string, len(outbounds))
 		for i, o := range outbounds {
 			o.Name = fmt.Sprintf("probe-%d", i+1)

@@ -16,23 +16,22 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// defaultSocketGroup is the group that may open the socket when a caller does not
-// name one. It matches the group the service account runs in, which is what the
-// installation creates.
+// defaultSocketGroup matches the service account group created by the
+// installer.
 const defaultSocketGroup = "sora"
 
-// ListenAddress is where the core listens on this platform.
+// ListenAddress is the platform's core endpoint address.
 func ListenAddress() string { return "/run/sora/core.sock" }
 
-// listenLocal opens a unix socket, removes a leftover from a crashed core and
-// restricts it to the group that may talk to the service.
+// listenLocal creates a Unix socket, removes stale sockets, and applies
+// platform permissions for authorized peers.
 func listenLocal(address string, opts Options) (net.Listener, error) {
 	//nolint:gosec // the interface account must traverse the directory; the socket mode below is the boundary
 	if err := os.MkdirAll(filepath.Dir(address), 0o755); err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeyInternal)
 	}
-	// A socket left by a crashed core would make the service unable to start
-	// until a person deletes a file, which is not a thing a service may depend on.
+	// Remove stale sockets so crashes do not require manual cleanup before
+	// restarting.
 	if err := removeLeftover(address); err != nil {
 		return nil, err
 	}
@@ -62,12 +61,9 @@ func dialLocal(ctx context.Context, address string) (net.Conn, error) {
 	return connection, nil
 }
 
-// defaultAllow lets in the user the core runs as, the members of the socket
-// group and, on Linux, the person in the active local session as polkit sees
-// it. A system installation runs the core as its own user, so that the kill
-// switch can tell the engine's traffic from everyone else's; the person at the
-// machine needs neither a group nor a terminal, and any other account is
-// refused.
+// defaultAllow admits the core user, socket-group members, and Linux active
+// local users authorized by polkit. The dedicated service UID separates engine
+// traffic for the kill switch.
 func defaultAllow(opts Options) func(Peer) bool {
 	group := opts.Group
 	if group == "" {
@@ -75,8 +71,8 @@ func defaultAllow(opts Options) func(Peer) bool {
 	}
 	return func(peer Peer) bool {
 		if !peer.Verified {
-			// The permission on the socket is the only boundary left, and an open
-			// socket is no boundary at all.
+			// Without verified identity, refuse sockets lacking
+			// restrictive permissions.
 			return socketMode&0o007 == 0
 		}
 		return peer.UID == os.Getuid() || inGroup(peer.UID, group) || polkitAllows(peer, PolkitAction)
@@ -119,16 +115,14 @@ func removeLeftover(address string) error {
 	return nil
 }
 
-// chownToGroup gives the socket to the group that may connect. A service that
-// cannot change the group still works: the permission alone decides, and a group
-// is a convenience for an installation that wants one.
+// chownToGroup assigns the socket group when permitted. If unavailable,
+// endpoint permissions and peer checks still enforce access.
 func chownToGroup(address, group string) error {
 	if group == "" {
 		group = defaultSocketGroup
 	}
-	// The group is looked up through the standard library rather than through the
-	// system call package, because that lookup is not available on every platform
-	// this file is compiled for.
+	// Use standard-library group lookup because the syscall package lacks
+	// it on some supported platforms.
 	found, err := user.LookupGroup(group)
 	if err != nil || found == nil {
 		return nil //nolint:nilerr // a missing group is not fatal, as documented above
@@ -137,8 +131,8 @@ func chownToGroup(address, group string) error {
 	if err != nil {
 		return nil //nolint:nilerr // a group id that is not a number is treated as a missing group
 	}
-	// A failure here is not fatal: the owner is the service account, and the
-	// peer rule decides who is let in.
+	// Ownership changes are optional; the service owns the socket and peer
+	// checks enforce access.
 	_ = os.Chown(address, -1, id)
 	return nil
 }

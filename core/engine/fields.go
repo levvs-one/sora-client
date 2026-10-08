@@ -77,9 +77,8 @@ func (o Options) validate() error {
 	return errors.Join(errs...)
 }
 
-// validateDisplayName rejects names that would break logs, lists or the
-// controller protocol. Display names arrive from subscriptions and are not
-// written by the user, so they are untrusted input.
+// validateDisplayName rejects untrusted subscription names that would break
+// logs, lists, or controller requests.
 func validateDisplayName(what, name string) error {
 	if name == "" {
 		return nil

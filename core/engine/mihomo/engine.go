@@ -13,8 +13,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// Prober recognizes a mihomo build. "mihomo -v" prints, for example,
-// "Mihomo Meta v1.19.32 linux amd64 with go1.26.8 Wed Sep 30 16:55:16 UTC 2026".
+// Prober recognizes "mihomo -v" output such as "Mihomo Meta v1.19.32 linux
+// amd64 with go1.26.8".
 var Prober = supervise.Prober{
 	Kind:    engine.KindMihomo,
 	Name:    "mihomo",
@@ -23,8 +23,7 @@ var Prober = supervise.Prober{
 	Pattern: regexp.MustCompile(`(?i)^Mihomo(?:\s+Meta)?\s+v?(\d+\.\d+\.\d+[0-9A-Za-z.\-]*)\s+(\w+)\s+(\w+)`),
 }
 
-// New builds a mihomo engine driven over its external controller. Nothing is
-// started: Apply does the work.
+// New creates a mihomo engine without starting it. Apply starts the process.
 func New(cfg supervise.Config) (*clashapi.Engine, error) {
 	sup, err := supervise.New(cfg, driver{})
 	if err != nil {
@@ -33,8 +32,8 @@ func New(cfg supervise.Config) (*clashapi.Engine, error) {
 	return clashapi.NewEngine(sup), nil
 }
 
-// driver is the mihomo grammar and command line. The configuration goes in on
-// stdin: mihomo reads "-f -" as "read the configuration from standard input".
+// driver defines mihomo configuration and arguments. "-f -" loads configuration
+// from stdin, keeping credentials off disk.
 type driver struct{}
 
 func (driver) Kind() engine.Kind { return engine.KindMihomo }
@@ -84,20 +83,18 @@ func (driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, erro
 	return info.Version, err
 }
 
-// Reload replaces the live configuration through the controller, so the tunnel
-// and the listeners are not torn down.
+// Reload replaces live configuration without restarting the tunnel or
+// listeners.
 func (driver) Reload(ctx context.Context, rt supervise.Runtime, cfg []byte) error {
 	return clashapi.For(rt).ReloadPayload(ctx, string(cfg))
 }
 
-// geodataFiles maps the database names Sora ships next to the engines onto
-// the names mihomo looks for in its home directory.
+// geodataFiles maps shipped database names to mihomo's engine-home filenames.
 var geodataFiles = map[string]string{"geoip.dat": "GeoIP.dat", "geosite.dat": "GeoSite.dat"}
 
-// Prepare copies the shipped databases into the engine home when they are
-// newer than the copy there. A missing database is not an error: the plan may
-// have no geo rules, and a plan that has them fails the validator with a clear
-// message instead of a download.
+// Prepare copies newer shipped databases into the engine home. Missing files
+// are allowed for plans without geo rules; geo plans fail validation without
+// downloading.
 func (driver) Prepare(rt supervise.Runtime, b supervise.Binary) error {
 	dir := filepath.Dir(b.Path)
 	for shipped, local := range geodataFiles {
@@ -117,8 +114,8 @@ func (driver) Prepare(rt supervise.Runtime, b supervise.Binary) error {
 	return nil
 }
 
-// copyFile writes src to dst through a temporary file, so an engine never
-// reads a half-written database.
+// copyFile uses a temporary file so engines never read a partially written
+// database.
 func copyFile(src, dst string) error {
 	in, err := os.Open(src) //nolint:gosec // src is a database next to the probed engine binary
 	if err != nil {

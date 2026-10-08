@@ -13,14 +13,14 @@ import (
 	"unicode/utf8"
 )
 
-// Info is what a provider says about a subscription. Panels such as Remnawave
-// and Marzban send it as response headers; some providers put the same keys
-// as "#key: value" lines at the top of the body. The formats follow what
-// those panels emit and what existing clients read (Hiddify's profile parser).
+// Info contains provider metadata from Remnawave/Marzban headers or leading
+// "#key: value" body lines, following panel formats and Hiddify's profile
+// parser.
 type Info struct {
 	// Title is the name the provider gave the subscription.
 	Title string
-	// UpdateInterval is how often the provider asks to be fetched; zero when
+	// UpdateInterval is how often the provider asks to be fetched; zero
+	// when
 	// it did not say.
 	UpdateInterval time.Duration
 	// HasUsage reports whether the provider sent traffic figures at all.
@@ -38,14 +38,14 @@ type Info struct {
 	Announce string
 }
 
-// Limits of the values a provider controls. They keep a hostile provider from
-// filling the interface with text or scheduling a fetch every second.
+// Bound provider-controlled text and update intervals to prevent oversized
+// displays or excessive fetches.
 const (
 	maxTitleRunes    = 128
 	maxAnnounceRunes = 2048
 	maxURLBytes      = 2048
 	maxIntervalHours = 24 * 365
-	// bodyHeaderLines is how far into the body header lines are looked for.
+	// bodyHeaderLines bounds the leading lines inspected for metadata.
 	bodyHeaderLines = 10
 )
 
@@ -55,9 +55,8 @@ var infoKeys = []string{
 	"profile-web-page-url", "support-url", "announce", "content-disposition",
 }
 
-// parseInfo reads the subscription information. A response header wins over
-// the same key in the body, because the header is what the panel set for
-// this request.
+// parseInfo reads metadata, preferring response headers over matching body
+// keys.
 func parseInfo(header http.Header, body []byte) Info {
 	values := bodyHeaders(body)
 	for _, key := range infoKeys {
@@ -83,8 +82,8 @@ func parseInfo(header http.Header, body []byte) Info {
 	return info
 }
 
-// parseUsage reads "upload=1; download=2; total=3; expire=4": bytes, and the
-// end as Unix seconds. A field that is missing or not a number counts as 0.
+// parseUsage reads upload, download, and total bytes plus expiry in Unix
+// seconds. Missing or invalid fields become zero.
 func parseUsage(raw string) (ok bool, upload, download, total uint64, expire time.Time) {
 	fields := map[string]uint64{}
 	for _, part := range strings.Split(raw, ";") {
@@ -140,7 +139,7 @@ func bodyHeaders(body []byte) map[string]string {
 	return out
 }
 
-// decodeBody decodes a body sent as base64, the most common subscription form.
+// decodeBody decodes base64 subscription bodies.
 func decodeBody(body []byte) ([]byte, bool) {
 	clean := bytes.Map(func(r rune) rune {
 		if unicode.IsSpace(r) {
@@ -156,8 +155,8 @@ func decodeBody(body []byte) ([]byte, bool) {
 	return nil, false
 }
 
-// decodeMarked decodes a value written as "base64:<text>", the way panels
-// send names and messages that are not ASCII.
+// decodeMarked reads "base64:<text>" metadata used by panels for non-ASCII
+// names and messages.
 func decodeMarked(v string) string {
 	rest, marked := strings.CutPrefix(v, "base64:")
 	if !marked {
@@ -171,8 +170,8 @@ func decodeMarked(v string) string {
 	return ""
 }
 
-// dispositionName is the file name of a Content-Disposition header, without
-// its extension.
+// dispositionName extracts the Content-Disposition filename without its
+// extension.
 func dispositionName(v string) string {
 	if v == "" {
 		return ""
@@ -207,8 +206,8 @@ func cleanText(v string, limit int, multiline bool) string {
 	return strings.TrimSpace(b.String())
 }
 
-// cleanURL keeps a link the interface can open safely: https, http, or a
-// Telegram link, which is where many providers run their support.
+// cleanURL allows HTTP, HTTPS, and Telegram links used by provider support
+// pages.
 func cleanURL(v string) string {
 	v = strings.TrimSpace(v)
 	if v == "" || len(v) > maxURLBytes {

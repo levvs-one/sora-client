@@ -106,13 +106,13 @@ func TestManagerRejectsConcurrentCommands(t *testing.T) {
 	release = make(chan struct{})
 	manager := NewManager(ManagerConfig{
 		Factory: func(context.Context, *engine.Plan) (engine.Engine, error) {
-			// The factory blocks until the test releases it, which is the window
-			// a second command must not be able to enter.
+			// Block the factory to check that concurrent commands
+			// cannot enter the active operation.
 			<-release
 			return newFakeEngine(), nil
 		},
 	})
-	// busy is read under the lock the manager writes it under.
+	// Read busy under the same lock used for writes.
 	busy := func() bool {
 		manager.mu.Lock()
 		defer manager.mu.Unlock()

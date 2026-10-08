@@ -20,15 +20,13 @@ type Backoff struct {
 	Rand func() float64
 }
 
-// DefaultBackoff starts at 500ms and caps at 2min, so a broken engine is
-// retried quickly at first and then settles into a quiet retry loop.
+// DefaultBackoff starts at 500 ms and caps at two minutes.
 func DefaultBackoff() Backoff {
 	return Backoff{Initial: 500 * time.Millisecond, Max: 2 * time.Minute, Factor: 2, Rand: rand.Float64}
 }
 
-// Delay returns how long to wait before attempt n, counting from zero.
-// Jitter is random between 50% and 100% of the computed delay so that many
-// machines behind one subscription endpoint do not retry in lockstep.
+// Delay returns the wait before zero-based attempt n. Jitter ranges from 50% to
+// 100% of the delay to spread retries across clients sharing an endpoint.
 func (b Backoff) Delay(n int) time.Duration {
 	initial := b.Initial
 	if initial <= 0 {
@@ -72,8 +70,8 @@ func (b Backoff) Wait(ctx context.Context, n int) error {
 	}
 }
 
-// RestartBudget allows at most limit restarts inside window. A long healthy run
-// clears the budget, so a crash from a year ago cannot block a reconnect.
+// RestartBudget limits restarts within a time window. A healthy run clears
+// expired failures.
 type RestartBudget struct {
 	mu       sync.Mutex
 	limit    int

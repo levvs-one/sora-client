@@ -11,10 +11,8 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// Protector wraps and unwraps the master key. Windows binds the key to the
-// user account through DPAPI; every other platform keeps it in a file only the
-// owner may read. The interface exists so a host can supply its own mechanism
-// and so tests can run without touching the platform.
+// Protector wraps master keys using account-bound Windows DPAPI or owner-only
+// files elsewhere. Hosts and tests can supply an alternative mechanism.
 type Protector interface {
 	// Protect wraps a master key for storage.
 	Protect(key []byte) ([]byte, error)
@@ -25,16 +23,14 @@ type Protector interface {
 	Name() string
 }
 
-// FileProtector keeps the wrapped key in a file whose permissions only the owner
-// can read. It is the mechanism on platforms with no user key store that the
-// core can rely on without a desktop session.
+// FileProtector uses owner-only key storage without requiring a desktop
+// session.
 type FileProtector struct{}
 
 // Protect stores the key with owner-only permissions.
 func (FileProtector) Protect(key []byte) ([]byte, error) { return append([]byte(nil), key...), nil }
 
-// Unprotect reads the key back. Permissions are checked by the store, which owns
-// the file; this protector only copies.
+// Unprotect copies the key; the owning store checks file permissions.
 func (FileProtector) Unprotect(wrapped []byte) ([]byte, error) {
 	return append([]byte(nil), wrapped...), nil
 }
@@ -45,9 +41,9 @@ func (FileProtector) Name() string { return "file" }
 // DefaultProtector returns the protector the current platform uses.
 func DefaultProtector() Protector { return platformProtector() }
 
-// loadOrCreateKey returns the master key and the store id, creating either of
-// them on first start. The id is not secret: it binds a vault to this store, so
-// a key and a vault that belong to different stores cannot be combined.
+// loadOrCreateKey loads or creates the master key and public store ID. The ID
+// binds the vault to its store and prevents mixing keys and vaults from
+// different stores.
 func loadOrCreateKey(dir string, prot Protector) (key, id []byte, err error) {
 	id, err = loadOrCreateID(filepath.Join(dir, idFile))
 	if err != nil {
@@ -125,10 +121,8 @@ func readMasterFile(path string) ([]byte, error) {
 	return raw[len(masterHeader):], nil
 }
 
-// NewReference returns a fresh opaque reference for material the core imported
-// on its own, for example the servers of a fetched subscription. The caller of
-// the control plane never chooses a reference for imported material, so a
-// reference can never address another store or smuggle a path into the vault.
+// NewReference generates opaque references for core-imported material. Clients
+// cannot choose imported references or inject store paths.
 func NewReference() (string, error) {
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {

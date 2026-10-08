@@ -1,12 +1,7 @@
-// Package logs is the log center of the Sora core: one bounded, in-memory
-// record of what the core and every engine said, which the interface queries,
-// watches, filters and exports.
-//
-// Nothing here touches the disk. A log of a tunnel is a list of the places a
-// person visited and of the servers they use, and a file of it survives the
-// session, the uninstall and a device inspection. The record lives in memory
-// only, bounded by entries and by bytes, and leaves the process only through
-// an explicit export.
+// Package logs provides a bounded in-memory log for the core and engines, with
+// query, watch, filter, and export operations. It never writes to disk to avoid
+// persisting destinations and server identities. Entries and bytes are bounded;
+// export is explicit.
 package logs
 
 import (
@@ -63,39 +58,40 @@ type Entry struct {
 	Level   Level
 	Source  string
 	Message string
-	// Repeat counts identical consecutive messages folded into this entry; 1
+	// Repeat counts identical consecutive messages folded into this entry;
+	// 1
 	// for a message seen once. Time is the time of the latest one.
 	Repeat uint32
 }
 
 func (e Entry) size() int { return len(e.Message) + len(e.Source) + 48 }
 
-// Settings are the switches of the log center. They change at runtime and
-// apply to the next entry.
+// Settings applies runtime log changes starting with the next entry.
 type Settings struct {
-	// CaptureLevel drops entries below it before they are stored. Engines run
-	// at debug level, so lowering it takes effect at once, without a restart.
+	// CaptureLevel filters entries before storage. Engines stay at debug
+	// level, so changes require no restart.
 	CaptureLevel Level
-	// RecordDestinations keeps the hosts and addresses of the sites a user
-	// visits in engine messages. Off, they are replaced before storage.
+	// RecordDestinations retains visited hosts and addresses. When
+	// disabled, they are masked before storage.
 	RecordDestinations bool
-	// MaxEntries and MaxBytes bound the record; the oldest entries go first.
+	// MaxEntries and MaxBytes bound the record; the oldest entries go
+	// first.
 	MaxEntries int
 	MaxBytes   int
 }
 
-// Limits of the record. MaxBytes counts message bytes plus a fixed overhead
-// per entry, so a flood of short lines is bounded too.
+// MaxBytes counts message bytes and fixed entry overhead to bound floods of
+// short lines too.
 const (
 	DefaultMaxEntries = 20000
 	DefaultMaxBytes   = 8 << 20
 	MaxMessageBytes   = 4 << 10
-	// foldWindow is how long an identical message keeps folding into the
-	// previous entry instead of becoming a new one.
+	// foldWindow limits how long identical consecutive messages share an
+	// entry.
 	foldWindow = 30 * time.Second
 )
 
-// DefaultSettings capture info and above and keep destinations out.
+// DefaultSettings captures info and higher levels and masks destinations.
 func DefaultSettings() Settings {
 	return Settings{CaptureLevel: LevelInfo, MaxEntries: DefaultMaxEntries, MaxBytes: DefaultMaxBytes}
 }
@@ -131,14 +127,15 @@ func New(settings Settings) *Center {
 	return &Center{settings: settings.normalized(), next: 1, watchers: map[*watcher]struct{}{}, now: time.Now}
 }
 
-// Settings returns the current switches.
+// Settings returns the current log settings.
 func (c *Center) Settings() Settings {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.settings
 }
 
-// SetSettings changes the switches. Shrinking the bounds evicts at once.
+// SetSettings applies changes and immediately evicts entries beyond reduced
+// bounds.
 func (c *Center) SetSettings(s Settings) Settings {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -147,8 +144,8 @@ func (c *Center) SetSettings(s Settings) Settings {
 	return c.settings
 }
 
-// Write records one message. It is the single entry point for the core and the
-// engines; the message must already be masked of credentials.
+// Write records core or engine messages. Callers must redact credentials before
+// writing.
 func (c *Center) Write(at time.Time, level Level, source, message string) {
 	message = strings.TrimRight(message, "\r\n")
 	if message == "" {
@@ -195,12 +192,12 @@ func (c *Center) evict() {
 		return
 	}
 	c.dropped += uint64(drop)
-	// Copy instead of reslicing, so the evicted messages can be collected.
+	// Copy retained entries so evicted messages can be garbage-collected.
 	c.entries = append(c.entries[:0:0], c.entries[drop:]...)
 }
 
-// Clear removes every entry. Sequence numbers keep growing, so a client that
-// holds a cursor never confuses a new entry with an old one.
+// Clear removes entries without resetting sequence numbers, preserving cursor
+// uniqueness.
 func (c *Center) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -214,8 +211,8 @@ type Filter struct {
 	Sources  []string
 	// Contains matches the message case-insensitively.
 	Contains string
-	// Pattern is a regular expression on the message. Go regular expressions
-	// run in linear time, so a hostile pattern cannot stall the core.
+	// Pattern matches messages with Go's linear-time regular expressions to
+	// prevent expensive untrusted filters.
 	Pattern *regexp.Regexp
 	Since   time.Time
 	Until   time.Time
@@ -254,17 +251,17 @@ func (f Filter) match(e Entry) bool {
 	return f.Pattern == nil || f.Pattern.MatchString(e.Message)
 }
 
-// Page is one answer of Query.
+// Page holds one Query result.
 type Page struct {
 	// Entries are newest first.
 	Entries []Entry
-	// Before is the cursor of the next, older page; zero when there is none.
+	// Before is the cursor of the next, older page; zero when there is
+	// none.
 	Before uint64
 	Stats  Stats
 }
 
-// Stats describes the whole record, not only the matching entries, so the
-// interface can show what a filter hides.
+// Stats covers all entries, including those excluded by a filter.
 type Stats struct {
 	ByLevel  map[Level]int
 	BySource map[string]int

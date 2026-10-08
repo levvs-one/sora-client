@@ -260,8 +260,8 @@ func TestSchedulerCatchesUpAfterTheMachineSlept(t *testing.T) {
 	id := state.GetSettings().GetId()
 	p.calls.Store(0)
 
-	// Wall time jumps two days ahead, as after a sleep; the scheduler reads the
-	// wall clock, so the update that fell due during the sleep runs at once.
+	// Advance wall time to simulate suspend and check that overdue updates
+	// run immediately.
 	srv.subs.mu.Lock()
 	srv.subs.now = func() time.Time { return time.Now().Add(48 * time.Hour) }
 	srv.subs.mu.Unlock()

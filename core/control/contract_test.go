@@ -34,8 +34,9 @@ func TestNegotiate(t *testing.T) {
 }
 
 func TestCoreEventPayloadKinds(t *testing.T) {
-	// Field numbers in CoreEvent oneof: 4=StateChanged, 5=StatsTick, 6=BypassStrategyChanged,
-	// 7=ProbeResult, 8=LogBatch, 9=SoraError, 10=KillSwitchChanged
+	// CoreEvent fields: 4=StateChanged, 5=StatsTick,
+	// 6=BypassStrategyChanged, 7=ProbeResult, 8=LogBatch, 9=SoraError,
+	// 10=KillSwitchChanged.
 	ones := []protoreflect.FieldNumber{4, 5, 6, 7, 8, 9, 10}
 	message := (&corev1.CoreEvent{}).ProtoReflect().Descriptor().Oneofs().Get(0)
 	if message.Fields().Len() != len(ones) {
@@ -57,11 +58,9 @@ func TestSoraErrorIsRedacted(t *testing.T) {
 	}
 }
 
-// TestSecretMaterialHasExactlyOneCarrier pins the security property of the
-// contract: only PutSecret may carry credential material, and it carries it once.
-// Every other method refers to a stored secret by reference, so a client can run
-// a plan without ever holding a password, and a compromised method cannot become
-// a way to read one.
+// TestSecretMaterialHasExactlyOneCarrier checks that only PutSecret carries
+// credentials, exactly once. Other methods use references and cannot expose
+// stored material.
 func TestSecretMaterialHasExactlyOneCarrier(t *testing.T) {
 	service := (&corev1.HandshakeRequest{}).ProtoReflect().Descriptor().ParentFile().Services().ByName("CoreControl")
 	if service == nil {
@@ -77,9 +76,9 @@ func TestSecretMaterialHasExactlyOneCarrier(t *testing.T) {
 			continue
 		}
 		if input.Fields().ByName("payload") != nil {
-			// ParseImport and FetchSubscription carry a subscription body, not a
-			// credential: the body is public to whoever holds the link, and the
-			// core parses it into references instead of storing it.
+			// Import and fetch carry subscription bodies for
+			// parsing into references, not separate credential
+			// fields.
 			continue
 		}
 	}
@@ -88,9 +87,8 @@ func TestSecretMaterialHasExactlyOneCarrier(t *testing.T) {
 	}
 }
 
-// TestErrorCodesAreUniqueAndNamed keeps the wire enum readable: two classes
-// sharing a number would make a client translate the wrong failure, and a missing
-// prefix would make a log line ambiguous between cores.
+// TestErrorCodesAreUniqueAndNamed checks that wire error codes have unique
+// numbers and an identifying prefix.
 func TestErrorCodesAreUniqueAndNamed(t *testing.T) {
 	codes := corev1.SoraErrorCode_name
 	seen := make(map[int32]string, len(codes))

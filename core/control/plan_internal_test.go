@@ -14,10 +14,8 @@ import (
 	"github.com/levvs-one/sora-client/core/parser"
 )
 
-// TestRealityAndTransportSurviveTheVault follows one share link from import to
-// the engine plan. Before the fix the REALITY key, the transport path and the
-// XHTTP mode were stored but never read back, so every REALITY server failed
-// to connect on every engine.
+// TestRealityAndTransportSurviveTheVault checks that REALITY keys, transport
+// paths, and XHTTP mode survive import and credential resolution.
 func TestRealityAndTransportSurviveTheVault(t *testing.T) {
 	link := "vless://b831381d-6324-4d53-ad4f-8cda48b30811@edge.example.com:443?type=xhttp&security=reality" +
 		"&pbk=Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw&sid=6ba85179e30d4fc2&sni=www.example.com&fp=chrome" +
@@ -220,7 +218,8 @@ func TestEveryEngineAcceptsAPlanWithGroupsAndAPreset(t *testing.T) {
 			in := &corev1.SessionPlan{
 				TunnelMode: corev1.TunnelMode_TUNNEL_MODE_APPLICATION,
 				Engines:    []string{kind},
-				// sing-box and Xray are controlled over loopback ports only.
+				// sing-box and Xray are controlled over
+				// loopback ports only.
 				NetworkControlAllowed: kind != "mihomo",
 				Outbounds:             []*corev1.OutboundSpec{{Id: "a", Protocol: "direct"}, {Id: "b", Protocol: "direct"}},
 				Groups: []*corev1.GroupSpec{

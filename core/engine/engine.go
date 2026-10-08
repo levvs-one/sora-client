@@ -1,10 +1,6 @@
-// Package engine defines the boundary between the Sora control plane and the
-// forwarding engines Sora can drive (mihomo, sing-box, Xray).
-//
-// Code above this package passes Plan values and never touches an engine
-// specific configuration file. Every engine reports the protocols and the
-// features it really supports, so the control plane picks an engine by
-// capability instead of by guesswork.
+// Package engine defines the plan-based boundary for mihomo, sing-box, and
+// Xray. Callers avoid engine-specific configuration and select engines by
+// advertised protocols and features.
 package engine
 
 import (
@@ -18,7 +14,7 @@ import (
 // Kind identifies a forwarding engine implementation.
 type Kind string
 
-// Engine kinds Sora drives.
+// The engines Sora can run.
 const (
 	KindMihomo  Kind = "mihomo"
 	KindSingBox Kind = "sing-box"
@@ -28,8 +24,7 @@ const (
 // Feature is a capability the control plane may require from an engine.
 type Feature string
 
-// Features a plan may ask for. The capability matrix of catalog.go decides
-// which engine provides them.
+// Features are provided according to the capability matrix in catalog.go.
 const (
 	FeatureTun            Feature = "tun"
 	FeatureFakeIP         Feature = "fake-ip"
@@ -49,7 +44,8 @@ const (
 	FeaturePrivateControl Feature = "private-control"
 )
 
-// Capabilities is what one engine build can actually do.
+// Capabilities describes the protocols and features supported by an engine
+// build.
 type Capabilities struct {
 	Kind       Kind
 	MinVersion string
@@ -63,11 +59,10 @@ func (c Capabilities) SupportsProtocol(p Protocol) bool { return c.Protocols[p] 
 // Supports reports whether the engine provides f.
 func (c Capabilities) Supports(f Feature) bool { return c.Features[f] }
 
-// State of a managed engine instance.
+// State describes a managed engine instance.
 type State string
 
-// States of a managed engine instance. Stopped and Failed are terminal: the
-// engine leaves them only when Start is called again.
+// Stopped and Failed are terminal until the engine is started again.
 const (
 	StateIdle       State = "idle"
 	StateStarting   State = "starting"
@@ -128,16 +123,16 @@ func ParseVersion(raw string) (Version, error) {
 	}, nil
 }
 
-// Engine is one managed forwarding engine. Apply is idempotent: applying the
-// same plan twice must not interrupt traffic more than the engine requires,
-// and applying a new plan must converge to that plan.
+// Engine manages a forwarding process. Apply is idempotent and converges to the
+// requested plan while minimizing traffic interruptions.
 type Engine interface {
 	Kind() Kind
 	Capabilities() Capabilities
 	State() State
 	Version() Version
 
-	// Validate reports every problem that would stop this plan from running.
+	// Validate reports every problem that would stop this plan from
+	// running.
 	Validate(ctx context.Context, p *Plan) error
 	// Apply starts the engine or moves a running engine to the given plan.
 	Apply(ctx context.Context, p *Plan) error

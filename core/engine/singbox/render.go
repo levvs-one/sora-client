@@ -13,15 +13,15 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// Rule sets that replace the geoip and geosite databases removed in sing-box
-// 1.12. They are the official SagerNet builds of the same data.
+// Official SagerNet rule sets replace geoip and geosite databases removed in
+// sing-box 1.12.
 const (
 	geoSiteRuleSetURL = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-%s.srs"
 	geoIPRuleSetURL   = "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-%s.srs"
 )
 
-// obj is one JSON object of the configuration. sing-box reads an empty value
-// as an explicit setting for some keys, so set leaves zero values out.
+// obj models configuration JSON. set omits zero values because some empty
+// values are explicit settings upstream.
 type obj map[string]any
 
 func (o obj) set(key string, value any) obj {
@@ -53,9 +53,8 @@ func (o obj) set(key string, value any) obj {
 	return o
 }
 
-// Render turns a plan into the JSON sing-box reads. The result carries
-// credentials: the supervisor hands it to the engine on stdin and nothing from
-// it may enter a diagnostic archive.
+// Render produces credential-bearing JSON for engine stdin. The output must
+// never enter diagnostic archives.
 func Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	if p == nil {
 		return nil, errors.New("singbox: nil plan")
@@ -82,8 +81,8 @@ func Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	if p.Options.AllowLAN {
 		listen = "0.0.0.0"
 	}
-	// The listener exists only when the plan asks for it: a loopback port is
-	// open to every application on the machine.
+	// Open only requested listeners because all local applications can
+	// reach loopback.
 	inbounds := []obj{}
 	if lp := p.LocalProxy; lp.Enabled {
 		mixed := obj{"type": "mixed", "tag": "mixed-in", "listen": listen, "listen_port": rt.LocalPort}
@@ -104,8 +103,8 @@ func Render(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 		"route":     route,
 		"experimental": obj{
 			"clash_api": obj{"external_controller": rt.ControlAddr, "secret": rt.Secret},
-			// The cache keeps the selector choice and fake-ip mappings across
-			// restarts, and sing-box restarts on every new plan.
+			// Persist selector choices and fake-IP mappings because
+			// new plans restart sing-box.
 			"cache_file": obj{"enabled": true, "path": "cache.db", "store_fakeip": p.DNS.Mode == string(engine.DNSFakeIP)},
 		},
 	}
@@ -123,8 +122,8 @@ type renderer struct {
 	ruleSets []obj
 }
 
-// assignTags gives every outbound and group a unique tag. Display names are
-// used where they are unique, because the Clash API shows tags to the user.
+// assignTags gives outbounds and groups unique tags. Unique display names are
+// preferred because the Clash API shows tags to users.
 func (r *renderer) assignTags() error {
 	unique := func(name, fallback string) string {
 		tag := strings.TrimSpace(name)
@@ -335,8 +334,7 @@ func (r *renderer) group(g engine.Group) (obj, error) {
 	return out, nil
 }
 
-// route renders the routing table. Sniffing and DNS hijacking come first,
-// then the plan rules in the order the user arranged them.
+// route orders sniffing and DNS hijacking before the unchanged plan rule order.
 func (r *renderer) route() (obj, error) {
 	rules := []obj{{"action": "sniff"}, {"protocol": "dns", "action": "hijack-dns"}}
 	final := "direct"
@@ -374,8 +372,8 @@ func (r *renderer) route() (obj, error) {
 	r.final = final
 	out := obj{"rules": rules, "final": final, "auto_detect_interface": true}
 	if len(r.ruleSets) > 0 {
-		// Rule sets are fetched through the default route, because the
-		// hosts that serve them are blocked in the same places Sora is used.
+		// Fetch rule sets through the default route to reach hosts
+		// blocked on the local network.
 		for _, rs := range r.ruleSets {
 			rs["download_detour"] = final
 		}
@@ -438,9 +436,9 @@ func (r *renderer) remoteRuleSet(tag, url string) string {
 	return tag
 }
 
-// dns renders the resolver block in the server format of sing-box 1.12 and
-// returns the tag that resolves the hostnames of the proxy servers. That
-// resolver never goes through a proxy: it is what reaches the proxy.
+// dns uses the sing-box 1.12 server format and returns the proxy-hostname
+// resolver tag. Bootstrap resolution must not pass through the proxy it
+// resolves.
 func (r *renderer) dns() (obj, string, error) {
 	d := r.plan.DNS
 	var servers, rules []obj
@@ -461,8 +459,8 @@ func (r *renderer) dns() (obj, string, error) {
 			return nil, "", fmt.Errorf("singbox: dns transport %q is not supported", s.Transport)
 		}
 		if s.ProxyOnly {
-			// A proxy-only resolver is reached through the default route, so
-			// the network the user is on never sees those queries.
+			// Proxy-only DNS uses the default route to keep queries
+			// off the local network.
 			server.set("detour", r.proxyFinal())
 			if remote == "" {
 				remote = tag
@@ -488,8 +486,8 @@ func (r *renderer) dns() (obj, string, error) {
 	if direct == "" {
 		direct = bootstrap
 	}
-	// A resolver named by hostname needs a resolver for that hostname, and
-	// that one must be addressed by IP or be the system resolver.
+	// Resolver hostnames require an IP-addressed or system bootstrap
+	// resolver.
 	for _, server := range byHostname {
 		server["domain_resolver"] = bootstrap
 	}
@@ -540,8 +538,8 @@ func tun(t engine.Tun) obj {
 		"stack":        orDefault(t.Stack, "mixed"),
 		"mtu":          orDefaultInt(t.MTU, 9000),
 	}.set("interface_name", t.DeviceName).
-		// Package filters are an Android feature of sing-box; on desktop the
-		// plan routes applications with process rules instead.
+		// Package filters apply only on Android; desktop application
+		// routing uses process rules.
 		set("include_package", t.IncludeApps).set("exclude_package", t.ExcludeApps)
 }
 

@@ -1,10 +1,6 @@
-// Package singbox drives SagerNet/sing-box as an engine of Sora.
-//
-// sing-box is a separate GPL binary started as a child process. The rendered
-// JSON goes in on stdin ("run -c stdin"), and the engine is controlled over its
-// Clash compatible API (experimental.clash_api) bound to the loopback
-// interface with a per-start secret. sing-box cannot reload a configuration
-// through that API, so a new plan restarts the engine.
+// Package singbox runs sing-box as a separate GPL child with JSON on stdin
+// ("run -c stdin"). Its loopback Clash API uses a per-start secret.
+// Configuration changes require a restart because the API cannot reload.
 package singbox
 
 import (
@@ -17,8 +13,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// Prober recognizes a sing-box build. "sing-box version" prints, for example,
-// "sing-box version 1.14.2" followed by the environment line.
+// Prober recognizes "sing-box version" output such as "sing-box version 1.14.2"
+// followed by environment details.
 var Prober = supervise.Prober{
 	Kind:    engine.KindSingBox,
 	Name:    "sing-box",
@@ -27,7 +23,7 @@ var Prober = supervise.Prober{
 	Pattern: regexp.MustCompile(`^sing-box version v?(\d+\.\d+\.\d+[0-9A-Za-z.\-]*)`),
 }
 
-// New builds a sing-box engine. Nothing is started: Apply does the work.
+// New creates a sing-box engine without starting it. Apply starts it.
 func New(cfg supervise.Config) (*clashapi.Engine, error) {
 	sup, err := supervise.New(cfg, driver{})
 	if err != nil {

@@ -5,9 +5,12 @@ package tunroute
 import (
 	"encoding/json"
 	"net/netip"
+	"os"
 	"slices"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/levvs-one/sora-client/core/engine"
 )
@@ -49,6 +52,7 @@ func TestCleanupIdentifiesOwnersAndLegacyRules(t *testing.T) {
 	}{
 		{"DNS skip", `{"priority":5336,"src":"all","iif":"lo","ipproto":"ipproto-17","dport":53,"table":"","goto":5338,"protocol":"242"}`, true},
 		{"tagged", `{"priority":5333,"src":"192.0.2.1","table":"5340","protocol":"242"}`, true},
+		{"legacy protocol zero", `{"priority":5333,"src":"all","oif":"uplink","table":"254","protocol":"0"}`, true},
 		{"legacy bound", `{"priority":5333,"src":"all","oif":"uplink","table":"254"}`, true},
 		{"legacy DNS", `{"priority":5337,"src":"all","iif":"lo","ipproto":"ipproto-17","dport":53,"dport_mask":"0xffff","table":"5340"}`, true},
 		{"legacy main", `{"priority":5338,"src":"all","iif":"lo","table":"254","suppress_prefixlen":0}`, true},
@@ -88,5 +92,68 @@ func TestBypassKeepsBoundSocketsAndForeignTunnelSources(t *testing.T) {
 	physical := bypassSteps("uplink", nil, []string{"-4"})
 	if len(physical) != 1 || strings.Contains(strings.Join(physical, "\n"), "from ") {
 		t.Fatal("ordinary uplink sources must not bypass the tunnel")
+	}
+}
+
+func TestMissingIPOnlyFailsRouting(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	if err := Cleanup(t.Context()); err != nil {
+		t.Fatalf("proxy-only cleanup: %v", err)
+	}
+	err := Route(t.Context(), engine.Tun{Enabled: true, DeviceName: engine.TunDevice}, 0)
+	if err == nil || !strings.Contains(err.Error(), "TUN routing requires iproute2 (ip)") {
+		t.Fatalf("route: %v", err)
+	}
+}
+
+func TestDeletionIncludesSelectorsAndPreservesAmbiguousLegacy(t *testing.T) {
+	decode := func(data string) map[string]json.RawMessage {
+		var rule map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(data), &rule); err != nil {
+			t.Fatal(err)
+		}
+		return rule
+	}
+	legacy := decode(`{"priority":5333,"src":"all","oif":"uplink","table":"254"}`)
+	foreign := decode(`{"priority":5333,"src":"all","oif":"uplink","table":"254","protocol":"99","fwmark":"0x7000"}`)
+	if !deleteMatches(legacy, foreign) {
+		t.Fatal("protocol 0 cannot exclude the earlier marked rule")
+	}
+	legacy["protocol"] = json.RawMessage(`"2"`)
+	if deleteMatches(legacy, foreign) {
+		t.Fatal("protocol 2 must exclude protocol 99")
+	}
+	if got := ownedRule(legacy); got != "priority 5333 protocol 2 from all oif uplink table 254" {
+		t.Fatalf("selectors = %q", got)
+	}
+	tagged := decode(`{"priority":5335,"src":"all","iif":"lo","ipproto":"ipproto-17","dport":53,"dport_mask":"0xffff","table":"5340","protocol":"242"}`)
+	for _, selector := range []string{"protocol 242", "from all", "iif lo", "table 5340", "ipproto 17", "dport 53/0xffff"} {
+		if got := ownedRule(tagged); !strings.Contains(got, selector) {
+			t.Fatalf("missing %s in %q", selector, got)
+		}
+	}
+	tagged["fwmark"] = json.RawMessage(`"0x7000"`)
+	if got := ownedRule(tagged); got != "" {
+		t.Fatalf("unknown selectors must be preserved: %s", got)
+	}
+}
+
+func TestLinuxPackagesRequireRoutingTool(t *testing.T) {
+	raw, err := os.ReadFile("../../../packaging/linux/nfpm.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Overrides map[string]struct {
+			Depends []string `yaml:"depends"`
+		} `yaml:"overrides"`
+	}
+	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	for packager, dependency := range map[string]string{"deb": "iproute2", "archlinux": "iproute2", "rpm": "iproute"} {
+		if !slices.Contains(cfg.Overrides[packager].Depends, dependency) {
+			t.Errorf("%s package lacks %s", packager, dependency)
+		}
 	}
 }

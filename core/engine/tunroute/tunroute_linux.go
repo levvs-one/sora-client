@@ -138,7 +138,7 @@ func bypassSteps(device string, addresses []netip.Prefix, families []string) []s
 func unroute(ctx context.Context) error {
 	var errs []error
 	for _, family := range families() {
-		out, err := exec.CommandContext(ctx, "ip", family, "-j", "-N", "rule").Output() //nolint:gosec // family is the fixed -4/-6 set
+		out, err := exec.CommandContext(ctx, "ip", family, "-d", "-j", "-N", "rule").Output() //nolint:gosec // family is the fixed -4/-6 set
 		if err != nil {
 			return fmt.Errorf("tunroute: read rules: %w", err)
 		}
@@ -146,9 +146,18 @@ func unroute(ctx context.Context) error {
 		if err := json.Unmarshal(out, &rules); err != nil {
 			return fmt.Errorf("tunroute: decode rules: %w", err)
 		}
+		var kept []map[string]json.RawMessage
 		for _, rule := range rules {
-			if args := ownedRule(rule); args != "" {
-				errs = append(errs, ip(ctx, family+" rule del "+args))
+			args := ownedRule(rule)
+			// Zero-valued selectors (including protocol 0) are wildcards in
+			// Linux rule_find. Never let deletion select an earlier foreign rule.
+			if args == "" || slices.ContainsFunc(kept, func(older map[string]json.RawMessage) bool { return deleteMatches(rule, older) }) {
+				kept = append(kept, rule)
+				continue
+			}
+			if err := ip(ctx, family+" rule del "+args); err != nil {
+				errs = append(errs, err)
+				kept = append(kept, rule)
 			}
 		}
 		// Reading first lets a proxy-only, unprivileged core start when there
@@ -171,48 +180,51 @@ func ownedRule(rule map[string]json.RawMessage) string {
 	if err != nil {
 		return ""
 	}
-	args := "priority " + value("priority") + " table " + value("table")
+	args := ruleSelectors(rule)
+	if args == "" {
+		return ""
+	}
 	// mihomo's IPv6 bound-interface rules use dynamically chosen priorities.
 	// Older builds used table 2022; never flush that shared engine table.
 	_, detached := rule["oif_detached"]
-	if priority > 0 && value("oif") == engine.TunDevice && value("src") == "all" && (value("table") == table || value("table") == "2022") && (len(rule) == 4 || len(rule) == 5 && detached) {
-		return args + " oif " + engine.TunDevice
+	if priority > 0 && value("oif") == engine.TunDevice && value("src") == "all" && (value("table") == table || value("table") == "2022") && (value("protocol") == "" || value("protocol") == "0" || value("protocol") == "2") && (len(rule) == 4 || len(rule) == 5 && (detached || value("protocol") != "") || len(rule) == 6 && detached && value("protocol") != "") {
+		return args
 	}
 	if priority < 5333 || priority > 5339 {
 		return ""
 	}
 	if value("protocol") == protocol && value("goto") == priorityMain && value("table") == "" {
-		return "priority " + value("priority") + " goto " + priorityMain + " protocol " + protocol
+		return args
 	}
 	if value("protocol") == protocol && (value("table") == table || value("table") == "254") {
-		return args + " protocol " + protocol
+		return args
 	}
-	if value("protocol") != "" && value("protocol") != "2" {
+	if value("protocol") != "" && value("protocol") != "0" && value("protocol") != "2" {
 		return ""
 	}
 	// Extra selectors indicate a different owner's rule even at our priority.
 	allowed := []string{"priority", "src", "table", "protocol"}
-	selector := ""
+
 	switch {
 	case priority == 5333 && value("table") == "254" && value("src") == "all" && value("oif") != "":
 		allowed = append(allowed, "oif")
-		selector = " oif " + value("oif")
+
 	case priority == 5334 && value("table") == "254" && value("src") != "all" && value("src") != "":
-		selector = " from " + value("src")
+
 	case priority == 5335 && value("table") == table && value("src") != "all" && value("src") != "":
-		selector = " from " + value("src")
+
 	case priority == 5336 && value("table") == "254" && value("src") == "all" && value("uid_start") == strconv.Itoa(os.Getuid()) && value("uid_end") == value("uid_start"):
 		allowed = append(allowed, "uid_start", "uid_end")
-		selector = " uidrange " + value("uid_start") + "-" + value("uid_end")
-	case priority == 5337 && value("table") == table && value("src") == "all" && value("iif") == "lo" && value("ipproto") == "ipproto-17" && value("dport") == "53":
+
+	case priority == 5337 && (value("dport_mask") == "" || value("dport_mask") == "0xffff") && value("table") == table && value("src") == "all" && value("iif") == "lo" && value("ipproto") == "ipproto-17" && value("dport") == "53":
 		allowed = append(allowed, "iif", "ipproto", "dport", "dport_mask")
-		selector = " iif lo ipproto udp dport 53"
+
 	case priority == 5338 && value("table") == "254" && value("src") == "all" && value("iif") == "lo" && value("suppress_prefixlen") == "0":
 		allowed = append(allowed, "iif", "suppress_prefixlen")
-		selector = " iif lo suppress_prefixlength 0"
+
 	case priority == 5339 && value("table") == table && value("src") == "all" && value("iif") == "lo":
 		allowed = append(allowed, "iif")
-		selector = " iif lo"
+
 	default:
 		return ""
 	}
@@ -221,12 +233,69 @@ func ownedRule(rule map[string]json.RawMessage) string {
 			return ""
 		}
 	}
-	return args + selector
+	return args
+}
+
+// ruleSelectors serializes every selector Sora installs. Unknown attributes
+// are left alone instead of being silently dropped from a delete command.
+func ruleSelectors(rule map[string]json.RawMessage) string {
+	value := func(key string) string { return strings.Trim(string(rule[key]), "\"") }
+	known := []string{"priority", "src", "dst", "table", "protocol", "goto", "oif", "iif", "oif_detached", "iif_detached", "uid_start", "uid_end", "ipproto", "dport", "dport_mask", "suppress_prefixlen"}
+	for key := range rule {
+		if !slices.Contains(known, key) {
+			return ""
+		}
+	}
+	proto := value("protocol")
+	if proto == "" {
+		proto = "0"
+	}
+	args := "priority " + value("priority") + " protocol " + proto
+	for _, pair := range [][2]string{{"src", "from"}, {"dst", "to"}, {"oif", "oif"}, {"iif", "iif"}, {"table", "table"}, {"goto", "goto"}, {"suppress_prefixlen", "suppress_prefixlength"}} {
+		if v := value(pair[0]); v != "" {
+			args += " " + pair[1] + " " + v
+		}
+	}
+	if value("uid_start") != "" {
+		args += " uidrange " + value("uid_start") + "-" + value("uid_end")
+	}
+	if v := value("ipproto"); v != "" {
+		args += " ipproto " + strings.TrimPrefix(v, "ipproto-")
+	}
+	if v := value("dport"); v != "" {
+		if mask := value("dport_mask"); mask != "" {
+			v += "/" + mask
+		}
+		args += " dport " + v
+	}
+	return args
+}
+
+// Kernel rule_find only compares positive selectors; omitted and zero values
+// cannot exclude a more selective rule. This deliberately errs on preservation.
+func deleteMatches(want, older map[string]json.RawMessage) bool {
+	value := func(rule map[string]json.RawMessage, key string) string { return strings.Trim(string(rule[key]), "\"") }
+	for _, key := range []string{"priority", "table", "protocol", "src", "dst", "oif", "iif", "uid_start", "uid_end", "ipproto", "dport", "dport_mask", "suppress_prefixlen"} {
+		v := value(want, key)
+		if v == "" || v == "all" || v == "0" && key != "priority" && key != "uid_start" && key != "uid_end" && key != "suppress_prefixlen" {
+			continue
+		}
+		if v != value(older, key) {
+			return false
+		}
+	}
+	return (value(want, "goto") == "") == (value(older, "goto") == "")
 }
 
 // cleanup only touches the reserved table/priorities and the named Sora
 // adapter. Before installation, keep the current engine's selected addresses.
 func cleanup(ctx context.Context, tun engine.Tun) error {
+	if _, err := exec.LookPath("ip"); err != nil {
+		if !tun.Enabled && errors.Is(err, exec.ErrNotFound) {
+			return nil
+		}
+		return fmt.Errorf("tunroute: TUN routing requires iproute2 (ip): %w", err)
+	}
 	if err := unroute(ctx); err != nil {
 		return err
 	}

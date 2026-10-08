@@ -126,18 +126,24 @@ void main() {
     expect(sora.history.length, 3);
   });
 
-  testWidgets('burst of notices is safe with reduced motion', (tester) async {
-    final sora = await start(tester);
-    for (var i = 0; i < 25; i++) {
-      await sora.recordNotification(AppNotification(time: DateTime.now(), title: 'Событие $i', body: 'Связь'));
-    }
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    expect(find.text('Событие 24'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 6));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-  });
+  for (final animations in [false, true]) {
+    testWidgets('burst of notices is safe with animations: $animations', (tester) async {
+      final sora = await start(tester, empty: true);
+      await sora.change((s) => s.animations = animations, replan: false);
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 25; i++) {
+        await sora.recordNotification(AppNotification(time: DateTime.now(), title: 'Событие $i', body: 'Связь'));
+      }
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Событие 24'), findsOneWidget);
+      expect(sora.history.length, 25);
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dismissible), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('home failures use toast without moving controls or inline error', (tester) async {
     final sora = await start(tester);
@@ -310,9 +316,17 @@ void main() {
     await tester.pumpAndSettle();
     final notice = await message(tester, sora);
     expect(tester.widget<SpeedtestBrowser>(find.byType(SpeedtestBrowser)).visible, isFalse);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.byKey(ObjectKey(notice))));
+    await tester.pump(const Duration(seconds: 6));
+    expect(find.byKey(ObjectKey(notice)), findsOneWidget);
+    expect(tester.widget<SpeedtestBrowser>(find.byType(SpeedtestBrowser)).visible, isFalse);
+    await mouse.moveTo(Offset.zero);
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     expect(find.byKey(ObjectKey(notice)), findsNothing);
     expect(tester.widget<SpeedtestBrowser>(find.byType(SpeedtestBrowser)).visible, isTrue);
+    await mouse.removePointer();
   });
 }

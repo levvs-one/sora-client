@@ -602,4 +602,7 @@ class SRu extends S {
 
   @override
   String get understood => 'Понятно';
+
+  @override
+  String get noAnswer => 'нет ответа';
 }

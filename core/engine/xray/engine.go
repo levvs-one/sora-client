@@ -392,8 +392,8 @@ func measureBatch(ctx context.Context, cfg supervise.Config, batch []engine.Outb
 // timeThrough times a request through a loopback SOCKS port the way a person
 // feels it: a first request opens the tunnel and the TLS session to the test
 // address, and the second, over the same connection, is the one timed. A
-// single cold request mostly measures handshakes — of the proxy, of REALITY or
-// XHTTP, of TLS — and reads several times slower than the server is.
+// single cold request mostly measures handshakes (of the proxy, of REALITY or
+// XHTTP, of TLS) and reads several times slower than the server is.
 func timeThrough(ctx context.Context, port int, opts engine.MeasureOptions) (time.Duration, error) {
 	proxy := &url.URL{Scheme: "socks5h", Host: "127.0.0.1:" + strconv.Itoa(port)}
 	transport := &http.Transport{Proxy: http.ProxyURL(proxy), MaxIdleConnsPerHost: 1}

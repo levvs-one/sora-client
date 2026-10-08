@@ -3,8 +3,8 @@ import 'generated/sora/core/v1/core_control.pb.dart';
 /// A provider steers Sora through the names of its servers, the one field
 /// every panel lets it set and every client shows as it is. Servers of one
 /// subscription with the same name are one entry in Sora: the fastest that
-/// answers carries the traffic. A name ending in a role — "Netherlands
-/// (main)", "Нидерланды · запасной" — orders them instead: the main ones
+/// answers carries the traffic. A name ending in a role, such as "Netherlands
+/// (main)" or "Нидерланды (запасной)", orders them instead: the main ones
 /// first, the backups when the main ones fail. Happ and others show the same
 /// names, which read naturally there too.
 enum Role { main, backup }

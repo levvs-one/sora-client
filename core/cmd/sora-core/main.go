@@ -113,6 +113,9 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	if err := os.MkdirAll(opts.DataDir, 0o700); err != nil {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
 	}
+	if err := secureDataDir(opts.DataDir); err != nil {
+		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
+	}
 	app := &App{opts: opts, log: log}
 
 	local, err := localAddress(opts.LocalPort)

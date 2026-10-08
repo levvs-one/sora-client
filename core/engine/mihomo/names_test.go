@@ -40,3 +40,17 @@ func TestAGroupKeepsItsOwnTestAddress(t *testing.T) {
 		t.Fatalf("without its own, the plan's: %q", grp.URL)
 	}
 }
+
+func TestAnHTTPSProxyKeepsItsTLS(t *testing.T) {
+	px, err := buildProxy(engine.Outbound{
+		ID: "p", Protocol: engine.ProtocolHTTP, Server: "proxy.example", Port: 443,
+		UserID: "user", Password: "secret",
+		TLS: engine.TLS{Enabled: true, ServerName: "proxy.example"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if px.TLS == nil || !*px.TLS || px.SNI != "proxy.example" {
+		t.Errorf("an https proxy rendered without TLS: tls=%v sni=%q", px.TLS, px.SNI)
+	}
+}

@@ -93,15 +93,18 @@ func buildProxy(o engine.Outbound) (proxy, error) {
 			px.Peers = peers
 		}
 
-	case engine.ProtocolSOCKS5:
+	case engine.ProtocolSOCKS5, engine.ProtocolHTTP:
 		px.Type = "socks5"
+		if o.Protocol == engine.ProtocolHTTP {
+			px.Type = "http"
+		}
 		px.Username = o.UserID
 		px.Password = o.Password
-		return px, nil
-	case engine.ProtocolHTTP:
-		px.Type = "http"
-		px.Username = o.UserID
-		px.Password = o.Password
+		// No stream transport, but TLS when the link asked for it: an https://
+		// proxy sent in the clear would hand its password to the network.
+		if err := applyTLS(&px, o); err != nil {
+			return proxy{}, err
+		}
 		return px, nil
 	default:
 		return proxy{}, fmt.Errorf("mihomo: protocol %q is not supported", o.Protocol)

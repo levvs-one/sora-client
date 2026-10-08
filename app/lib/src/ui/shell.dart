@@ -17,14 +17,22 @@ import 'notifications_screen.dart';
 import 'rules_screen.dart';
 import 'settings_screen.dart';
 import 'tour.dart';
+import 'speedtest.dart';
 
 class ShellScope extends InheritedWidget {
-  const ShellScope({super.key, required this.select, required this.replayTour, required super.child});
+  const ShellScope({
+    super.key,
+    required this.select,
+    required this.replayTour,
+    this.nativeContentVisible = true,
+    required super.child,
+  });
   final ValueChanged<int> select;
   final VoidCallback replayTour;
+  final bool nativeContentVisible;
   static ShellScope of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<ShellScope>()!;
   @override
-  bool updateShouldNotify(ShellScope oldWidget) => false;
+  bool updateShouldNotify(ShellScope oldWidget) => nativeContentVisible != oldWidget.nativeContentVisible;
 }
 
 class DesktopShell extends StatefulWidget {
@@ -40,6 +48,8 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
   GlobalKey<NavigatorState> _contentNavigator = GlobalKey();
   late final ShowcaseView _tour;
   int _section = 0;
+  bool _instantSectionChange = false;
+  bool _nativeContentVisible = true;
   int _tourStep = 0;
   bool _tourScheduled = false;
   OverlayEntry? _scrim;
@@ -138,6 +148,8 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       _contentNavigator.currentState?.popUntil((route) => route.isFirst);
     } else {
       setState(() {
+        _instantSectionChange = _section == 7 || value == 7;
+        _nativeContentVisible = true;
         _section = value;
         _contentNavigator = GlobalKey();
       });
@@ -146,7 +158,14 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
 
   void _toggle() {
     if (MediaQuery.sizeOf(context).width < 720) {
-      _scaffold.currentState?.openDrawer();
+      if (_section == 7) {
+        setState(() => _nativeContentVisible = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scaffold.currentState?.openDrawer();
+        });
+      } else {
+        _scaffold.currentState?.openDrawer();
+      }
     } else {
       final sora = SoraScope.read(context);
       unawaited(sora.change((x) => x.sidebarExpanded = !x.sidebarExpanded, replan: false));
@@ -191,6 +210,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       LogicalKeyboardKey.digit5,
       LogicalKeyboardKey.digit6,
       LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8,
     ];
     final index = numbers.indexOf(key);
     if (index >= 0) {
@@ -233,20 +253,23 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       const NotificationsScreen(),
       const SettingsScreen(),
       const AboutScreen(),
+      const SpeedtestScreen(),
     ];
     final page = pages[_section];
-    final pane = AnimatedSwitcher(
-      duration: Motion.of(context, const Duration(milliseconds: 150)),
-      child: KeyedSubtree(
-        key: ObjectKey(_contentNavigator),
-        child: Navigator(
-          key: _contentNavigator,
-          onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => page),
-        ),
+    final content = KeyedSubtree(
+      key: ObjectKey(_contentNavigator),
+      child: Navigator(
+        key: _contentNavigator,
+        onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => page),
       ),
     );
+    // Native views must detach immediately when switching sections.
+    final pane = _section == 7 || _instantSectionChange
+        ? content
+        : AnimatedSwitcher(duration: Motion.of(context, const Duration(milliseconds: 150)), child: content);
     return ShellScope(
       select: _select,
+      nativeContentVisible: _nativeContentVisible && (ModalRoute.of(context)?.isCurrent ?? true),
       replayTour: _startTour,
       child: TourScope(
         keys: _tourKeys,
@@ -257,6 +280,10 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
           autofocus: true,
           child: Scaffold(
             key: _scaffold,
+            drawerEnableOpenDragGesture: _section != 7,
+            onDrawerChanged: (opened) {
+              if (_section == 7 && !opened) setState(() => _nativeContentVisible = true);
+            },
             drawer: compact
                 ? Drawer(
                     width: 224,
@@ -281,12 +308,28 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
                       ),
                       child: _sidebar(expanded),
                     ),
-                  Expanded(child: pane),
+                  Expanded(
+                    child: compact && _section == 7
+                        ? Column(
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: IconButton(
+                                  key: const ValueKey('speedtest-menu'),
+                                  icon: const Icon(Symbols.menu_rounded),
+                                  onPressed: _toggle,
+                                ),
+                              ),
+                              Expanded(child: pane),
+                            ],
+                          )
+                        : pane,
+                  ),
                 ],
               ),
             ),
             floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-            floatingActionButton: compact
+            floatingActionButton: compact && _section != 7
                 ? TourTarget(
                     step: 4,
                     child: Material(
@@ -310,7 +353,16 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
 
   Widget _sidebar(bool expanded, {bool drawer = false}) {
     final s = S.of(context), sora = SoraScope.of(context), palette = Palette.of(context);
-    final labels = [s.home, s.navRules, s.navConnections, s.navLogs, s.notifications, s.settings, s.navAbout];
+    final labels = [
+      s.home,
+      s.navRules,
+      s.navConnections,
+      s.navLogs,
+      s.notifications,
+      s.settings,
+      s.navAbout,
+      s.speedtest,
+    ];
     const icons = [
       Symbols.home_rounded,
       Symbols.rule_rounded,
@@ -319,6 +371,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       Symbols.notifications_rounded,
       Symbols.settings_rounded,
       Symbols.info_rounded,
+      Symbols.speed_rounded,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -361,46 +414,50 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
     );
   }
 
-  Widget _navItem(int index, String label, IconData icon, bool expanded, Sora sora, Palette palette) => Tooltip(
-    message: '$label (Ctrl+${index + 1})',
-    child: Semantics(
-      selected: _section == index,
-      child: Material(
-        color: _section == index ? palette.field : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () => _select(index),
-          child: SizedBox(
-            height: 40,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: Center(
-                    child: Badge(
-                      isLabelVisible: index == 4 && sora.unreadCount > 0,
-                      backgroundColor: palette.ink,
-                      textColor: palette.surface,
-                      label: Text('${sora.unreadCount}', style: Styles.caption.copyWith(color: palette.surface)),
-                      child: Icon(icon, size: 22, color: _section == index ? palette.ink : palette.ink2),
-                    ),
+  Widget _navItem(int index, String label, IconData icon, bool expanded, Sora sora, Palette palette) =>
+      TooltipVisibility(
+        visible: _section != 7,
+        child: Tooltip(
+          message: '$label (Ctrl+${index + 1})',
+          child: Semantics(
+            selected: _section == index,
+            child: Material(
+              color: _section == index ? palette.field : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _select(index),
+                child: SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: Center(
+                          child: Badge(
+                            isLabelVisible: index == 4 && sora.unreadCount > 0,
+                            backgroundColor: palette.ink,
+                            textColor: palette.surface,
+                            label: Text('${sora.unreadCount}', style: Styles.caption.copyWith(color: palette.surface)),
+                            child: Icon(icon, size: 22, color: _section == index ? palette.ink : palette.ink2),
+                          ),
+                        ),
+                      ),
+                      if (expanded)
+                        Expanded(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Styles.secondary.copyWith(color: palette.ink),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                if (expanded)
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Styles.secondary.copyWith(color: palette.ink),
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }

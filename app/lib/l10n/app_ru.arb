@@ -388,5 +388,38 @@
         "type": "String"
       }
     }
+  },
+  "speedtest": "Скорость",
+  "speedtestCheck": "Проверить скорость",
+  "speedtestSearch": "Сервис, страна или оператор",
+  "speedtestAll": "Все",
+  "speedtestCis": "Россия и СНГ",
+  "speedtestWorld": "Мир",
+  "speedtestCount": "Сервисов: {count}",
+  "speedtestEmpty": "Ничего не найдено. Измените запрос или фильтр.",
+  "speedtestBackToList": "К списку сервисов",
+  "speedtestBack": "Назад по странице",
+  "speedtestOpenBrowser": "Открыть в браузере",
+  "speedtestViaVpn": "Через VPN: {server}",
+  "speedtestNoVpn": "Без VPN",
+  "speedtestStarting": "Запускаем встроенный браузер...",
+  "speedtestLoading": "Загрузка страницы...",
+  "speedtestUnavailable": "Встроенный браузер не запустился. Откройте сервис в системном браузере.",
+  "speedtestPageFailed": "Страница не загрузилась. Обновите её или откройте сервис в системном браузере.",
+  "speedtestExternalFailed": "Системный браузер не открылся. Попробуйте ещё раз.",
+  "speedtestRoutingNote": "Маршрут зависит от правил Sora",
+  "@speedtestCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@speedtestViaVpn": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
   }
 }

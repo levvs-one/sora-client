@@ -706,4 +706,65 @@ class SEn extends S {
 
   @override
   String get trafficUnavailable => 'Counters are not available yet';
+
+  @override
+  String get speedtest => 'Speed';
+
+  @override
+  String get speedtestCheck => 'Check speed';
+
+  @override
+  String get speedtestSearch => 'Service, country or operator';
+
+  @override
+  String get speedtestAll => 'All';
+
+  @override
+  String get speedtestCis => 'Russia and CIS';
+
+  @override
+  String get speedtestWorld => 'World';
+
+  @override
+  String speedtestCount(int count) {
+    return 'Services: $count';
+  }
+
+  @override
+  String get speedtestEmpty => 'No matches. Change the search or filter.';
+
+  @override
+  String get speedtestBackToList => 'Back to services';
+
+  @override
+  String get speedtestBack => 'Back in page history';
+
+  @override
+  String get speedtestOpenBrowser => 'Open in browser';
+
+  @override
+  String speedtestViaVpn(String server) {
+    return 'Through VPN: $server';
+  }
+
+  @override
+  String get speedtestNoVpn => 'Without VPN';
+
+  @override
+  String get speedtestStarting => 'Starting the embedded browser...';
+
+  @override
+  String get speedtestLoading => 'Loading page...';
+
+  @override
+  String get speedtestUnavailable => 'The embedded browser could not start. Open the service in your system browser.';
+
+  @override
+  String get speedtestPageFailed => 'The page could not load. Reload it or open the service in your system browser.';
+
+  @override
+  String get speedtestExternalFailed => 'The system browser could not open. Try again.';
+
+  @override
+  String get speedtestRoutingNote => 'Routing follows Sora rules';
 }

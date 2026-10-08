@@ -27,6 +27,7 @@ Future<void> section(WidgetTester tester, int number) async {
     LogicalKeyboardKey.digit5,
     LogicalKeyboardKey.digit6,
     LogicalKeyboardKey.digit7,
+    LogicalKeyboardKey.digit8,
   ][number - 1];
   await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
   await tester.sendKeyEvent(key);

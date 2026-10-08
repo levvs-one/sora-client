@@ -1387,6 +1387,120 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Счётчики пока недоступны'**
   String get trafficUnavailable;
+
+  /// No description provided for @speedtest.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость'**
+  String get speedtest;
+
+  /// No description provided for @speedtestCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить скорость'**
+  String get speedtestCheck;
+
+  /// No description provided for @speedtestSearch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервис, страна или оператор'**
+  String get speedtestSearch;
+
+  /// No description provided for @speedtestAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все'**
+  String get speedtestAll;
+
+  /// No description provided for @speedtestCis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Россия и СНГ'**
+  String get speedtestCis;
+
+  /// No description provided for @speedtestWorld.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мир'**
+  String get speedtestWorld;
+
+  /// No description provided for @speedtestCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервисов: {count}'**
+  String speedtestCount(int count);
+
+  /// No description provided for @speedtestEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не найдено. Измените запрос или фильтр.'**
+  String get speedtestEmpty;
+
+  /// No description provided for @speedtestBackToList.
+  ///
+  /// In ru, this message translates to:
+  /// **'К списку сервисов'**
+  String get speedtestBackToList;
+
+  /// No description provided for @speedtestBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Назад по странице'**
+  String get speedtestBack;
+
+  /// No description provided for @speedtestOpenBrowser.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть в браузере'**
+  String get speedtestOpenBrowser;
+
+  /// No description provided for @speedtestViaVpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через VPN: {server}'**
+  String speedtestViaVpn(String server);
+
+  /// No description provided for @speedtestNoVpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без VPN'**
+  String get speedtestNoVpn;
+
+  /// No description provided for @speedtestStarting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запускаем встроенный браузер...'**
+  String get speedtestStarting;
+
+  /// No description provided for @speedtestLoading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка страницы...'**
+  String get speedtestLoading;
+
+  /// No description provided for @speedtestUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Встроенный браузер не запустился. Откройте сервис в системном браузере.'**
+  String get speedtestUnavailable;
+
+  /// No description provided for @speedtestPageFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Страница не загрузилась. Обновите её или откройте сервис в системном браузере.'**
+  String get speedtestPageFailed;
+
+  /// No description provided for @speedtestExternalFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системный браузер не открылся. Попробуйте ещё раз.'**
+  String get speedtestExternalFailed;
+
+  /// No description provided for @speedtestRoutingNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Маршрут зависит от правил Sora'**
+  String get speedtestRoutingNote;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

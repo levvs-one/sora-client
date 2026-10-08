@@ -236,5 +236,38 @@
         "type": "String"
       }
     }
+  },
+  "speedtest": "Speed",
+  "speedtestCheck": "Check speed",
+  "speedtestSearch": "Service, country or operator",
+  "speedtestAll": "All",
+  "speedtestCis": "Russia and CIS",
+  "speedtestWorld": "World",
+  "speedtestCount": "Services: {count}",
+  "speedtestEmpty": "No matches. Change the search or filter.",
+  "speedtestBackToList": "Back to services",
+  "speedtestBack": "Back in page history",
+  "speedtestOpenBrowser": "Open in browser",
+  "speedtestViaVpn": "Through VPN: {server}",
+  "speedtestNoVpn": "Without VPN",
+  "speedtestStarting": "Starting the embedded browser...",
+  "speedtestLoading": "Loading page...",
+  "speedtestUnavailable": "The embedded browser could not start. Open the service in your system browser.",
+  "speedtestPageFailed": "The page could not load. Reload it or open the service in your system browser.",
+  "speedtestExternalFailed": "The system browser could not open. Try again.",
+  "speedtestRoutingNote": "Routing follows Sora rules",
+  "@speedtestCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@speedtestViaVpn": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
   }
 }

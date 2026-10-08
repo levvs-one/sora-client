@@ -725,4 +725,65 @@ class SRu extends S {
 
   @override
   String get trafficUnavailable => 'Счётчики пока недоступны';
+
+  @override
+  String get speedtest => 'Скорость';
+
+  @override
+  String get speedtestCheck => 'Проверить скорость';
+
+  @override
+  String get speedtestSearch => 'Сервис, страна или оператор';
+
+  @override
+  String get speedtestAll => 'Все';
+
+  @override
+  String get speedtestCis => 'Россия и СНГ';
+
+  @override
+  String get speedtestWorld => 'Мир';
+
+  @override
+  String speedtestCount(int count) {
+    return 'Сервисов: $count';
+  }
+
+  @override
+  String get speedtestEmpty => 'Ничего не найдено. Измените запрос или фильтр.';
+
+  @override
+  String get speedtestBackToList => 'К списку сервисов';
+
+  @override
+  String get speedtestBack => 'Назад по странице';
+
+  @override
+  String get speedtestOpenBrowser => 'Открыть в браузере';
+
+  @override
+  String speedtestViaVpn(String server) {
+    return 'Через VPN: $server';
+  }
+
+  @override
+  String get speedtestNoVpn => 'Без VPN';
+
+  @override
+  String get speedtestStarting => 'Запускаем встроенный браузер...';
+
+  @override
+  String get speedtestLoading => 'Загрузка страницы...';
+
+  @override
+  String get speedtestUnavailable => 'Встроенный браузер не запустился. Откройте сервис в системном браузере.';
+
+  @override
+  String get speedtestPageFailed => 'Страница не загрузилась. Обновите её или откройте сервис в системном браузере.';
+
+  @override
+  String get speedtestExternalFailed => 'Системный браузер не открылся. Попробуйте ещё раз.';
+
+  @override
+  String get speedtestRoutingNote => 'Маршрут зависит от правил Sora';
 }

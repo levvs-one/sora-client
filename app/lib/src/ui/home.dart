@@ -131,6 +131,14 @@ class _ConnectionPane extends StatelessWidget {
             )
           else
             Text(s.trafficUnavailable, style: Styles.caption.copyWith(color: palette.ink3)),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const ValueKey('check-speed'),
+              onPressed: () => ShellScope.of(context).select(7),
+              child: Text(s.speedtestCheck, style: Styles.secondary.copyWith(color: palette.ink)),
+            ),
+          ),
           if (MediaQuery.sizeOf(context).width >= 1000) ...[
             const SizedBox(height: 24),
             Group(

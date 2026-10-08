@@ -36,6 +36,8 @@ class Settings {
     'sidebarExpanded',
     'tourDone',
     'notificationHistory',
+    'speedtestService',
+    'speedtestFilter',
   };
 
   final SharedPreferencesWithCache _store;
@@ -197,6 +199,16 @@ class Settings {
 
   bool get sidebarExpanded => _store.getBool('sidebarExpanded') ?? false;
   set sidebarExpanded(bool value) => _store.setBool('sidebarExpanded', value);
+
+  String get speedtestService => _store.getString('speedtestService') ?? '';
+  Future<void> saveSpeedtestService(String value) => _store.setString('speedtestService', value);
+
+  String get speedtestFilter {
+    final value = _store.getString('speedtestFilter');
+    return const {'cis', 'world'}.contains(value) ? value! : 'all';
+  }
+
+  Future<void> saveSpeedtestFilter(String value) => _store.setString('speedtestFilter', value);
 
   bool get tourDone => _store.getBool('tourDone') ?? false;
   Future<void> completeTour() => _store.setBool('tourDone', true);

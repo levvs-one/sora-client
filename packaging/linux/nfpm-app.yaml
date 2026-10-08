@@ -20,11 +20,11 @@ depends:
   - sora-core (= ${SORA_VERSION})
 overrides:
   deb:
-    depends: ["sora-core (= ${SORA_VERSION})", libgtk-3-0]
+    depends: ["sora-core (= ${SORA_VERSION})", libgtk-3-0, libwebkit2gtk-4.1-0]
   rpm:
-    depends: ["sora-core = ${SORA_VERSION}", gtk3]
+    depends: ["sora-core = ${SORA_VERSION}", gtk3, webkit2gtk4.1]
   archlinux:
-    depends: ["sora-core=${SORA_VERSION}", gtk3]
+    depends: ["sora-core=${SORA_VERSION}", gtk3, webkit2gtk-4.1]
 
 contents:
   - src: ./app/build/linux/x64/release/bundle/

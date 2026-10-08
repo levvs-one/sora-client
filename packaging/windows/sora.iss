@@ -74,6 +74,8 @@ ru.HappLinks=Открывать в Sora ссылки happ:// от провайд
 en.HappLinks=Open happ:// links from providers in Sora
 ru.Links=Ссылки:
 en.Links=Links:
+ru.WebViewMissing=Для встроенной проверки скорости нужен Microsoft Edge WebView2 Runtime. Скачайте Evergreen Standalone Installer (x64) с https://developer.microsoft.com/microsoft-edge/webview2/ и установите его. До этого используйте кнопку "Открыть в браузере".
+en.WebViewMissing=Embedded speed tests require Microsoft Edge WebView2 Runtime. Download and install the Evergreen Standalone Installer (x64) from https://developer.microsoft.com/microsoft-edge/webview2/. Until then, use "Open in browser".
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -116,6 +118,29 @@ Filename: "{app}\sora.exe"; Description: "{cm:LaunchProgram,Sora}"; Flags: nowai
 Filename: "{app}\core\sora-core.exe"; Parameters: "-uninstall-service"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveSoraCore"
 
 [Code]
+// Evergreen can be installed for the machine or for the current user.
+function WebViewRuntimePresent: Boolean;
+var
+  Version: String;
+  Key: String;
+begin
+  Key := 'Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+  Result := RegQueryStringValue(HKLM32, Key, 'pv', Version) and
+    (Version <> '') and (Version <> '0.0.0.0');
+  if not Result then
+    Result := RegQueryStringValue(HKCU, Key, 'pv', Version) and
+      (Version <> '') and (Version <> '0.0.0.0');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssPostInstall) and not WebViewRuntimePresent then
+    if WizardSilent then
+      Log(CustomMessage('WebViewMissing'))
+    else
+      MsgBox(CustomMessage('WebViewMissing'), mbInformation, MB_OK);
+end;
+
 // happ:// is free when nothing opens it, or when it is Sora's own from an
 // earlier install.
 function HappLinksFree: Boolean;

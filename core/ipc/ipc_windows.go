@@ -5,6 +5,7 @@ package ipc
 import (
 	"context"
 	"net"
+	"strconv"
 	"unsafe"
 
 	"github.com/Microsoft/go-winio"
@@ -29,8 +30,10 @@ func ListenAddress() string { return pipeName }
 // The interactive users are what lets the interface in at all: the core runs as
 // LocalSystem, and the person's token under UAC carries the administrators group
 // as deny-only, so without them nobody at the machine could connect. They get
-// read and write, not full control; this is the Windows counterpart of the
-// active-session rule on Linux.
+// read, write and attributes (0x0012018B) and not GENERIC_WRITE: for a pipe
+// that would include FILE_CREATE_PIPE_INSTANCE, and anyone signed in could
+// then serve instances of this pipe to the app. Which of them may talk to the
+// core is decided per connection, see peerOf.
 //
 // The descriptor is assembled from the process token rather than written out as a
 // constant. The string that circulates for named pipes and ends up in many
@@ -62,7 +65,7 @@ func pipeSecurityDescriptor() (string, error) {
 		return "", errs.Newf(errs.CodeInternal, errs.KeyPermissionDenied,
 			"ipc: the account of this process has no security identifier")
 	}
-	return "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;" + entry.User.Sid.String() + ")(A;;GRGW;;;IU)", nil
+	return "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;" + entry.User.Sid.String() + ")(A;;0x0012018B;;;IU)", nil
 }
 
 // listenLocal opens a named pipe. A pipe has no leftover to remove: it exists only
@@ -96,20 +99,60 @@ func dialLocal(ctx context.Context, address string) (net.Conn, error) {
 	return connection, nil
 }
 
-// peerOf reports what a named pipe can say about the other end.
-//
-// Windows decides who may connect with the access list of the pipe itself, and
-// the pipe API this package uses does not report the identity of a client. So the
-// boundary here is that list, and the identity of a client is established by the
-// token it presents, which is checked by the control plane above. This is stated
-// rather than papered over: Verified is false, and a caller that needs the
-// identity of a client has to ask the kernel through a mechanism this package does
-// not pretend to have.
-func peerOf(net.Conn) Peer {
-	return Peer{Verified: false, Detail: "the pipe access list is the boundary"}
+// peerOf asks the kernel which process opened the pipe and whether it belongs
+// to the person at the machine: a process in the active session, or one with
+// administrator rights. A second person signed in on the same computer, in a
+// session that is not the active one, is not let in, as on Linux.
+func peerOf(connection net.Conn) Peer {
+	pipe, ok := connection.(interface{ Fd() uintptr })
+	if !ok {
+		return Peer{Detail: "not a named pipe"}
+	}
+	var pid uint32
+	if err := windows.GetNamedPipeClientProcessId(windows.Handle(pipe.Fd()), &pid); err != nil {
+		return Peer{Detail: "the client process is unknown"}
+	}
+	process, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return Peer{PID: int(pid), Detail: "the client process cannot be inspected"}
+	}
+	defer func() { _ = windows.CloseHandle(process) }()
+	var token windows.Token
+	if err := windows.OpenProcessToken(process, windows.TOKEN_QUERY, &token); err != nil {
+		return Peer{PID: int(pid), Detail: "the client token cannot be read"}
+	}
+	defer func() { _ = token.Close() }()
+
+	var session, elevated, returned uint32
+	if err := windows.GetTokenInformation(token, windows.TokenSessionId, (*byte)(unsafe.Pointer(&session)), 4, &returned); err != nil {
+		return Peer{PID: int(pid), Detail: "the client session is unknown"}
+	}
+	_ = windows.GetTokenInformation(token, windows.TokenElevation, (*byte)(unsafe.Pointer(&elevated)), 4, &returned)
+	system := false
+	if user, err := token.GetTokenUser(); err == nil {
+		system = user.User.Sid.IsWellKnown(windows.WinLocalSystemSid)
+	}
+	present := system || elevated != 0 || sessionActive(session)
+	return Peer{PID: int(pid), Verified: true, Present: present, Detail: "pid " + strconv.Itoa(int(pid))}
 }
 
-// defaultAllow accepts every connection that got past the access list of the pipe.
-// Anything else was refused by the kernel before it reached this point, and a
-// second check with no information would only be theatre.
-func defaultAllow(Options) func(Peer) bool { return func(Peer) bool { return true } }
+// sessionActive reports whether the session is the one a person is using now.
+func sessionActive(id uint32) bool {
+	var sessions *windows.WTS_SESSION_INFO
+	var count uint32
+	if err := windows.WTSEnumerateSessions(0, 0, 1, &sessions, &count); err != nil {
+		return false
+	}
+	defer windows.WTSFreeMemory(uintptr(unsafe.Pointer(sessions)))
+	for _, s := range unsafe.Slice(sessions, count) {
+		if s.SessionID == id {
+			return s.State == windows.WTSActive
+		}
+	}
+	return false
+}
+
+// defaultAllow lets in the person at the machine, see peerOf.
+func defaultAllow(Options) func(Peer) bool {
+	return func(p Peer) bool { return p.Verified && p.Present }
+}

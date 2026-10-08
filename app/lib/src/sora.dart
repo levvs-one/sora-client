@@ -74,9 +74,9 @@ class Sora extends ChangeNotifier {
   StreamSubscription<SubscriptionState>? _subscriptionWatch;
   StreamSubscription<CoreEvent>? _sessionWatch;
 
-  /// Fallback groups of the watched session by name: the members a move back
-  /// to is a return, and the name notices give the group.
-  Map<String, ({Set<String> mains, String title, bool ordered})> _fallbacks = {};
+  /// Fallback groups of the watched session by name: members in the order the
+  /// core tries them, the main ones, and the name notices give the group.
+  Map<String, ({List<String> order, Set<String> mains, String title, bool ordered})> _fallbacks = {};
 
   /// Last event seen, so a watch reopened on the same session resumes after it
   /// instead of replaying history.
@@ -336,28 +336,30 @@ class Sora extends ChangeNotifier {
     );
   }
 
-  /// Tells the user that a fallback group of the core left its first server or
-  /// came back to it.
+  /// Tells the user that a fallback group of the core moved. The core tries
+  /// members in order, so a move down the list means a server stopped
+  /// answering, and a move up means an earlier one answers again. A move up
+  /// to a backup stays quiet: no notice text fits it without naming a main
+  /// server that is not there.
   void _fallbackMoved(GroupSwitched moved) {
     final group = _fallbacks[moved.group];
     if (group == null) return;
     final isMain = group.mains.contains(moved.selected);
-    if (isMain && !group.mains.contains(moved.previous)) {
-      _emit(ServerReturned(group.title));
-    } else {
+    if (group.order.indexOf(moved.selected) > group.order.indexOf(moved.previous)) {
       _emit(ServerSwitched(group.title, backup: group.ordered && !isMain));
+    } else if (isMain && !group.mains.contains(moved.previous)) {
+      _emit(ServerReturned(group.title));
     }
   }
 
-  /// The members of fallback group [g] a move back to counts as a return: the
-  /// main servers of a group with roles, otherwise the server the user picked.
-  static Set<String> _mainsOf(GroupSpec g, Entry? entry) {
-    final mains = {
-      for (final m in g.members)
-        if (entry?.roles[m] == Role.main) m,
-    };
-    return mains.isEmpty ? {g.members.first} : mains;
-  }
+  /// The main members of fallback group [g]: those named main in a group with
+  /// roles, otherwise the server the user picked.
+  static Set<String> _mainsOf(GroupSpec g, Entry? entry) => entry != null && entry.ordered
+      ? {
+          for (final m in g.members)
+            if (entry.roles[m] == Role.main) m,
+        }
+      : {g.members.first};
 
   /// Connects when off; disconnects an active or connecting session.
   Future<void> toggle() async {
@@ -387,6 +389,7 @@ class Sora extends ChangeNotifier {
       for (final g in plan.groups)
         if (g.type == GroupType.GROUP_TYPE_FALLBACK && g.members.isNotEmpty)
           g.name: (
+            order: g.members,
             mains: _mainsOf(g, entry),
             title: entry?.name ?? nameOf(g.members.first),
             ordered: entry?.ordered ?? false,

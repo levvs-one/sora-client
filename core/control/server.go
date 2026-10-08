@@ -656,6 +656,9 @@ func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerS
 			if !ok {
 				return nil
 			}
+			if !feed.unsent(event) {
+				continue
+			}
 			if err := stream.Send(toWireEvent(event, feed.redactor)); err != nil {
 				return err
 			}
@@ -704,6 +707,13 @@ func (f *eventFeed) history() []session.Event {
 		out = append(out, event)
 	}
 	return out
+}
+
+// unsent reports whether a live event still has to go out. One appended
+// between the subscription and the head read reaches the live queue and the
+// replay both; the replay already sent it.
+func (f *eventFeed) unsent(event session.Event) bool {
+	return event.Sequence > f.head && event.Sequence > f.after
 }
 
 // close releases the subscription.

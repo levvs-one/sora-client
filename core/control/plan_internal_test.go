@@ -356,9 +356,9 @@ func TestConnectCarriesTheKillSwitchToTheSession(t *testing.T) {
 
 func TestGroupSwitchReachesTheWire(t *testing.T) {
 	out := toWireEvent(session.Event{Sequence: 7, Kind: session.EventGroup,
-		Switch: &session.GroupSwitch{Group: "auto", Selected: "out-2"}}, nil)
+		Switch: &session.GroupSwitch{Group: "auto", Previous: "out-1", Selected: "out-2"}}, nil)
 	moved := out.GetGroupSwitched()
-	if moved.GetGroup() != "auto" || moved.GetSelected() != "out-2" || out.GetSequence() != 7 {
+	if moved.GetGroup() != "auto" || moved.GetPrevious() != "out-1" || moved.GetSelected() != "out-2" || out.GetSequence() != 7 {
 		t.Errorf("event = %v", out)
 	}
 }

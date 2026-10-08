@@ -762,7 +762,7 @@ func toWireEvent(event session.Event, redactor *engine.Redactor) *corev1.CoreEve
 	case session.EventGroup:
 		moved := &corev1.GroupSwitched{}
 		if event.Switch != nil {
-			moved.Group, moved.Selected = event.Switch.Group, event.Switch.Selected
+			moved.Group, moved.Previous, moved.Selected = event.Switch.Group, event.Switch.Previous, event.Switch.Selected
 		}
 		out.Payload = &corev1.CoreEvent_GroupSwitched{GroupSwitched: moved}
 	default:

@@ -165,6 +165,10 @@ func TestLiveFallbackReportsTheBackupByPlanID(t *testing.T) {
 		}
 		for _, g := range last {
 			if g.Name == "sora:failover" && g.Selected == "spare" {
+				// The session passes over a member whose check failed.
+				if g.LatencyMS["dead"] != 0 || g.LatencyMS["spare"] <= 0 {
+					t.Errorf("latency = %v, want the dead server at 0 and the spare above", g.LatencyMS)
+				}
 				return
 			}
 		}

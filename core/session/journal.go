@@ -39,9 +39,10 @@ type Event struct {
 }
 
 // GroupSwitch is a fallback group that moved to another member on its own.
-// Selected is an outbound id or the name of a nested group.
+// Members are outbound ids or names of nested groups.
 type GroupSwitch struct {
 	Group    string
+	Previous string
 	Selected string
 }
 

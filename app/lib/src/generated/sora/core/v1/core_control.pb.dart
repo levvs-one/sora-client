@@ -2298,16 +2298,18 @@ class StateChanged extends $pb.GeneratedMessage {
 }
 
 /// Since 1.5. A fallback group moved to another member on its own: the member
-/// it used stopped answering, or the one before it answers again. selected is
-/// an outbound id or the name of a nested group.
+/// it used stopped answering, or one before it answers again. Members are
+/// outbound ids or names of nested groups.
 class GroupSwitched extends $pb.GeneratedMessage {
   factory GroupSwitched({
     $core.String? group,
     $core.String? selected,
+    $core.String? previous,
   }) {
     final result = GroupSwitched._();
     if (group != null) result.group = group;
     if (selected != null) result.selected = selected;
+    if (previous != null) result.previous = previous;
     return result;
   }
 
@@ -2324,6 +2326,7 @@ class GroupSwitched extends $pb.GeneratedMessage {
       createEmptyInstance: GroupSwitched.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'group')
     ..aOS(2, _omitFieldNames ? '' : 'selected')
+    ..aOS(3, _omitFieldNames ? '' : 'previous')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2363,6 +2366,15 @@ class GroupSwitched extends $pb.GeneratedMessage {
   $core.bool hasSelected() => $_has(1);
   @$pb.TagNumber(2)
   void clearSelected() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get previous => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set previous($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPrevious() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPrevious() => $_clearField(3);
 }
 
 class StatsTick extends $pb.GeneratedMessage {

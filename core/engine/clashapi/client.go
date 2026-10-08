@@ -107,11 +107,41 @@ type Proxy struct {
 	DialerProxy   string   `json:"dialer-proxy"`
 	ProviderName  string   `json:"providerName"`
 	EmptyFallback string   `json:"emptyFallback"`
-	History       []struct {
-		Name  string `json:"name"`
-		Alive bool   `json:"alive"`
-		Delay int    `json:"delay"`
-	} `json:"history"`
+	History       []Delay  `json:"history"`
+	// Alive and Extra come from mihomo only. Extra holds the checks made
+	// against other URLs, such as the test URL of a group.
+	Alive *bool `json:"alive"`
+	Extra map[string]struct {
+		Alive   *bool   `json:"alive"`
+		History []Delay `json:"history"`
+	} `json:"extra"`
+}
+
+// Delay is one check of a proxy.
+type Delay struct {
+	Delay int `json:"delay"`
+}
+
+// lastDelay is the latest check against url, or against the default URL when
+// url has none. Zero means the proxy did not answer or was never checked.
+// mihomo also writes zero for an answer under a millisecond and tells the two
+// apart by alive; such an answer counts as one millisecond here.
+func (p Proxy) lastDelay(url string) int {
+	alive, history := p.Alive, p.History
+	if checked, ok := p.Extra[url]; ok {
+		alive, history = checked.Alive, checked.History
+	}
+	if len(history) == 0 {
+		return 0
+	}
+	delay := history[len(history)-1].Delay
+	if alive == nil {
+		return delay
+	}
+	if !*alive {
+		return 0
+	}
+	return max(delay, 1)
 }
 
 // Proxies lists every proxy and every group.
@@ -185,8 +215,10 @@ func (c *Client) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
 			Hidden: px.Hidden, Icon: px.Icon, TestURL: px.TestURL, Provider: px.ProviderName,
 			LatencyMS: map[string]int{},
 		}
-		for _, h := range px.History {
-			status.LatencyMS[h.Name] = h.Delay
+		// A group's own history is the delay through its current member;
+		// each member keeps its own.
+		for _, member := range px.All {
+			status.LatencyMS[member] = proxies[member].lastDelay(px.TestURL)
 		}
 		out = append(out, status)
 	}

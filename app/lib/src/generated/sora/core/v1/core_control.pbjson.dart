@@ -622,13 +622,14 @@ const GroupSwitched$json = {
   '2': [
     {'1': 'group', '3': 1, '4': 1, '5': 9, '10': 'group'},
     {'1': 'selected', '3': 2, '4': 1, '5': 9, '10': 'selected'},
+    {'1': 'previous', '3': 3, '4': 1, '5': 9, '10': 'previous'},
   ],
 };
 
 /// Descriptor for `GroupSwitched`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List groupSwitchedDescriptor =
     $convert.base64Decode('Cg1Hcm91cFN3aXRjaGVkEhQKBWdyb3VwGAEgASgJUgVncm91cBIaCghzZWxlY3RlZBgCIAEoCV'
-        'IIc2VsZWN0ZWQ=');
+        'IIc2VsZWN0ZWQSGgoIcHJldmlvdXMYAyABKAlSCHByZXZpb3Vz');
 
 @$core.Deprecated('Use statsTickDescriptor instead')
 const StatsTick$json = {

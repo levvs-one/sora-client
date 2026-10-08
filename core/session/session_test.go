@@ -409,10 +409,15 @@ func TestFallbackMovesAreJournaled(t *testing.T) {
 		{Name: "auto", Type: engine.GroupFallback, Outbounds: []string{"out-1", "out-2"}, URL: "https://cp.cloudflare.com/generate_204"},
 		{Name: "pick", Type: engine.GroupSelect, Outbounds: []string{"out-1", "out-2"}},
 	}
-	eng.setGroups(
-		engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-1"},
-		engine.GroupStatus{Name: "pick", Type: engine.GroupSelect, Selected: "out-1"},
-	)
+	// at says which member a group uses and that it answers, unless dead.
+	at := func(group, member string, kind engine.GroupType, dead ...string) engine.GroupStatus {
+		latency := map[string]int{"out-1": 40, "out-2": 60}
+		for _, d := range dead {
+			latency[d] = 0
+		}
+		return engine.GroupStatus{Name: group, Type: kind, Selected: member, LatencyMS: latency}
+	}
+	eng.setGroups(at("auto", "out-1", engine.GroupFallback), at("pick", "out-1", engine.GroupSelect))
 	session, err := New(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -431,20 +436,29 @@ func TestFallbackMovesAreJournaled(t *testing.T) {
 		}
 		return out
 	}
+	settle := func() { time.Sleep(20 * groupLooks * cfg.StatsInterval) }
 	// Several looks pass before the change, and none of them reports the
 	// member the group started on.
-	time.Sleep(20 * groupLooks * cfg.StatsInterval)
+	settle()
 	if got := moves(); len(got) != 0 {
 		t.Fatalf("moves before any change = %v", got)
 	}
-	eng.setGroups(
-		engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-2"},
-		engine.GroupStatus{Name: "pick", Type: engine.GroupSelect, Selected: "out-2"},
-	)
+	eng.setGroups(at("auto", "out-2", engine.GroupFallback, "out-1"), at("pick", "out-2", engine.GroupSelect))
 	waitFor(t, time.Second, func() bool { return len(moves()) == 1 })
-	eng.setGroups(engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-1"})
+
+	// Both servers are down: mihomo shows the first member, which is not the
+	// main server coming back.
+	eng.setGroups(at("auto", "out-1", engine.GroupFallback, "out-1", "out-2"))
+	settle()
+	if got := moves(); len(got) != 1 {
+		t.Fatalf("a group with no server answering was reported as a move: %v", got)
+	}
+	eng.setGroups(at("auto", "out-1", engine.GroupFallback))
 	waitFor(t, time.Second, func() bool { return len(moves()) == 2 })
-	want := []GroupSwitch{{Group: "auto", Selected: "out-2"}, {Group: "auto", Selected: "out-1"}}
+	want := []GroupSwitch{
+		{Group: "auto", Previous: "out-1", Selected: "out-2"},
+		{Group: "auto", Previous: "out-2", Selected: "out-1"},
+	}
 	if got := moves(); got[0] != want[0] || got[1] != want[1] {
 		t.Errorf("moves = %v, want %v", got, want)
 	}
@@ -453,8 +467,8 @@ func TestFallbackMovesAreJournaled(t *testing.T) {
 	// records it.
 	eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown})
 	waitFor(t, time.Second, func() bool { return session.State() == StateReconnecting })
-	eng.setGroups(engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-2"})
-	time.Sleep(20 * groupLooks * cfg.StatsInterval)
+	eng.setGroups(at("auto", "out-2", engine.GroupFallback, "out-1"))
+	settle()
 	if got := moves(); len(got) != 2 {
 		t.Errorf("a restart was reported as a move: %v", got)
 	}

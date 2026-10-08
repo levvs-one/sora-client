@@ -512,7 +512,9 @@ func probeOutcomeOf(group *engine.GroupStatus) *ProbeOutcome {
 
 // noticeFallbacks journals the fallback groups whose member changed since the
 // last look. The first answer only records where each group stands, and a
-// look that fails while the engine restarts is skipped.
+// look that fails while the engine restarts is skipped. A member that did not
+// answer its last check is passed over: mihomo shows the first member when
+// none answers, and that is not the main server coming back.
 func (s *Session) noticeFallbacks(ctx context.Context, last map[string]string) {
 	groups, err := s.eng.Groups(ctx)
 	if err != nil {
@@ -520,12 +522,12 @@ func (s *Session) noticeFallbacks(ctx context.Context, last map[string]string) {
 	}
 	for _, g := range groups {
 		before, watched := last[g.Name]
-		if !watched || g.Selected == "" || g.Selected == before {
+		if !watched || g.Selected == "" || g.Selected == before || g.LatencyMS[g.Selected] <= 0 {
 			continue
 		}
 		last[g.Name] = g.Selected
 		if before != "" {
-			s.log.Append(Event{Kind: EventGroup, Switch: &GroupSwitch{Group: g.Name, Selected: g.Selected}})
+			s.log.Append(Event{Kind: EventGroup, Switch: &GroupSwitch{Group: g.Name, Previous: before, Selected: g.Selected}})
 		}
 	}
 }

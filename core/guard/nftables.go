@@ -16,6 +16,8 @@ const (
 	nftTable = "sora"
 	// nftChain is the output hook the table installs.
 	nftChain = "output"
+	// Old fake addresses may remain in application caches after an upgrade.
+	legacyFakeIPNetwork = "172.19.0.0/16"
 )
 
 // NftRuleset renders testable kill-switch rules for the engine UID. Bypass
@@ -33,7 +35,7 @@ func NftRuleset(engineUID int, bypass []string, blocked ...netip.Prefix) string 
 	b.WriteString("\t\toif lo accept comment \"sora: the local engine is on loopback\"\n")
 	// Permit traffic through TUN; block only traffic bypassing it.
 	b.WriteString("\t\toifname \"" + engine.TunDevice + "\" accept comment \"sora: through the tunnel\"\n")
-	for _, network := range blocked {
+	for _, network := range append([]netip.Prefix{netip.MustParsePrefix(legacyFakeIPNetwork)}, blocked...) {
 		family := "ip"
 		if network.Addr().Is6() {
 			family = "ip6"

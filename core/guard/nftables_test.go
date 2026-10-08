@@ -112,3 +112,11 @@ func TestDNSAndTunnelDestinationsPrecedeLANPermits(t *testing.T) {
 		}
 	}
 }
+
+func TestLegacyFakeIPCannotUseEngineOrLANPermits(t *testing.T) {
+	rules := guard.NftRuleset(999, []string{"0.0.0.0/0"})
+	block := strings.Index(rules, "ip daddr 172.19.0.0/16 counter drop")
+	if block <= strings.Index(rules, `oifname "sora0" accept`) || block >= strings.Index(rules, "meta skuid 999 accept") || block >= strings.Index(rules, "ip daddr 0.0.0.0/0 accept") {
+		t.Fatal("legacy fake addresses must leave only through Sora TUN")
+	}
+}

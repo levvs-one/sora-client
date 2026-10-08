@@ -5,6 +5,7 @@ package guard_test
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"os/exec"
 	"strings"
 	"testing"
@@ -41,6 +42,9 @@ func TestWFPBlocksWhatIsNotTheTunnel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wfp := firewall.(*guard.WFP)
+	wfp.SetTunNetworks([]netip.Prefix{netip.MustParsePrefix("192.0.2.0/30"), netip.MustParsePrefix("2001:db8:5340::/126")})
+	wfp.SetBlockedNetworks([]netip.Prefix{netip.MustParsePrefix("198.18.0.0/16")})
 	ctx := t.Context()
 	if err := firewall.Arm(ctx, nil); err != nil {
 		t.Fatalf("Arm() = %v", err)

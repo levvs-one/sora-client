@@ -129,6 +129,10 @@ func (w *WFP) install(session *wf.Session) error {
 	if err := session.AddSublayer(&wf.Sublayer{ID: sublayer, Name: "Sora kill switch", Weight: 0xffff}); err != nil {
 		return err
 	}
+	return w.rules(session.AddRule, sublayer)
+}
+
+func (w *WFP) rules(addRule func(*wf.Rule) error, sublayer wf.SublayerID) error {
 	add := func(name string, action wf.Action, weight uint64, conditions ...*wf.Match) error {
 		for _, layer := range outbound {
 			if !applies(layer, conditions) {
@@ -138,7 +142,7 @@ func (w *WFP) install(session *wf.Session) error {
 			if err != nil {
 				return err
 			}
-			if err := session.AddRule(&wf.Rule{
+			if err := addRule(&wf.Rule{
 				ID: wf.RuleID(guid), Name: "Sora: " + name, Layer: layer, Sublayer: sublayer,
 				Weight: weight, Conditions: conditions, Action: action,
 			}); err != nil {
@@ -183,8 +187,16 @@ func (w *WFP) install(session *wf.Session) error {
 			&wf.Match{Field: wf.FieldNexthopInterfaceType, Op: wf.MatchTypeEqual, Value: uint32(53)}); err != nil {
 			return err
 		}
+		// ALE_AUTH_CONNECT reauthorizes inbound replies too. Next-hop fields
+		// are FWP_EMPTY there; arrival type is available on both v4/v6 layers.
+		if err := add("reply through the tunnel", wf.ActionPermit, weightTunnelPermit,
+			&wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: network},
+			&wf.Match{Field: wf.FieldArrivalInterfaceType, Op: wf.MatchTypeEqual, Value: uint32(53)},
+			&wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsReauthorize}); err != nil {
+			return err
+		}
 	}
-	for _, network := range w.blockedNetworks {
+	for _, network := range append([]netip.Prefix{netip.MustParsePrefix(legacyFakeIPNetwork)}, w.blockedNetworks...) {
 		if err := add("tunnel destination outside the tunnel", wf.ActionBlock, weightTunnelBlock,
 			&wf.Match{Field: wf.FieldIPRemoteAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {
 			return err

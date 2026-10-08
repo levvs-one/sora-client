@@ -237,7 +237,13 @@ func sameAccount() (*windows.SECURITY_DESCRIPTOR, error) {
 		return nil, err
 	}
 	sid := user.User.Sid.String()
-	return windows.SecurityDescriptorFromString("O:SYG:SYD:(A;;CC;;;" + sid + ")")
+	sd, err := windows.SecurityDescriptorFromString("O:SYG:SYD:(A;;CC;;;" + sid + ")")
+	if err != nil {
+		return nil, err
+	}
+	// The parser gives a self-relative descriptor, and the wf package makes one
+	// self-relative itself, which Windows refuses to do twice.
+	return sd.ToAbsolute()
 }
 
 // applies keeps an address condition to the layer of its family: an IPv4

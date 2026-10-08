@@ -415,7 +415,11 @@ func (s *Session) supervise(events <-chan engine.Event) {
 		case <-ticker.C:
 			s.publishCounters(ctx)
 		case <-looksAt:
-			s.noticeFallbacks(ctx, fallbacks)
+			// While the engine restarts, a look may reach the process
+			// that is going away or one not yet checked.
+			if s.State() == StateConnected {
+				s.noticeFallbacks(ctx, fallbacks)
+			}
 		case <-network:
 			if why := watch.changed(); why != "" {
 				s.renewConnections(ctx, why)
@@ -435,13 +439,14 @@ func (s *Session) supervise(events <-chan engine.Event) {
 					reason, key = errs.CodeOf(ev.Err), errs.KeyOf(ev.Err)
 				}
 				s.setStateReconnecting(reason, key, 0)
-				// A restarted engine starts its fallback groups over on the
-				// first member; that is not the primary answering again.
-				for g := range fallbacks {
-					fallbacks[g] = ""
-				}
 			case engine.EventState:
 				if ev.State == engine.StateRunning && s.State() == StateReconnecting {
+					// A restarted engine starts its fallback groups over
+					// on the first member; that is not the main server
+					// answering again.
+					for g := range fallbacks {
+						fallbacks[g] = ""
+					}
 					s.setState(StateConnected, errs.Code(""), errs.Key(""), "")
 				}
 			case engine.EventFatal:

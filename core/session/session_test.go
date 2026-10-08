@@ -463,15 +463,20 @@ func TestFallbackMovesAreJournaled(t *testing.T) {
 		t.Errorf("moves = %v, want %v", got, want)
 	}
 
-	// The engine restarts on the backup; the first look after that only
-	// records it.
+	// The engine restarts and comes back on the backup; the first look
+	// after that only records it.
 	eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown})
 	waitFor(t, time.Second, func() bool { return session.State() == StateReconnecting })
 	eng.setGroups(at("auto", "out-2", engine.GroupFallback, "out-1"))
 	settle()
+	eng.bus.Publish(engine.Event{Kind: engine.EventState, State: engine.StateRunning})
+	waitFor(t, time.Second, func() bool { return session.State() == StateConnected })
+	settle()
 	if got := moves(); len(got) != 2 {
 		t.Errorf("a restart was reported as a move: %v", got)
 	}
+	eng.setGroups(at("auto", "out-1", engine.GroupFallback))
+	waitFor(t, time.Second, func() bool { return len(moves()) == 3 })
 }
 
 // waitFor polls until cond succeeds or times out, allowing the session

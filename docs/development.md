@@ -70,6 +70,14 @@ SORA_ENGINES_DIR=/tmp/sora-engines \
 go test ./...
 ```
 
+На Linux воспроизведение совместной работы с другой VPN запускается без root на хосте:
+
+```sh
+SORA_ENGINES_DIR="$HOME/.local/share/sora-dev/engines" bash core/testdata/coexist/run.sh
+```
+
+Нужны user namespaces с диапазонами subordinate UID/GID, `ip`, `unshare`, `nsenter`, `setpriv`, `curl` и Python 3. Скрипт создаёт отдельные сетевые пространства для клиента и сервера, запускает настоящую вторую VPN и проверяет все три ядра в TUN и proxy режимах, по 60 секунд, с другой VPN и без неё. Ответы проверяются в HTTP-журнале и на входящем VLESS-соединении. После отключения сравниваются правила и маршруты обеих IP-семей, проверяются удаление `sora0` и работоспособность другой VPN. Артефакты остаются в `/tmp/claude-1000/coexist-*`. Linux CI запускает тот же скрипт в отдельных network/PID namespaces.
+
 ## Приложение
 
 ```sh

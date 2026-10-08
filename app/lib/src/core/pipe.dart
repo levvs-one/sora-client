@@ -14,17 +14,21 @@ import 'package:win32/win32.dart';
 /// and writing each wait on the system in an isolate of their own, so the
 /// interface never does.
 class PipeConnector implements ClientTransportConnector {
-  PipeConnector(this.path);
+  PipeConnector(this.path, {this.requireService = true});
 
   /// For example r"\\.\pipe\sora-core-v1".
   final String path;
+
+  /// Whether the other end must be the Sora service, which runs as
+  /// LocalSystem. Off only for a core started by hand on a path of its own.
+  final bool requireService;
 
   final _done = Completer<void>();
   _Pipe? _pipe;
 
   @override
   Future<ClientTransportConnection> connect() async {
-    final pipe = await _Pipe.open(path);
+    final pipe = await _Pipe.open(path, requireService: requireService);
     _pipe = pipe;
     unawaited(
       pipe.closed.whenComplete(() {
@@ -43,6 +47,49 @@ class PipeConnector implements ClientTransportConnector {
   @override
   String get authority => 'localhost';
 }
+
+/// Read, write and attributes, the rights the service grants: GENERIC_WRITE
+/// would also ask for the right to create instances of the pipe, which the
+/// service gives nobody but itself.
+const _pipeAccess = 0x0012018B;
+
+final _serverProcessId = DynamicLibrary.open('kernel32.dll')
+    .lookupFunction<Int32 Function(Pointer<Void>, Pointer<Uint32>), int Function(Pointer<Void>, Pointer<Uint32>)>(
+      'GetNamedPipeServerProcessId',
+    );
+
+/// The security identifier of LocalSystem, S-1-5-18, as it sits in memory.
+const _localSystem = [1, 1, 0, 0, 0, 0, 0, 5, 18, 0, 0, 0];
+
+/// Whether the process at the other end of [pipe] runs as LocalSystem, as the
+/// Sora service does.
+bool _servedBySystem(HANDLE pipe) => using((arena) {
+  final pid = arena<Uint32>();
+  if (_serverProcessId(pipe.cast(), pid) == 0) return false;
+  final process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid.value).value;
+  if (!process.isValid) return false;
+  try {
+    final token = arena<Pointer>();
+    if (!OpenProcessToken(process, TOKEN_QUERY, token).value) return false;
+    final tokenHandle = HANDLE(token.value);
+    try {
+      const size = 256;
+      final info = arena<Uint8>(size);
+      final returned = arena<Uint32>();
+      if (!GetTokenInformation(tokenHandle, TokenUser, info, size, returned).value) return false;
+      // TOKEN_USER starts with the pointer to the SID, which lies in the buffer.
+      final sid = info.cast<Pointer<Uint8>>().value;
+      for (final (i, byte) in _localSystem.indexed) {
+        if (sid[i] != byte) return false;
+      }
+      return true;
+    } finally {
+      CloseHandle(tokenHandle);
+    }
+  } finally {
+    CloseHandle(process);
+  }
+});
 
 /// How long to wait for a pipe instance while all of them are busy: the core
 /// opens a new one right after accepting a client.
@@ -64,8 +111,15 @@ class _Pipe {
   StreamSink<List<int>> get outgoing => _outgoing.sink;
   Future<void> get closed => _closed.future;
 
-  static Future<_Pipe> open(String path) async {
+  static Future<_Pipe> open(String path, {required bool requireService}) async {
     final handle = await _create(path);
+    // Anyone signed in could otherwise create a pipe of the same name before
+    // the service does, and receive the app's requests and the system proxy
+    // it would point at the answer.
+    if (requireService && !_servedBySystem(HANDLE(Pointer.fromAddress(handle)))) {
+      CloseHandle(HANDLE(Pointer.fromAddress(handle)));
+      throw const GrpcError.unavailable('the core pipe is not served by the Sora service');
+    }
     final reads = ReceivePort();
     final writerReady = ReceivePort();
     final Isolate reader;
@@ -105,15 +159,7 @@ class _Pipe {
     final name = path.toPcwstr();
     try {
       for (var attempt = 0; ; attempt++) {
-        final result = CreateFile(
-          name,
-          GENERIC_READ | GENERIC_WRITE,
-          FILE_SHARE_NONE,
-          null,
-          OPEN_EXISTING,
-          FILE_FLAG_OVERLAPPED,
-          null,
-        );
+        final result = CreateFile(name, _pipeAccess, FILE_SHARE_NONE, null, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, null);
         if (result.value.isValid) return result.value.address;
         if (result.error != ERROR_PIPE_BUSY || attempt >= _busyRetries) {
           throw GrpcError.unavailable('the core pipe cannot be opened (error ${result.error})');

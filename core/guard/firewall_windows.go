@@ -145,12 +145,22 @@ func (w *WFP) install(session *wf.Session) error {
 	if err != nil {
 		return err
 	}
+	// An engine is let through only when it runs as the account of the core,
+	// LocalSystem for the service: anyone can start xray.exe from the engines
+	// folder, and a copy started by someone else must not get around the switch.
+	owner, err := sameAccount()
+	if err != nil {
+		return err
+	}
 	for _, file := range apps {
 		id, err := wf.AppID(file)
 		if err != nil {
 			return err
 		}
-		if err := permit(filepath.Base(file), &wf.Match{Field: wf.FieldALEAppID, Op: wf.MatchTypeEqual, Value: id}); err != nil {
+		if err := permit(filepath.Base(file),
+			&wf.Match{Field: wf.FieldALEAppID, Op: wf.MatchTypeEqual, Value: id},
+			&wf.Match{Field: wf.FieldALEUserID, Op: wf.MatchTypeEqual, Value: owner},
+		); err != nil {
 			return err
 		}
 	}
@@ -215,6 +225,19 @@ func (w *WFP) executables() ([]string, error) {
 		return nil, err
 	}
 	return append(files, engines...), nil
+}
+
+// sameAccount is a security descriptor that WFP matches against the account of
+// a connecting process: it grants the filter's access right only to the
+// account this core runs as.
+func sameAccount() (*windows.SECURITY_DESCRIPTOR, error) {
+	token := windows.GetCurrentProcessToken()
+	user, err := token.GetTokenUser()
+	if err != nil {
+		return nil, err
+	}
+	sid := user.User.Sid.String()
+	return windows.SecurityDescriptorFromString("O:SYG:SYD:(A;;CC;;;" + sid + ")")
 }
 
 // applies keeps an address condition to the layer of its family: an IPv4

@@ -25,10 +25,10 @@
 cd core && CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o ../dist/sora-core ./cmd/sora-core && cd ..
 packaging/engines/fetch.sh amd64 dist/engines
 packaging/zapret/build.sh dist/engines
-SORA_ARCH=amd64 SORA_VERSION=1.0.4 nfpm package --config packaging/linux/nfpm.yaml --packager deb --target dist/
+SORA_ARCH=amd64 SORA_VERSION=1.0.5 nfpm package --config packaging/linux/nfpm.yaml --packager deb --target dist/
 
-cd app && flutter build linux --release --dart-define=SORA_VERSION=1.0.4 && cd ..
-SORA_ARCH=amd64 SORA_VERSION=1.0.4 nfpm package --config packaging/linux/nfpm-app.yaml --packager deb --target dist/
+cd app && flutter build linux --release --dart-define=SORA_VERSION=1.0.5 && cd ..
+SORA_ARCH=amd64 SORA_VERSION=1.0.5 nfpm package --config packaging/linux/nfpm-app.yaml --packager deb --target dist/
 ```
 
 `--packager rpm` и `--packager archlinux` собирают остальные форматы. Для arm64 собирается только `sora-core`.

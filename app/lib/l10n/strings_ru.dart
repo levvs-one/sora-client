@@ -591,6 +591,9 @@ class SRu extends S {
   String get noticeNext => 'Сервер не ответил, работает следующий';
 
   @override
+  String get noticeMainBack => 'Основной сервер снова отвечает, трафик идёт через него';
+
+  @override
   String get noticeSubscription => 'Подписка';
 
   @override

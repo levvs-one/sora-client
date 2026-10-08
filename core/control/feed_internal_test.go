@@ -53,6 +53,31 @@ func TestEventFeedLosesNothingAndRepeatsNothing(t *testing.T) {
 	}
 }
 
+// TestEventFeedSendsAnEventCaughtByBothOnce appends an event between the
+// subscription and the head read, as a busy session can, and checks that the
+// live side drops what the replay already sent.
+func TestEventFeedSendsAnEventCaughtByBothOnce(t *testing.T) {
+	journal := session.NewJournal(64)
+	feed := newEventFeed(journal, 0, nil)
+	defer feed.close()
+	caught := journal.Append(session.Event{Kind: session.EventGroup, Switch: &session.GroupSwitch{Group: "auto", Selected: "out-2"}})
+	feed.head = journal.Latest()
+	later := journal.Append(session.Event{Kind: session.EventState, State: session.StateConnected})
+
+	sent := map[uint64]int{}
+	for _, event := range feed.history() {
+		sent[event.Sequence]++
+	}
+	for range 2 {
+		if event := <-feed.live; feed.unsent(event) {
+			sent[event.Sequence]++
+		}
+	}
+	if sent[caught.Sequence] != 1 || sent[later.Sequence] != 1 {
+		t.Errorf("sent = %v, want sequences %d and %d once each", sent, caught.Sequence, later.Sequence)
+	}
+}
+
 // TestEventFeedRespectsTheSequenceTheClientNamed checks that replay excludes
 // events at or before the client's cursor.
 func TestEventFeedRespectsTheSequenceTheClientNamed(t *testing.T) {

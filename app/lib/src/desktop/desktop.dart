@@ -403,6 +403,7 @@ class Desktop with WindowListener {
       ConnectionRestored() => _tell(s.noticeRestored, _serverText(s)),
       ConnectionFailed(:final failure) => _tell(s.noticeFailed, describe(s, failure)),
       ServerSwitched(:final entry, :final backup) => _tell(entry, backup ? s.noticeBackup : s.noticeNext),
+      ServerReturned(:final entry) => _tell(entry, s.noticeMainBack),
     });
   }
 

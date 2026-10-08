@@ -19,6 +19,9 @@ const (
 	// DefaultStopGrace allows clean shutdown before killing the engine,
 	// reducing the risk of leftover TUN devices.
 	DefaultStopGrace = 3 * time.Second
+	// groupLooks reads fallback groups every fifth counter tick: mihomo
+	// checks its members far less often, so a faster look finds nothing new.
+	groupLooks = 5
 )
 
 // Config requires Plan and Engine; other fields have usable defaults.
@@ -385,12 +388,38 @@ func (s *Session) supervise(events <-chan engine.Event) {
 		network = looks.C
 	}
 
+	// Only fallback groups are watched: a move there means a server stopped
+	// answering or came back, and plans without one never poll.
+	var (
+		fallbacks map[string]string
+		looksAt   <-chan time.Time
+	)
+	for _, g := range s.cfg.Plan.Groups {
+		if g.Type == engine.GroupFallback {
+			if fallbacks == nil {
+				fallbacks = map[string]string{}
+			}
+			fallbacks[g.Name] = ""
+		}
+	}
+	if fallbacks != nil {
+		looks := time.NewTicker(groupLooks * s.cfg.StatsInterval)
+		defer looks.Stop()
+		looksAt = looks.C
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			s.publishCounters(ctx)
+		case <-looksAt:
+			// While the engine restarts, a look may reach the process
+			// that is going away or one not yet checked.
+			if s.State() == StateConnected {
+				s.noticeFallbacks(ctx, fallbacks)
+			}
 		case <-network:
 			if why := watch.changed(); why != "" {
 				s.renewConnections(ctx, why)
@@ -412,6 +441,12 @@ func (s *Session) supervise(events <-chan engine.Event) {
 				s.setStateReconnecting(reason, key, 0)
 			case engine.EventState:
 				if ev.State == engine.StateRunning && s.State() == StateReconnecting {
+					// A restarted engine starts its fallback groups over
+					// on the first member; that is not the main server
+					// answering again.
+					for g := range fallbacks {
+						fallbacks[g] = ""
+					}
 					s.setState(StateConnected, errs.Code(""), errs.Key(""), "")
 				}
 			case engine.EventFatal:
@@ -478,6 +513,28 @@ func probeOutcomeOf(group *engine.GroupStatus) *ProbeOutcome {
 		}
 	}
 	return outcome
+}
+
+// noticeFallbacks journals the fallback groups whose member changed since the
+// last look. The first answer only records where each group stands, and a
+// look that fails while the engine restarts is skipped. A member that did not
+// answer its last check is passed over: mihomo shows the first member when
+// none answers, and that is not the main server coming back.
+func (s *Session) noticeFallbacks(ctx context.Context, last map[string]string) {
+	groups, err := s.eng.Groups(ctx)
+	if err != nil {
+		return
+	}
+	for _, g := range groups {
+		before, watched := last[g.Name]
+		if !watched || g.Selected == "" || g.Selected == before || g.LatencyMS[g.Selected] <= 0 {
+			continue
+		}
+		last[g.Name] = g.Selected
+		if before != "" {
+			s.log.Append(Event{Kind: EventGroup, Switch: &GroupSwitch{Group: g.Name, Previous: before, Selected: g.Selected}})
+		}
+	}
 }
 
 // publishCounters records sampled traffic totals. Temporary read failures

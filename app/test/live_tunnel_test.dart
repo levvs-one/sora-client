@@ -30,7 +30,7 @@ void main() {
 
   /// Connects the imported server in [mode] and returns time to connected
   /// state.
-  Future<Duration> connect(TunnelMode mode) async {
+  Future<Duration> connect(TunnelMode mode, {bool killSwitch = false}) async {
     final out = imported.outbounds.single;
     final plan = SessionPlan(
       tunnelMode: mode,
@@ -42,7 +42,12 @@ void main() {
     );
     final clock = Stopwatch()..start();
     final answer = await link.stub.connect(
-      ConnectRequest(apiVersion: apiVersion, sessionPlan: plan, controlAuthenticator: link.token),
+      ConnectRequest(
+        apiVersion: apiVersion,
+        sessionPlan: plan,
+        controlAuthenticator: link.token,
+        killSwitch: killSwitch,
+      ),
     );
     expect(answer.hasError(), isFalse, reason: '${answer.error.userMessageKey} ${answer.error.detailRedacted}');
     for (var i = 0; i < 300; i++) {
@@ -94,6 +99,27 @@ void main() {
       } finally {
         await disconnect();
       }
+    },
+    skip: skip,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
+  Future<String> fetch(String url) async {
+    final curl = await Process.run('curl.exe', ['-s', '-o', 'NUL', '-m', '20', '-w', '%{http_code}', url]);
+    return '${curl.stdout}${curl.stderr}';
+  }
+
+  test(
+    'a kill switch armed with Connect lets the tunnel through and leaves with the session',
+    () async {
+      await connect(TunnelMode.TUNNEL_MODE_SYSTEM, killSwitch: true);
+      try {
+        expect(await fetch('https://example.net/'), '200');
+        expect(await serverSaw('example.net'), isTrue, reason: 'the request went around the tunnel');
+      } finally {
+        await disconnect();
+      }
+      expect(await fetch('https://www.example.com/'), '200', reason: 'the block outlived the session');
     },
     skip: skip,
     timeout: const Timeout(Duration(minutes: 2)),

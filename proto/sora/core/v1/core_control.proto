@@ -71,6 +71,9 @@ message ConnectRequest {
   string session_id = 3;
   SessionPlan session_plan = 4;
   bytes control_authenticator = 5;
+  // Since 1.5. Arms the kill switch before the engine starts, so no traffic
+  // leaves outside the tunnel between connecting and a later SetKillSwitch.
+  bool kill_switch = 6;
 }
 message ConnectResponse { SessionStatus status = 1; SoraError error = 2; }
 message DisconnectRequest { ApiVersion api_version = 1; string request_id = 2; string session_id = 3; bytes control_authenticator = 4; }
@@ -195,8 +198,12 @@ message GetStatsRequest { ApiVersion api_version = 1; string session_id = 2; }
 message GetStatsResponse { StatsTick stats = 1; SoraError error = 2; }
 message ConnectionState { ConnectionStateValue value = 1; string session_id = 2; SoraErrorCode reason = 3; google.protobuf.Timestamp changed_at = 4; google.protobuf.Duration retry_after = 5; }
 enum ConnectionStateValue { CONNECTION_STATE_VALUE_UNSPECIFIED = 0; CONNECTION_STATE_VALUE_DISCONNECTED = 1; CONNECTION_STATE_VALUE_CONNECTING = 2; CONNECTION_STATE_VALUE_CONNECTED = 3; CONNECTION_STATE_VALUE_RECONNECTING = 4; CONNECTION_STATE_VALUE_FAILED = 5; }
-message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; KillSwitchChanged kill_switch_changed = 10; } }
+message CoreEvent { uint64 sequence = 1; string session_id = 2; google.protobuf.Timestamp emitted_at = 3; oneof payload { StateChanged state_changed = 4; StatsTick stats_tick = 5; BypassStrategyChanged bypass_strategy_changed = 6; ProbeResult probe_result = 7; LogBatch log_batch = 8; SoraError error = 9; KillSwitchChanged kill_switch_changed = 10; GroupSwitched group_switched = 11; } }
 message StateChanged { ConnectionState state = 1; }
+// Since 1.5. A fallback group moved to another member on its own: the member
+// it used stopped answering, or one before it answers again. Members are
+// outbound ids or names of nested groups.
+message GroupSwitched { string group = 1; string selected = 2; string previous = 3; }
 message StatsTick { uint64 bytes_up = 1; uint64 bytes_down = 2; uint64 active_connections = 3; }
 message BypassStrategyChanged { string strategy = 1; }
 message ProbeResult {

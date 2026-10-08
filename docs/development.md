@@ -108,8 +108,8 @@ Go-код попадает в `core/gen`, Dart-код в `app/lib/src/generated`
 Linux, после сборки службы, ядер, zapret и приложения:
 
 ```sh
-SORA_ARCH=amd64 SORA_VERSION=1.0.4 nfpm package --config packaging/linux/nfpm.yaml --packager deb --target dist/
-SORA_ARCH=amd64 SORA_VERSION=1.0.4 nfpm package --config packaging/linux/nfpm-app.yaml --packager deb --target dist/
+SORA_ARCH=amd64 SORA_VERSION=1.0.5 nfpm package --config packaging/linux/nfpm.yaml --packager deb --target dist/
+SORA_ARCH=amd64 SORA_VERSION=1.0.5 nfpm package --config packaging/linux/nfpm-app.yaml --packager deb --target dist/
 ```
 
 `--packager rpm` и `--packager archlinux` дают остальные форматы.
@@ -119,8 +119,8 @@ Windows, из корня репозитория:
 ```powershell
 cd core; go build -o ..\dist\windows\sora-core.exe .\cmd\sora-core; cd ..
 bash packaging/engines/fetch.sh windows-amd64 dist/windows/engines
-cd app; flutter build windows --release --dart-define=SORA_VERSION=1.0.4; cd ..
-iscc /DAppVersion=1.0.4 packaging\windows\sora.iss
+cd app; flutter build windows --release --dart-define=SORA_VERSION=1.0.5; cd ..
+iscc /DAppVersion=1.0.5 packaging\windows\sora.iss
 ```
 
 ## CI

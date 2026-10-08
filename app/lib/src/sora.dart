@@ -43,6 +43,14 @@ final class ServerSwitched extends Notice {
   final bool backup;
 }
 
+/// A core fallback group back on its first server [entry] after that server
+/// answered again.
+final class ServerReturned extends Notice {
+  const ServerReturned(this.entry);
+
+  final String entry;
+}
+
 /// App state and core operations. Screens access it through [SoraScope] and
 /// rebuild on notifications.
 class Sora extends ChangeNotifier {
@@ -65,6 +73,15 @@ class Sora extends ChangeNotifier {
   int _memberSpare = 0;
   StreamSubscription<SubscriptionState>? _subscriptionWatch;
   StreamSubscription<CoreEvent>? _sessionWatch;
+
+  /// Fallback groups of the watched session by name: members in the order the
+  /// core tries them, the main ones, and the name notices give the group.
+  Map<String, ({List<String> order, Set<String> mains, String title, bool ordered})> _fallbacks = {};
+
+  /// Last event seen, so a watch reopened on the same session resumes after it
+  /// instead of replaying history.
+  String? _seenSession;
+  Int64 _seenSequence = Int64.ZERO;
 
   /// Drops the core connection when a request detects it is unavailable.
   void Function(Object error) _drop = (_) {};
@@ -292,13 +309,23 @@ class Sora extends ChangeNotifier {
     // The stream replays history; old events must not trigger notices or repeat
     // failover.
     final opened = (since ?? DateTime.now()).subtract(const Duration(seconds: 1));
-    final stream = link.stub.watchEvents(WatchEventsRequest(apiVersion: apiVersion, sessionId: id));
+    final stream = link.stub.watchEvents(
+      WatchEventsRequest(
+        apiVersion: apiVersion,
+        sessionId: id,
+        afterSequence: id == _seenSession ? _seenSequence : null,
+      ),
+    );
     _sessionWatch = stream.listen(
       (event) {
+        _seenSession = id;
+        _seenSequence = event.sequence;
+        final fresh = !event.hasEmittedAt() || event.emittedAt.toDateTime().isAfter(opened);
         if (event.hasStateChanged()) {
-          final fresh = !event.hasEmittedAt() || event.emittedAt.toDateTime().isAfter(opened);
           _applyState(event.stateChanged.state, report: fresh);
           notifyListeners();
+        } else if (event.hasGroupSwitched() && fresh) {
+          _fallbackMoved(event.groupSwitched);
         }
       },
       onError: (Object error) {
@@ -308,6 +335,31 @@ class Sora extends ChangeNotifier {
       onDone: resync,
     );
   }
+
+  /// Tells the user that a fallback group of the core moved. The core tries
+  /// members in order, so a move down the list means a server stopped
+  /// answering, and a move up means an earlier one answers again. A move up
+  /// to a backup stays quiet: no notice text fits it without naming a main
+  /// server that is not there.
+  void _fallbackMoved(GroupSwitched moved) {
+    final group = _fallbacks[moved.group];
+    if (group == null) return;
+    final isMain = group.mains.contains(moved.selected);
+    if (group.order.indexOf(moved.selected) > group.order.indexOf(moved.previous)) {
+      _emit(ServerSwitched(group.title, backup: group.ordered && !isMain));
+    } else if (isMain && !group.mains.contains(moved.previous)) {
+      _emit(ServerReturned(group.title));
+    }
+  }
+
+  /// The main members of fallback group [g]: those named main in a group with
+  /// roles, otherwise the server the user picked.
+  static Set<String> _mainsOf(GroupSpec g, Entry? entry) => entry != null && entry.ordered
+      ? {
+          for (final m in g.members)
+            if (entry.roles[m] == Role.main) m,
+        }
+      : {g.members.first};
 
   /// Connects when off; disconnects an active or connecting session.
   Future<void> toggle() async {
@@ -333,6 +385,17 @@ class Sora extends ChangeNotifier {
     final choice = selected;
     final entry = choice.startsWith(groupPrefix) ? entryOf(choice, _subscriptions.values) : null;
     final plan = buildPlan(servers: servers, choice: choice, settings: settings, latency: latency, entry: entry);
+    final fallbacks = {
+      for (final g in plan.groups)
+        if (g.type == GroupType.GROUP_TYPE_FALLBACK && g.members.isNotEmpty)
+          g.name: (
+            order: g.members,
+            mains: _mainsOf(g, entry),
+            title: entry?.name ?? nameOf(g.members.first),
+            ordered: entry?.ordered ?? false,
+          ),
+    };
+    final armed = settings.killSwitch;
     // Track the active profile because profile groups fail over in the client.
     _member = entry != null && entry.members.any(isProfile) ? plan.outbounds.single.id : null;
     if (!retry) _memberSpare = entry == null ? 0 : entry.members.length - 1;
@@ -342,17 +405,18 @@ class Sora extends ChangeNotifier {
     final started = DateTime.now();
     try {
       final answer = await link.stub.connect(
-        ConnectRequest(apiVersion: apiVersion, sessionPlan: plan, controlAuthenticator: link.token),
+        // The core arms the kill switch before the engine starts, so nothing
+        // leaves outside the tunnel while it comes up.
+        ConnectRequest(apiVersion: apiVersion, sessionPlan: plan, controlAuthenticator: link.token, killSwitch: armed),
       );
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
       _applyState(answer.status.connection);
-      if (settings.killSwitch && sessionId != null) {
-        final kill = await link.stub.setKillSwitch(
-          SetKillSwitchRequest(apiVersion: apiVersion, sessionId: sessionId, enabled: true),
-        );
-        if (kill.hasError()) failure = CoreFailure(kill.error.userMessageKey);
-      }
+      // Swapped together with the watch, so events of the previous session
+      // never meet the groups of this one.
+      _fallbacks = fallbacks;
       _watchSession(since: started);
+      // The switch may have been flipped while Connect was on its way.
+      if (settings.killSwitch != armed && sessionId != null) await setKillSwitch(settings.killSwitch);
       // Apply a selection changed while the connection request was pending.
       if (selected != choice && phase == Phase.connected) unawaited(connect());
     } catch (error) {
@@ -423,9 +487,10 @@ class Sora extends ChangeNotifier {
     final link = _link, id = sessionId;
     if (link == null) return;
     if (id == null) {
-      // A failed session may retain the kill switch after its ID is cleared.
-      // Disconnect it to release the block.
-      if (!value) {
+      // A session still connecting takes the new value when Connect returns.
+      // A failed session may retain the kill switch after its ID is cleared;
+      // disconnecting it releases the block.
+      if (!value && phase != Phase.connecting) {
         await link.stub
             .disconnect(DisconnectRequest(apiVersion: apiVersion, controlAuthenticator: link.token))
             .catchError((Object _) => DisconnectResponse());

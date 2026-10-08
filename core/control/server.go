@@ -33,8 +33,9 @@ import (
 // sessionSettings derives system settings from the request. Bypass rules exempt
 // private destinations; the guard owns the kill switch, and the user UI owns
 // the system proxy.
-func sessionSettings(in *corev1.SessionPlan) session.Settings {
-	settings := session.Settings{TunnelMode: "system"}
+func sessionSettings(req *corev1.ConnectRequest) session.Settings {
+	in := req.GetSessionPlan()
+	settings := session.Settings{TunnelMode: "system", KillSwitch: req.GetKillSwitch()}
 	if in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_APPLICATION {
 		settings.TunnelMode = "application"
 	}
@@ -478,7 +479,7 @@ func (s *Server) Connect(ctx context.Context, req *corev1.ConnectRequest) (*core
 
 	ctx, cancel := requestDeadline(ctx, connectTimeout)
 	defer cancel()
-	started, err := s.sessions.Connect(ctx, plan, sessionSettings(req.GetSessionPlan()))
+	started, err := s.sessions.Connect(ctx, plan, sessionSettings(req))
 	if err != nil {
 		return &corev1.ConnectResponse{Error: toWire(err, mask, id)}, nil
 	}
@@ -655,6 +656,9 @@ func (s *Server) WatchEvents(req *corev1.WatchEventsRequest, stream grpc.ServerS
 			if !ok {
 				return nil
 			}
+			if !feed.unsent(event) {
+				continue
+			}
 			if err := stream.Send(toWireEvent(event, feed.redactor)); err != nil {
 				return err
 			}
@@ -703,6 +707,13 @@ func (f *eventFeed) history() []session.Event {
 		out = append(out, event)
 	}
 	return out
+}
+
+// unsent reports whether a live event still has to go out. One appended
+// between the subscription and the head read reaches the live queue and the
+// replay both; the replay already sent it.
+func (f *eventFeed) unsent(event session.Event) bool {
+	return event.Sequence > f.head && event.Sequence > f.after
 }
 
 // close releases the subscription.
@@ -758,6 +769,12 @@ func toWireEvent(event session.Event, redactor *engine.Redactor) *corev1.CoreEve
 		out.Payload = &corev1.CoreEvent_ProbeResult{ProbeResult: probe}
 	case session.EventError:
 		out.Payload = &corev1.CoreEvent_Error{Error: toWire(errOrNil(event), mask, "")}
+	case session.EventGroup:
+		moved := &corev1.GroupSwitched{}
+		if event.Switch != nil {
+			moved.Group, moved.Previous, moved.Selected = event.Switch.Group, event.Switch.Previous, event.Switch.Selected
+		}
+		out.Payload = &corev1.CoreEvent_GroupSwitched{GroupSwitched: moved}
 	default:
 		out.Payload = &corev1.CoreEvent_LogBatch{LogBatch: &corev1.LogBatch{
 			Lines: []string{maskText(mask, event.Detail)},

@@ -18,6 +18,7 @@ const (
 	EventLog      EventKind = "log"
 	EventProbe    EventKind = "probe"
 	EventError    EventKind = "error"
+	EventGroup    EventKind = "group"
 )
 
 // Event records a session change. Journal-assigned sequence numbers increase
@@ -32,8 +33,17 @@ type Event struct {
 	Detail     string
 	Counters   Counters
 	Probe      *ProbeOutcome
+	Switch     *GroupSwitch
 	RetryAfter time.Duration
 	LogLine    string
+}
+
+// GroupSwitch is a fallback group that moved to another member on its own.
+// Members are outbound ids or names of nested groups.
+type GroupSwitch struct {
+	Group    string
+	Previous string
+	Selected string
 }
 
 // Counters defines session traffic totals independently of engine types to

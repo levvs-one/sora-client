@@ -16,13 +16,10 @@ import (
 	"github.com/levvs-one/sora-client/core/session"
 )
 
-// secretValues are planted in the session on purpose. Every one of them must be
-// absent from the report and from every byte of the archive: a user who attaches
-// a file to a bug report must not be punished for it.
+// Planted credentials must be absent from report lines and all archive bytes.
 const secretValues = "super-secret-password-8383 and-another-token-4711"
 
-// serverHost is planted too, because a report that names the server a user
-// connected to is a report about that user.
+// Server hosts must be masked because they identify user connections.
 const serverHost = "de1.example.com"
 
 // fakeSource is a session in a fixed state.
@@ -166,7 +163,8 @@ func TestReportWorksWithoutARedactorAndSaysSo(t *testing.T) {
 	if len(lines) == 0 {
 		t.Fatal("the report is empty")
 	}
-	// Without a redactor the collector must not pretend the values were masked.
+	// Without a redactor the collector must not pretend the values were
+	// masked.
 	summary := collector.Summary(session.Status{})
 	if summary.Masked {
 		t.Error("the summary claims values were masked although no redactor was given")

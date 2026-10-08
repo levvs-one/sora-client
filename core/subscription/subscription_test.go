@@ -14,13 +14,11 @@ import (
 	"github.com/levvs-one/sora-client/core/subscription"
 )
 
-// body is what a provider answers with in the tests: one share link, which is what
-// the parser expects.
+// body supplies one share link as a parseable test subscription.
 const body = "vless://11111111-1111-4111-8111-111111111111@de1.example.com:443?security=tls#Berlin"
 
-// newServer starts a provider that answers over tls, together with a client that
-// trusts it. The client is injected rather than the certificate, because the
-// production client must never be told to skip verification.
+// newServer creates a TLS test provider and trusted client. Inject the client
+// rather than weakening production certificate verification.
 func newServer(t *testing.T, handler http.HandlerFunc) (*subscription.Fetcher, string) {
 	t.Helper()
 	server := httptest.NewTLSServer(handler)
@@ -121,9 +119,8 @@ func TestFetchStopsAfterTooManyRedirects(t *testing.T) {
 	}
 }
 
-// fetcherClient returns a client that trusts the certificate of a test server. It
-// exists so the production client, which must verify certificates, is never the
-// one a test relaxes.
+// fetcherClient trusts the test server's certificate without changing the
+// production client's verification policy.
 func fetcherClient(t *testing.T) *http.Client {
 	t.Helper()
 	return &http.Client{
@@ -193,7 +190,8 @@ func TestFetchSendsTheSubscriptionUserAgentAndReadsThePanelHeaders(t *testing.T)
 		if got := r.Header.Get("User-Agent"); got != "Happ/3.2.1" {
 			t.Errorf("user-agent = %q", got)
 		}
-		// The headers Remnawave sends, as its subscription headers interface names them.
+		// The headers Remnawave sends, as its subscription headers
+		// interface names them.
 		w.Header().Set("profile-title", "base64:"+base64.StdEncoding.EncodeToString([]byte("Мой VPN")))
 		w.Header().Set("profile-update-interval", "12")
 		w.Header().Set("subscription-userinfo", "upload=455727941; download=6174315083; total=1073741824000; expire=1798761600")

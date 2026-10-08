@@ -17,8 +17,7 @@ import 'servers.dart';
 import 'settings_screen.dart';
 import 'subscription_sheet.dart';
 
-/// The one screen most people need: a button, what is happening in a few
-/// words, and the server it goes through.
+/// Main connection screen with session controls, status and server selection.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -117,7 +116,6 @@ class _OrbState extends State<_Orb> with SingleTickerProviderStateMixin {
       animation: _shake,
       builder: (context, child) {
         final t = _shake.value;
-        // A decaying side-to-side shake, as a Mac refuses a password.
         return Transform.translate(offset: Offset(math.sin(t * math.pi * 6) * (1 - t) * 10, 0), child: child);
       },
       child: Semantics(
@@ -202,8 +200,7 @@ class _Status extends StatelessWidget {
   }
 }
 
-/// Crossfades text with a short rise, so a new state reads as a change and
-/// not as a flicker.
+/// Crossfades state text with a short upward slide to avoid abrupt changes.
 class _Swap extends StatelessWidget {
   const _Swap({required this.child});
 
@@ -276,7 +273,7 @@ class _ServerCard extends StatelessWidget {
             'bypass' => s.serverBypass,
             _ => sora.nameOf(selected),
           };
-    // A named group shows the latency of the member it would run.
+    // Use the prospective active member's latency for a group selection.
     final group = selected.startsWith(groupPrefix) ? entryOf(selected, sora.subscriptions) : null;
     final ms = sora.latency[group == null ? selected : pickMember(group, sora.latency).id];
     return AnimatedOpacity(
@@ -320,9 +317,8 @@ class _ServerCard extends StatelessWidget {
   }
 }
 
-/// Says ahead of time that a subscription is about to end or run out, on the
-/// screen a person sees every day, instead of letting the tunnel stop one
-/// morning without a reason.
+/// Shows subscription expiry and traffic warnings on the main screen before
+/// service is interrupted.
 class _SubscriptionWarning extends StatelessWidget {
   const _SubscriptionWarning();
 

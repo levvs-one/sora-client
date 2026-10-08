@@ -14,16 +14,9 @@ import (
 	"syscall"
 )
 
-// From classifies an error that did not come from the catalog and returns it as
-// one. An error that is already in the catalog is returned unchanged, so
-// calling From twice never loses a specific key.
-//
-// Two details are deliberately rebuilt rather than copied. A url.Error keeps
-// the full request URL, and a subscription URL is a bearer token, so the URL
-// never reaches a detail line. A net.OpError keeps the server address, and a
-// server address identifies one provider account, so only the operation and
-// the cause survive. Both losses are the point: the interface gets a
-// meaningful cause and neither the core nor the user learns a secret.
+// From classifies external errors and preserves existing catalog errors. It
+// removes bearer URLs and local/remote addresses from details, retaining
+// operations and causes for diagnosis.
 func From(err error) *Error {
 	if err == nil {
 		return nil
@@ -70,9 +63,8 @@ func From(err error) *Error {
 	return New(CodeInternal, KeyInternal, err)
 }
 
-// fromURLError classifies the wrapped cause and rebuilds the detail from the
-// operation alone. The URL is dropped rather than masked: a redactor that
-// half-removes a token is worse than one that never sees it.
+// fromURLError classifies the cause and retains only the operation, excluding
+// bearer URLs entirely.
 func fromURLError(err *url.Error) *Error {
 	inner := From(err.Err)
 	detail := err.Op
@@ -82,9 +74,8 @@ func fromURLError(err *url.Error) *Error {
 	return &Error{code: inner.code, key: inner.key, detail: detail, retryable: inner.retryable}
 }
 
-// fromPathError classifies a filesystem failure and keeps the operation out of
-// the detail line. A local path carries the account name of the user, and the
-// interface has no reason to learn it.
+// fromPathError classifies filesystem errors without operation or path details
+// that may expose account names.
 func fromPathError(err *fs.PathError) *Error {
 	inner := From(err.Err)
 	detail := err.Op
@@ -94,11 +85,8 @@ func fromPathError(err *fs.PathError) *Error {
 	return &Error{code: inner.code, key: inner.key, detail: detail, retryable: inner.retryable}
 }
 
-// netDetail rebuilds a network error without the addresses it carries.
-// net.OpError embeds the local and the remote endpoint, and net.DNSError embeds
-// the queried name, which for a subscription is the provider account. The
-// operation and the cause survive, so the diagnosis stays intact while neither
-// the account nor the layout of the machine leaves the core.
+// netDetail retains network operations and causes while excluding endpoints and
+// queried names that identify users or providers.
 func netDetail(err error) error {
 	var opErr *net.OpError
 	if errors.As(err, &opErr) {
@@ -126,12 +114,9 @@ type opErrCause struct {
 func (e *opErrCause) Error() string { return e.op + ": " + e.err.Error() }
 func (e *opErrCause) Unwrap() error { return e.err }
 
-// fromCertificateError turns a trust failure into a catalog error with a fixed
-// detail line. The detail is written here instead of taken from the cause for
-// two reasons at once: an x509 error prints the certificate subject and the
-// requested name, which identifies a provider account, and some x509 errors
-// panic when rendered without a certificate attached. A privileged service must
-// neither leak the name nor die while describing a handshake.
+// fromCertificateError uses fixed trust-failure details to avoid exposing
+// certificate subjects or names. It also avoids x509 formatting panics when
+// certificates are absent.
 func fromCertificateError(err error) (*Error, bool) {
 	var verification *tls.CertificateVerificationError
 	if errors.As(err, &verification) {
@@ -167,11 +152,8 @@ func fromCertificateError(err error) (*Error, bool) {
 	return nil, false
 }
 
-// invalidReason names the certificate problems worth telling apart during
-// support work. The reasons x509 adds over time fall through to a single
-// phrase on purpose: a support engineer needs to know the chain was rejected,
-// not which of forty internal reasons fired, and the raw value is a number
-// nobody can act on.
+// invalidReason distinguishes supported certificate failures and gives unknown
+// future reasons a generic rejection detail.
 func invalidReason(reason x509.InvalidReason) string {
 	switch reason {
 	case x509.Expired:
@@ -189,14 +171,14 @@ func invalidReason(reason x509.InvalidReason) string {
 	}
 }
 
-// isRefused reports whether a peer actively refused the connection, which is a
-// different diagnosis from an unreachable network and gets its own message.
+// isRefused distinguishes an active connection refusal from an unreachable
+// network.
 func isRefused(err error) bool {
 	return errors.Is(err, syscall.ECONNREFUSED)
 }
 
-// isNetworkFailure reports whether the error is one of the conditions that mean
-// "the path to the server did not work", as opposed to "the server said no".
+// isNetworkFailure identifies connectivity failures distinct from server
+// refusals.
 func isNetworkFailure(err error) bool {
 	return errors.Is(err, syscall.ECONNRESET) ||
 		errors.Is(err, syscall.EHOSTUNREACH) ||

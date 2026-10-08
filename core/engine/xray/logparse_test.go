@@ -6,7 +6,8 @@ import (
 	"github.com/levvs-one/sora-client/core/logs"
 )
 
-// Real output of Xray 26.3.27 at debug level, including an access log line.
+// TestParseLogReadsXrayLines checks real Xray 26.3.27 debug output, including
+// access logs.
 func TestParseLogReadsXrayLines(t *testing.T) {
 	d := &driver{}
 	at, level, msg := d.ParseLog(`2026/10/06 15:14:37.122282 [Warning] core: Xray 26.3.27 started`)

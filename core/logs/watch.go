@@ -4,7 +4,7 @@ import "errors"
 
 var errPatternTooLong = errors.New("logs: filter expression is too long")
 
-// watchBuffer is the room a watcher has for live entries beyond its replay.
+// watchBuffer bounds live entries queued beyond replay.
 const watchBuffer = 512
 
 type watcher struct {
@@ -20,11 +20,9 @@ type Subscription struct {
 	w      *watcher
 }
 
-// Watch replays the matching entries newer than after and then delivers new
-// ones as they are written. A folded repeat arrives again with the same Seq
-// and a higher Repeat, so a client updates the line it already shows. A
-// watcher that falls behind loses entries instead of slowing the engines;
-// Lost says how many, and Query fills the gap.
+// Watch replays matches after the cursor and follows new entries. Folded
+// repeats reuse Seq with higher Repeat. Slow watchers lose entries without
+// blocking engines; Lost counts them and Query fills gaps.
 func (c *Center) Watch(f Filter, after uint64) *Subscription {
 	c.mu.Lock()
 	defer c.mu.Unlock()

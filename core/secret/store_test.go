@@ -11,9 +11,8 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// testProtector keeps the wrapped key in memory so a test never depends on the
-// platform key store. The file layout, the atomic write and the AEAD are the
-// same code paths the real store uses.
+// testProtector avoids platform-key-store dependencies while using the real
+// file layout, atomic writes, and AEAD paths.
 type testProtector struct {
 	mu    sync.Mutex
 	blobs map[string][]byte
@@ -45,8 +44,7 @@ func (p *testProtector) Unprotect(wrapped []byte) ([]byte, error) {
 	return append([]byte(nil), key...), nil
 }
 
-// failingWrite makes every file replacement fail, so a test can check what the
-// store does when the disk stops cooperating.
+// failingWrite injects file replacement failures to check store consistency.
 func failingWrite(string, []byte, os.FileMode) error {
 	return errs.Newf(errs.CodeInternal, errs.KeySecretStoreUnavailable, "test: the disk is full")
 }
@@ -317,16 +315,14 @@ func TestVaultCannotBeCombinedWithAForeignKeyOrID(t *testing.T) {
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	// The second vault was sealed with the second key and the second identifier.
-	// Bringing the first store key and identifier next to it must fail: the
-	// identifier is bound into the ciphertext as additional data.
+	// Swapping another store's key and ID must fail because the vault is
+	// bound to its own ID through AEAD data.
 	copyStoreFiles(t, secondDir, firstDir, masterFile, idFile)
 	if _, err := Open(secondDir, Options{Protector: prot}); errs.KeyOf(err) != errs.KeySecretStoreCorrupt {
 		t.Errorf("a vault with a foreign key and identifier gives %v, key = %q", err, errs.KeyOf(err))
 	}
 
-	// Moving a whole store is a backup, not an attack: key, identifier and vault
-	// travel together and the store must open.
+	// Whole-directory backups must reopen with matching key, ID, and vault.
 	moved := t.TempDir()
 	copyStoreFiles(t, moved, firstDir, masterFile, idFile, vaultFile)
 	reopened, err := Open(moved, Options{Protector: prot})

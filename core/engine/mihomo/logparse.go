@@ -9,7 +9,8 @@ import (
 )
 
 // logLine matches the logfmt mihomo writes, for example
-// time="2026-10-06T15:14:37.119654768+03:00" level=info msg="Sniffer is closed".
+// time="2026-10-06T15:14:37.119654768+03:00" level=info msg="Sniffer is
+// closed".
 var logLine = regexp.MustCompile(`^time="([^"]+)" level=(\w+) msg=("(?:[^"\\]|\\.)*")`)
 
 // ParseLog reads one mihomo output line.

@@ -18,12 +18,11 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// serviceName is the name the installer registers the core under.
+// serviceName is the installed Windows service name.
 const serviceName = "SoraCore"
 
-// runService runs the core under the service control manager when Windows
-// started it as a service: a stop or a shutdown cancels the context, and the
-// core restores the machine on the way out as it does on a signal.
+// runService handles SCM startup. Stop and shutdown requests cancel the context
+// so the core restores system settings.
 func runService(arguments []string) (bool, error) {
 	isService, err := svc.IsWindowsService()
 	if err != nil || !isService {
@@ -35,8 +34,8 @@ func runService(arguments []string) (bool, error) {
 		err = h.err
 	}
 	if err != nil {
-		// A service has no console: the reason it stopped goes to the
-		// Windows event log, where a person and a support script look.
+		// Services have no console, so startup failures go to the
+		// Windows event log.
 		if log, lerr := eventlog.Open(serviceName); lerr == nil {
 			_ = log.Error(1, "Sora core stopped: "+string(errs.KeyOf(err))+": "+errs.Detail(err))
 			_ = log.Close()
@@ -70,8 +69,8 @@ func (h *handler) Execute(_ []string, requests <-chan svc.ChangeRequest, status 
 				return false, exitCode(h.err)
 			}
 		case h.err = <-done:
-			// The core stopped by itself: report it, so the recovery actions
-			// the installer set restart it.
+			// Report unexpected termination so SCM applies the
+			// configured recovery actions.
 			return false, exitCode(h.err)
 		}
 	}
@@ -84,10 +83,8 @@ func exitCode(err error) uint32 {
 	return 0
 }
 
-// installService registers this executable as the automatic service the
-// interface talks to, restarted after a failure. An earlier registration, as
-// an upgrade leaves, is stopped and pointed at this executable and these
-// arguments instead of refused.
+// installService registers an automatic service with failure recovery. Existing
+// registrations are stopped and updated to this executable and its arguments.
 func installService(arguments []string) error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -134,16 +131,15 @@ func installService(arguments []string) error {
 	if err := s.SetRecoveryActions([]mgr.RecoveryAction{restart, restart, restart}, uint32((24 * time.Hour).Seconds())); err != nil {
 		return err
 	}
-	// The core exits with an error when it fails rather than crashing, so a
-	// failure exit restarts it too.
+	// Enable recovery for error exits as well as crashes.
 	if err := s.SetRecoveryActionsOnNonCrashFailures(true); err != nil {
 		return err
 	}
 	return s.Start()
 }
 
-// uninstallService stops and removes the service; with none registered it
-// succeeds, so an uninstaller may run it twice.
+// uninstallService stops and removes the service. It succeeds if no service is
+// registered.
 func uninstallService() error {
 	m, err := mgr.Connect()
 	if err != nil {
@@ -162,8 +158,8 @@ func uninstallService() error {
 	return s.Delete()
 }
 
-// stopService asks the service to stop and waits until it has, for as long as
-// the core may take to restore the machine.
+// stopService requests a stop and waits within the core's system-restoration
+// budget.
 func stopService(s *mgr.Service) error {
 	status, err := s.Query()
 	if err != nil {

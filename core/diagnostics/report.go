@@ -12,9 +12,7 @@ import (
 	"github.com/levvs-one/sora-client/core/session"
 )
 
-// coreVersion is the build the report describes. It is a constant rather than a
-// linker flag because the core is shipped as one binary and a report that says
-// "unknown" helps nobody.
+// coreVersion identifies the single-binary core build in reports.
 const coreVersion = "0.1.0-dev"
 
 var (
@@ -22,9 +20,8 @@ var (
 	goArch = runtime.GOARCH
 )
 
-// report builds the lines a person reads: the state of the session, the engine
-// that carries it, and the machine it runs on. The order is fixed, so two reports
-// can be compared line by line, and every section says what it is.
+// report renders session, engine, and environment details in a fixed order for
+// line-by-line comparison.
 func (c *Collector) report() []string {
 	status := c.source.Status()
 	lines := []string{
@@ -51,9 +48,8 @@ func (c *Collector) report() []string {
 	return append(lines, c.environment()...)
 }
 
-// eventLines renders the recent events of the session. The events come from the
-// journal, which has already masked them; the collector masks again because a
-// redactor only knows what it was told.
+// eventLines renders recent journal events and masks them again at the
+// collector boundary.
 func (c *Collector) eventLines() []string {
 	events := c.source.RecentEvents(c.events)
 	out := make([]string, 0, len(events))
@@ -88,10 +84,8 @@ func renderEvent(event session.Event) string {
 	return b.String()
 }
 
-// environment describes the machine and the process. Interface addresses are
-// deliberately counted and not listed: a support question is answered by "there is
-// one interface with two addresses and it is up", and not by the address of a
-// person's home network.
+// environment describes the machine and process. Interface addresses are
+// counted instead of listed to avoid exposing local networks.
 func (c *Collector) environment() []string {
 	var memory runtime.MemStats
 	runtime.ReadMemStats(&memory)
@@ -110,7 +104,8 @@ func (c *Collector) environment() []string {
 	return lines
 }
 
-// interfaceLines describes every interface by name, flags and how many addresses
+// interfaceLines describes every interface by name, flags and how many
+// addresses
 // of each family it has.
 func interfaceLines() []string {
 	interfaces, err := net.Interfaces()
@@ -142,9 +137,8 @@ func interfaceLines() []string {
 	return out
 }
 
-// flagsOf renders the interface flags as letters, which is how a reader of
-// `ip link` already knows them. An interface that is not up has no letter, because
-// the absence of "up" is the information a report has to carry.
+// flagsOf renders interface flags in ip-link notation. Down interfaces omit the
+// "up" flag.
 func flagsOf(flags net.Flags) string {
 	var letters []rune
 	for flag, letter := range map[net.Flags]rune{

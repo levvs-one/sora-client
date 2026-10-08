@@ -47,7 +47,8 @@ func TestRenderPinsSelectGroupAndBalancesAutoGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	last := cfg.Routing.Rules[len(cfg.Routing.Rules)-1]
-	// Proxy is a select group whose first member is the Auto url-test group.
+	// The selector resolves to its nested automatic group, requiring a
+	// balancer tag.
 	if last["balancerTag"] != "b-1" {
 		t.Fatalf("default route = %v, want the balancer of Auto", last)
 	}
@@ -111,9 +112,8 @@ func binary(t *testing.T) supervise.Binary {
 	return b
 }
 
-// TestEngineAcceptsRenderedPlans hands every rendered plan to "xray run -test".
-// geoip.dat and geosite.dat must sit next to the binary, as they do in a Sora
-// installation.
+// TestEngineAcceptsRenderedPlans runs "xray run -test". geoip.dat and
+// geosite.dat must be next to the binary, as shipped by Sora.
 func TestEngineAcceptsRenderedPlans(t *testing.T) {
 	b := binary(t)
 	xhttp := enginetest.Plan(engine.ProtocolVLESS)
@@ -139,9 +139,8 @@ func TestEngineAcceptsRenderedPlans(t *testing.T) {
 	}
 }
 
-// TestLiveEngineLifecycle runs Xray end to end: start, metrics handshake,
-// counters, groups, a pinned selection (which restarts Xray), a real latency
-// measurement through the tester process, and shutdown.
+// TestLiveEngineLifecycle checks startup, metrics, counters, groups, selection
+// restart, real tester-process latency, and shutdown.
 func TestLiveEngineLifecycle(t *testing.T) {
 	b := binary(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

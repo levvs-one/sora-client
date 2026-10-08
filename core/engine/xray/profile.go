@@ -9,25 +9,20 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// Tags of what the session adds to a profile. They cannot collide with a
-// provider's tags, which never start with "sora-".
+// Session-added tags use the "sora-" prefix to avoid provider tag collisions.
 const (
 	profileDNS    = "sora-dns"
 	profileDirect = "sora-direct"
 	profileBlock  = "sora-block"
 )
 
-// profileOwned are the parts of a provider's configuration the session owns:
-// no listener of the provider opens on the machine, and the log, stats and
-// controller are the core's. The rest (outbounds, balancers, the observatory
-// that feeds them, routing) runs as the provider wrote it.
+// profileOwned replaces provider listeners, logs, stats, and controllers with
+// session settings. Provider outbounds, balancers, observatory, and routing are
+// preserved.
 var profileOwned = []string{"inbounds", "log", "api", "stats", "metrics", "policy", "remarks", "meta", "reverse"}
 
-// "reverse" is dropped with them: a bridge would give the provider's server a
-// way back into the machine and its local network. Keys that name files are
-// dropped at any depth, because the engine runs with the service's rights: a
-// TLS key log path would let a subscription write into any file it can reach,
-// a certificate path would make it read one.
+// Drop reverse bridges to prevent provider access to local networks. Remove
+// file keys recursively to prevent reads or writes with service privileges.
 var profileFileKeys = map[string]bool{"masterKeyLog": true, "certificateFile": true, "keyFile": true}
 
 // stripFiles removes the keys of profileFileKeys from a decoded JSON value.
@@ -50,11 +45,8 @@ func stripFiles(v any) {
 	}
 }
 
-// renderProfile runs the configuration a provider wrote for one server inside
-// the frame of the session. The session's own rules (the DNS of a tun, the ad
-// block, the routing preset) come first; the provider's rules follow, and
-// whatever none of them matches goes where the provider's configuration sends
-// it, its first outbound.
+// renderProfile preserves provider routing after session DNS, ad-block, and
+// preset rules. Unmatched traffic uses the provider's first outbound.
 func renderProfile(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	profile := p.Outbounds[0]
 	var cfg obj
@@ -84,8 +76,8 @@ func renderProfile(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 		case "reject", "block":
 			target = profileBlock
 		default:
-			// A rule toward the profile itself, the catch-all included, is
-			// what the provider's routing already decides.
+			// Profile-target rules defer to provider routing,
+			// including catch-all rules.
 			continue
 		}
 		m, err := match(rule)
@@ -116,10 +108,9 @@ func renderProfile(p *engine.Plan, rt supervise.Runtime) ([]byte, error) {
 	return json.Marshal(cfg)
 }
 
-// probeProfile renders the outbounds of a profile for a latency measurement
-// through one local port: tags get a prefix of their own so several profiles
-// share one configuration, and links between them follow. The measured
-// outbound is the profile's first, the one its traffic goes to by default.
+// probeProfile prefixes tags and references so profiles share one probe
+// configuration. Each local port measures its profile's first, default
+// outbound.
 func probeProfile(o engine.Outbound, index int) (outbounds []obj, first string, err error) {
 	var cfg struct {
 		Outbounds []obj `json:"outbounds"`

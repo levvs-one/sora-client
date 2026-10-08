@@ -26,38 +26,35 @@ import (
 	"github.com/levvs-one/sora-client/core/subscription"
 )
 
-// The core keeps subscriptions itself, so they stay current while the
-// interface is closed. Everything about a subscription lives in the vault: the
-// link is the credential, and the server list names hosts.
+// Subscriptions update without the UI. Their links and server lists stay in the
+// vault because they contain credentials and hosts.
 const (
 	maxSubscriptions       = 100
 	defaultUpdateInterval  = 24 * time.Hour
 	minUpdateInterval      = time.Hour
 	maxUpdateInterval      = 30 * 24 * time.Hour
 	subscriptionFetchLimit = 2 * time.Minute
-	// schedulerCheck bounds one scheduler sleep. Go timers run on the monotonic
-	// clock, which stops while the machine sleeps; a timer set for six hours
-	// would miss an update that fell due during a night of sleep.
+	// schedulerCheck bounds sleep to detect updates due during suspend,
+	// when Go's monotonic timers stop advancing.
 	schedulerCheck = 5 * time.Minute
 	// parallelUpdates bounds the fetches the scheduler runs at once.
 	parallelUpdates = 4
-	// recordVersion is the format of a stored record. A new format adds a case
-	// to decodeRecord that reads the old one, so an upgrade never loses a
-	// subscription.
+	// recordVersion identifies the stored format. decodeRecord must retain
+	// older versions when adding formats to preserve subscriptions across
+	// upgrades.
 	recordVersion = 1
 	// listChunkBytes keeps every stored piece of a server list under the
 	// vault's limit for one entry.
 	listChunkBytes = 60 << 10
 )
 
-// Vault references of subscription data. A subscription id is 16 hex
-// characters, so every reference stays inside the vault's 64-byte limit.
+// recordRef derives a subscription record reference. The 16-hex-character ID
+// keeps all subscription references within the vault's 64-byte limit.
 func recordRef(id string) string         { return "u1_" + id + "_rec" }
 func listRef(id string, part int) string { return "u1_" + id + "_l" + strconv.Itoa(part) }
 
-// serverRefFor names the vault entry of a server of one subscription. The
-// subscription owns these entries alone, so the servers a provider drops can
-// be removed without touching servers imported by hand.
+// serverRefFor derives subscription-owned server references. Removed provider
+// servers can then be deleted without affecting manual imports.
 func serverRefFor(id string) func(parser.OutboundSpec) (string, error) {
 	return func(spec parser.OutboundSpec) (string, error) {
 		sum := sha256.Sum256([]byte(spec.StableKey()))
@@ -65,8 +62,8 @@ func serverRefFor(id string) func(parser.OutboundSpec) (string, error) {
 	}
 }
 
-// storedError is the failure of the last attempt, kept so the interface can
-// explain it after a restart of the core.
+// storedError preserves the last update failure for clients after a core
+// restart.
 type storedError struct {
 	Code   errs.Code `json:"code"`
 	Key    errs.Key  `json:"key"`
@@ -186,7 +183,7 @@ func newSubscriptionID() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// normalizedLink is how two links are compared for duplicates.
+// normalizedLink normalizes links for duplicate detection.
 func normalizedLink(raw string) (string, error) {
 	u, err := subscription.ValidateReference(raw)
 	if err != nil {
@@ -286,8 +283,8 @@ func (b *subscriptionBook) save(in *corev1.SubscriptionSettings) (*corev1.Subscr
 	return state, nil
 }
 
-// persistLocked writes a record together with the vault changes of an update,
-// in one change of the vault.
+// persistLocked writes the subscription record and update's vault changes
+// atomically.
 func (b *subscriptionBook) persistLocked(rec *subscriptionRecord, puts map[string][]byte, deletes []string) error {
 	raw, err := json.Marshal(rec)
 	if err != nil {
@@ -320,8 +317,8 @@ func (b *subscriptionBook) delete(id string) error {
 	return nil
 }
 
-// refresh fetches one subscription now. A refresh that is already running is
-// not started twice: the caller gets the current state with updating set.
+// refresh fetches a subscription now. If already running, it returns the
+// current state with updating set.
 func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.SubscriptionState, error) {
 	b.mu.Lock()
 	rec, ok := b.records[id]
@@ -357,8 +354,8 @@ func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.Subs
 	delete(b.updating, id)
 	current, ok := b.records[id]
 	if !ok || current.URL != link {
-		// Deleted, or given another link, while the fetch ran: this answer
-		// belongs to nothing that still exists.
+		// Discard results if the subscription was deleted or its link
+		// changed during the fetch.
 		return nil, errs.Newf(errs.CodeNotFound, errs.KeySubscriptionNotFound, "control: subscription %s changed during the update", id)
 	}
 	next := *current
@@ -367,12 +364,10 @@ func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.Subs
 		err = b.applyUpdateLocked(&next, fetched.Info, servers)
 	}
 	if err != nil {
-		// A failed update keeps the last good servers: a provider that is down
-		// for an hour must not empty the user's list.
+		// Failed updates must preserve the last successful server list.
 		next.Failures++
-		// The panel answered even when its body did not parse: its title,
-		// usage and announcement still tell the person whose subscription
-		// this is and what the provider says.
+		// Keep provider metadata even when the response body cannot be
+		// parsed.
 		if answered {
 			next.Info = fetched.Info
 		}
@@ -389,9 +384,8 @@ func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.Subs
 	return state, err
 }
 
-// applyUpdateLocked stores a successful update: the new server credentials, the
-// new list, and the record, while the servers the provider dropped and the
-// list parts no longer needed are removed, all in one change of the vault.
+// applyUpdateLocked atomically stores the record, list, and credentials,
+// removing dropped servers and unused list chunks.
 func (b *subscriptionBook) applyUpdateLocked(rec *subscriptionRecord, info subscription.Info, servers []importedServer) error {
 	list := &corev1.FetchSubscriptionResponse{}
 	puts := map[string][]byte{}
@@ -434,8 +428,8 @@ func (b *subscriptionBook) applyUpdateLocked(rec *subscriptionRecord, info subsc
 	return nil
 }
 
-// interval is how often a subscription is fetched: the user's choice, then
-// the provider's, then a day.
+// interval returns the user interval, provider interval, or one day, in that
+// order.
 func (rec *subscriptionRecord) interval() time.Duration {
 	switch {
 	case rec.Interval > 0:
@@ -446,10 +440,9 @@ func (rec *subscriptionRecord) interval() time.Duration {
 	return defaultUpdateInterval
 }
 
-// nextUpdate is when the scheduler fetches a subscription next; zero when it
-// does not update on its own. After a failure the retry comes sooner than the
-// interval, with a growing pause, so a network that is back is noticed soon
-// and a provider that is down is not hammered.
+// nextUpdate returns zero when automatic updates are disabled. Failed updates
+// retry before the normal interval with increasing delays to limit provider
+// load.
 func (b *subscriptionBook) nextUpdate(rec *subscriptionRecord) time.Time {
 	if !rec.AutoUpdate {
 		return time.Time{}
@@ -465,8 +458,8 @@ func (b *subscriptionBook) nextUpdate(rec *subscriptionRecord) time.Time {
 	return rec.LastSuccess.Add(rec.interval())
 }
 
-// run is the scheduler. It starts every update that is due, then sleeps until
-// the next one, a change, or schedulerCheck, whichever comes first.
+// run starts due updates and waits for the next deadline, change, or
+// schedulerCheck.
 func (b *subscriptionBook) run(ctx context.Context) {
 	slots := make(chan struct{}, parallelUpdates)
 	for {
@@ -524,7 +517,7 @@ func (b *subscriptionBook) list() []*corev1.SubscriptionState {
 	for id := range b.records {
 		ids = append(ids, id)
 	}
-	// The order the user added them in, which does not move under them.
+	// Preserve insertion order so refreshes do not reorder the list.
 	sort.Slice(ids, func(i, j int) bool {
 		a, c := b.records[ids[i]], b.records[ids[j]]
 		if !a.Created.Equal(c.Created) {
@@ -564,7 +557,7 @@ func (b *subscriptionBook) stateLocked(id string) *corev1.SubscriptionState {
 	return state
 }
 
-// displayName is never empty, so the list never shows a blank row.
+// displayName returns a nonempty name for the subscription list.
 func displayName(rec *subscriptionRecord) string {
 	if rec.Name != "" {
 		return rec.Name
@@ -578,8 +571,8 @@ func displayName(rec *subscriptionRecord) string {
 	return rec.ID
 }
 
-// watch delivers every change of a subscription. A slow watcher loses
-// changes instead of slowing the core; ListSubscriptions fills the gap.
+// watch delivers subscription changes without blocking the core. Slow watchers
+// drop changes and can resynchronize with ListSubscriptions.
 func (b *subscriptionBook) watch() (chan *corev1.SubscriptionState, func()) {
 	ch := make(chan *corev1.SubscriptionState, 64)
 	b.mu.Lock()
@@ -616,7 +609,7 @@ func (s *Server) SaveSubscription(_ context.Context, req *corev1.SaveSubscriptio
 	return &corev1.SaveSubscriptionResponse{State: state}, nil
 }
 
-// ListSubscriptions answers every subscription in the order it was added.
+// ListSubscriptions returns subscriptions in insertion order.
 func (s *Server) ListSubscriptions(_ context.Context, req *corev1.ListSubscriptionsRequest) (*corev1.ListSubscriptionsResponse, error) {
 	if err := s.authorize(req.GetApiVersion(), req.GetControlAuthenticator()); err != nil {
 		return nil, err
@@ -635,9 +628,8 @@ func (s *Server) DeleteSubscription(_ context.Context, req *corev1.DeleteSubscri
 	return &corev1.DeleteSubscriptionResponse{}, nil
 }
 
-// RefreshSubscription fetches a subscription now and answers its new state. A
-// failed fetch answers the state, which keeps the last good servers, with the
-// error.
+// RefreshSubscription fetches and returns the new state. Failures include the
+// error and retain the last successful server list.
 func (s *Server) RefreshSubscription(ctx context.Context, req *corev1.RefreshSubscriptionRequest) (*corev1.RefreshSubscriptionResponse, error) {
 	if err := s.authorize(req.GetApiVersion(), req.GetControlAuthenticator()); err != nil {
 		return nil, err
@@ -650,8 +642,7 @@ func (s *Server) RefreshSubscription(ctx context.Context, req *corev1.RefreshSub
 	return out, nil
 }
 
-// WatchSubscriptions answers every subscription, then every change as it
-// happens.
+// WatchSubscriptions returns all subscriptions, then streams changes.
 func (s *Server) WatchSubscriptions(req *corev1.WatchSubscriptionsRequest, stream grpc.ServerStreamingServer[corev1.SubscriptionState]) error {
 	if err := s.authorize(req.GetApiVersion(), req.GetControlAuthenticator()); err != nil {
 		return err

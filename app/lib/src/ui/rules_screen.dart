@@ -10,8 +10,8 @@ import '../sora.dart';
 import 'kit.dart';
 import 'subscription_sheet.dart';
 
-/// The person's own rules: a site, an address or a program, and where it goes.
-/// They come before the routing preset, so they always win.
+/// Edits user rules for domains, addresses and processes. These rules take
+/// precedence over the routing preset.
 class RulesScreen extends StatelessWidget {
   const RulesScreen({super.key});
 
@@ -64,7 +64,8 @@ class RulesScreen extends StatelessWidget {
         submit: (text) async {
           final destination = UserRule.destinationOf(text);
           if (destination == null) return s.ruleInvalid;
-          // A destination appears once; adding it again changes where it goes.
+          // Replace an existing destination so each destination has only one
+          // target.
           save([
             for (final r in rules)
               if (r.destination != destination) r,

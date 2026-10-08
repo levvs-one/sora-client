@@ -11,28 +11,23 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// Defaults of a session. They are generous enough for a slow server and short
-// enough that a user does not stare at a spinner: the engine answers its
-// controller on the loopback interface, so anything slower than this is a
-// problem worth showing.
+// Session deadlines bound readiness waits and shutdown for slow engines.
 const (
-	// DefaultStatsInterval is how often the session samples the engine
-	// counters. The contract asks for at most one tick per second.
+	// DefaultStatsInterval samples counters at the contract's maximum rate
+	// of one tick per second.
 	DefaultStatsInterval = time.Second
-	// DefaultStopGrace is how long the engine may take to stop before it is
-	// killed. A clean stop matters more than a fast one, because a killed
-	// engine can leave its tun device behind.
+	// DefaultStopGrace allows clean shutdown before killing the engine,
+	// reducing the risk of leftover TUN devices.
 	DefaultStopGrace = 3 * time.Second
 )
 
-// Config is what one session needs. Every field has a usable default except the
-// plan and the engine, because those are the session.
+// Config requires Plan and Engine; other fields have usable defaults.
 type Config struct {
-	// Plan is the engine-independent description of the session. The session
+	// Plan is the engine-independent description of the session. The
+	// session
 	// never mutates it after Start.
 	Plan *engine.Plan
-	// Engine carries the traffic. It must already be constructed but not
-	// applied: Start calls Apply itself.
+	// Engine must be constructed but not applied. Start calls Apply.
 	Engine engine.Engine
 	// Guard owns the system settings. NoopGuard is used when it is nil.
 	Guard Guard
@@ -45,28 +40,25 @@ type Config struct {
 	StatsInterval time.Duration
 	// StopGrace bounds the engine shutdown.
 	StopGrace time.Duration
-	// Network fingerprints the networks of the machine; a connected session
-	// renews its connections when the fingerprint changes. Nil watches nothing.
+	// Network supplies fingerprints for connection renewal on change. Nil
+	// disables watching.
 	Network func() string
 	// NetworkInterval is how often Network is read.
 	NetworkInterval time.Duration
-	// Settings is filled by the caller before Start: what the session needs to
-	// own on the system while it runs.
+	// Settings defines system state owned while running; fill it before
+	// Start.
 	Settings Settings
 
-	// Redactor masks secrets in everything the session writes to the journal.
-	// The engine has its own redactor; the session needs the plan values too,
-	// because a detail line can be built from the plan and not from the engine.
+	// Redactor masks journal messages using plan values, including details
+	// built outside the engine's own redactor.
 	Redactor *engine.Redactor
 
 	// Now supplies timestamps. Tests replace it to get stable output.
 	Now func() time.Time
 
-	// TunUp waits until the adapter of a tun plan is up. An engine may start
-	// and keep running without its adapter, for example without the right to
-	// create one, and a session that called that connected would tell a
-	// person they are protected while their traffic goes around the tunnel.
-	// It waits for the network interface by default.
+	// TunUp waits for the TUN adapter, using network-interface checks by
+	// default. A running engine without its adapter must not be reported
+	// connected because traffic may bypass the tunnel.
 	TunUp func(ctx context.Context, device string) error
 }
 
@@ -89,9 +81,8 @@ func interfaceUp(ctx context.Context, device string) error {
 	}
 }
 
-// Session is one running tunnel: the engine, the guard and the state machine
-// that keeps them together. A session owns its own context, so the core can drop
-// the caller that started it and still end up with a clean machine.
+// Session owns a tunnel's engine, guard, state machine, and independent
+// context, allowing cleanup after the initiating client disconnects.
 type Session struct {
 	cfg   Config
 	eng   engine.Engine
@@ -102,13 +93,10 @@ type Session struct {
 	state    State
 	status   Status
 	stopping bool
-	// guardApplied records that this session armed the system guard. The
-	// session restores exactly what it armed, so a failure during Start cannot
-	// leave a rule behind and a later Stop cannot remove a rule the session
-	// never installed.
+	// guardApplied tracks changes owned by this session so cleanup retries
+	// them without removing unrelated rules.
 	guardApplied bool
-	// guardMu lets one change of the guard run at a time: a kill switch
-	// turned on and the restore of a stopping session never interleave.
+	// guardMu serializes kill-switch changes and shutdown restoration.
 	guardMu   sync.Mutex
 	engineSub func()
 	ctx       context.Context
@@ -116,9 +104,8 @@ type Session struct {
 	done      chan struct{}
 }
 
-// New builds a session that is not started yet. Start does the work, so a caller
-// can validate a plan and construct the engine before anything on the system
-// moves.
+// New constructs a stopped session. Start changes the system after plan
+// validation and engine construction.
 func New(cfg Config) (*Session, error) {
 	if cfg.Plan == nil {
 		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanEmpty, "session: no plan")
@@ -166,8 +153,7 @@ func New(cfg Config) (*Session, error) {
 	}, nil
 }
 
-// ID returns the session identifier, which the control plane hands to a client
-// so it can read the status of the session it started.
+// ID returns the identifier clients use to query this session.
 func (s *Session) ID() string { return s.cfg.Plan.SessionID }
 
 // Plan returns the plan this session runs.
@@ -183,19 +169,17 @@ func (s *Session) State() State {
 	return s.state
 }
 
-// Status returns a snapshot of the state, its cause and the moment it changed.
-// It is the answer to GetStatus and the fallback for a client that missed
-// events on the stream.
+// Status returns state, cause, and change time for status queries and event-gap
+// recovery.
 func (s *Session) Status() Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.status
 }
 
-// Start brings the plan up and returns as soon as the tunnel is up or has failed
-// for good. A failure worth retrying is not returned as an error: the session
-// moves to reconnecting and keeps working on it in the background, because a
-// user who asked to connect should not have to ask again.
+// Start waits for readiness or permanent failure. Retryable failures enter
+// reconnecting and continue in the background without requiring another
+// Connect.
 func (s *Session) Start(ctx context.Context) error {
 	s.mu.Lock()
 	if s.state != StateDisconnected {
@@ -247,9 +231,8 @@ func (s *Session) Start(ctx context.Context) error {
 
 	s.setState(StateConnected, errs.Code(""), errs.Key(""), "")
 
-	// The subscription is taken before Start returns, not inside the goroutine:
-	// an engine that fails between Apply and the first poll must not lose the
-	// event that says so.
+	// Subscribe before returning so failures between Apply and the first
+	// poll cannot be lost.
 	events, cancelSub := s.eng.Events().Subscribe()
 	s.mu.Lock()
 	s.engineSub = cancelSub
@@ -258,13 +241,11 @@ func (s *Session) Start(ctx context.Context) error {
 	return nil
 }
 
-// Done is closed once the supervision loop has finished and the system settings
-// are back to what they were.
+// Done closes after supervision ends and system settings are restored.
 func (s *Session) Done() <-chan struct{} { return s.done }
 
-// Stop ends the session: the engine stops, the guard is restored and the state
-// settles on disconnected. Stop is idempotent and safe to call from a shutdown
-// path, from a user command and from a failing supervision loop.
+// Stop shuts down the engine, restores the guard, and transitions to
+// disconnected. Repeated calls are safe from user, shutdown, and failure paths.
 func (s *Session) Stop(ctx context.Context) error {
 	s.mu.Lock()
 	if s.stopping {
@@ -278,8 +259,8 @@ func (s *Session) Stop(ctx context.Context) error {
 	if cancel != nil {
 		cancel()
 	}
-	// The engine stops before the guard is restored, so no packet is ever sent
-	// through a proxy that is about to be removed.
+	// Stop the engine before restoring the guard to prevent packets using
+	// settings being removed.
 	stopErr := s.eng.Stop(ctx)
 	if err := s.restoreGuard(context.WithoutCancel(ctx)); err != nil && stopErr == nil {
 		stopErr = errs.Wrap(err, errs.CodeInternal, errs.KeyGuardRestoreFailed)
@@ -295,10 +276,8 @@ func (s *Session) Stop(ctx context.Context) error {
 	return stopErr
 }
 
-// restoreGuard reverts the system settings this session armed, and only those.
-// A session that failed before arming anything must not remove a rule that
-// belongs to another program, which is why the state is tracked instead of
-// assumed.
+// restoreGuard reverts only settings this session armed, leaving unrelated
+// rules intact after early startup failures.
 func (s *Session) restoreGuard(ctx context.Context) error {
 	s.guardMu.Lock()
 	defer s.guardMu.Unlock()
@@ -309,8 +288,8 @@ func (s *Session) restoreGuard(ctx context.Context) error {
 		return nil
 	}
 	if err := s.guard.Restore(ctx); err != nil {
-		// What could not be lifted is still this session's, and the next
-		// restore tries again.
+		// Retain ownership after restoration failure so subsequent
+		// cleanup retries it.
 		return err
 	}
 	s.mu.Lock()
@@ -319,14 +298,9 @@ func (s *Session) restoreGuard(ctx context.Context) error {
 	return nil
 }
 
-// SetKillSwitch turns the kill switch on or off while the session runs. Turning
-// it on takes effect immediately, because the moment it protects is exactly the
-// moment the engine is not answering.
-//
-// It runs one at a time with the restore of a stopping session, so a switch
-// turned on while the session ends cannot be armed after the restore. Turning
-// it off is allowed after a failure too: a failed session keeps the block on,
-// which is the point of it, until the person lifts it.
+// SetKillSwitch applies changes immediately, serialized with restoration to
+// prevent rearming after shutdown. Disabling remains allowed after failure
+// because failed sessions retain the block.
 func (s *Session) SetKillSwitch(ctx context.Context, enabled bool) error {
 	s.guardMu.Lock()
 	defer s.guardMu.Unlock()
@@ -389,10 +363,8 @@ func (s *Session) CloseConnection(ctx context.Context, id string) error {
 	return tracker.CloseConnection(ctx, id)
 }
 
-// supervise watches the engine for the whole life of the session. It is the
-// only goroutine a session owns, and it is the reason a session survives a window
-// closing: engine logs, counters, an engine that died and the decision to give
-// up all happen here.
+// supervise is the session's single background loop for engine events,
+// counters, and terminal failures. It continues independently of the UI.
 func (s *Session) supervise(events <-chan engine.Event) {
 	defer close(s.done)
 
@@ -428,9 +400,9 @@ func (s *Session) supervise(events <-chan engine.Event) {
 				return
 			}
 			s.publishEngineEvent(ev)
-			// The supervisor of the engine restarts it inside its own budget;
-			// the session tells what is happening and never starts a second
-			// process of its own, which would fight the first for its port.
+			// Only the engine supervisor restarts processes within
+			// its budget; session supervision must not create a
+			// competing process.
 			switch ev.Kind {
 			case engine.EventEngineDown:
 				reason, key := errs.CodeUnavailable, errs.KeyEngineStopped
@@ -451,15 +423,14 @@ func (s *Session) supervise(events <-chan engine.Event) {
 	}
 }
 
-// publishEngineEvent turns one engine event into a journal event. The engine
-// already redacts its own output; the session masks once more, because a
-// redactor only knows what it was told.
+// publishEngineEvent converts engine events and redacts again with session plan
+// values before journaling.
 func (s *Session) publishEngineEvent(ev engine.Event) {
 	out := Event{Kind: EventLog, Detail: s.mask(ev.Message)}
 	switch ev.Kind {
 	case engine.EventState:
-		// The engine's own states are a log line: the session's state is the
-		// one a client shows, and an engine state is not one of them.
+		// Log engine states separately; only session states belong to
+		// the client lifecycle.
 		out.Detail = s.mask(strings.TrimSpace(string(ev.State) + " " + ev.Message))
 	case engine.EventCounters:
 		out.Kind = EventCounters
@@ -491,10 +462,8 @@ func (s *Session) publishEngineEvent(ev engine.Event) {
 	s.log.Append(out)
 }
 
-// probeOutcomeOf turns the live state of a group into the measurement it reports.
-// A group without a latency map has not been measured yet, which is reported as
-// an unreachable result rather than as a zero delay: a zero delay would read as
-// "the fastest server" and would pick it.
+// probeOutcomeOf converts group latency state to a result. Unmeasured groups
+// are unreachable, not zero-latency, to avoid treating them as fastest.
 func probeOutcomeOf(group *engine.GroupStatus) *ProbeOutcome {
 	if group == nil {
 		return nil
@@ -511,9 +480,8 @@ func probeOutcomeOf(group *engine.GroupStatus) *ProbeOutcome {
 	return outcome
 }
 
-// publishCounters samples the engine and appends a counters event. A counter
-// that cannot be read is not an error: the engine is restarting and the next
-// tick will do better.
+// publishCounters records sampled traffic totals. Temporary read failures
+// during restart are skipped until the next tick.
 func (s *Session) publishCounters(ctx context.Context) {
 	counters, err := s.Counters(ctx)
 	if err != nil {
@@ -522,8 +490,7 @@ func (s *Session) publishCounters(ctx context.Context) {
 	s.log.Append(Event{Kind: EventCounters, Counters: counters})
 }
 
-// mask runs text through the plan redactor so nothing that identifies a server or
-// a credential reaches the journal.
+// mask redacts credentials and server identifiers before journaling.
 func (s *Session) mask(text string) string {
 	if s.cfg.Redactor == nil {
 		return text
@@ -531,9 +498,8 @@ func (s *Session) mask(text string) string {
 	return s.cfg.Redactor.String(text)
 }
 
-// fail moves the session to failed, records the cause and ends the supervision
-// loop. The engine and the guard are cleaned up by Stop, which the control plane
-// also calls for a session that failed.
+// fail records the cause, enters failed, and ends supervision. Stop, also
+// called by the control plane after failure, cleans up the engine and guard.
 func (s *Session) fail(err error) {
 	s.setState(StateFailed, errs.CodeOf(err), errs.KeyOf(err), s.mask(errs.Detail(err)))
 	s.log.Append(Event{
@@ -551,9 +517,8 @@ func (s *Session) settings() Settings {
 	return s.settingsLocked()
 }
 
-// settingsLocked is settings for callers that already hold the session lock.
-// The guard never takes the lock itself, so reading the settings must not be a
-// second lock acquisition on a path that already holds it.
+// settingsLocked reads settings with the session lock already held, avoiding
+// recursive lock acquisition.
 func (s *Session) settingsLocked() Settings {
 	return Settings{
 		KillSwitch: s.status.KillSwitch,
@@ -562,8 +527,7 @@ func (s *Session) settingsLocked() Settings {
 	}
 }
 
-// Select pins a member of a selectable group and records the change, so a
-// client that reattaches to the event stream learns which group moved.
+// Select pins a group member and journals the change for reconnecting clients.
 func (s *Session) Select(ctx context.Context, group, target string) error {
 	if err := s.eng.Select(ctx, group, target); err != nil {
 		return err
@@ -584,10 +548,8 @@ func (s *Session) setState(next State, reason errs.Code, key errs.Key, detail st
 	s.mu.Unlock()
 }
 
-// setStateLocked moves the session to a new state while the caller holds the
-// lock. A transition the state machine does not allow is dropped instead of
-// recorded: the state machine is the contract, and a caller that violates it
-// must not be able to tell a client something impossible.
+// setStateLocked records legal transitions while the caller holds the lock.
+// Invalid transitions are discarded to preserve the client state contract.
 func (s *Session) setStateLocked(next State, reason errs.Code, key errs.Key, detail string) bool {
 	if !canTransition(s.state, next) {
 		return false
@@ -615,9 +577,8 @@ func (s *Session) setStateLocked(next State, reason errs.Code, key errs.Key, det
 	return true
 }
 
-// setStateReconnecting records a reconnect attempt together with the delay the
-// core will wait before it, so a client can tell the user when to expect traffic
-// back instead of showing an open ended spinner.
+// setStateReconnecting records the retry attempt and delay so clients can
+// report when reconnection is expected.
 func (s *Session) setStateReconnecting(reason errs.Code, key errs.Key, delay time.Duration) {
 	s.mu.Lock()
 	if !canTransition(s.state, StateReconnecting) {

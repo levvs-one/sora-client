@@ -10,19 +10,13 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
-// globalUA keeps the User-Agent mihomo uses when it downloads geodata.
-// Providers filter on it, so Sora keeps the upstream default rather than
-// inventing a client string providers would have to whitelist.
+// globalUA retains mihomo's upstream User-Agent because geodata providers
+// filter clients by it.
 const globalUA = "clash.meta"
 
-// Render turns a plan into the YAML mihomo reads.
-//
-// The result carries credentials, so the supervisor hands it to the engine on
-// stdin and never writes it to disk. Nothing from this text may enter a diagnostic archive.
-//
-// Sora resolves subscriptions itself and passes concrete outbounds to the
-// engine: proxy-providers would put subscription URLs into the engine state
-// directory and hand the engine a fetch Sora cannot audit or mask.
+// Render produces credential-bearing YAML for stdin, never disk or diagnostics.
+// Sora resolves subscriptions itself; proxy-providers would persist bearer URLs
+// and bypass core fetch auditing and redaction.
 func Render(p *engine.Plan, rt Runtime) (string, error) {
 	if p == nil {
 		return "", errors.New("mihomo: nil plan")
@@ -37,13 +31,12 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 		return "", errors.New("mihomo: controller address is required")
 	}
 	if p.Tun.Enabled && !p.DNS.Enabled {
-		// mihomo cannot route through a tun adapter without a resolver of its own,
-		// so Sora refuses the combination instead of letting the engine die with a
-		// message the user never sees.
+		// mihomo requires its own resolver for TUN routing; reject
+		// invalid combinations before startup.
 		return "", errors.New("mihomo: a tun plan needs a resolver")
 	}
-	// Zero keeps the listener closed: a loopback port is open to every
-	// application on the machine.
+	// Leave unrequested listeners closed because all local applications can
+	// reach loopback.
 	mixed := 0
 	if p.LocalProxy.Enabled {
 		mixed = rt.MixedPort
@@ -77,10 +70,9 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 	concurrent := true
 	c.TCPConcurrent = &concurrent
 	c.FindProcessMode = findProcessMode(p)
-	// Geodata mode reads geoip.dat and geosite.dat, which Sora ships next to the
-	// engines and shares with Xray. Without them mihomo would download a
-	// database before the first connection, from hosts that are blocked where
-	// Sora is needed most. Options.GeoData turns on the periodic update.
+	// Use shipped geoip.dat and geosite.dat, shared with Xray, to avoid
+	// startup downloads from blocked hosts. Options.GeoData enables
+	// periodic updates.
 	geodata := true
 	c.GeodataMode = &geodata
 	if p.Options.GeoData {
@@ -98,7 +90,8 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 		return "", err
 	}
 	c.Proxies = proxies
-	// Rules and groups may name a group as well as an outbound.
+	// Collect group names too because rules and group members can reference
+	// groups.
 	for _, g := range p.Groups {
 		byID[g.Name] = sanitizeName(g.Name, "")
 	}
@@ -134,17 +127,15 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 	return string(out), nil
 }
 
-// buildProxies renders every outbound and returns the id to engine-name map
-// together with the rendered list. Engine names are unique: mihomo addresses
-// proxies and groups by name over its API.
+// buildProxies returns rendered outbounds and their ID-to-name map. Names are
+// unique because mihomo addresses proxies and groups by name.
 func buildProxies(p *engine.Plan) (map[string]string, []proxy, error) {
 	byID := make(map[string]string, len(p.Outbounds))
 	used := make(map[string]struct{}, len(p.Outbounds))
 	out := make([]proxy, 0, len(p.Outbounds))
 	for _, o := range p.Outbounds {
-		// A direct outbound of the plan is a named "direct" proxy, so the user
-		// sees the entry their subscription named and can measure it; the
-		// built-in DIRECT policy stays for the "direct" rule target.
+		// Named direct proxies preserve display and latency checks;
+		// built-in DIRECT remains the "direct" rule target.
 		px := proxy{Type: "direct"}
 		if o.Protocol != engine.ProtocolDirect {
 			var err error
@@ -160,8 +151,8 @@ func buildProxies(p *engine.Plan) (map[string]string, []proxy, error) {
 	return byID, out, nil
 }
 
-// buildGroup renders one selectable group. Only url-test style groups need a
-// probe url; the plan default applies when the group does not carry one.
+// buildGroup renders a selectable group. Probe groups use their own URL or the
+// plan default.
 func buildGroup(g engine.Group, byID map[string]string, testURL string) (proxyGroup, error) {
 	if g.Provider != "" {
 		return proxyGroup{}, fmt.Errorf("mihomo: group %q carries a subscription url; resolve it before building the plan", g.Name)
@@ -185,7 +176,7 @@ func buildGroup(g engine.Group, byID map[string]string, testURL string) (proxyGr
 	if testURL == "" {
 		return proxyGroup{}, fmt.Errorf("mihomo: group %q needs a test url", g.Name)
 	}
-	// A group's own test address wins over the plan's, as on sing-box.
+	// A group-specific test URL overrides the plan default, as in sing-box.
 	grp.URL = orDefault(g.URL, testURL)
 	grp.Interval = orDefaultInt(g.Interval, 300)
 	grp.Timeout = 5000

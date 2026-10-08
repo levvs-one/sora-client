@@ -23,8 +23,8 @@ var ruleTypes = map[engine.RuleType]string{
 	engine.RuleProtocol:      "NETWORK",
 }
 
-// buildRules renders the rule list. mihomo evaluates rules top to bottom, so
-// the order of the plan is kept exactly as the user arranged it.
+// buildRules preserves plan order because mihomo evaluates rules from top to
+// bottom.
 func buildRules(rules []engine.Rule, byID map[string]string) ([]string, error) {
 	out := make([]string, 0, len(rules)+1)
 	for _, r := range rules {
@@ -78,8 +78,8 @@ func ruleTarget(target string, byID map[string]string) (string, error) {
 	return name, nil
 }
 
-// buildDNS renders the resolver block. default-nameserver resolves the
-// hostnames of the other resolvers, so it must never point at a proxy.
+// buildDNS renders resolvers. default-nameserver bootstraps resolver hostnames
+// and must never use a proxy.
 func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 	out := &dnsConfig{
 		Enable:         true,
@@ -117,8 +117,8 @@ func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 		}
 	}
 	out.Nameserver = direct
-	// mihomo uses proxy-server-nameserver to resolve the hostnames of the proxies
-	// themselves, which is exactly what a proxy-only server of the plan is for.
+	// Map proxy-only resolvers to proxy-server-nameserver for proxy
+	// hostname resolution.
 	out.ProxyServerNameserver = firstNonEmpty(remote, direct, system, []string{"223.5.5.5"})
 	out.DefaultNameserver = firstNonEmpty(system, direct, []string{"223.5.5.5"})
 	out.DirectNameserver = firstNonEmpty(system, direct)
@@ -131,9 +131,8 @@ func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 	return out
 }
 
-// buildTun renders the tun block. Sora asks for the mixed stack by default:
-// TCP goes through the system stack and UDP through gVisor, which is the
-// combination the upstream documentation recommends.
+// buildTun defaults to the upstream-recommended mixed stack: system TCP and
+// gVisor UDP.
 func buildTun(t engine.Tun, d engine.DNS) *tunConfig {
 	stack := orDefault(t.Stack, "mixed")
 	out := &tunConfig{
@@ -155,8 +154,8 @@ func buildTun(t engine.Tun, d engine.DNS) *tunConfig {
 	return out
 }
 
-// findProcessMode keeps process lookup off unless the plan routes by process:
-// looking up the owning process is slow on Windows and useless without rules.
+// findProcessMode enables process lookup only for process rules; Windows lookup
+// is slow and otherwise unnecessary.
 func findProcessMode(p *engine.Plan) string {
 	if p.Options.FindProcess {
 		return "strict"

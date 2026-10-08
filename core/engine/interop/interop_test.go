@@ -1,10 +1,6 @@
-// Package interop_test sends real traffic through every engine Sora drives.
-//
-// An engine validator proves that a configuration parses; mihomo even accepts
-// keys it then ignores. This test proves that a rendered plan carries
-// traffic: a local Xray server terminates each protocol and transport, every
-// client engine connects through it, and an HTTP request reaches a local
-// target. It needs SORA_ENGINES_DIR with sing-box, xray and mihomo.
+// Package interop_test checks real traffic through all engines using a local
+// Xray server and HTTP target. Validators alone miss ignored keys, including in
+// mihomo. SORA_ENGINES_DIR must contain sing-box, xray, and mihomo.
 package interop_test
 
 import (
@@ -128,8 +124,7 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 	svcs := services(t)
 	startServer(t, server, svcs)
 
-	// A wrong credential must fail on every engine; otherwise a passing case
-	// could be traffic that went around the proxy.
+	// Wrong credentials must fail to rule out traffic bypassing the proxy.
 	wrong := svcs[0]
 	wrong.outbound.UUID = "00000000-0000-4000-8000-000000000000"
 	wrong.name = "wrong-uuid"
@@ -176,7 +171,8 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 				if body != reply {
 					t.Fatalf("got %q", body)
 				}
-				// The engine log reached the center, and no credential did.
+				// Engine logs must reach the center without
+				// credentials.
 				page := center.Query(logs.Filter{Sources: []string{string(kind)}}, 0, 0)
 				if len(page.Entries) == 0 {
 					t.Fatalf("%s wrote nothing to the log center", kind)
@@ -218,9 +214,8 @@ func fetch(ctx context.Context, local int, target string) (string, error) {
 	return "", last
 }
 
-// TestLocalProxyIsClosedOrLockedOnEveryEngine proves the two properties that
-// keep other applications out of the tunnel: without a local proxy in the
-// plan nothing listens on the port, and with a login nothing passes without it.
+// TestLocalProxyIsClosedOrLockedOnEveryEngine checks that absent proxies do not
+// listen and authenticated proxies reject requests without login.
 func TestLocalProxyIsClosedOrLockedOnEveryEngine(t *testing.T) {
 	dir := os.Getenv("SORA_ENGINES_DIR")
 	if dir == "" {
@@ -293,11 +288,9 @@ func fetchAs(ctx context.Context, local int, user, password, target string) (str
 	return string(body), err
 }
 
-// TestBypassCarriesTrafficThroughZapret sends a request through a bypass
-// outbound on every engine: the engine hands it to a real tpws, which reaches
-// the target directly. tpws refuses loopback and private destinations by
-// design, so the target is a public endpoint and the test needs the network.
-// SORA_TPWS_BIN names a tpws built from third_party/zapret.
+// TestBypassCarriesTrafficThroughZapret checks real tpws traffic on every
+// engine. It requires network access because tpws rejects private and loopback
+// destinations. SORA_TPWS_BIN selects third_party/zapret's binary.
 func TestBypassCarriesTrafficThroughZapret(t *testing.T) {
 	dir, tpws := os.Getenv("SORA_ENGINES_DIR"), os.Getenv("SORA_TPWS_BIN")
 	if dir == "" || tpws == "" {

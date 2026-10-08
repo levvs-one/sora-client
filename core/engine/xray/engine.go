@@ -1,16 +1,7 @@
-// Package xray drives XTLS/Xray-core as an engine of Sora.
-//
-// Xray is a separate binary started as a child process with the configuration
-// on stdin ("run -c stdin:"). It carries what the other engines do not: XHTTP,
-// VLESS Encryption and the Xray flavour of REALITY. Its control surface is
-// smaller, and the package fills the gaps honestly:
-//
-//   - counters and the latency of automatic groups come from the loopback
-//     metrics listener (expvar at /debug/vars);
-//   - Xray has no runtime selector, so a select group is pinned in the
-//     routing table and a new choice restarts the engine;
-//   - Delay starts a short-lived second Xray with one SOCKS inbound routed to
-//     the measured outbound and times a real request through it.
+// Package xray runs Xray-core with stdin configuration ("run -c stdin:") for
+// XHTTP, VLESS Encryption, and REALITY. Counters and automatic-group latency
+// use loopback /debug/vars. Selectors require routing changes and restarts;
+// Delay times a request through a temporary SOCKS-enabled Xray.
 package xray
 
 import (
@@ -34,8 +25,8 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/tunroute"
 )
 
-// Prober recognizes an Xray build. "xray version" prints, for example,
-// "Xray 26.3.27 (Xray, Penetrates Everything.) d2758a0 (go1.26.1 linux/amd64)".
+// Prober recognizes "xray version" output such as "Xray 26.3.27" with build and
+// platform details.
 var Prober = supervise.Prober{
 	Kind:    engine.KindXray,
 	Name:    "xray",
@@ -54,7 +45,7 @@ type Engine struct {
 	counters engine.Counters
 }
 
-// New builds an Xray engine. Nothing is started: Apply does the work.
+// New creates an Xray engine without starting it. Apply starts it.
 func New(cfg supervise.Config) (*Engine, error) {
 	d := &driver{sel: Selection{}}
 	sup, err := supervise.New(cfg, d)
@@ -71,8 +62,8 @@ type driver struct {
 
 func (*driver) Kind() engine.Kind { return engine.KindXray }
 
-// Route sends the machine's traffic into the adapter Xray created. Xray runs
-// as the core's account, which the routes leave on the main table.
+// Route directs machine traffic through Xray's adapter, keeping the core
+// account's traffic on the main table.
 func (*driver) Route(ctx context.Context, p *engine.Plan) error {
 	return tunroute.Route(ctx, p.Tun.DeviceName, os.Getuid())
 }
@@ -92,11 +83,9 @@ func (d *driver) selection() Selection {
 func (*driver) RunArgs(supervise.Runtime) []string   { return []string{"run", "-c", "stdin:"} }
 func (*driver) CheckArgs(supervise.Runtime) []string { return []string{"run", "-test", "-c", "stdin:"} }
 
-// ControlAddress keeps the metrics listener only where the plan allows one.
-// Xray 26.3 serves metrics on TCP alone, and a loopback port that answers is
-// how other programs find a VPN, so a private plan runs Xray without one: its
-// balancers and observatory work inside the engine, and only the traffic
-// counters go.
+// ControlAddress disables TCP-only Xray 26.3 metrics for private plans to avoid
+// network discovery. Balancers and observatory still work internally, but
+// traffic counters are unavailable.
 func (*driver) ControlAddress(rt supervise.Runtime, private bool) (string, error) {
 	if private {
 		return "", nil
@@ -104,10 +93,8 @@ func (*driver) ControlAddress(rt supervise.Runtime, private bool) (string, error
 	return rt.ControlAddr, nil
 }
 
-// Handshake waits for the metrics listener. Xray does not report its version
-// there, so the probed version stays in effect. Without a metrics listener the
-// start is judged by the local proxy accepting a connection, or, for a tun, by
-// its adapter, which the session checks.
+// Handshake waits for metrics and retains the probed version. Without metrics,
+// readiness uses the local proxy or the session's TUN adapter check.
 func (*driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, error) {
 	if rt.ControlAddr == "" {
 		if !rt.LocalProxy {
@@ -169,9 +156,8 @@ func readVars(ctx context.Context, addr string) (vars, error) {
 	return v, nil
 }
 
-// Counters returns the traffic of the mixed inbound, which is all the traffic
-// applications sent through Sora. On a metrics hiccup the last value is
-// returned with the error, so the interface keeps its chart.
+// Counters returns mixed-inbound application traffic. Metrics errors include
+// the last known totals to avoid resetting charts.
 func (e *Engine) Counters(ctx context.Context) (engine.Counters, error) {
 	rt, err := e.Running()
 	if err != nil {
@@ -191,8 +177,8 @@ func (e *Engine) Counters(ctx context.Context) (engine.Counters, error) {
 	return e.counters, nil
 }
 
-// Groups reports the groups of the plan with their live state: the pinned
-// member of a select group and the fastest live member of an automatic one.
+// Groups reports selected members and the fastest live members of automatic
+// groups.
 func (e *Engine) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
 	rt, err := e.Running()
 	if err != nil {
@@ -241,8 +227,8 @@ func (e *Engine) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
 	return out, nil
 }
 
-// Select pins a member of a select group and restarts the engine on the new
-// routing table. target may be a plan id or a display name.
+// Select pins a member by plan ID or display name and restarts Xray with
+// updated routing.
 func (e *Engine) Select(ctx context.Context, group, target string) error {
 	p := e.Plan()
 	if p == nil {
@@ -293,8 +279,8 @@ func resolveMember(p *engine.Plan, group, target string) (string, error) {
 
 func displayName(o engine.Outbound) string { return orDefault(o.Name, o.ID) }
 
-// Delay measures one outbound with a real request, through a second Xray
-// that carries just that outbound, so the user's routing is not touched.
+// Delay times a real request through a temporary Xray containing only the
+// measured outbound, leaving session routing unchanged.
 func (e *Engine) Delay(ctx context.Context, name, testURL string, timeout time.Duration) (time.Duration, error) {
 	p := e.Plan()
 	if p == nil {
@@ -322,9 +308,8 @@ func (e *Engine) Delay(ctx context.Context, name, testURL string, timeout time.D
 // probeBatch bounds the inbounds of one measuring process.
 const probeBatch = 128
 
-// Measure times a real request through every outbound and sends one result per
-// outbound, as soon as it is known. Outbounds are measured in batches, each in
-// one short-lived Xray process with one SOCKS inbound per outbound.
+// Measure streams one timing per outbound in batches. Each temporary Xray
+// process exposes one SOCKS inbound per outbound.
 func Measure(ctx context.Context, cfg supervise.Config, outbounds []engine.Outbound, opts engine.MeasureOptions, out chan<- engine.Measurement) error {
 	if opts.URL == "" {
 		opts.URL = engine.TestURLProduction
@@ -389,11 +374,9 @@ func measureBatch(ctx context.Context, cfg supervise.Config, batch []engine.Outb
 	return nil
 }
 
-// timeThrough times a request through a loopback SOCKS port the way a person
-// feels it: a first request opens the tunnel and the TLS session to the test
-// address, and the second, over the same connection, is the one timed. A
-// single cold request mostly measures handshakes (of the proxy, of REALITY or
-// XHTTP, of TLS) and reads several times slower than the server is.
+// timeThrough warms the proxy tunnel and target TLS session, then times a
+// second request on the same connection. Cold timings primarily measure proxy,
+// REALITY/XHTTP, and TLS handshakes.
 func timeThrough(ctx context.Context, port int, opts engine.MeasureOptions) (time.Duration, error) {
 	proxy := &url.URL{Scheme: "socks5h", Host: "127.0.0.1:" + strconv.Itoa(port)}
 	transport := &http.Transport{Proxy: http.ProxyURL(proxy), MaxIdleConnsPerHost: 1}

@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Handler records the structured log of the core service in the center, next
-// to the engines, and passes every record on to the next handler.
+// Handler records structured core logs alongside engine logs and forwards
+// records to the next handler.
 type Handler struct {
 	center *Center
 	next   slog.Handler
@@ -15,13 +15,13 @@ type Handler struct {
 	group  string
 }
 
-// NewHandler wraps next; next keeps writing where it wrote before.
+// NewHandler wraps next while preserving its existing output.
 func NewHandler(center *Center, next slog.Handler) *Handler {
 	return &Handler{center: center, next: next}
 }
 
-// Enabled lets debug records through, so the capture level of the center, not
-// the level of the service log, decides what the log center keeps.
+// Enabled admits debug records so center capture settings operate independently
+// of the service log level.
 func (h *Handler) Enabled(ctx context.Context, level slog.Level) bool {
 	return level >= slog.LevelDebug || h.next.Enabled(ctx, level)
 }

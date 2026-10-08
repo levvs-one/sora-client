@@ -12,12 +12,12 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 )
 
-// buildProxy maps one outbound onto a mihomo proxy entry. The name is filled
-// in by the caller, because uniqueness can only be decided across the plan.
+// buildProxy converts an outbound to a mihomo proxy. The caller sets its name
+// to ensure plan-wide uniqueness.
 func buildProxy(o engine.Outbound) (proxy, error) {
 	udp := o.Protocol != engine.ProtocolHTTP && o.Protocol != engine.ProtocolSOCKS5
 	px := proxy{Type: "ss", Tag: o.ID, UDP: &udp, IPVer: "dual"}
-	// A WireGuard outbound takes its server from the peer.
+	// WireGuard uses its peer's server address.
 	if o.Server == "" && o.Protocol != engine.ProtocolWireGuard {
 		return proxy{}, fmt.Errorf("mihomo: outbound %s has no server", o.ID)
 	}
@@ -82,8 +82,8 @@ func buildProxy(o engine.Outbound) (proxy, error) {
 		if err != nil {
 			return proxy{}, err
 		}
-		// One peer is written on the proxy itself, which is how mihomo reads
-		// the common case; several peers go to the peers list.
+		// mihomo stores a single peer on the proxy and multiple peers
+		// in the peers list.
 		if len(peers) == 1 {
 			p := peers[0]
 			px.Server, px.Port = p.Server, p.Port
@@ -100,8 +100,8 @@ func buildProxy(o engine.Outbound) (proxy, error) {
 		}
 		px.Username = o.UserID
 		px.Password = o.Password
-		// No stream transport, but TLS when the link asked for it: an https://
-		// proxy sent in the clear would hand its password to the network.
+		// HTTPS proxies require TLS to avoid sending credentials in
+		// cleartext.
 		if err := applyTLS(&px, o); err != nil {
 			return proxy{}, err
 		}
@@ -135,7 +135,8 @@ func applyTransport(px *proxy, t engine.Transport) error {
 		px.Network = "ws"
 		px.WSOpts = &wsOpts{Path: t.Path, Headers: headers}
 	case "httpupgrade":
-		// mihomo carries HTTPUpgrade as a flavour of its websocket transport.
+		// mihomo carries HTTPUpgrade as a flavour of its websocket
+		// transport.
 		px.Network = "ws"
 		px.WSOpts = &wsOpts{Path: t.Path, Headers: headers, V2RayHTTPUpgrade: true}
 	case "grpc":
@@ -178,9 +179,8 @@ func wireguardPeers(o engine.Outbound) ([]wireguardPeer, error) {
 	return out, nil
 }
 
-// amneziaOptions renders the AmneziaWG parameters under the keys of the
-// amnezia-wg-option block. Header values are numbers in AmneziaWG 1.x and may
-// be ranges in 2.0, so a numeric value is written as a number.
+// amneziaOptions renders amnezia-wg-option keys. Numeric headers stay numbers
+// for 1.x; 2.0 also accepts ranges.
 func amneziaOptions(a *engine.AmneziaWG) map[string]any {
 	out := map[string]any{}
 	ints := map[string]int{"jc": a.Jc, "jmin": a.Jmin, "jmax": a.Jmax, "s1": a.S1, "s2": a.S2, "s3": a.S3, "s4": a.S4, "itime": a.Itime}
@@ -237,9 +237,8 @@ func applyTLS(px *proxy, o engine.Outbound) error {
 	return nil
 }
 
-// sanitizeName turns an untrusted display name into an engine name. mihomo
-// addresses proxies by name in URLs and rule lines, so a name carrying a
-// comma, a slash or a control character would change routing or break the API.
+// sanitizeName removes unsafe display-name characters. Commas, slashes, and
+// controls can alter mihomo rules or break name-based URLs.
 func sanitizeName(name, fallback string) string {
 	src := name
 	if src == "" {

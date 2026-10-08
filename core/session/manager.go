@@ -9,19 +9,17 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// Factory builds the engine that will carry a plan. The control plane injects
-// one so the session package never has to know which engine build a machine
-// has, and so a test can run a session with an engine that does nothing.
+// Factory creates an engine for a plan, keeping discovery and test engines
+// outside the session package.
 type Factory func(ctx context.Context, plan *engine.Plan) (engine.Engine, error)
 
-// ManagerConfig configures a Manager. Every field except the factory has a
-// default, and the defaults are the ones a desktop core wants.
+// ManagerConfig requires Factory; other fields default to desktop core
+// settings.
 type ManagerConfig struct {
 	// Factory builds the engine for a plan. It is required.
 	Factory Factory
-	// Guard owns the system settings while a session runs. A new session gets
-	// the same guard, and the session restores it on every exit path, so two
-	// sessions can never hold system settings at the same time.
+	// Guard is shared across sequential sessions and restored on every exit
+	// path. Two sessions cannot own system settings concurrently.
 	Guard Guard
 	// JournalCapacity is the history size of each session journal.
 	JournalCapacity int
@@ -39,11 +37,8 @@ type ManagerConfig struct {
 	Network func() string
 }
 
-// Manager owns at most one session. The invariant is simple and absolute: a
-// machine has one tunnel, and the core decides which. A second Connect replaces
-// the first, and the first is stopped and restored before the second touches the
-// system, because two sessions would fight over the proxy, the firewall and the
-// tun device.
+// Manager owns at most one session. Connect stops and restores the old session
+// before the new one changes proxy, firewall, or TUN settings.
 type Manager struct {
 	cfg ManagerConfig
 
@@ -53,8 +48,8 @@ type Manager struct {
 	busy    bool
 }
 
-// NewManager returns a manager. The factory is validated here, so a
-// misconfigured core fails at startup instead of on the first connection.
+// NewManager validates the required factory at construction rather than on
+// first connection.
 func NewManager(cfg ManagerConfig) *Manager {
 	if cfg.Factory == nil {
 		panic("session: manager needs an engine factory")
@@ -77,8 +72,8 @@ func NewManager(cfg ManagerConfig) *Manager {
 	return &Manager{cfg: cfg, last: Status{State: StateDisconnected, ChangedAt: cfg.Now()}}
 }
 
-// Connect starts a session for the plan. Any previous session is stopped first
-// and its system settings are restored, so the machine is never configured twice.
+// Connect stops any previous session and restores its settings before starting
+// the new plan.
 func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Settings) (*Session, error) {
 	m.mu.Lock()
 	if m.busy {
@@ -123,10 +118,9 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 		return nil, err
 	}
 	if err := created.Start(ctx); err != nil {
-		// A session that failed to start may still own an engine that created
-		// a device, so it is stopped rather than dropped on the floor. The
-		// status is read before the stop, because the failure is the answer a
-		// client asked for and a stopped session reports only that it is gone.
+		// Stop failed startups because they may still own an engine or
+		// device. Capture the failure status before Stop replaces it
+		// with disconnected.
 		status := created.Status()
 		_ = created.Stop(stopCtx)
 		m.setLast(status)
@@ -140,8 +134,7 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 	return created, nil
 }
 
-// Disconnect stops the current session. It succeeds when there is none, so a
-// client may call it defensively at startup.
+// Disconnect stops the current session and succeeds if none exists.
 func (m *Manager) Disconnect(ctx context.Context) error {
 	m.mu.Lock()
 	if m.busy {
@@ -171,22 +164,22 @@ func (m *Manager) Current() *Session {
 	return m.current
 }
 
-// Status returns the state of the last session the manager saw. It answers
-// GetStatus even after the session has ended.
+// Status returns current or last-session state, remaining available after
+// session termination.
 func (m *Manager) Status() Status {
 	m.mu.Lock()
 	current, last := m.current, m.last
 	m.mu.Unlock()
-	// A running session answers with what it is now: one that failed or is
-	// reconnecting since it started must not still read as connected.
+	// Read live state so failure or reconnection is not reported as an old
+	// connected snapshot.
 	if current != nil {
 		return current.Status()
 	}
 	return last
 }
 
-// Shutdown stops everything and returns once the machine is back to normal. The
-// core calls it on service stop, on SIGTERM and before a self-update.
+// Shutdown stops the session and restores system settings for service stop,
+// SIGTERM, or self-update.
 func (m *Manager) Shutdown(ctx context.Context) error {
 	return m.Disconnect(ctx)
 }

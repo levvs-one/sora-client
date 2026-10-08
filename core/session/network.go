@@ -12,17 +12,13 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// DefaultNetworkInterval is how often a connected session looks at the network.
-// A look is one call that lists the interfaces, cheap enough to make every two
-// seconds, and two seconds is short enough that a person who changed networks
-// finds their connections working again before they notice they were not.
+// DefaultNetworkInterval checks interfaces every two seconds to detect network
+// changes promptly at low polling cost.
 const DefaultNetworkInterval = 2 * time.Second
 
-// NetworkFingerprint names the networks the machine is on: the up interfaces
-// other than loopback and the tunnel, with their IPv4 addresses and the /64 of
-// their global IPv6 ones. It changes when Wi-Fi changes, a cable is plugged in or
-// a lease brings a new address, and not when IPv6 privacy addresses rotate inside
-// the same network. Empty means no network at all.
+// NetworkFingerprint includes up non-loopback/non-TUN interfaces, IPv4
+// addresses, and global IPv6 /64 prefixes. It detects network or lease changes,
+// ignoring same-network privacy address rotation. Empty means offline.
 func NetworkFingerprint() string {
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -71,22 +67,19 @@ var tunPrefixes = func() []netip.Prefix {
 	return out
 }()
 
-// networkWatch notices that the way out changed under a running session: another
-// network, or the machine waking from sleep. Connections opened over the old
-// path are dead either way, and an application waits minutes for a dead TCP
-// connection to time out unless someone closes it.
+// networkWatch detects network changes and resume from sleep so dead old-path
+// TCP connections can be closed without waiting for application timeouts.
 type networkWatch struct {
 	probe    func() string
 	interval time.Duration
 	last     string
-	// The last look on each clock: lastWall without the monotonic reading,
-	// lastMono with it.
+	// Keep wall and monotonic observations separately to detect suspend
+	// gaps.
 	lastWall, lastMono time.Time
 }
 
-// sleepGap is how much more the wall clock has to advance than the monotonic
-// one between two looks to count as a sleep. A look that came late because
-// the session was busy moves both clocks alike and is no sleep.
+// sleepGap is the wall-minus-monotonic advance required to detect suspend.
+// Ordinary scheduling delays advance both clocks equally.
 const sleepGap = 30 * time.Second
 
 func newNetworkWatch(probe func() string, interval time.Duration) *networkWatch {
@@ -113,9 +106,9 @@ func (w *networkWatch) changed() string {
 	return ""
 }
 
-// renewConnections drops the connections a changed network left dead, so every
-// application opens new ones at once. An engine that cannot drop them all is
-// moved onto the plan again, which Xray does by starting over.
+// renewConnections closes stale network flows so applications reconnect
+// promptly. Engines without bulk close, including Xray, reapply the plan by
+// restarting.
 func (s *Session) renewConnections(ctx context.Context, why string) {
 	if s.State() != StateConnected {
 		return

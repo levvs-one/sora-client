@@ -15,11 +15,9 @@ import (
 // maxSocketPath is the shortest sun_path limit among the supported systems.
 const maxSocketPath = 103
 
-// ControlSocket puts an engine controller on a unix socket in an owner-only
-// directory: no other user can connect, and no application finds a port that
-// answers. The engine home is used when the path fits the socket limit;
-// otherwise a short directory named after the home is used in the system
-// temporary directory. The address comes back as "unix:<path>".
+// ControlSocket returns "unix:<path>" in an owner-only directory, avoiding
+// network discovery. It uses the engine home if short enough, otherwise a
+// home-derived directory in the system temporary directory.
 func ControlSocket(rt Runtime, name string) (string, error) {
 	dir := rt.HomeDir
 	if len(filepath.Join(dir, name)) > maxSocketPath {
@@ -40,9 +38,9 @@ func ControlSocket(rt Runtime, name string) (string, error) {
 	return "unix:" + path, nil
 }
 
-// privateDir makes dir an owner-only directory. In a shared temporary
-// directory another user could create the name first, so an existing entry is
-// accepted only if it is a real directory, owned by this user, mode 0700.
+// privateDir creates an owner-only directory. Existing entries must be real
+// directories owned by this user with mode 0700 to prevent temporary-directory
+// pre-creation attacks.
 func privateDir(dir string) error {
 	err := os.Mkdir(dir, 0o700)
 	if err != nil && !errors.Is(err, os.ErrExist) {

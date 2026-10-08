@@ -11,9 +11,8 @@ import (
 	"sync"
 )
 
-// Tail keeps the last lines of the engine output, bounded but readable. It is
-// safe for concurrent use and never fails, so it can be wired straight to
-// exec.Cmd.Stdout and Stderr.
+// Tail concurrently stores bounded engine output lines. It never returns write
+// errors and can receive exec.Cmd stdout and stderr directly.
 type Tail struct {
 	mu    sync.Mutex
 	lines []string
@@ -58,9 +57,8 @@ func (t *Tail) Last(n int) string {
 	return strings.Join(lines, "\n")
 }
 
-// FreePort asks the kernel for a free loopback port. The port is released and
-// then handed to the engine, so a race is possible on a busy machine: the
-// restart budget covers an engine that fails to bind.
+// FreePort reserves and releases a loopback port for the engine. Another
+// process can claim it before binding; the restart budget covers this race.
 func FreePort() (int, error) {
 	var lc net.ListenConfig
 	listener, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
@@ -74,8 +72,8 @@ func FreePort() (int, error) {
 // SecretBytes is the length of a controller secret before hex encoding.
 const SecretBytes = 32
 
-// RandomSecret builds a controller secret. Every engine accepts an empty one,
-// which would let any local process control the tunnel, so Sora always sets it.
+// RandomSecret generates a required controller secret to prevent
+// unauthenticated local control.
 func RandomSecret() (string, error) {
 	buf := make([]byte, SecretBytes)
 	if _, err := rand.Read(buf); err != nil {
@@ -84,9 +82,8 @@ func RandomSecret() (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// SafeEnv gives the child only what it needs. Inheriting the parent environment
-// would pass proxy variables and service secrets into a process whose only job
-// is to own the network path.
+// SafeEnv filters the child environment to exclude inherited proxy variables
+// and service secrets.
 func SafeEnv() []string {
 	keys := []string{"SYSTEMROOT", "WINDIR", "COMSPEC", "PATH", "HOME", "USERPROFILE", "TEMP", "TMP", "LANG", "LC_ALL", "TZ"}
 	out := make([]string, 0, len(keys))

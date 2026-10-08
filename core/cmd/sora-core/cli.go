@@ -15,9 +15,7 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// flags are what an operator sets once. Everything else has a default that works
-// on a normal installation, because a service that needs eight options to start is
-// a service nobody starts.
+// flags holds operator settings with defaults for a standard installation.
 type flags struct {
 	dataDir     string
 	enginesDir  string
@@ -35,8 +33,7 @@ type flags struct {
 }
 
 func main() {
-	// Started by the Windows service manager, the core answers it instead of
-	// a console; everywhere else this returns at once.
+	// Windows services must respond to SCM instead of using the console.
 	if handled, err := runService(os.Args[1:]); handled {
 		if err != nil {
 			os.Exit(1)
@@ -47,8 +44,8 @@ func main() {
 	err := run(ctx, os.Args[1:])
 	stop()
 	if err != nil {
-		// The exit code is what a script reads, so it says what kind of failure
-		// this was; the key says which one, and the detail says in one line why.
+		// Exit codes identify failure classes for scripts; the key and
+		// detail identify the cause.
 		code := 1
 		if errs.CodeOf(err) == errs.CodeInvalidArgument {
 			code = 2
@@ -81,8 +78,8 @@ func run(ctx context.Context, arguments []string) error {
 		return uninstallService()
 	}
 	if f.install {
-		// The service runs with the data and engines directories given here;
-		// the install flag itself is not passed on.
+		// Pass persistent service settings without forwarding the
+		// install flag.
 		return installService([]string{"-data-dir", f.dataDir, "-engines-dir", f.enginesDir})
 	}
 	if f.showVersion {
@@ -108,10 +105,8 @@ func run(ctx context.Context, arguments []string) error {
 	app, err := New(ctx, options)
 	if err != nil {
 		if f.check {
-			// A check exists for the case where the installation is broken, so it
-			// reports the failure instead of repeating it as an error. An operator
-			// reading this learns what is wrong and where; an operator reading a
-			// stack of wrapped errors learns that something is.
+			// A readiness check must report build failures even on
+			// a broken installation.
 			fmt.Println("result: the core cannot be built on this machine")
 			fmt.Println("problem: " + string(errs.KeyOf(err)) + ": " + errs.Detail(err))
 			return nil
@@ -137,9 +132,8 @@ func run(ctx context.Context, arguments []string) error {
 			fmt.Println(line)
 		}
 		if !ok {
-			// The report is on the screen and the exit code is the answer a script
-			// reads. A check that exits 0 while saying "not ready" is a check nobody
-			// can run in a pipeline.
+			// A nonzero exit code lets scripts detect an unready
+			// installation.
 			return errs.Newf(errs.CodeFailedPrecondition, errs.KeyEngineStartFailed,
 				"core: the installation is not ready")
 		}
@@ -148,13 +142,11 @@ func run(ctx context.Context, arguments []string) error {
 	return app.Serve(ctx)
 }
 
-// buildVersion is stamped by the build; an unstamped build says so rather than
-// claiming a version nobody set.
+// buildVersion is set at build time; unstamped builds report "dev".
 var buildVersion = "dev"
 
-// defaultDataDir is the per-user data directory of the core. A service runs as
-// its own account and is told where its data is; this is what a person running it
-// by hand gets.
+// defaultDataDir returns the per-user directory for manual runs. Services
+// receive an explicit directory.
 func defaultDataDir() string {
 	if dir := strings.TrimSpace(os.Getenv("SORA_DATA_DIR")); dir != "" {
 		return dir
@@ -165,8 +157,7 @@ func defaultDataDir() string {
 	return filepath.Join(".", ".sora-core")
 }
 
-// splitList reads a comma separated list and drops the empty entries, so a value
-// with a trailing comma is not a destination.
+// splitList parses a comma-separated list and skips empty entries.
 func splitList(value string) []string {
 	var out []string
 	for _, part := range strings.Split(value, ",") {

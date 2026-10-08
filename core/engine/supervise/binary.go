@@ -31,10 +31,11 @@ type Binary struct {
 // Prober describes how to recognize one engine binary.
 type Prober struct {
 	Kind engine.Kind
-	// Name is the executable name without extension, for example "sing-box".
+	// Name is the executable name without extension, for example
+	// "sing-box".
 	Name string
-	// EnvVar lets a developer or a package manager point Sora at one build. It
-	// is read at discovery only, and the value is still probed.
+	// EnvVar overrides the discovered binary path. It is read only during
+	// discovery, and the binary is still probed.
 	EnvVar string
 	// Args make the binary print its version, for example ["version"].
 	Args []string
@@ -43,8 +44,7 @@ type Prober struct {
 	Pattern *regexp.Regexp
 }
 
-// Probe runs the binary with the version arguments and parses the answer, so
-// Sora never starts a file that is not the engine it expects.
+// Probe runs version arguments and verifies the binary's identity before use.
 func (pr Prober) Probe(ctx context.Context, path string) (Binary, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -72,10 +72,8 @@ func (pr Prober) Probe(ctx context.Context, path string) (Binary, error) {
 	return b, nil
 }
 
-// Discover finds an engine binary. The search order is short and explicit: the
-// environment override, then the Sora engines directory, then PATH. Nothing is
-// downloaded here: shipping and updating engines belongs to the updater and is
-// covered by checksums there.
+// Discover checks the environment override, engines directory, then PATH. It
+// does not download; the updater ships engines and verifies checksums.
 func (pr Prober) Discover(ctx context.Context, enginesDir string) (Binary, error) {
 	var candidates []string
 	if fromEnv := os.Getenv(pr.EnvVar); pr.EnvVar != "" && fromEnv != "" {

@@ -12,9 +12,8 @@ import (
 	"strings"
 )
 
-// table holds the default route into the adapter. The rules sit just above
-// the main table's 32766, below anything the system or another program is
-// likely to own.
+// table holds the TUN default route. Rules precede main-table priority 32766
+// while leaving higher priorities to system rules.
 const (
 	table          = "5340"
 	priorityReturn = "5335"
@@ -30,10 +29,8 @@ const (
 
 func route(ctx context.Context, device string, uid int) error {
 	_ = unroute(ctx)
-	// "not" in a rule negates the whole selector, so "not this user and port
-	// 53" would match the engine's own connections. The engine's traffic is
-	// therefore sent to the main table first, positively, and the rules after
-	// it see only everyone else's.
+	// "not" negates the entire rule selector. Route the engine UID
+	// positively to main first so later DNS rules cannot match its traffic.
 	engine := "uidrange " + strconv.Itoa(uid) + "-" + strconv.Itoa(uid)
 	steps := []string{}
 	for _, family := range families() {
@@ -42,11 +39,9 @@ func route(ctx context.Context, device string, uid int) error {
 			address, prefix = adapter6, "/126"
 		}
 		steps = append(steps,
-			// Traffic sent into the adapter takes the adapter's own address
-			// as its source, so its answers can be recognised: a reverse path
-			// check looks them up as if from loopback and as root, whatever
-			// account the engine runs as, and only their destination tells
-			// that they came through the tunnel.
+			// Adapter source addresses identify tunnel replies.
+			// Reverse-path checks use loopback and root, not the
+			// engine UID, so only the destination identifies them.
 			family+" addr replace "+address+prefix+" dev "+device,
 			family+" route replace default dev "+device+" src "+address+" table "+table,
 			family+" rule add from "+address+" lookup "+table+" priority "+priorityReturn,
@@ -69,8 +64,8 @@ func unroute(ctx context.Context) error {
 	var errs []error
 	for _, family := range families() {
 		for _, priority := range []string{priorityReturn, priorityEngine, priorityDNS, priorityMain, priorityTunnel} {
-			// A rule is deleted one match at a time; a leftover from a crash may
-			// have stacked several. The bound only guards against a loop.
+			// Delete all stacked rule matches left by crashes;
+			// bound retries to avoid an infinite loop.
 			for range 16 {
 				if ip(ctx, family+" rule del priority "+priority) != nil {
 					break
@@ -84,8 +79,8 @@ func unroute(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// families are the address families the machine has; a kernel without IPv6
-// refuses every IPv6 route, and there is no IPv6 traffic to route then.
+// families returns supported address families, excluding IPv6 when the kernel
+// rejects IPv6 routes.
 func families() []string {
 	if _, err := os.Stat("/proc/net/if_inet6"); err != nil {
 		return []string{"-4"}

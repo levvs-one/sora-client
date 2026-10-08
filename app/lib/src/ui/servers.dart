@@ -15,8 +15,8 @@ import 'kit.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
 
-/// Every server of every subscription, with the two choices that need none:
-/// the fastest one, picked by the core, and no server at all.
+/// Lists subscription servers with automatic fastest-server selection and a
+/// bypass option.
 class ServersScreen extends StatefulWidget {
   const ServersScreen({super.key});
 
@@ -25,7 +25,7 @@ class ServersScreen extends StatefulWidget {
 }
 
 class _ServersScreenState extends State<ServersScreen> {
-  /// Above this many servers a search field helps more than it costs.
+  /// Server-count threshold for showing search.
   static const _searchFrom = 12;
   final _search = TextEditingController();
 
@@ -39,7 +39,7 @@ class _ServersScreenState extends State<ServersScreen> {
   void initState() {
     super.initState();
     _search.addListener(() => setState(() {}));
-    // Latency is what people choose by, so it is measured on arrival.
+    // Measure latency on entry to support server selection.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(SoraScope.read(context).probe());
     });
@@ -116,7 +116,7 @@ class _ServerRow extends StatelessWidget {
   final String id;
   final String name;
 
-  /// Set for several servers under one name.
+  /// Group data when multiple servers share a name.
   final Entry? entry;
 
   @override
@@ -125,7 +125,7 @@ class _ServerRow extends StatelessWidget {
     final palette = Palette.of(context);
     final s = S.of(context);
     final chosen = sora.selected == id;
-    // A group shows the latency of the member it would run.
+    // Use the prospective active member's latency for a group row.
     final measuredId = entry == null ? id : pickMember(entry!, sora.latency).id;
     final measured = sora.latency.containsKey(measuredId);
     final ms = sora.latency[measuredId];
@@ -190,8 +190,8 @@ class _SubscriptionHeader extends StatelessWidget {
         facts.add(s.expired);
         alarm = true;
       } else {
-        // A date in another year names its year: "until 13 September" of a
-        // subscription that runs to 2030 would read as this autumn.
+        // Include the year for expiry dates outside the current year to avoid
+        // ambiguous dates.
         final format = expire.year == DateTime.now().year ? DateFormat.MMMMd(locale) : DateFormat.yMMMMd(locale);
         facts.add(s.until(format.format(expire)));
       }
@@ -229,7 +229,6 @@ class _SubscriptionHeader extends StatelessWidget {
                     if (facts.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        // Space, not punctuation, keeps the facts apart.
                         child: Wrap(spacing: 14, children: [for (final f in facts) Text(f, style: factStyle)]),
                       ),
                   ],
@@ -291,7 +290,7 @@ class _SubscriptionHeader extends StatelessWidget {
   }
 }
 
-/// Asks, then deletes a subscription and its servers.
+/// Confirms deletion, then removes the subscription and its servers.
 Future<void> deleteSubscription(BuildContext context, SubscriptionState state) async {
   final sora = SoraScope.read(context);
   final s = S.of(context);
@@ -300,7 +299,7 @@ Future<void> deleteSubscription(BuildContext context, SubscriptionState state) a
   }
 }
 
-/// A byte count as people read it: one decimal where it matters, a unit.
+/// Formats a localized byte count with a unit and up to one decimal place.
 String formatBytes(S s, Int64 bytes, String locale) {
   final (value, unit) = Sora.scaleBytes(bytes);
   final number = NumberFormat(value >= 100 || unit == 0 ? '0' : '0.#', locale).format(value);
@@ -313,8 +312,8 @@ String formatBytes(S s, Int64 bytes, String locale) {
   };
 }
 
-/// What a person should know about [sub] before it stops working: it ends
-/// within three days or has a tenth of its traffic left. Null when neither.
+/// Returns a warning for expired subscriptions, expiry within three days or
+/// less than 10% traffic remaining. Returns null otherwise.
 String? subscriptionWarning(S s, SubscriptionState sub, String locale) {
   const soon = Duration(days: 3);
   const little = 0.1;

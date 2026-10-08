@@ -8,19 +8,14 @@ import (
 	"github.com/levvs-one/sora-client/core/secret"
 )
 
-// platformProtector wraps the master key of the store with a key file that only
-// the owner may read, in a directory that only the owner may enter.
-//
-// There is no machine key store here that matches the Windows one, and a
-// keychain call would make the core depend on a session the service does not
-// have. Owner-only files are the honest equivalent: the value is at rest only as
-// good as the account the core runs as, which is a property of the installation
-// rather than of this file.
+// platformProtector uses an owner-only key file and directory without a
+// session-dependent keychain. Protection depends on the service account's
+// security.
 func platformProtector() secret.Protector { return secret.FileProtector{} }
 
-// platformName names the platform in a report.
+// platformName returns the platform name for reports.
 func platformName() string { return runtime.GOOS }
 
-// secureDataDir has nothing to do here: the directory is created owner-only,
-// and the service unit gives it to the service account.
+// secureDataDir needs no changes: creation uses owner-only permissions and the
+// service unit assigns ownership.
 func secureDataDir(string) error { return nil }

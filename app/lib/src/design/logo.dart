@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-/// The Sora mark: two interlocking halves of a geometric S at 45 degrees with
-/// rounded inner turns, traced from the master artwork. The lower half is the
-/// upper one turned half a circle around the centre of the mark.
+/// The Sora logo traced from the master artwork: a geometric S at 45 degrees
+/// with rounded inner corners. The lower half is the upper half rotated 180
+/// degrees around the centre.
 class SoraMark extends StatelessWidget {
   const SoraMark({super.key, required this.size, required this.color});
 
@@ -18,7 +18,7 @@ class _MarkPainter extends CustomPainter {
 
   final Color color;
 
-  // Bounds of the artwork in its own 1254-unit space.
+  // Coordinates use the master artwork's 1254-unit space.
   static const _left = 182.0, _top = 154.0, _right = 1104.0, _bottom = 1076.0;
   static const _cx = 643.0, _cy = 615.0;
 

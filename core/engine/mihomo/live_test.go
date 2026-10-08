@@ -10,11 +10,9 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
 
-// TestLiveEngineLifecycle runs the real mihomo binary end to end: render,
-// offline validation with -t, start, controller handshake, group readout,
-// counters, hot apply and shutdown. It is the test that proves the integration
-// is not a wish, so it runs whenever an engine binary is available and is
-// skipped otherwise, for example in a container without the engine.
+// TestLiveEngineLifecycle checks render, -t validation, startup, handshake,
+// groups, counters, hot apply, and shutdown. It runs when a mihomo binary is
+// available and skips otherwise.
 func TestLiveEngineLifecycle(t *testing.T) {
 	path := os.Getenv(Prober.EnvVar)
 	if path == "" {
@@ -92,7 +90,8 @@ func TestLiveEngineLifecycle(t *testing.T) {
 		t.Error("counters must carry a timestamp")
 	}
 
-	// A second Apply must reuse the running process instead of restarting it.
+	// A second Apply must reuse the running process instead of restarting
+	// it.
 	if err := instance.Apply(ctx, livePlan("вторая")); err != nil {
 		t.Fatalf("hot Apply: %v", err)
 	}
@@ -108,8 +107,8 @@ func TestLiveEngineLifecycle(t *testing.T) {
 	}
 }
 
-// livePlan builds the smallest plan the engine accepts: one direct outbound and
-// one selectable group. No tun and no system listener beyond the mixed port.
+// livePlan returns a direct outbound and selectable group, with no TUN and only
+// a mixed listener.
 func livePlan(session string) *engine.Plan {
 	return &engine.Plan{
 		SessionID: session,

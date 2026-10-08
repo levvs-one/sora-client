@@ -12,27 +12,17 @@ import (
 	"github.com/levvs-one/sora-client/core/secret"
 )
 
-// platformProtector wraps the master key of the store with the machine and the
-// account that run the core.
-//
-// DPAPI is the right choice here and not a convenience: the material never leaves
-// the core. A plan carries references, the interface hands over material it is
-// told to forget, and only this process ever asks the store to decrypt. That is
-// why a service running as LocalSystem and an interface running as the user can
-// share a core without sharing a key.
+// platformProtector binds the master key to the core's machine and account via
+// DPAPI. Only the core decrypts credentials; a user UI can use a LocalSystem
+// core through references.
 func platformProtector() secret.Protector { return secret.DPAPIProtector{} }
 
-// platformName names the platform in a report.
+// platformName returns the platform name for reports.
 func platformName() string { return "windows" }
 
-// secureDataDir makes the data directory of the service belong to the system:
-// owned by LocalSystem, with a protected access list for LocalSystem and the
-// administrators only. ProgramData lets any user create a folder, so one made
-// in advance by someone else, with rights of their own, would otherwise be
-// used as found. Such a folder is set aside and a new one made.
-//
-// A core started by hand keeps its directory as it is: it runs as the person,
-// who must keep the access.
+// secureDataDir gives LocalSystem ownership and limits service access to SYSTEM
+// and administrators. It replaces pre-created directories with unsafe access;
+// manual runs keep their permissions.
 func secureDataDir(dir string) error {
 	service, err := svc.IsWindowsService()
 	if err != nil {

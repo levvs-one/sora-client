@@ -13,20 +13,19 @@ import (
 // Format is an export format.
 type Format int
 
-// Export formats: plain text for reading and pasting into a report, JSON Lines
-// for tools, CSV for spreadsheets.
+// Export formats serve reports (text), tools (JSON Lines), and spreadsheets
+// (CSV).
 const (
 	FormatText Format = iota + 1
 	FormatJSONLines
 	FormatCSV
 )
 
-// MaxExportBytes bounds one export, so a request cannot make the core build
-// an answer larger than the transport carries.
+// MaxExportBytes keeps exports within the transport's response limit.
 const MaxExportBytes = 32 << 20
 
-// Export renders entries, oldest first, and returns the bytes with a file name
-// and a media type for the interface to save them under.
+// Export renders entries oldest first, returning bytes, filename, and media
+// type for client-side saving.
 func Export(entries []Entry, format Format, at time.Time) (data []byte, name, mediaType string, err error) {
 	var buf bytes.Buffer
 	stamp := at.UTC().Format("20060102-150405")
@@ -78,8 +77,8 @@ type jsonEntry struct {
 	Repeat  uint32 `json:"repeat"`
 }
 
-// cell keeps a spreadsheet from reading a log message as a formula: a message
-// is engine output, and engine output can quote what a server sent.
+// cell escapes spreadsheet formulas in untrusted engine messages that may
+// include server output.
 func cell(s string) string {
 	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
 		return "'" + s

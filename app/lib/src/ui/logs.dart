@@ -13,7 +13,7 @@ import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import '../sora.dart';
 import 'kit.dart';
 
-/// The record of the core and its engines, newest first, following live.
+/// Streams core and engine logs, displaying newest entries first.
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
 
@@ -22,7 +22,7 @@ class LogsScreen extends StatefulWidget {
 }
 
 class _LogsScreenState extends State<LogsScreen> {
-  /// What the interface keeps in memory; the core keeps far more.
+  /// UI retention limit; the core retains a larger log history.
   static const _keep = 2000;
 
   final _search = TextEditingController();
@@ -96,7 +96,8 @@ class _LogsScreenState extends State<LogsScreen> {
 
   void _arrive(LogEntry entry) {
     setState(() {
-      // A repeated message comes again under its sequence with a higher count.
+      // Repeated messages retain their sequence number and update the repeat
+      // count.
       final index = _entries.indexWhere((e) => e.sequence == entry.sequence);
       if (index >= 0) {
         _entries[index] = entry;

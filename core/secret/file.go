@@ -7,10 +7,9 @@ import (
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
-// writeFileAtomic writes data to path so that a reader either sees the previous
-// content or the new content. The temporary file is created in the destination
-// directory, because a rename across directories is not atomic and would leave
-// a window where the vault does not exist at all.
+// writeFileAtomic replaces content atomically so readers see the old or new
+// file. It creates the temporary file beside the destination to keep rename on
+// one filesystem.
 func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
@@ -19,9 +18,8 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 	}
 	tmpName := tmp.Name()
 	defer func() {
-		// The rename below usually consumed the file; a failure here means the
-		// temporary file is still there, and leaving it behind would put a copy
-		// of a secret next to the vault.
+		// Remove failed temporary writes so encrypted store data is not
+		// left beside the vault.
 		_ = os.Remove(tmpName)
 	}()
 	if err := hardenFile(tmp, mode); err != nil {
@@ -45,11 +43,8 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 	return syncDir(dir)
 }
 
-// wipe overwrites a buffer with zeroes. Go gives no guarantee that the compiler
-// keeps such a write, and the collector copies slices around, so this is a best
-// effort that shortens the window rather than a promise. It exists because the
-// alternative is leaving key material in freed memory of a process that runs
-// for weeks.
+// wipe zeroes a buffer as best-effort key cleanup. Go does not guarantee
+// erasure or eliminate other memory copies.
 func wipe(buf []byte) {
 	for i := range buf {
 		buf[i] = 0

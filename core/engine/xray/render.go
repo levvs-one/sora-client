@@ -25,7 +25,8 @@ const (
 
 type obj map[string]any
 
-// set leaves zero values out: Xray reads some empty values as settings.
+// set omits zero values because Xray treats some empty values as explicit
+// settings.
 func (o obj) set(key string, value any) obj {
 	switch v := value.(type) {
 	case string:
@@ -53,16 +54,13 @@ func (o obj) set(key string, value any) obj {
 	return o
 }
 
-// Selection pins the member of every select group. Xray has no runtime
-// selector, so the pinned member is written into the routing table and a new
-// selection restarts the engine, which takes about a tenth of a second.
+// Selection pins select-group members in routing because Xray has no runtime
+// selector. Changing a selection restarts the engine in about 100 ms.
 type Selection map[string]string
 
-// Render turns a plan into the JSON Xray reads on stdin.
-//
-// Outbound tags are "o0001", "o0002" and so on: a balancer selects outbounds
-// by tag prefix, so tags must never be prefixes of each other, and display
-// names would leak into the engine log. Display names stay in the plan.
+// Render produces JSON for Xray stdin. Fixed tags such as "o0001" avoid
+// overlapping balancer prefixes and exposing display names in logs; names
+// remain in the plan.
 func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error) {
 	if p == nil {
 		return nil, errors.New("xray: nil plan")
@@ -104,18 +102,15 @@ func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error)
 	return json.Marshal(cfg)
 }
 
-// sessionInbounds are the ways into the session: the tun adapter and the local
-// proxy, whichever the plan asks for. A profile from a subscription brings
-// inbounds of its own; they are dropped for these, so a provider never opens a
-// listener on the machine.
+// sessionInbounds creates only requested TUN and local proxy inbounds,
+// replacing provider inbounds so subscriptions cannot open arbitrary listeners.
 func sessionInbounds(p *engine.Plan, rt supervise.Runtime) []obj {
 	listen := "127.0.0.1"
 	if p.Options.AllowLAN {
 		listen = "0.0.0.0"
 	}
-	// The socks inbound of Xray also answers plain HTTP proxy requests, which
-	// makes it the mixed listener. It exists only when the plan asks for it: a
-	// loopback port is open to every application on the machine.
+	// Xray's SOCKS inbound also handles HTTP. Open it only on request
+	// because any local application can reach loopback.
 	inbounds := []obj{}
 	if lp := p.LocalProxy; lp.Enabled {
 		settings := obj{"udp": true}
@@ -129,10 +124,9 @@ func sessionInbounds(p *engine.Plan, rt supervise.Runtime) []obj {
 		})
 	}
 	if p.Tun.Enabled {
-		// Xray creates the adapter (an MTU of zero takes its 1500); the core
-		// routes into it (see Route).
-		// Sniffing recovers the site name, so rules by domain hold for traffic
-		// that arrives as bare packets.
+		// Xray creates TUN with default MTU 1500 when unset; Route
+		// installs routes. Sniffing recovers domain names for
+		// packet-based routing rules.
 		inbounds = append(inbounds, obj{
 			"tag": tagTun, "protocol": "tun",
 			"settings": obj{"name": orDefault(p.Tun.DeviceName, engine.TunDevice), "MTU": p.Tun.MTU},
@@ -142,9 +136,8 @@ func sessionInbounds(p *engine.Plan, rt supervise.Runtime) []obj {
 	return inbounds
 }
 
-// frame adds what the core owns in every configuration: the log at the
-// session's level, and the stats and metrics listener that feed Counters and
-// the latency of automatic groups. The listener is loopback only.
+// frame adds session-level logging, stats, and loopback metrics for counters
+// and automatic-group latency.
 func frame(cfg obj, p *engine.Plan, rt supervise.Runtime) {
 	cfg["log"] = obj{"loglevel": logLevel(p.Options.LogLevel)}
 	cfg["stats"] = obj{}
@@ -223,8 +216,8 @@ func (r *renderer) outbound(o engine.Outbound) (obj, error) {
 		settings = obj{"servers": []obj{server}}
 	case engine.ProtocolHysteria2:
 		if o.Obfs != "" {
-			// Xray ignores keys it does not know, so an obfs setting it cannot
-			// read would connect without obfuscation instead of failing.
+			// Reject unsupported obfuscation because Xray silently
+			// ignores unknown keys.
 			return nil, fmt.Errorf("xray: hysteria2 outbound %s uses obfs, which Sora does not render for Xray", o.ID)
 		}
 		return r.hysteria(o, tag), nil
@@ -275,8 +268,8 @@ func (r *renderer) stream(o engine.Outbound) (obj, error) {
 			set("fingerprint", o.TLS.Fingerprint).set("allowInsecure", o.TLS.Insecure)
 	}
 	if r.plan.Options.Fragment.Enabled && s["security"] != nil {
-		// The proxy connection is dialed through the fragment outbound, which
-		// splits its TLS ClientHello before it leaves the machine.
+		// Dial proxy connections through the fragment outbound to split
+		// ClientHello before transmission.
 		s["sockopt"] = obj{"dialerProxy": tagFragment}
 	}
 	return s, nil
@@ -310,8 +303,8 @@ func wireguard(o engine.Outbound, tag string) (obj, error) {
 	}}, nil
 }
 
-// target resolves a rule or group target to the routing field Xray expects:
-// an outbound tag, or a balancer tag for an automatic group.
+// target resolves routing targets to outbound tags or automatic-group balancer
+// tags.
 func (r *renderer) target(id string, depth int) (field, tag string, err error) {
 	switch id {
 	case "direct":
@@ -371,8 +364,7 @@ func (r *renderer) balancerFor(g engine.Group) string {
 	return tag
 }
 
-// observed lists the outbounds the observatory measures: the members of
-// every automatic group.
+// observed lists automatic-group members measured by the observatory.
 func (r *renderer) observed() []string {
 	seen := map[string]bool{}
 	var out []string
@@ -390,8 +382,8 @@ func (r *renderer) observed() []string {
 func (r *renderer) routing() (obj, error) {
 	var rules []obj
 	if r.plan.Tun.Enabled {
-		// The core sends every DNS query of the machine into the adapter;
-		// Xray answers them itself, through the resolvers of the plan.
+		// Route machine DNS into TUN for Xray to answer using plan
+		// resolvers.
 		rules = append(rules, obj{"inboundTag": []string{tagTun}, "network": "udp", "port": "53", "outboundTag": tagDNS})
 	}
 	final := obj{"network": "tcp,udp", "outboundTag": tagDirect}
@@ -411,8 +403,8 @@ func (r *renderer) routing() (obj, error) {
 		match[field] = tag
 		rules = append(rules, match)
 	}
-	// Xray sends unmatched traffic to the first outbound; the explicit last
-	// rule makes the default route the one the plan asked for.
+	// Add an explicit final rule because Xray otherwise uses its first
+	// outbound for unmatched traffic.
 	rules = append(rules, final)
 	out := obj{"domainStrategy": "IPIfNonMatch", "rules": rules}
 	if len(r.balancer) > 0 {
@@ -452,8 +444,8 @@ func match(rule engine.Rule) (obj, error) {
 	return nil, fmt.Errorf("xray: rule type %q is not supported", rule.Type)
 }
 
-// dns renders the resolver list. A resolver the plan marks proxy-only goes
-// through the routing table; every other one is dialed directly ("+local").
+// dns renders resolvers. Proxy-only DNS follows routing; other resolvers use
+// direct "+local" dialing.
 func (r *renderer) dns() (obj, error) {
 	var servers []any
 	for _, s := range r.plan.DNS.Servers {
@@ -509,9 +501,8 @@ func orDefault(v, fallback string) string {
 	return v
 }
 
-// RenderProbe renders a configuration that puts every outbound behind its own
-// loopback SOCKS inbound, so one Xray process measures many servers without
-// touching the routing of a running session.
+// RenderProbe exposes each outbound through its own loopback SOCKS inbound to
+// batch measurements without changing session routing.
 func RenderProbe(outbounds []engine.Outbound, ports []int) ([]byte, error) {
 	if len(outbounds) != len(ports) {
 		return nil, errors.New("xray: one port per outbound is required")

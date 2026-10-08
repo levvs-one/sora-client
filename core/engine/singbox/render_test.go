@@ -87,9 +87,8 @@ func TestRenderRefusesWhatSingBoxCannotCarry(t *testing.T) {
 	}
 }
 
-// TestEngineAcceptsRenderedPlans hands every rendered plan to "sing-box check".
-// The engine is the only authority on its grammar, so this is the test that
-// catches a key Sora got wrong. It runs whenever a binary is available.
+// TestEngineAcceptsRenderedPlans checks rendered grammar with "sing-box check"
+// whenever a binary is available.
 func TestEngineAcceptsRenderedPlans(t *testing.T) {
 	path := os.Getenv(Prober.EnvVar)
 	if path == "" {

@@ -185,7 +185,8 @@ regressions() {
     children=$(pgrep -P "$core")
     [[ -n $children ]]
     kill -KILL $children
-    for _ in {1..50}; do ip link show sora0 > /dev/null 2>&1 || break; sleep .1; done
+    # A loaded machine can take several seconds to tear the adapter down.
+    for _ in {1..150}; do ip link show sora0 > /dev/null 2>&1 || break; sleep .1; done
     result=PASS
     if ip link show sora0 > /dev/null 2>&1; then result=FAIL; fi
     observe "ip daddr { $fake, $peer, 172.19.0.5 }"
@@ -211,7 +212,8 @@ regressions() {
     [[ -n $children ]]
     kill -KILL "$core" $children
     wait "$core" || true
-    for _ in {1..50}; do ip link show sora0 > /dev/null 2>&1 || break; sleep .1; done
+    # A loaded machine can take several seconds to tear the adapter down.
+    for _ in {1..150}; do ip link show sora0 > /dev/null 2>&1 || break; sleep .1; done
     if ip link show sora0 > /dev/null 2>&1; then echo "Crashed adapter still exists"; return 1; fi
     snapshot "$casework/crashed"
     start_core

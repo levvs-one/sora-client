@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/idna"
+
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
@@ -556,8 +558,19 @@ func ruleFromProto(route *corev1.RoutingRule) (engine.Rule, error) {
 			"control: rule %q has no target", destination)
 	}
 	kind := ruleTypeOf(destination)
-	return engine.Rule{Type: kind, Value: ruleValue(kind, destination), Target: target}, nil
+	value := ruleValue(kind, destination)
+	if kind == engine.RuleDomain || kind == engine.RuleDomainSuffix {
+		ascii, err := ruleIDNA.ToASCII(value)
+		if err != nil {
+			return engine.Rule{}, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
+		}
+		value = ascii
+	}
+	return engine.Rule{Type: kind, Value: value, Target: target}, nil
 }
+
+// Convert only exact and suffix domains, preserving process names and patterns.
+var ruleIDNA = idna.New(idna.MapForLookup(), idna.StrictDomainName(true), idna.ValidateLabels(true), idna.VerifyDNSLength(true), idna.BidiRule())
 
 // ruleValue strips the type prefix: the engines add their own.
 func ruleValue(kind engine.RuleType, destination string) string {

@@ -20,3 +20,7 @@ func platformProtector() secret.Protector { return secret.FileProtector{} }
 
 // platformName names the platform in a report.
 func platformName() string { return runtime.GOOS }
+
+// secureDataDir has nothing to do here: the directory is created owner-only,
+// and the service unit gives it to the service account.
+func secureDataDir(string) error { return nil }

@@ -44,6 +44,9 @@ type Peer struct {
 	Verified bool
 	// Detail is a short description for a log line, never a user name.
 	Detail string
+	// Present reports, on Windows, that the peer is the person at the machine:
+	// its process runs in the active session, or with administrator rights.
+	Present bool
 }
 
 // Options configures an endpoint.

@@ -24,7 +24,7 @@ import (
 //
 // The session is dynamic: Windows removes every filter when the session closes
 // or the core process ends, however it ends. A crashed core lets traffic out
-// rather than leaving the machine cut off with nothing left to lift the block —
+// rather than leaving the machine cut off with nothing left to lift the block,
 // the same trade WireGuard and Tailscale make.
 type WFP struct {
 	mu         sync.Mutex

@@ -583,4 +583,7 @@ class SEn extends S {
 
   @override
   String get understood => 'OK';
+
+  @override
+  String get noAnswer => 'no answer';
 }

@@ -176,5 +176,6 @@
   "noticeSubscription": "Subscription",
   "importTitle": "Add this subscription?",
   "importSealed": "This link is encrypted for Happ, and only Happ can read it. Ask your provider for the plain subscription link.",
-  "understood": "OK"
+  "understood": "OK",
+  "noAnswer": "no answer"
 }

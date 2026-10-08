@@ -1153,6 +1153,12 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Понятно'**
   String get understood;
+
+  /// No description provided for @noAnswer.
+  ///
+  /// In ru, this message translates to:
+  /// **'нет ответа'**
+  String get noAnswer;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

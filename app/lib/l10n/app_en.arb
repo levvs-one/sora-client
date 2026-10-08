@@ -173,6 +173,7 @@
   "noticeFailed": "Couldn't connect",
   "noticeBackup": "The main server didn't answer; the backup carries the traffic",
   "noticeNext": "The server didn't answer; the next one carries the traffic",
+  "noticeMainBack": "The main server answers again and carries the traffic",
   "noticeSubscription": "Subscription",
   "importTitle": "Add this subscription?",
   "importSealed": "This link is encrypted for Happ, and only Happ can read it. Ask your provider for the plain subscription link.",

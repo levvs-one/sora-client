@@ -12,6 +12,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/parser"
+	"github.com/levvs-one/sora-client/core/session"
 )
 
 // TestRealityAndTransportSurviveTheVault checks that REALITY keys, transport
@@ -340,5 +341,24 @@ func TestARuleCanNameAProgram(t *testing.T) {
 	}
 	if r := p.Rules[0]; r.Type != engine.RuleProcess || r.Value != "telegram-desktop" {
 		t.Fatalf("rule = %+v", r)
+	}
+}
+
+func TestConnectCarriesTheKillSwitchToTheSession(t *testing.T) {
+	plan := &corev1.SessionPlan{TunnelMode: corev1.TunnelMode_TUNNEL_MODE_APPLICATION}
+	if got := sessionSettings(&corev1.ConnectRequest{SessionPlan: plan, KillSwitch: true}); !got.KillSwitch || got.TunnelMode != "application" {
+		t.Errorf("settings = %+v, want the kill switch armed in application mode", got)
+	}
+	if sessionSettings(&corev1.ConnectRequest{SessionPlan: plan}).KillSwitch {
+		t.Error("a Connect without the flag must leave the kill switch off")
+	}
+}
+
+func TestGroupSwitchReachesTheWire(t *testing.T) {
+	out := toWireEvent(session.Event{Sequence: 7, Kind: session.EventGroup,
+		Switch: &session.GroupSwitch{Group: "auto", Selected: "out-2"}}, nil)
+	moved := out.GetGroupSwitched()
+	if moved.GetGroup() != "auto" || moved.GetSelected() != "out-2" || out.GetSequence() != 7 {
+		t.Errorf("event = %v", out)
 	}
 }

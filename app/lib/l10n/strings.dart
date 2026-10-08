@@ -1130,6 +1130,12 @@ abstract class S {
   /// **'Сервер не ответил, работает следующий'**
   String get noticeNext;
 
+  /// No description provided for @noticeMainBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Основной сервер снова отвечает, трафик идёт через него'**
+  String get noticeMainBack;
+
   /// No description provided for @noticeSubscription.
   ///
   /// In ru, this message translates to:

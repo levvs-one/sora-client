@@ -43,6 +43,14 @@ final class ServerSwitched extends Notice {
   final bool backup;
 }
 
+/// A core fallback group back on its first server [entry] after that server
+/// answered again.
+final class ServerReturned extends Notice {
+  const ServerReturned(this.entry);
+
+  final String entry;
+}
+
 /// App state and core operations. Screens access it through [SoraScope] and
 /// rebuild on notifications.
 class Sora extends ChangeNotifier {
@@ -65,6 +73,10 @@ class Sora extends ChangeNotifier {
   int _memberSpare = 0;
   StreamSubscription<SubscriptionState>? _subscriptionWatch;
   StreamSubscription<CoreEvent>? _sessionWatch;
+
+  /// Fallback groups of the last plan by name: their members in order and the
+  /// name notices give them.
+  Map<String, ({List<String> members, String title, bool ordered})> _fallbacks = {};
 
   /// Drops the core connection when a request detects it is unavailable.
   void Function(Object error) _drop = (_) {};
@@ -295,10 +307,12 @@ class Sora extends ChangeNotifier {
     final stream = link.stub.watchEvents(WatchEventsRequest(apiVersion: apiVersion, sessionId: id));
     _sessionWatch = stream.listen(
       (event) {
+        final fresh = !event.hasEmittedAt() || event.emittedAt.toDateTime().isAfter(opened);
         if (event.hasStateChanged()) {
-          final fresh = !event.hasEmittedAt() || event.emittedAt.toDateTime().isAfter(opened);
           _applyState(event.stateChanged.state, report: fresh);
           notifyListeners();
+        } else if (event.hasGroupSwitched() && fresh) {
+          _fallbackMoved(event.groupSwitched);
         }
       },
       onError: (Object error) {
@@ -307,6 +321,18 @@ class Sora extends ChangeNotifier {
       },
       onDone: resync,
     );
+  }
+
+  /// Tells the user that a fallback group of the core left its first server or
+  /// came back to it.
+  void _fallbackMoved(GroupSwitched moved) {
+    final group = _fallbacks[moved.group];
+    if (group == null || group.members.isEmpty) return;
+    if (moved.selected == group.members.first) {
+      _emit(ServerReturned(group.title));
+    } else {
+      _emit(ServerSwitched(group.title, backup: group.ordered));
+    }
   }
 
   /// Connects when off; disconnects an active or connecting session.
@@ -333,6 +359,11 @@ class Sora extends ChangeNotifier {
     final choice = selected;
     final entry = choice.startsWith(groupPrefix) ? entryOf(choice, _subscriptions.values) : null;
     final plan = buildPlan(servers: servers, choice: choice, settings: settings, latency: latency, entry: entry);
+    _fallbacks = {
+      for (final g in plan.groups)
+        if (g.type == GroupType.GROUP_TYPE_FALLBACK)
+          g.name: (members: g.members, title: entry?.name ?? nameOf(g.members.first), ordered: entry?.ordered ?? false),
+    };
     // Track the active profile because profile groups fail over in the client.
     _member = entry != null && entry.members.any(isProfile) ? plan.outbounds.single.id : null;
     if (!retry) _memberSpare = entry == null ? 0 : entry.members.length - 1;
@@ -342,16 +373,17 @@ class Sora extends ChangeNotifier {
     final started = DateTime.now();
     try {
       final answer = await link.stub.connect(
-        ConnectRequest(apiVersion: apiVersion, sessionPlan: plan, controlAuthenticator: link.token),
+        // The core arms the kill switch before the engine starts, so nothing
+        // leaves outside the tunnel while it comes up.
+        ConnectRequest(
+          apiVersion: apiVersion,
+          sessionPlan: plan,
+          controlAuthenticator: link.token,
+          killSwitch: settings.killSwitch,
+        ),
       );
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
       _applyState(answer.status.connection);
-      if (settings.killSwitch && sessionId != null) {
-        final kill = await link.stub.setKillSwitch(
-          SetKillSwitchRequest(apiVersion: apiVersion, sessionId: sessionId, enabled: true),
-        );
-        if (kill.hasError()) failure = CoreFailure(kill.error.userMessageKey);
-      }
       _watchSession(since: started);
       // Apply a selection changed while the connection request was pending.
       if (selected != choice && phase == Phase.connected) unawaited(connect());

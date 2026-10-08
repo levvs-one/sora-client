@@ -360,9 +360,12 @@ jobs:
           systemctl is-active sora-core
           test -x /usr/bin/sora
           /usr/bin/sora-core -version
-          docker run --rm -v "$PWD:/w" -w /w -e SORA_DIST=install-test -e SORA_VERSION fedora:latest \
+          # Distribution mirrors drop a download now and then. A package that
+          # does not install fails all three runs.
+          retry() { for _ in 1 2; do "$@" && return; sleep 15; done; "$@"; }
+          retry docker run --rm -v "$PWD:/w" -w /w -e SORA_DIST=install-test -e SORA_VERSION fedora:latest \
             sh -c 'dnf -y -q install systemd >/dev/null && sh packaging/install/install.sh && rpm -q sora sora-core'
-          docker run --rm -v "$PWD:/w" -w /w -e SORA_DIST=install-test -e SORA_VERSION archlinux:latest \
+          retry docker run --rm -v "$PWD:/w" -w /w -e SORA_DIST=install-test -e SORA_VERSION archlinux:latest \
             sh -c 'pacman -Sy --noconfirm >/dev/null && sh packaging/install/install.sh && pacman -Q sora sora-core'
       - uses: actions/upload-artifact@v6
         with:

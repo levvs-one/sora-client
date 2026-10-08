@@ -113,6 +113,7 @@ class ConnectRequest extends $pb.GeneratedMessage {
     $core.String? sessionId,
     SessionPlan? sessionPlan,
     $core.List<$core.int>? controlAuthenticator,
+    $core.bool? killSwitch,
   }) {
     final result = ConnectRequest._();
     if (apiVersion != null) result.apiVersion = apiVersion;
@@ -120,6 +121,7 @@ class ConnectRequest extends $pb.GeneratedMessage {
     if (sessionId != null) result.sessionId = sessionId;
     if (sessionPlan != null) result.sessionPlan = sessionPlan;
     if (controlAuthenticator != null) result.controlAuthenticator = controlAuthenticator;
+    if (killSwitch != null) result.killSwitch = killSwitch;
     return result;
   }
 
@@ -139,6 +141,7 @@ class ConnectRequest extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'sessionId')
     ..aOM<SessionPlan>(4, _omitFieldNames ? '' : 'sessionPlan', subBuilder: SessionPlan.$_createMessage)
     ..a<$core.List<$core.int>>(5, _omitFieldNames ? '' : 'controlAuthenticator', $pb.PbFieldType.OY)
+    ..aOB(6, _omitFieldNames ? '' : 'killSwitch')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -209,6 +212,17 @@ class ConnectRequest extends $pb.GeneratedMessage {
   $core.bool hasControlAuthenticator() => $_has(4);
   @$pb.TagNumber(5)
   void clearControlAuthenticator() => $_clearField(5);
+
+  /// Since 1.5. Arms the kill switch before the engine starts, so no traffic
+  /// leaves outside the tunnel between connecting and a later SetKillSwitch.
+  @$pb.TagNumber(6)
+  $core.bool get killSwitch => $_getBF(5);
+  @$pb.TagNumber(6)
+  set killSwitch($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasKillSwitch() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearKillSwitch() => $_clearField(6);
 }
 
 class ConnectResponse extends $pb.GeneratedMessage {
@@ -2000,6 +2014,7 @@ enum CoreEvent_Payload {
   logBatch,
   error,
   killSwitchChanged,
+  groupSwitched,
   notSet
 }
 
@@ -2015,6 +2030,7 @@ class CoreEvent extends $pb.GeneratedMessage {
     LogBatch? logBatch,
     SoraError? error,
     KillSwitchChanged? killSwitchChanged,
+    GroupSwitched? groupSwitched,
   }) {
     final result = CoreEvent._();
     if (sequence != null) result.sequence = sequence;
@@ -2027,6 +2043,7 @@ class CoreEvent extends $pb.GeneratedMessage {
     if (logBatch != null) result.logBatch = logBatch;
     if (error != null) result.error = error;
     if (killSwitchChanged != null) result.killSwitchChanged = killSwitchChanged;
+    if (groupSwitched != null) result.groupSwitched = groupSwitched;
     return result;
   }
 
@@ -2046,12 +2063,13 @@ class CoreEvent extends $pb.GeneratedMessage {
     8: CoreEvent_Payload.logBatch,
     9: CoreEvent_Payload.error,
     10: CoreEvent_Payload.killSwitchChanged,
+    11: CoreEvent_Payload.groupSwitched,
     0: CoreEvent_Payload.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'CoreEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'),
       createEmptyInstance: CoreEvent.$_createMessage)
-    ..oo(0, [4, 5, 6, 7, 8, 9, 10])
+    ..oo(0, [4, 5, 6, 7, 8, 9, 10, 11])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
     ..aOS(2, _omitFieldNames ? '' : 'sessionId')
     ..aOM<$2.Timestamp>(3, _omitFieldNames ? '' : 'emittedAt', subBuilder: $2.Timestamp.$_createMessage)
@@ -2064,6 +2082,7 @@ class CoreEvent extends $pb.GeneratedMessage {
     ..aOM<SoraError>(9, _omitFieldNames ? '' : 'error', subBuilder: SoraError.$_createMessage)
     ..aOM<KillSwitchChanged>(10, _omitFieldNames ? '' : 'killSwitchChanged',
         subBuilder: KillSwitchChanged.$_createMessage)
+    ..aOM<GroupSwitched>(11, _omitFieldNames ? '' : 'groupSwitched', subBuilder: GroupSwitched.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2093,6 +2112,7 @@ class CoreEvent extends $pb.GeneratedMessage {
   @$pb.TagNumber(8)
   @$pb.TagNumber(9)
   @$pb.TagNumber(10)
+  @$pb.TagNumber(11)
   CoreEvent_Payload whichPayload() => _CoreEvent_PayloadByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
@@ -2101,6 +2121,7 @@ class CoreEvent extends $pb.GeneratedMessage {
   @$pb.TagNumber(8)
   @$pb.TagNumber(9)
   @$pb.TagNumber(10)
+  @$pb.TagNumber(11)
   void clearPayload() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -2208,6 +2229,17 @@ class CoreEvent extends $pb.GeneratedMessage {
   void clearKillSwitchChanged() => $_clearField(10);
   @$pb.TagNumber(10)
   KillSwitchChanged ensureKillSwitchChanged() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  GroupSwitched get groupSwitched => $_getN(10);
+  @$pb.TagNumber(11)
+  set groupSwitched(GroupSwitched value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasGroupSwitched() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearGroupSwitched() => $_clearField(11);
+  @$pb.TagNumber(11)
+  GroupSwitched ensureGroupSwitched() => $_ensure(10);
 }
 
 class StateChanged extends $pb.GeneratedMessage {
@@ -2263,6 +2295,74 @@ class StateChanged extends $pb.GeneratedMessage {
   void clearState() => $_clearField(1);
   @$pb.TagNumber(1)
   ConnectionState ensureState() => $_ensure(0);
+}
+
+/// Since 1.5. A fallback group moved to another member on its own: the member
+/// it used stopped answering, or the one before it answers again. selected is
+/// an outbound id or the name of a nested group.
+class GroupSwitched extends $pb.GeneratedMessage {
+  factory GroupSwitched({
+    $core.String? group,
+    $core.String? selected,
+  }) {
+    final result = GroupSwitched._();
+    if (group != null) result.group = group;
+    if (selected != null) result.selected = selected;
+    return result;
+  }
+
+  GroupSwitched._();
+
+  factory GroupSwitched.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GroupSwitched()..mergeFromBuffer(data, registry);
+  factory GroupSwitched.fromJson($core.String json, [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GroupSwitched()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GroupSwitched',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'sora.core.v1'),
+      createEmptyInstance: GroupSwitched.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'group')
+    ..aOS(2, _omitFieldNames ? '' : 'selected')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GroupSwitched clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GroupSwitched copyWith(void Function(GroupSwitched) updates) =>
+      super.copyWith((message) => updates(message as GroupSwitched)) as GroupSwitched;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GroupSwitched() / GroupSwitched.new instead')
+  static GroupSwitched create() => GroupSwitched._();
+  static $pb.GeneratedMessage $_createMessage() => GroupSwitched._();
+  @$core.override
+  GroupSwitched createEmptyInstance() => GroupSwitched._();
+  @$core.pragma('dart2js:noInline')
+  static GroupSwitched getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GroupSwitched>(GroupSwitched.$_createMessage);
+  static GroupSwitched? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get group => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set group($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasGroup() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGroup() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get selected => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set selected($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSelected() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSelected() => $_clearField(2);
 }
 
 class StatsTick extends $pb.GeneratedMessage {

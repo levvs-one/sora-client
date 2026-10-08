@@ -175,6 +175,7 @@ const ConnectRequest$json = {
     {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
     {'1': 'session_plan', '3': 4, '4': 1, '5': 11, '6': '.sora.core.v1.SessionPlan', '10': 'sessionPlan'},
     {'1': 'control_authenticator', '3': 5, '4': 1, '5': 12, '10': 'controlAuthenticator'},
+    {'1': 'kill_switch', '3': 6, '4': 1, '5': 8, '10': 'killSwitch'},
   ],
 };
 
@@ -184,7 +185,8 @@ final $typed_data.Uint8List connectRequestDescriptor =
         'lWZXJzaW9uUgphcGlWZXJzaW9uEh0KCnJlcXVlc3RfaWQYAiABKAlSCXJlcXVlc3RJZBIdCgpz'
         'ZXNzaW9uX2lkGAMgASgJUglzZXNzaW9uSWQSPAoMc2Vzc2lvbl9wbGFuGAQgASgLMhkuc29yYS'
         '5jb3JlLnYxLlNlc3Npb25QbGFuUgtzZXNzaW9uUGxhbhIzChVjb250cm9sX2F1dGhlbnRpY2F0'
-        'b3IYBSABKAxSFGNvbnRyb2xBdXRoZW50aWNhdG9y');
+        'b3IYBSABKAxSFGNvbnRyb2xBdXRoZW50aWNhdG9yEh8KC2tpbGxfc3dpdGNoGAYgASgIUgpraW'
+        'xsU3dpdGNo');
 
 @$core.Deprecated('Use connectResponseDescriptor instead')
 const ConnectResponse$json = {
@@ -570,6 +572,15 @@ const CoreEvent$json = {
       '9': 0,
       '10': 'killSwitchChanged'
     },
+    {
+      '1': 'group_switched',
+      '3': 11,
+      '4': 1,
+      '5': 11,
+      '6': '.sora.core.v1.GroupSwitched',
+      '9': 0,
+      '10': 'groupSwitched'
+    },
   ],
   '8': [
     {'1': 'payload'},
@@ -588,8 +599,9 @@ final $typed_data.Uint8List coreEventDescriptor =
         'JvYmVSZXN1bHRIAFILcHJvYmVSZXN1bHQSNQoJbG9nX2JhdGNoGAggASgLMhYuc29yYS5jb3Jl'
         'LnYxLkxvZ0JhdGNoSABSCGxvZ0JhdGNoEi8KBWVycm9yGAkgASgLMhcuc29yYS5jb3JlLnYxLl'
         'NvcmFFcnJvckgAUgVlcnJvchJRChNraWxsX3N3aXRjaF9jaGFuZ2VkGAogASgLMh8uc29yYS5j'
-        'b3JlLnYxLktpbGxTd2l0Y2hDaGFuZ2VkSABSEWtpbGxTd2l0Y2hDaGFuZ2VkQgkKB3BheWxvYW'
-        'Q=');
+        'b3JlLnYxLktpbGxTd2l0Y2hDaGFuZ2VkSABSEWtpbGxTd2l0Y2hDaGFuZ2VkEkQKDmdyb3VwX3'
+        'N3aXRjaGVkGAsgASgLMhsuc29yYS5jb3JlLnYxLkdyb3VwU3dpdGNoZWRIAFINZ3JvdXBTd2l0'
+        'Y2hlZEIJCgdwYXlsb2Fk');
 
 @$core.Deprecated('Use stateChangedDescriptor instead')
 const StateChanged$json = {
@@ -603,6 +615,20 @@ const StateChanged$json = {
 final $typed_data.Uint8List stateChangedDescriptor =
     $convert.base64Decode('CgxTdGF0ZUNoYW5nZWQSMwoFc3RhdGUYASABKAsyHS5zb3JhLmNvcmUudjEuQ29ubmVjdGlvbl'
         'N0YXRlUgVzdGF0ZQ==');
+
+@$core.Deprecated('Use groupSwitchedDescriptor instead')
+const GroupSwitched$json = {
+  '1': 'GroupSwitched',
+  '2': [
+    {'1': 'group', '3': 1, '4': 1, '5': 9, '10': 'group'},
+    {'1': 'selected', '3': 2, '4': 1, '5': 9, '10': 'selected'},
+  ],
+};
+
+/// Descriptor for `GroupSwitched`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List groupSwitchedDescriptor =
+    $convert.base64Decode('Cg1Hcm91cFN3aXRjaGVkEhQKBWdyb3VwGAEgASgJUgVncm91cBIaCghzZWxlY3RlZBgCIAEoCV'
+        'IIc2VsZWN0ZWQ=');
 
 @$core.Deprecated('Use statsTickDescriptor instead')
 const StatsTick$json = {

@@ -39,10 +39,10 @@ func TestLiveEngineLifecycle(t *testing.T) {
 	if err != nil || len(groups) != 1 || groups[0].Name != "Sora" {
 		t.Fatalf("Groups = %+v, %v", groups, err)
 	}
-	if err := instance.Select(ctx, "Sora", "Direct"); err != nil {
+	if err := instance.Select(ctx, "Sora", "direct-out"); err != nil {
 		t.Fatalf("Select: %v", err)
 	}
-	if groups, _ = instance.Groups(ctx); groups[0].Selected != "Direct" {
+	if groups, _ = instance.Groups(ctx); groups[0].Selected != "direct-out" {
 		t.Errorf("selection did not stick: %+v", groups[0])
 	}
 	if _, err := instance.Counters(ctx); err != nil {

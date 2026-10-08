@@ -24,6 +24,7 @@ type fakeEngine struct {
 	apply    error
 	stopErr  error
 	counters engine.Counters
+	groups   []engine.GroupStatus
 }
 
 func newFakeEngine() *fakeEngine {
@@ -79,8 +80,18 @@ func (f *fakeEngine) Close() error {
 	return nil
 }
 
-func (f *fakeEngine) Groups(context.Context) ([]engine.GroupStatus, error) { return nil, nil }
-func (f *fakeEngine) Select(context.Context, string, string) error         { return nil }
+func (f *fakeEngine) Groups(context.Context) ([]engine.GroupStatus, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]engine.GroupStatus(nil), f.groups...), nil
+}
+
+func (f *fakeEngine) setGroups(groups ...engine.GroupStatus) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.groups = groups
+}
+func (f *fakeEngine) Select(context.Context, string, string) error { return nil }
 func (f *fakeEngine) Delay(context.Context, string, string, time.Duration) (time.Duration, error) {
 	return 0, nil
 }
@@ -364,6 +375,12 @@ func TestKillSwitchFollowsTheSession(t *testing.T) {
 	if err := session.Start(context.Background()); err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
+	guard.mu.Lock()
+	armedFirst := guard.applied[0].KillSwitch
+	guard.mu.Unlock()
+	if !armedFirst {
+		t.Error("the kill switch must be armed by the first guard change, before the engine starts")
+	}
 	status := session.Status()
 	if !status.KillSwitch || status.TunnelMode != "system" {
 		t.Errorf("status = %+v, want the requested settings", status)
@@ -379,6 +396,67 @@ func TestKillSwitchFollowsTheSession(t *testing.T) {
 	}
 	if err := session.SetKillSwitch(context.Background(), true); errs.KeyOf(err) != errs.KeySessionRequired {
 		t.Errorf("arming the kill switch on a stopped session = %v, key = %q", err, errs.KeyOf(err))
+	}
+}
+
+func TestFallbackMovesAreJournaled(t *testing.T) {
+	eng, guard := newFakeEngine(), &fakeGuard{}
+	cfg := testConfig(eng, guard)
+	cfg.Plan.Outbounds = append(cfg.Plan.Outbounds, engine.Outbound{
+		ID: "out-2", Name: "Paris", Protocol: engine.ProtocolVLESS, Server: "fr1.example.com", Port: 443,
+	})
+	cfg.Plan.Groups = []engine.Group{
+		{Name: "auto", Type: engine.GroupFallback, Outbounds: []string{"out-1", "out-2"}, URL: "https://cp.cloudflare.com/generate_204"},
+		{Name: "pick", Type: engine.GroupSelect, Outbounds: []string{"out-1", "out-2"}},
+	}
+	eng.setGroups(
+		engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-1"},
+		engine.GroupStatus{Name: "pick", Type: engine.GroupSelect, Selected: "out-1"},
+	)
+	session, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Start(context.Background()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer func() { _ = session.Stop(context.Background()) }()
+
+	moves := func() []GroupSwitch {
+		var out []GroupSwitch
+		for _, ev := range session.Journal().Since(0, 0) {
+			if ev.Kind == EventGroup {
+				out = append(out, *ev.Switch)
+			}
+		}
+		return out
+	}
+	// Several looks pass before the change, and none of them reports the
+	// member the group started on.
+	time.Sleep(20 * groupLooks * cfg.StatsInterval)
+	if got := moves(); len(got) != 0 {
+		t.Fatalf("moves before any change = %v", got)
+	}
+	eng.setGroups(
+		engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-2"},
+		engine.GroupStatus{Name: "pick", Type: engine.GroupSelect, Selected: "out-2"},
+	)
+	waitFor(t, time.Second, func() bool { return len(moves()) == 1 })
+	eng.setGroups(engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-1"})
+	waitFor(t, time.Second, func() bool { return len(moves()) == 2 })
+	want := []GroupSwitch{{Group: "auto", Selected: "out-2"}, {Group: "auto", Selected: "out-1"}}
+	if got := moves(); got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("moves = %v, want %v", got, want)
+	}
+
+	// The engine restarts on the backup; the first look after that only
+	// records it.
+	eng.bus.Publish(engine.Event{Kind: engine.EventEngineDown})
+	waitFor(t, time.Second, func() bool { return session.State() == StateReconnecting })
+	eng.setGroups(engine.GroupStatus{Name: "auto", Type: engine.GroupFallback, Selected: "out-2"})
+	time.Sleep(20 * groupLooks * cfg.StatsInterval)
+	if got := moves(); len(got) != 2 {
+		t.Errorf("a restart was reported as a move: %v", got)
 	}
 }
 

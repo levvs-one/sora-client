@@ -36,8 +36,8 @@ func TestNegotiate(t *testing.T) {
 func TestCoreEventPayloadKinds(t *testing.T) {
 	// CoreEvent fields: 4=StateChanged, 5=StatsTick,
 	// 6=BypassStrategyChanged, 7=ProbeResult, 8=LogBatch, 9=SoraError,
-	// 10=KillSwitchChanged.
-	ones := []protoreflect.FieldNumber{4, 5, 6, 7, 8, 9, 10}
+	// 10=KillSwitchChanged, 11=GroupSwitched.
+	ones := []protoreflect.FieldNumber{4, 5, 6, 7, 8, 9, 10, 11}
 	message := (&corev1.CoreEvent{}).ProtoReflect().Descriptor().Oneofs().Get(0)
 	if message.Fields().Len() != len(ones) {
 		t.Fatalf("payload has %d fields, want %d", message.Fields().Len(), len(ones))

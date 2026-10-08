@@ -572,6 +572,9 @@ class SEn extends S {
   String get noticeNext => 'The server didn\'t answer; the next one carries the traffic';
 
   @override
+  String get noticeMainBack => 'The main server answers again and carries the traffic';
+
+  @override
   String get noticeSubscription => 'Subscription';
 
   @override

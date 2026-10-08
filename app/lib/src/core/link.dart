@@ -8,7 +8,7 @@ import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import 'pipe.dart';
 
 /// API 1.4 is required for the local proxy endpoint used by the system proxy.
-final apiVersion = ApiVersion(major: 1, minor: 4, minSupportedMinor: 4);
+final apiVersion = ApiVersion(major: 1, minor: 5, minSupportedMinor: 5);
 
 /// A gRPC channel to the core over a Unix socket or Windows named pipe, with
 /// the Handshake authentication token.

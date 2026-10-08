@@ -35,27 +35,65 @@ func (e *Engine) api() (*Client, error) {
 	return For(rt), nil
 }
 
-// Groups returns the selectable groups with their live state.
+// Groups returns the selectable groups with their live state. Names are the
+// plan's: the engine sees sanitized ones, and the session reports group moves
+// by outbound id.
 func (e *Engine) Groups(ctx context.Context) ([]engine.GroupStatus, error) {
 	c, err := e.api()
 	if err != nil {
 		return nil, err
 	}
 	groups, err := c.Groups(ctx)
-	return groups, e.Redactor().Err(err)
+	if err != nil {
+		return nil, e.Redactor().Err(err)
+	}
+	names := e.PlanNames()
+	if names == nil {
+		return groups, nil
+	}
+	plan := func(name string) string {
+		if id, ok := names[name]; ok {
+			return id
+		}
+		return name
+	}
+	for i := range groups {
+		g := &groups[i]
+		g.Name, g.Selected = plan(g.Name), plan(g.Selected)
+		for j := range g.All {
+			g.All[j] = plan(g.All[j])
+		}
+		latency := make(map[string]int, len(g.LatencyMS))
+		for name, ms := range g.LatencyMS {
+			latency[plan(name)] = ms
+		}
+		g.LatencyMS = latency
+	}
+	return groups, nil
 }
 
-// Select pins one member of a group.
+// Select pins one member of a group. Both may be given by plan name.
 func (e *Engine) Select(ctx context.Context, group, target string) error {
 	c, err := e.api()
 	if err != nil {
 		return err
 	}
-	if err := c.Select(ctx, group, target); err != nil {
+	if err := c.Select(ctx, e.engineName(group), e.engineName(target)); err != nil {
 		return e.Redactor().Err(err)
 	}
 	e.Events().Publish(engine.Event{Kind: engine.EventGroup, Group: &engine.GroupStatus{Name: group, Selected: target}})
 	return nil
+}
+
+// engineName turns a plan name into the one the engine was given and leaves
+// any other name as it is.
+func (e *Engine) engineName(name string) string {
+	for engineName, planName := range e.PlanNames() {
+		if planName == name {
+			return engineName
+		}
+	}
+	return name
 }
 
 // Delay measures one proxy through the engine.

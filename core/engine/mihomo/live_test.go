@@ -2,7 +2,10 @@ package mihomo
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,8 +76,10 @@ func TestLiveEngineLifecycle(t *testing.T) {
 	for _, g := range groups {
 		if g.Name == "Sora" {
 			found = true
-			if len(g.All) == 0 {
-				t.Errorf("group Sora has no members: %+v", g)
+			// The engine knows the server as "Edge"; the session and the
+			// client know it by its plan id.
+			if strings.Join(g.All, ",") != "edge,fallback" {
+				t.Errorf("group Sora members = %v, want the plan ids", g.All)
 			}
 		}
 	}
@@ -109,6 +114,65 @@ func TestLiveEngineLifecycle(t *testing.T) {
 
 // livePlan returns a direct outbound and selectable group, with no TUN and only
 // a mixed listener.
+// TestLiveFallbackReportsTheBackupByPlanID starts a fallback group whose
+// first server is dead and checks that the group moves to the second one and
+// names it by its plan id, which the session reports to the client.
+func TestLiveFallbackReportsTheBackupByPlanID(t *testing.T) {
+	path := os.Getenv(Prober.EnvVar)
+	if path == "" {
+		t.Skipf("set %s to the path of an engine binary to run this test", Prober.EnvVar)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	binary, err := Prober.Probe(ctx, path)
+	if err != nil {
+		t.Fatalf("probe %s: %v", path, err)
+	}
+	if binary.Goos != "" && binary.Goos != currentOS() {
+		t.Skipf("engine binary is built for %s", binary.Goos)
+	}
+	answers := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer answers.Close()
+
+	instance, err := New(supervise.Config{
+		Binary: binary, HomeDir: t.TempDir(), ProbeURL: answers.URL,
+		StartTimeout: 20 * time.Second, StopGrace: 3 * time.Second, RestartBudget: 1,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer func() { _ = instance.Close() }()
+	plan := &engine.Plan{
+		SessionID: "fallback",
+		Outbounds: []engine.Outbound{
+			// Nothing listens on port 9 of the loopback.
+			{ID: "dead", Name: "Main server", Protocol: engine.ProtocolShadowsocks, Server: "127.0.0.1", Port: 9, Password: "live-test-password", Cipher: "aes-256-gcm"},
+			{ID: "spare", Name: "Spare server", Protocol: engine.ProtocolDirect},
+		},
+		Groups:  []engine.Group{{Name: "sora:failover", Type: engine.GroupFallback, Outbounds: []string{"dead", "spare"}, URL: answers.URL}},
+		Rules:   []engine.Rule{{Type: engine.RuleMatchAll, Target: "sora:failover"}},
+		Options: engine.Options{LogLevel: "warning", Mode: "rule", TestURL: answers.URL},
+	}
+	if err := instance.Apply(ctx, plan); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	var last []engine.GroupStatus
+	for ctx.Err() == nil {
+		if last, err = instance.Groups(ctx); err != nil {
+			t.Fatalf("Groups: %v", err)
+		}
+		for _, g := range last {
+			if g.Name == "sora:failover" && g.Selected == "spare" {
+				return
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	t.Fatalf("the group never moved to the spare server: %+v", last)
+}
+
 func livePlan(session string) *engine.Plan {
 	return &engine.Plan{
 		SessionID: session,

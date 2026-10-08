@@ -25,6 +25,15 @@ Future<void> main() async {
   final sora = DesktopState(settings);
   final navigator = GlobalKey<NavigatorState>();
   final frames = <Map<String, Object>>[];
+  final errors = <String>[];
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    errors.add(details.exceptionAsString());
+  };
+  WidgetsBinding.instance.platformDispatcher.onError = (error, _) {
+    errors.add(error.toString());
+    return false;
+  };
   var scene = 'startup';
   SchedulerBinding.instance.addTimingsCallback((timings) {
     for (final frame in timings) {
@@ -63,8 +72,9 @@ Future<void> main() async {
       await Future<void>.delayed(const Duration(seconds: 6));
     }
   }
-  scene = 'tour';
   await windowManager.setSize(const Size(1440, 900));
+  await Future<void>.delayed(const Duration(seconds: 2));
+  scene = 'tour';
   final shellContext = navigator.currentState!.overlay!.context;
   // Find the shell below the root navigator without opening a real service.
   ShellScope? scope;
@@ -78,11 +88,11 @@ Future<void> main() async {
   scope!.replayTour();
   await Future<void>.delayed(const Duration(seconds: 1));
   for (var step = 0; step < 5; step++) {
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
     ShowcaseView.getNamed('sora-tour').next();
   }
   await Future<void>.delayed(const Duration(seconds: 1));
   await File(Platform.environment['SORA_PROFILE_OUTPUT'] ?? '/tmp/sora-ui2-profile.json')
-      .writeAsString(jsonEncode({'renderer': 'Flutter Linux profile on Xvfb', 'frames': frames}));
-  exit(0);
+      .writeAsString(jsonEncode({'renderer': 'Flutter Linux profile on Xvfb', 'errors': errors, 'frames': frames}));
+  exit(errors.isEmpty ? 0 : 1);
 }

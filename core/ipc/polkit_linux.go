@@ -34,8 +34,8 @@ type polkitResult struct {
 	Details    map[string]string
 }
 
-// polkitAllows asks polkit whether the peer process holds action. Any failure —
-// no system bus, no polkit, an unregistered action — is a refusal.
+// polkitAllows asks polkit whether the peer process holds action. Any failure
+// (no system bus, no polkit, an unregistered action) is a refusal.
 func polkitAllows(peer Peer, action string) bool {
 	if !peer.Verified || peer.PID <= 0 {
 		return false

@@ -588,7 +588,7 @@ class Sora extends ChangeNotifier {
 /// routing preset does not send direct. [choice] is "auto" for the fastest
 /// server, picked by the core, "bypass" for no server at all, or a server id.
 ///
-/// A profile — a whole Xray configuration a provider wrote for one server —
+/// A profile, a whole Xray configuration a provider wrote for one server,
 /// runs alone: it is the plan's only outbound when picked, and the fastest of
 /// the ordinary servers is chosen among the others. A subscription of profiles
 /// only picks the profile that answered fastest, from [latency].
@@ -726,7 +726,7 @@ SessionPlan buildPlan({
 }
 
 /// The member of a named group to run: the first that has not been measured
-/// as unreachable — in role order when the names carry roles, otherwise the
+/// as unreachable: in role order when the names carry roles, otherwise the
 /// fastest.
 OutboundSpec pickMember(Entry entry, Map<String, int?> latency) {
   bool down(OutboundSpec o) => latency.containsKey(o.id) && latency[o.id] == null;

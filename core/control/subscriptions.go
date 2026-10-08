@@ -391,7 +391,7 @@ func (b *subscriptionBook) refresh(ctx context.Context, id string) (*corev1.Subs
 
 // applyUpdateLocked stores a successful update: the new server credentials, the
 // new list, and the record, while the servers the provider dropped and the
-// list parts no longer needed are removed — all in one change of the vault.
+// list parts no longer needed are removed, all in one change of the vault.
 func (b *subscriptionBook) applyUpdateLocked(rec *subscriptionRecord, info subscription.Info, servers []importedServer) error {
 	list := &corev1.FetchSubscriptionResponse{}
 	puts := map[string][]byte{}

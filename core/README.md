@@ -1,85 +1,57 @@
 # core
 
-`core` is the Go module of the Sora network core. It supervises the forwarding
-engine, owns the system settings a tunnel needs, keeps credentials encrypted, and
-serves the control plane the interface talks to over `proto/sora/core/v1`.
+The `sora-core` service in Go. It runs the engines (sing-box, Xray, mihomo), keeps subscriptions and credentials encrypted, manages the kill switch and serves the gRPC API from `proto/sora/core/v1` to the app over a unix socket or a named pipe.
 
-## Layers
+## Packages
 
-| Package | What it owns |
+| Package | Purpose |
 | --- | --- |
-| `errs` | the error catalog: class, localization key, masked detail |
-| `secret` | the encrypted credential store |
-| `parser` | subscriptions and share links into an engine plan |
-| `engine` | the plan, the capability matrix, engine selection, redaction, backoff |
-| `engine/supervise` | the engine child process: probe, stdin config, validation, restarts |
-| `engine/clashapi` | the Clash API client and controls shared by mihomo and sing-box |
-| `engine/singbox`, `engine/xray`, `engine/mihomo` | one driver per engine |
-| `engine/registry` | which engines this machine has and which one carries a plan |
-| `session` | the session state machine, supervision, event journal, guard contract |
-| `guard` | the kill switch: nftables on Linux, WFP on Windows |
-| `probe` | measuring whether a server answers |
-| `subscription` | retrieving a subscription without exposing its token |
-| `diagnostics` | the report and the archive a user can safely send |
-| `control` | the control plane over `sora.core.v1` |
-| `ipc` | the local transport: named pipe, unix socket |
-| `cmd/sora-core` | the service itself: the composition root that wires the rest |
+| `cmd/sora-core` | the service entry point, Windows service install |
+| `control` | the gRPC API |
+| `ipc` | unix socket and named pipe, peer checks |
+| `session` | session state, event journal, network change handling |
+| `engine` | plan, engine capabilities and selection |
+| `engine/singbox`, `engine/xray`, `engine/mihomo` | config rendering per engine |
+| `engine/supervise` | engine processes: start, restart, stop |
+| `engine/clashapi` | Clash API client for mihomo and sing-box |
+| `engine/registry` | installed engines and which one runs a plan |
+| `engine/tunroute` | policy routing for Xray TUN on Linux |
+| `parser` | share links, subscriptions, Xray JSON |
+| `subscription` | subscription downloads and scheduled updates |
+| `secret` | encrypted storage (AES-256-GCM, DPAPI on Windows) |
+| `guard` | kill switch: nftables on Linux, WFP on Windows |
+| `probe` | server latency checks |
+| `routing` | routing presets |
+| `logs` | in-memory log store |
+| `diagnostics` | diagnostic report with secrets masked |
+| `errs` | error codes and message keys |
 
-## Engines
+Tested engine builds: sing-box 1.14.2, Xray 26.3.27, mihomo 1.19.32. The exact files and checksums are in `packaging/engines/engines.lock`.
 
-| Engine | Verified build | Control |
-| --- | --- | --- |
-| sing-box | 1.14.2 | Clash API; a new plan restarts the engine, selections survive in the cache file |
-| Xray | 26.3.27 | metrics listener; select groups pinned in routing, latency through a tester process |
-| mihomo | 1.19.32 | Clash API with hot apply |
+## Run
 
-The core picks, per plan, the first engine in `engine.DefaultPreference` that
-carries every protocol and feature of the plan; `-engine` pins one. The design
-and the capability matrix are in
-[docs/architecture/engines.md](../docs/architecture/engines.md).
+```sh
+go run ./cmd/sora-core -data-dir ./data                      # start
+go run ./cmd/sora-core -check                                # check that engines and permissions are in place
+go run ./cmd/sora-core -socket /tmp/sora.sock -data-dir ./data   # listen on a custom socket
+```
 
-With the engine binaries at hand, the tests run every rendered plan through the
-engine's own validator and drive each engine live:
+The app finds a custom socket through `SORA_CORE_SOCKET`.
+
+On Windows the installer registers the core as the `SoraCore` service (`sora-core.exe -install-service`). On Linux the package ships the `sora-core.service` systemd unit.
+
+## Test
+
+```sh
+go test -race ./...
+golangci-lint run
+go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+```
+
+With engine binaries available the tests also check every rendered config with the engine itself and send real traffic through it:
 
 ```sh
 SORA_SINGBOX_BIN=... SORA_XRAY_BIN=... SORA_MIHOMO_BIN=... SORA_ENGINES_DIR=... go test ./...
 ```
 
-## Running it
-
-The service is the product; the interface is one client of it. It starts, checks
-itself and stops without any interface present:
-
-```sh
-go run ./cmd/sora-core -data-dir ./data            # serve the control plane
-go run ./cmd/sora-core -check                      # is this machine ready
-go run ./cmd/sora-core -print-token                # the token a client presents
-```
-
-What a real start does, in this order: create the data directory owner-only,
-generate or read the control token, open the secret store under the machine key
-store, discover the engine binary, build the session manager with the kill
-switch and the network watch, attach the prober, the subscription fetcher and the
-diagnostics collector, open the local endpoint, and serve gRPC over it. On shutdown
-the session is stopped first, so the kill switch is lifted, and only then does the
-endpoint close.
-
-The loopback port of the local proxy is reserved by the service, not by the
-engine, and reported in `About`: in the proxy mode the interface points the
-system proxy of the person signed in at it. The service cannot do that itself —
-its own account's proxy is not the one any program the person runs reads.
-
-## Building and checking
-
-```sh
-# from the repository root
-buf generate --template proto/buf.gen.yaml proto
-
-cd core
-go test ./...                                              # everything, without the network
-go run golang.org/x/vuln/cmd/govulncheck@latest ./...       # reachable vulnerabilities
-```
-
-The Go artifacts of the contract are generated into `gen/` and are checked in; the
-Dart artifacts are generated by the autofix workflow. The reasoning behind each
-layer is in [`docs/architecture/core.md`](../docs/architecture/core.md).
+Code generated from the proto contract lives in `gen/` and is committed. Regenerate it with `buf generate` in `proto/`.

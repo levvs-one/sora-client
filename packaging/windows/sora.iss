@@ -64,9 +64,9 @@ ru.SelectTasksLabel2=Sora встанет службой и будет жить �
 en.SelectTasksLabel2=Sora installs as a service and lives in the tray by the clock.
 ru.FinishedHeadingLabel=Sora установлена
 en.FinishedHeadingLabel=Sora is installed
-ru.FinishedLabelNoIcons=Значок Sora — в трее рядом с часами.
+ru.FinishedLabelNoIcons=Значок Sora в трее рядом с часами.
 en.FinishedLabelNoIcons=Sora's icon is in the tray by the clock.
-ru.FinishedLabel=Значок Sora — в трее рядом с часами.
+ru.FinishedLabel=Значок Sora в трее рядом с часами.
 en.FinishedLabel=Sora's icon is in the tray by the clock.
 
 [CustomMessages]

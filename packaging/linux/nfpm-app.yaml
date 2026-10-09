@@ -27,6 +27,11 @@ overrides:
     depends: ["sora-core=${SORA_VERSION}", gtk3, webkit2gtk-4.1]
 
 contents:
+  - src: ./packaging/linux/sora-update
+    dst: /usr/lib/sora/sora-update
+    file_info: {mode: 0755}
+  - src: ./packaging/linux/io.github.levvs-one.sora.update.policy
+    dst: /usr/share/polkit-1/actions/io.github.levvs-one.sora.update.policy
   - src: ./app/build/linux/x64/release/bundle/
     dst: /usr/lib/sora/app
     type: tree

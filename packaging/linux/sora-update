@@ -1,0 +1,88 @@
+#!/bin/sh
+# pkexec authorizes only this root-owned entry point. Package managers receive
+# a private snapshot so the caller cannot change a file after verification.
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+
+die() { printf 'sora-update: %s\n' "$*" >&2; exit 1; }
+[ "$(id -u)" -eq 0 ] || die 'administrator rights are required'
+[ "$#" -eq 3 ] || die 'expected format, version and download directory'
+format=$1 version=$2 source=$3
+printf '%s\n' "$version" | LC_ALL=C grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || die 'invalid version'
+case "$source" in /*) ;; *) die 'download directory must be absolute' ;; esac
+[ "$(uname -m)" = x86_64 ] || die 'the desktop update requires x86_64'
+case "$format" in
+deb)
+    files="sora-core_${version}_amd64.deb sora_${version}_amd64.deb"
+    case "$(dpkg-query -S /usr/lib/sora/app/sora)" in
+        'sora: /usr/lib/sora/app/sora' | 'sora:amd64: /usr/lib/sora/app/sora') ;;
+        *) die 'Sora was not installed with dpkg' ;;
+    esac
+    for package in sora sora-core; do
+        [ "$(dpkg-query -W -f='${db:Status-Status}' "$package")" = installed ] || die 'both packages must be installed'
+    done
+    ;;
+rpm)
+    files="sora-core-${version}-1.x86_64.rpm sora-${version}-1.x86_64.rpm"
+    [ "$(rpm -qf --qf '%{NAME}' /usr/lib/sora/app/sora)" = sora ] || die 'Sora was not installed with rpm'
+    rpm -q sora sora-core >/dev/null || die 'both packages must be installed'
+    ;;
+arch)
+    files="sora-core-${version}-1-x86_64.pkg.tar.zst sora-${version}-1-x86_64.pkg.tar.zst"
+    [ "$(pacman -Qoq /usr/lib/sora/app/sora)" = sora ] || die 'Sora was not installed with pacman'
+    pacman -Q sora sora-core >/dev/null || die 'both packages must be installed'
+    ;;
+*) die 'unsupported package format' ;;
+esac
+
+work=$(mktemp -d /var/tmp/sora-update.XXXXXXXX)
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+for name in SHA256SUMS $files; do
+    [ -f "$source/$name" ] && [ ! -L "$source/$name" ] || die 'downloads must be regular files'
+    cp -P -- "$source/$name" "$work/$name"
+    # cp -P preserves a symlink raced into the source, which is then rejected.
+    [ -f "$work/$name" ] && [ ! -L "$work/$name" ] || die 'a download changed during copying'
+done
+cd "$work"
+for name in $files; do
+    # Match the filename literally, including the dots in release versions.
+    awk -v name="$name" 'length($1) == 64 && $1 !~ /[^0-9a-fA-F]/ && (substr($0, 67) == name || substr($0, 67) == "*" name) {print tolower($1) "  " name; count++} END {if (count != 1) exit 1}' SHA256SUMS >>expected || die 'missing or duplicate checksum'
+done
+sha256sum -c --quiet expected || die 'checksum mismatch; nothing was installed'
+
+for package in sora-core sora; do
+    case "$format" in
+    deb)
+        file="${package}_${version}_amd64.deb"
+        [ "$(dpkg-deb -f "$file" Package)" = "$package" ] || die 'unexpected package name'
+        [ "$(dpkg-deb -f "$file" Version)" = "$version" ] || die 'unexpected package version'
+        [ "$(dpkg-deb -f "$file" Architecture)" = amd64 ] || die 'unexpected architecture'
+        ;;
+    rpm)
+        file="${package}-${version}-1.x86_64.rpm"
+        [ "$(rpm -qp --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}' "$file")" = "$package $version-1 x86_64" ] || die 'unexpected package metadata'
+        ;;
+    arch)
+        file="${package}-${version}-1-x86_64.pkg.tar.zst"
+        [ "$(pacman -Qp "$file")" = "$package $version-1" ] || die 'unexpected package metadata'
+        ;;
+    esac
+done
+
+set --
+for name in $files; do set -- "$@" "$work/$name"; done
+case "$format" in
+deb) apt-get install -y "$@" ;;
+rpm)
+    if command -v dnf >/dev/null 2>&1; then
+        dnf install -y "$@"
+    elif command -v zypper >/dev/null 2>&1; then
+        zypper --non-interactive install --allow-unsigned-rpm "$@"
+    else
+        die 'dnf or zypper is required'
+    fi
+    ;;
+arch) pacman -U --noconfirm "$@" ;;
+esac

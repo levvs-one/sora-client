@@ -113,6 +113,8 @@ Name: "{autodesktop}\Sora"; Filename: "{app}\sora.exe"; Tasks: desktopicon
 ; by this script; an earlier registration is updated in place.
 Filename: "{app}\core\sora-core.exe"; Parameters: "-install-service -data-dir ""{commonappdata}\Sora"" -engines-dir ""{app}\core\engines"""; Flags: runhidden waituntilterminated; StatusMsg: "Sora core…"
 Filename: "{app}\sora.exe"; Description: "{cm:LaunchProgram,Sora}"; Flags: nowait postinstall skipifsilent
+; Silent updates always reopen Sora with the original user's credentials.
+Filename: "{app}\sora.exe"; Flags: nowait runasoriginaluser skipifnotsilent
 
 [UninstallRun]
 Filename: "{app}\core\sora-core.exe"; Parameters: "-uninstall-service"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveSoraCore"

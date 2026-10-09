@@ -335,6 +335,8 @@ jobs:
         # run side by side; one long sequential run exceeded the job budget.
         run: |
           for vpn in none happ openvpn; do
+            # The log stays owned by the runner user on purpose, for upload.
+            # shellcheck disable=SC2024
             sudo env "PATH=$PATH" "SORA_ENGINES_DIR=$PWD/dist/engines" "SORA_COEXIST_VPNS=$vpn" "SORA_COEXIST_WORK=$RUNNER_TEMP" \
               bash core/testdata/coexist/run.sh > "coexist-$vpn.log" 2>&1 &
           done

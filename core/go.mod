@@ -1,6 +1,6 @@
 module github.com/levvs-one/sora-client/core
 
-go 1.26.8
+go 1.26.9
 
 require (
 	github.com/Microsoft/go-winio v0.6.2

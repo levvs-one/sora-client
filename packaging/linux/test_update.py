@@ -48,7 +48,7 @@ class UpdateHelperTest(unittest.TestCase):
             "zypper" if zypper else "dnf": recorder,
         }
         command = [
-            "bwrap", "--unshare-all", "--uid", "0", "--gid", "0", "--die-with-parent",
+            "bwrap", "--unshare-all", "--share-net", "--uid", "0", "--gid", "0", "--die-with-parent",
             "--ro-bind", "/", "/", "--tmpfs", "/run", "--tmpfs", "/tmp",
             "--dev", "/dev",
             "--tmpfs", "/var/tmp", "--tmpfs", "/usr/bin", "--bind", str(self.root), "/tmp/test",

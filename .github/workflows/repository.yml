@@ -131,6 +131,9 @@ jobs:
         working-directory: .
         run: |
           shellcheck packaging/linux/sora-update
+          # Ubuntu 24.04 runners keep unprivileged user namespaces behind
+          # AppArmor; the helper test runs inside one.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           python3 packaging/linux/test_update.py -v
 
   windows:

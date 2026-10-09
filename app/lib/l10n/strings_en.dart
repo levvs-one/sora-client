@@ -797,4 +797,74 @@ class SEn extends S {
 
   @override
   String get mihomoExplanation => 'Server groups and automatic failover';
+
+  @override
+  String get checkUpdates => 'Check for updates';
+
+  @override
+  String get updates => 'App updates';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Version $version is available';
+  }
+
+  @override
+  String get updateOpenAbout => 'View update';
+
+  @override
+  String updateNotes(String version) {
+    return 'Changes in $version';
+  }
+
+  @override
+  String get updateCheck => 'Check now';
+
+  @override
+  String get updateChecking => 'Checking...';
+
+  @override
+  String get updateNoNotes => 'The release has no notes.';
+
+  @override
+  String get updateDropWarning =>
+      'The VPN connection will drop for a few seconds while Sora and its core update. Continue?';
+
+  @override
+  String get updateWaitConnection => 'Wait for the VPN connection and core to become ready.';
+
+  @override
+  String get updateDownloading => 'Downloading and verifying files...';
+
+  @override
+  String get updateInstalling => 'Preparing the update or waiting for administrator authentication...';
+
+  @override
+  String get updateNetworkError => 'Could not download the update. Try again.';
+
+  @override
+  String get updateReleaseError => 'The release data or required files are missing or invalid.';
+
+  @override
+  String get updateChecksumError => 'The download does not match SHA256SUMS. Nothing was installed.';
+
+  @override
+  String get updateInstallError => 'The update did not finish. Authentication may have been cancelled.';
+
+  @override
+  String get updateUnsupported =>
+      'This executable is not owned by a supported Sora package pair. Use the release installation instructions.';
+
+  @override
+  String get updateManual =>
+      'Run this command in a terminal to install both verified packages, then reopen Sora. The files stay in the download directory. The VPN connection will drop.';
+
+  @override
+  String get updateCopyCommand => 'Copy command';
+
+  @override
+  String get updateChecksDisabled => 'Automatic checks are disabled in Settings.';
+
+  @override
+  String get updateInstalled => 'Update installed. Reopen Sora.';
 }

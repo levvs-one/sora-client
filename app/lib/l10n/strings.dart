@@ -1561,6 +1561,132 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Группы серверов и авторезерв'**
   String get mihomoExplanation;
+
+  /// No description provided for @checkUpdates.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять обновления'**
+  String get checkUpdates;
+
+  /// No description provided for @updates.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления приложения'**
+  String get updates;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна версия {version}'**
+  String updateAvailable(String version);
+
+  /// No description provided for @updateOpenAbout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Посмотреть обновление'**
+  String get updateOpenAbout;
+
+  /// No description provided for @updateNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что изменилось в {version}'**
+  String updateNotes(String version);
+
+  /// No description provided for @updateCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить сейчас'**
+  String get updateCheck;
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверяем...'**
+  String get updateChecking;
+
+  /// No description provided for @updateNoNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автор релиза не добавил описание.'**
+  String get updateNoNotes;
+
+  /// No description provided for @updateDropWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'При обновлении Sora и ядра VPN-соединение прервётся на несколько секунд. Продолжить?'**
+  String get updateDropWarning;
+
+  /// No description provided for @updateWaitConnection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дождитесь завершения подключения и готовности службы Sora.'**
+  String get updateWaitConnection;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачиваем и проверяем файлы...'**
+  String get updateDownloading;
+
+  /// No description provided for @updateInstalling.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подготовка обновления или ожидание пароля администратора...'**
+  String get updateInstalling;
+
+  /// No description provided for @updateNetworkError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось скачать обновление. Попробуйте ещё раз.'**
+  String get updateNetworkError;
+
+  /// No description provided for @updateReleaseError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные релиза или нужные файлы отсутствуют либо некорректны.'**
+  String get updateReleaseError;
+
+  /// No description provided for @updateChecksumError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файл не совпадает с SHA256SUMS. Установка не запускалась.'**
+  String get updateChecksumError;
+
+  /// No description provided for @updateInstallError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление не завершилось. Возможно, запрос прав был отменён.'**
+  String get updateInstallError;
+
+  /// No description provided for @updateUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот файл приложения не принадлежит поддерживаемой паре пакетов Sora. Используйте инструкцию установки из описания релиза.'**
+  String get updateUnsupported;
+
+  /// No description provided for @updateManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выполните команду в терминале для установки обоих проверенных пакетов, затем откройте Sora снова. Файлы сохранены в каталоге загрузки. VPN-соединение прервётся.'**
+  String get updateManual;
+
+  /// No description provided for @updateCopyCommand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать команду'**
+  String get updateCopyCommand;
+
+  /// No description provided for @updateChecksDisabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматические проверки отключены в настройках.'**
+  String get updateChecksDisabled;
+
+  /// No description provided for @updateInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление установлено. Откройте Sora снова.'**
+  String get updateInstalled;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

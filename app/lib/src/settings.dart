@@ -38,6 +38,9 @@ class Settings {
     'notificationHistory',
     'speedtestService',
     'speedtestFilter',
+    'checkUpdates',
+    'notifiedUpdate',
+    'resumeAfterUpdate',
   };
 
   final SharedPreferencesWithCache _store;
@@ -187,6 +190,13 @@ class Settings {
   bool get notifications => _store.getBool('notifications') ?? true;
   set notifications(bool value) => _store.setBool('notifications', value);
 
+  bool get checkUpdates => _store.getBool('checkUpdates') ?? true;
+  Future<void> saveCheckUpdates(bool value) => _store.setBool('checkUpdates', value);
+  String get notifiedUpdate => _store.getString('notifiedUpdate') ?? '';
+  Future<void> saveNotifiedUpdate(String value) => _store.setString('notifiedUpdate', value);
+  bool get resumeAfterUpdate => _store.getBool('resumeAfterUpdate') ?? false;
+  Future<void> saveResumeAfterUpdate(bool value) => _store.setBool('resumeAfterUpdate', value);
+
   /// Original system proxy settings and Sora's endpoint, retained until
   /// restoration. Saving is awaited before proxy changes to allow crash
   /// recovery.
@@ -227,9 +237,11 @@ class Settings {
     // settings.
     final snapshot = proxySnapshot;
     final history = notificationHistory;
+    final notified = notifiedUpdate;
     await _store.clear();
     await completeTour();
     await saveNotificationHistory(history);
+    if (notified.isNotEmpty) await saveNotifiedUpdate(notified);
     if (snapshot.isNotEmpty) await saveProxySnapshot(snapshot);
     await _migrate();
   }

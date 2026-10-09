@@ -816,4 +816,74 @@ class SRu extends S {
 
   @override
   String get mihomoExplanation => 'Группы серверов и авторезерв';
+
+  @override
+  String get checkUpdates => 'Проверять обновления';
+
+  @override
+  String get updates => 'Обновления приложения';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Доступна версия $version';
+  }
+
+  @override
+  String get updateOpenAbout => 'Посмотреть обновление';
+
+  @override
+  String updateNotes(String version) {
+    return 'Что изменилось в $version';
+  }
+
+  @override
+  String get updateCheck => 'Проверить сейчас';
+
+  @override
+  String get updateChecking => 'Проверяем...';
+
+  @override
+  String get updateNoNotes => 'Автор релиза не добавил описание.';
+
+  @override
+  String get updateDropWarning =>
+      'При обновлении Sora и ядра VPN-соединение прервётся на несколько секунд. Продолжить?';
+
+  @override
+  String get updateWaitConnection => 'Дождитесь завершения подключения и готовности службы Sora.';
+
+  @override
+  String get updateDownloading => 'Скачиваем и проверяем файлы...';
+
+  @override
+  String get updateInstalling => 'Подготовка обновления или ожидание пароля администратора...';
+
+  @override
+  String get updateNetworkError => 'Не удалось скачать обновление. Попробуйте ещё раз.';
+
+  @override
+  String get updateReleaseError => 'Данные релиза или нужные файлы отсутствуют либо некорректны.';
+
+  @override
+  String get updateChecksumError => 'Файл не совпадает с SHA256SUMS. Установка не запускалась.';
+
+  @override
+  String get updateInstallError => 'Обновление не завершилось. Возможно, запрос прав был отменён.';
+
+  @override
+  String get updateUnsupported =>
+      'Этот файл приложения не принадлежит поддерживаемой паре пакетов Sora. Используйте инструкцию установки из описания релиза.';
+
+  @override
+  String get updateManual =>
+      'Выполните команду в терминале для установки обоих проверенных пакетов, затем откройте Sora снова. Файлы сохранены в каталоге загрузки. VPN-соединение прервётся.';
+
+  @override
+  String get updateCopyCommand => 'Скопировать команду';
+
+  @override
+  String get updateChecksDisabled => 'Автоматические проверки отключены в настройках.';
+
+  @override
+  String get updateInstalled => 'Обновление установлено. Откройте Sora снова.';
 }

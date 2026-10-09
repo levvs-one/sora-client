@@ -279,5 +279,40 @@
   "autoEngineExplanation": "The core picks a compatible engine",
   "singboxExplanation": "Flexible routing and TUN",
   "xrayExplanation": "VLESS, REALITY and TLS fragmentation",
-  "mihomoExplanation": "Server groups and automatic failover"
+  "mihomoExplanation": "Server groups and automatic failover",
+  "checkUpdates": "Check for updates",
+  "updates": "App updates",
+  "updateAvailable": "Version {version} is available",
+  "updateOpenAbout": "View update",
+  "updateNotes": "Changes in {version}",
+  "updateCheck": "Check now",
+  "updateChecking": "Checking...",
+  "updateNoNotes": "The release has no notes.",
+  "updateDropWarning": "The VPN connection will drop for a few seconds while Sora and its core update. Continue?",
+  "updateWaitConnection": "Wait for the VPN connection and core to become ready.",
+  "updateDownloading": "Downloading and verifying files...",
+  "updateInstalling": "Preparing the update or waiting for administrator authentication...",
+  "updateNetworkError": "Could not download the update. Try again.",
+  "updateReleaseError": "The release data or required files are missing or invalid.",
+  "updateChecksumError": "The download does not match SHA256SUMS. Nothing was installed.",
+  "updateInstallError": "The update did not finish. Authentication may have been cancelled.",
+  "updateUnsupported": "This executable is not owned by a supported Sora package pair. Use the release installation instructions.",
+  "updateManual": "Run this command in a terminal to install both verified packages, then reopen Sora. The files stay in the download directory. The VPN connection will drop.",
+  "updateCopyCommand": "Copy command",
+  "updateChecksDisabled": "Automatic checks are disabled in Settings.",
+  "updateInstalled": "Update installed. Reopen Sora.",
+  "@updateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "@updateNotes": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  }
 }

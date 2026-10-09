@@ -91,7 +91,7 @@ class _Orb extends StatelessWidget {
     final phase = sora.phase;
     final on = phase == Phase.connected;
     final working = phase == Phase.connecting || phase == Phase.reconnecting || phase == Phase.disconnecting;
-    final reachable = phase != Phase.offline && !sora.busy;
+    final reachable = phase != Phase.offline && !sora.busy && !sora.updateBlocked;
     return Semantics(
       button: true,
       toggled: on,

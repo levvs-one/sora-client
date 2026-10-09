@@ -13,6 +13,7 @@ import 'kit.dart';
 import 'logs.dart';
 import 'subscription.dart';
 import 'speedtest.dart';
+import 'about.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -60,6 +61,7 @@ class NotificationRow extends StatelessWidget {
       'logs' => s.openLogs,
       'subscription' => s.subscription,
       'speedtest' => s.refresh,
+      'update' => s.updateOpenAbout,
       _ => null,
     };
     return Padding(
@@ -103,6 +105,8 @@ class NotificationRow extends StatelessWidget {
 void runNotificationAction(BuildContext context, AppNotification notice) {
   final sora = SoraScope.read(context);
   switch (notice.action) {
+    case 'update':
+      unawaited(push<void>(context, const AboutScreen()));
     case 'connect':
       unawaited(sora.connect());
     case 'logs':

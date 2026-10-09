@@ -20,6 +20,7 @@ Future<void> main(List<String> args) async {
   final desktop = Platform.isLinux || Platform.isWindows ? Desktop(sora, navigator) : null;
   await desktop?.start(hidden: args.contains('--hidden'));
   runApp(SoraApp(sora: sora, navigator: navigator, desktop: desktop));
+  WidgetsBinding.instance.addPostFrameCallback((_) => sora.updates.start());
 }
 
 class SoraApp extends StatefulWidget {

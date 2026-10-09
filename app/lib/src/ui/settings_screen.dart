@@ -167,6 +167,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         Group(
           children: [
+            SwitchTile(
+              title: s.checkUpdates,
+              value: settings.checkUpdates,
+              onChanged: (v) => unawaited(sora.updates.setChecking(v)),
+            ),
             if (desktop != null)
               SwitchTile(
                 title: s.launchAtLogin,
@@ -375,7 +380,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         Group(
           children: [
-            LinkTile(title: s.about, onTap: () => push<void>(context, const AboutScreen())),
+            LinkTile(
+              title: s.about,
+              value: sora.updates.hasUpdate ? s.updateAvailable(sora.updates.latest!.version) : null,
+              onTap: () => push<void>(context, const AboutScreen()),
+            ),
             Tile(
               title: s.reset,
               titleColor: palette.danger,

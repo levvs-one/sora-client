@@ -446,10 +446,12 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
                         width: 44,
                         child: Center(
                           child: Badge(
-                            isLabelVisible: index == 4 && sora.unreadCount > 0,
+                            isLabelVisible: index == 4 && sora.unreadCount > 0 || index == 6 && sora.updates.hasUpdate,
                             backgroundColor: palette.ink,
                             textColor: palette.surface,
-                            label: Text('${sora.unreadCount}', style: Styles.caption.copyWith(color: palette.surface)),
+                            label: index == 4
+                                ? Text('${sora.unreadCount}', style: Styles.caption.copyWith(color: palette.surface))
+                                : null,
                             child: Icon(icon, size: 22, color: _section == index ? palette.ink : palette.ink2),
                           ),
                         ),

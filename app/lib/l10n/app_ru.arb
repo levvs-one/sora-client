@@ -431,5 +431,40 @@
   "autoEngineExplanation": "Ядро подбирает совместимый движок",
   "singboxExplanation": "Гибкая маршрутизация и TUN",
   "xrayExplanation": "VLESS, REALITY и TLS-фрагментация",
-  "mihomoExplanation": "Группы серверов и авторезерв"
+  "mihomoExplanation": "Группы серверов и авторезерв",
+  "checkUpdates": "Проверять обновления",
+  "updates": "Обновления приложения",
+  "updateAvailable": "Доступна версия {version}",
+  "updateOpenAbout": "Посмотреть обновление",
+  "updateNotes": "Что изменилось в {version}",
+  "updateCheck": "Проверить сейчас",
+  "updateChecking": "Проверяем...",
+  "updateNoNotes": "Автор релиза не добавил описание.",
+  "updateDropWarning": "При обновлении Sora и ядра VPN-соединение прервётся на несколько секунд. Продолжить?",
+  "updateWaitConnection": "Дождитесь завершения подключения и готовности службы Sora.",
+  "updateDownloading": "Скачиваем и проверяем файлы...",
+  "updateInstalling": "Подготовка обновления или ожидание пароля администратора...",
+  "updateNetworkError": "Не удалось скачать обновление. Попробуйте ещё раз.",
+  "updateReleaseError": "Данные релиза или нужные файлы отсутствуют либо некорректны.",
+  "updateChecksumError": "Файл не совпадает с SHA256SUMS. Установка не запускалась.",
+  "updateInstallError": "Обновление не завершилось. Возможно, запрос прав был отменён.",
+  "updateUnsupported": "Этот файл приложения не принадлежит поддерживаемой паре пакетов Sora. Используйте инструкцию установки из описания релиза.",
+  "updateManual": "Выполните команду в терминале для установки обоих проверенных пакетов, затем откройте Sora снова. Файлы сохранены в каталоге загрузки. VPN-соединение прервётся.",
+  "updateCopyCommand": "Скопировать команду",
+  "updateChecksDisabled": "Автоматические проверки отключены в настройках.",
+  "updateInstalled": "Обновление установлено. Откройте Sora снова.",
+  "@updateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "@updateNotes": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  }
 }

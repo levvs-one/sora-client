@@ -1,18 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
 import '../design/logo.dart';
 import '../design/theme.dart';
+import '../desktop/desktop.dart';
 import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import '../sora.dart';
+import '../updates.dart';
 import 'kit.dart';
-
-/// Release version supplied by --dart-define=SORA_VERSION; defaults to dev for
-/// unstamped builds.
-const appVersion = String.fromEnvironment('SORA_VERSION', defaultValue: 'dev');
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -50,6 +50,11 @@ class _AboutScreenState extends State<AboutScreen> {
     final s = S.of(context);
     final palette = Palette.of(context);
     final about = _about;
+    final sora = SoraScope.of(context);
+    final updates = sora.updates;
+    final release = updates.latest;
+    final desktop = DesktopScope.maybeOf(context);
+    final canInstall = !sora.busy && sora.phase != Phase.reconnecting && sora.phase != Phase.offline;
     return Screen(
       title: s.about,
       children: [
@@ -61,9 +66,142 @@ class _AboutScreenState extends State<AboutScreen> {
               const SizedBox(height: 18),
               Text('Sora', style: Styles.title.copyWith(color: palette.ink)),
               const SizedBox(height: 4),
-              Text(s.appVersion(appVersion), style: Styles.secondary.copyWith(color: palette.ink)),
+              Text(s.appVersion(updates.version), style: Styles.secondary.copyWith(color: palette.ink)),
             ],
           ),
+        ),
+        Group(
+          children: [
+            Tile(
+              title: updates.hasUpdate
+                  ? s.updateAvailable(release!.version)
+                  : updates.installed
+                  ? s.updateInstalled
+                  : s.updates,
+              trailing: TextButton(
+                onPressed: updates.checking || updates.busy ? null : () => unawaited(updates.check(manual: true)),
+                child: Text(updates.checking ? s.updateChecking : s.updateCheck),
+              ),
+            ),
+            if (release != null) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(s.updateNotes(release.version), style: Styles.bodyStrong.copyWith(color: palette.ink)),
+                    const SizedBox(height: 8),
+                    if (release.notes.isEmpty)
+                      Text(s.updateNoNotes, style: Styles.secondary.copyWith(color: palette.ink2))
+                    else
+                      MarkdownBody(
+                        key: const ValueKey('release-notes'),
+                        data: release.notes,
+                        selectable: true,
+                        imageBuilder: (_, _, alt) =>
+                            Text(alt ?? '', style: Styles.secondary.copyWith(color: palette.ink2)),
+                        styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                          p: Styles.secondary.copyWith(color: palette.ink2),
+                          a: Styles.secondary.copyWith(color: palette.ink, decoration: TextDecoration.underline),
+                          h1: Styles.heading.copyWith(color: palette.ink),
+                          h2: Styles.bodyStrong.copyWith(color: palette.ink),
+                          h3: Styles.bodyStrong.copyWith(color: palette.ink),
+                          listBullet: Styles.secondary.copyWith(color: palette.ink2),
+                          code: Styles.caption.copyWith(color: palette.ink),
+                        ),
+                        onTapLink: (_, href, _) {
+                          if (href != null) unawaited(openLink(context, href));
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            if (updates.hasUpdate)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PrimaryButton(
+                      key: const ValueKey('install-update'),
+                      label: s.refresh,
+                      busy: updates.busy,
+                      onTap: canInstall && desktop != null
+                          ? () => unawaited(
+                              updates.install(
+                                confirmDrop: () => !mounted
+                                    ? Future.value(false)
+                                    : confirm(
+                                        context,
+                                        question: s.updateDropWarning,
+                                        action: s.refresh,
+                                        destructive: false,
+                                      ),
+                                launchWindows: desktop.launchUpdate,
+                                restartLinux: desktop.restartAfterUpdate,
+                                quit: desktop.quit,
+                              ),
+                            )
+                          : null,
+                    ),
+                    if (updates.busy) ...[
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: updates.progress,
+                        color: palette.ink,
+                        backgroundColor: palette.field,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        updates.progress == null ? s.updateInstalling : s.updateDownloading,
+                        style: Styles.caption.copyWith(color: palette.ink2),
+                      ),
+                    ],
+                    if (!canInstall) ...[
+                      const SizedBox(height: 8),
+                      Text(s.updateWaitConnection, style: Styles.secondary.copyWith(color: palette.ink2)),
+                    ],
+                  ],
+                ),
+              ),
+            if (updates.error case final error?)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(switch (error) {
+                  UpdateError.network => s.updateNetworkError,
+                  UpdateError.release => s.updateReleaseError,
+                  UpdateError.checksum => s.updateChecksumError,
+                  UpdateError.installation => s.updateInstallError,
+                  UpdateError.connecting => s.updateWaitConnection,
+                  UpdateError.unsupported => s.updateUnsupported,
+                }, style: Styles.secondary.copyWith(color: palette.danger)),
+              ),
+            if (updates.manualCommand case final command?)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(s.updateManual, style: Styles.secondary.copyWith(color: palette.ink2)),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      command,
+                      key: const ValueKey('update-command'),
+                      style: Styles.caption.copyWith(color: palette.ink),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: command));
+                      },
+                      child: Text(s.updateCopyCommand),
+                    ),
+                  ],
+                ),
+              ),
+            if (!updates.checking && release == null && !sora.settings.checkUpdates)
+              Tile(title: s.updateChecksDisabled),
+          ],
         ),
         if (about != null) ...[
           Group(

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ffi';
+import 'dart:isolate';
 import 'dart:ui' show Locale, PlatformDispatcher;
 
 import 'package:app_links/app_links.dart';
@@ -10,11 +12,14 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:nativeapi/nativeapi.dart' show LaunchAtLogin;
 import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
+import 'package:ffi/ffi.dart';
+import 'package:win32/win32.dart';
 
 import '../../l10n/strings.dart';
 import '../groups.dart';
 import '../notifications.dart';
 import '../sora.dart';
+import '../updates.dart';
 import '../ui/kit.dart';
 import '../ui/servers.dart';
 import '../ui/subscription_sheet.dart';
@@ -160,6 +165,43 @@ class Desktop with WindowListener {
     _icon?.setVisible(false);
     await windowManager.setPreventClose(false);
     await windowManager.destroy();
+  }
+
+  Future<void> launchUpdate(File installer) async {
+    final path = installer.path;
+    await Isolate.run(
+      () => using((arena) {
+        final initialized = CoInitializeEx(COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        if (initialized.isError) throw const UpdateFailure(UpdateError.installation);
+        try {
+          final info = arena<SHELLEXECUTEINFO>();
+          info.ref
+            ..cbSize = sizeOf<SHELLEXECUTEINFO>()
+            // SEE_MASK_NOASYNC and SEE_MASK_FLAG_NO_UI are absent from win32's
+            // generated constants. Wait for handoff without a Shell error dialog.
+            ..fMask = 0x00000100 | 0x00000400
+            // Inno's unelevated loader must retain the original user's identity.
+            ..lpVerb = 'open'.toPwstr(allocator: arena)
+            ..lpFile = path.toPwstr(allocator: arena)
+            ..lpParameters = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'.toPwstr(allocator: arena)
+            ..nShow = SW_SHOWNORMAL;
+          if (!ShellExecuteEx(info).value) throw const UpdateFailure(UpdateError.installation);
+        } finally {
+          CoUninitialize();
+        }
+      }),
+    );
+  }
+
+  Future<void> restartAfterUpdate() async {
+    // Wait for this process to release Flutter's shared libraries before loading
+    // the newly installed ones. The watcher runs with the desktop user's UID.
+    await Process.start('/bin/sh', [
+      '-c',
+      'while kill -0 "\$1" 2>/dev/null; do sleep 1; done; exec /usr/bin/sora',
+      'sora-restart',
+      '$pid',
+    ], mode: ProcessStartMode.detached);
   }
 
   // Login launches stay hidden to avoid interrupting the desktop.

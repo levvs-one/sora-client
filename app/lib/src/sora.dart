@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/io_client.dart';
 
 import '../l10n/strings.dart';
 
@@ -12,6 +14,7 @@ import 'groups.dart';
 import 'rules.dart';
 import 'settings.dart';
 import 'notifications.dart';
+import 'updates.dart';
 import 'ui/kit.dart' show describe;
 
 /// Connection phases exposed to the UI.
@@ -60,6 +63,39 @@ final class ServerReturned extends Notice {
 /// rebuild on notifications.
 class Sora extends ChangeNotifier {
   Sora(this.settings) : history = settings.notificationHistory;
+
+  AppUpdater get updates => _updates;
+  late final _updates = AppUpdater(
+    settings,
+    connection: () => switch (phase) {
+      Phase.off => UpdateConnection.idle,
+      Phase.connected => UpdateConnection.connected,
+      Phase.offline => UpdateConnection.unknown,
+      _ => UpdateConnection.changing,
+    },
+    client: () => IOClient(
+      HttpClient()
+        ..findProxy = (uri) {
+          final proxy = localProxy;
+          if (settings.tunnel == 'proxy' &&
+              proxy != null &&
+              (phase == Phase.connected || phase == Phase.reconnecting)) {
+            return 'PROXY ${proxy.host}:${proxy.port}';
+          }
+          return HttpClient.findProxyFromEnvironment(uri);
+        },
+    ),
+    available: (release) => recordNotification(
+      AppNotification(
+        time: DateTime.now(),
+        title: strings.updateAvailable(release.version),
+        body: strings.updateOpenAbout,
+        action: 'update',
+      ),
+    ),
+  )..addListener(notifyListeners);
+
+  bool get updateBlocked => updates.busy;
 
   final _messages = StreamController<AppNotification>.broadcast();
   Stream<AppNotification> get messages => _messages.stream;
@@ -310,15 +346,19 @@ class Sora extends ChangeNotifier {
         _watchSubscriptions();
         _watchSession();
         notifyListeners();
-        if (settings.connectOnStart && !_startedOnce && phase == Phase.off) {
+        if ((settings.connectOnStart || settings.resumeAfterUpdate) && !_startedOnce && phase == Phase.off) {
           // Auto-connect only once per launch so core reconnection cannot undo
           // an explicit disconnect.
           _startedOnce = true;
           // Allow time for the initial server list to arrive through the
           // subscription watch.
           await Future<void>.delayed(const Duration(milliseconds: 600));
-          if (phase == Phase.off) unawaited(connect());
+          if (phase == Phase.off) {
+            await settings.saveResumeAfterUpdate(false);
+            unawaited(connect());
+          }
         }
+        if (phase == Phase.connected && settings.resumeAfterUpdate) await settings.saveResumeAfterUpdate(false);
         _startedOnce = true;
         await dropped.future;
       } catch (error) {
@@ -527,6 +567,7 @@ class Sora extends ChangeNotifier {
   /// Connects using the current selection and settings. [retry] preserves the
   /// remaining attempt count during profile-group failover.
   Future<void> connect({bool retry = false}) async {
+    if (updateBlocked) return;
     final link = _link;
     if (link == null) return;
     failure = null;
@@ -625,7 +666,9 @@ class Sora extends ChangeNotifier {
   /// Applies settings and notifies listeners. [replan] also reconnects an
   /// active session; disable for appearance-only changes.
   Future<void> change(void Function(Settings) apply, {bool replan = true}) async {
+    final checks = settings.checkUpdates;
     apply(settings);
+    if (checks != settings.checkUpdates) await updates.setChecking(settings.checkUpdates);
     notifyListeners();
     if (replan) await _replan();
   }
@@ -633,6 +676,7 @@ class Sora extends ChangeNotifier {
   /// Resets settings to defaults and reapplies the active connection plan.
   Future<void> reset() async {
     await settings.reset();
+    await updates.setChecking(settings.checkUpdates);
     notifyListeners();
     await _replan();
   }
@@ -825,6 +869,7 @@ class Sora extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _statsTimer?.cancel();
+    updates.dispose();
     unawaited(_notices.close());
     unawaited(_messages.close());
     unawaited(_cancelWatches());

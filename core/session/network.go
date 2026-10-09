@@ -16,7 +16,7 @@ import (
 // changes promptly at low polling cost.
 const DefaultNetworkInterval = 2 * time.Second
 
-// NetworkFingerprint includes up non-loopback/non-TUN interfaces, IPv4
+// NetworkFingerprint includes up interfaces other than loopback and Sora, IPv4
 // addresses, and global IPv6 /64 prefixes. It detects network or lease changes,
 // ignoring same-network privacy address rotation. Empty means offline.
 func NetworkFingerprint() string {
@@ -43,9 +43,6 @@ func NetworkFingerprint() string {
 				continue
 			}
 			addr = addr.Unmap()
-			if slices.ContainsFunc(tunPrefixes, func(p netip.Prefix) bool { return p.Contains(addr) }) {
-				continue
-			}
 			switch {
 			case addr.Is4():
 				parts = append(parts, iface.Name+" "+addr.String())
@@ -58,14 +55,6 @@ func NetworkFingerprint() string {
 	slices.Sort(parts)
 	return strings.Join(slices.Compact(parts), ",")
 }
-
-var tunPrefixes = func() []netip.Prefix {
-	out := make([]netip.Prefix, len(engine.TunNetworks))
-	for i, n := range engine.TunNetworks {
-		out[i] = netip.MustParsePrefix(n)
-	}
-	return out
-}()
 
 // networkWatch detects network changes and resume from sleep so dead old-path
 // TCP connections can be closed without waiting for application timeouts.

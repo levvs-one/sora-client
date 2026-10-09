@@ -63,8 +63,10 @@ func Start(ctx context.Context, spec Spec) (*Process, error) {
 	// Capture both streams because engine output varies by build and level;
 	// retain a bounded tail for crash reports.
 	var out io.Writer = tail
+	var lines *lineWriter
 	if spec.Lines != nil {
-		out = io.MultiWriter(tail, &lineWriter{emit: spec.Lines})
+		lines = &lineWriter{emit: spec.Lines}
+		out = io.MultiWriter(tail, lines)
 	}
 	cmd.Stdout = out
 	cmd.Stderr = out
@@ -75,6 +77,9 @@ func Start(ctx context.Context, spec Spec) (*Process, error) {
 	p := &Process{name: spec.Name, cmd: cmd, stderr: tail, done: make(chan struct{})}
 	go func() {
 		err := cmd.Wait()
+		if lines != nil {
+			lines.flush()
+		}
 		p.mu.Lock()
 		p.err = err
 		p.mu.Unlock()
@@ -216,4 +221,15 @@ func (w *lineWriter) Write(p []byte) (int, error) {
 		w.buf = nil
 	}
 	return len(p), nil
+}
+
+// flush retains a final diagnostic even when the child did not end it with a
+// newline. cmd.Wait has finished copying both streams before this call.
+func (w *lineWriter) flush() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if len(w.buf) != 0 {
+		w.emit(string(w.buf))
+		w.buf = nil
+	}
 }

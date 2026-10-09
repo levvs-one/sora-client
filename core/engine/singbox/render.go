@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -370,7 +371,7 @@ func (r *renderer) route() (obj, error) {
 		rules = append(rules, match)
 	}
 	r.final = final
-	out := obj{"rules": rules, "final": final, "auto_detect_interface": true}
+	out := obj{"rules": rules, "final": final, "auto_detect_interface": !r.plan.Tun.Enabled || runtime.GOOS != "linux"}
 	if len(r.ruleSets) > 0 {
 		// Fetch rule sets through the default route to reach hosts
 		// blocked on the local network.
@@ -532,8 +533,8 @@ func (r *renderer) proxyFinal() string {
 func tun(t engine.Tun) obj {
 	return obj{
 		"type": "tun", "tag": "tun-in",
-		"address":      []string{"172.19.0.1/30", "fdfe:dcba:9876::1/126"},
-		"auto_route":   true,
+		"address":      t.Addresses(),
+		"auto_route":   runtime.GOOS != "linux",
 		"strict_route": t.StrictRoute,
 		"stack":        orDefault(t.Stack, "mixed"),
 		"mtu":          orDefaultInt(t.MTU, 9000),

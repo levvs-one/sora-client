@@ -4,11 +4,20 @@
 // queried names.
 package tunroute
 
-import "context"
+import (
+	"context"
+
+	"github.com/levvs-one/sora-client/core/engine"
+)
 
 // Route sends traffic outside uid through device, replacing earlier routes
 // after adapter recreation.
-func Route(ctx context.Context, device string, uid int) error { return route(ctx, device, uid) }
+func Route(ctx context.Context, tun engine.Tun, uid int) error { return route(ctx, tun, uid) }
+
+// Cleanup removes routing and addresses left by a previous core run.
+func Cleanup(ctx context.Context) error {
+	return cleanup(ctx, engine.Tun{DeviceName: engine.TunDevice})
+}
 
 // Unroute removes routing rules and the table. It succeeds when nothing is
 // installed.

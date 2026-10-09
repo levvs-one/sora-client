@@ -92,6 +92,8 @@ type LogParser interface {
 // that would otherwise be downloaded.
 type Preparer interface {
 	Prepare(rt Runtime, b Binary) error
+	// PrepareStart may reset persistent state; validation must never do so.
+	PrepareStart(p *engine.Plan, rt Runtime) error
 }
 
 // Config configures one supervised engine instance.
@@ -129,6 +131,7 @@ type Supervisor struct {
 	plan     *engine.Plan
 	proc     *Process
 	stopping bool
+	routed   bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -285,6 +288,9 @@ func (s *Supervisor) Apply(ctx context.Context, p *engine.Plan) error {
 	if err := s.admit(p); err != nil {
 		return err
 	}
+	if err := engine.PrepareTun(p); err != nil {
+		return s.redactor.Err(err)
+	}
 	s.mu.Lock()
 	s.redactor.Add(p.Secrets()...)
 	s.plan = p
@@ -307,6 +313,9 @@ func (s *Supervisor) Apply(ctx context.Context, p *engine.Plan) error {
 	if err := s.start(ctx, p); err != nil {
 		masked := s.redactor.Err(err)
 		s.setState(engine.StateFailed)
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), masked.Error())
+		}
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: masked})
 		return masked
 	}
@@ -345,6 +354,12 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 		return err
 	}
 
+	if preparer, ok := s.driver.(Preparer); ok {
+		if err := preparer.PrepareStart(p, rt); err != nil {
+			return fmt.Errorf("%s: prepare persistent state: %w", s.driver.Kind(), err)
+		}
+	}
+
 	s.setState(engine.StateStarting)
 	kind := s.driver.Kind()
 	proc, err := Start(s.ctx, Spec{Name: string(kind), Path: s.cfg.Binary.Path,
@@ -356,6 +371,11 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	if err == nil && p.Tun.Enabled {
 		if r, ok := s.driver.(Router); ok {
 			err = r.Route(ctx, p)
+			if err == nil {
+				s.mu.Lock()
+				s.routed = true
+				s.mu.Unlock()
+			}
 		}
 	}
 	if err != nil {
@@ -440,7 +460,11 @@ func (s *Supervisor) waitReady(ctx context.Context, rt Runtime, proc *Process) (
 			return version, nil
 		}
 		lastErr = err
-		if reason := proc.Err(); reason != nil {
+		if proc.Exited() {
+			reason := proc.Err()
+			if reason == nil {
+				reason = fmt.Errorf("%s: engine exited with status 0 before readiness: %s", s.driver.Kind(), proc.Output().Last(8))
+			}
 			return "", reason
 		}
 		select {
@@ -461,12 +485,22 @@ func (s *Supervisor) watch(proc *Process) {
 	if !current || stopping {
 		return
 	}
-	if err == nil || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) {
 		s.setState(engine.StateStopped)
 		return
 	}
 
+	if err == nil {
+		err = fmt.Errorf("%s: engine exited unexpectedly with status 0", s.driver.Kind())
+	}
 	masked := s.redactor.Err(err)
+	if s.cfg.Logs != nil {
+		s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()),
+			fmt.Sprintf("engine exited unexpectedly: %s", proc.cmd.ProcessState.String()))
+		for _, line := range strings.Split(proc.Output().Last(8), "\n") {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), s.redactor.String(line))
+		}
+	}
 	s.bus.Publish(engine.Event{Kind: engine.EventEngineDown, State: engine.StateRecovering,
 		Err: masked, Message: s.redactor.String(proc.Output().Last(5))})
 	if plan == nil {
@@ -493,6 +527,9 @@ func (s *Supervisor) watch(proc *Process) {
 	case <-timer.C:
 	}
 	if restartErr := s.start(s.ctx, plan); restartErr != nil {
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), s.redactor.String(restartErr.Error()))
+		}
 		s.setState(engine.StateFailed)
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: s.redactor.Err(restartErr)})
 	}
@@ -517,13 +554,25 @@ func (s *Supervisor) Stop(ctx context.Context) error {
 
 // unroute removes installed routes and logs errors without preventing shutdown.
 func (s *Supervisor) unroute(ctx context.Context) {
+	s.mu.Lock()
+	routed := s.routed
+	s.mu.Unlock()
+	if !routed {
+		return
+	}
 	r, ok := s.driver.(Router)
 	if !ok {
 		return
 	}
-	if err := r.Unroute(ctx); err != nil && s.cfg.Logs != nil {
-		s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+	if err := r.Unroute(ctx); err != nil {
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+		}
+		return
 	}
+	s.mu.Lock()
+	s.routed = false
+	s.mu.Unlock()
 }
 
 // Close stops the engine and releases the supervision context.

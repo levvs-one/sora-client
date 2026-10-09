@@ -64,7 +64,7 @@ func TestALateLookIsNoSleep(t *testing.T) {
 
 func TestNetworkFingerprintLeavesOutLoopbackAndTheTunnel(t *testing.T) {
 	fp := NetworkFingerprint()
-	for _, unwanted := range []string{"127.0.0.1", engine.TunDevice + " ", "172.19.0.1", "198.18.0.1"} {
+	for _, unwanted := range []string{"127.0.0.1", engine.TunDevice + " "} {
 		if strings.Contains(fp, unwanted) {
 			t.Errorf("the fingerprint %q holds %q", fp, unwanted)
 		}

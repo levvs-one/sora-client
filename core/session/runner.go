@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"net"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -577,10 +578,13 @@ func (s *Session) settings() Settings {
 // settingsLocked reads settings with the session lock already held, avoiding
 // recursive lock acquisition.
 func (s *Session) settingsLocked() Settings {
+	fake, _ := netip.ParsePrefix(s.cfg.Plan.DNS.FakeIPRange)
 	return Settings{
-		KillSwitch: s.status.KillSwitch,
-		Bypass:     append([]string(nil), s.status.Bypass...),
-		TunnelMode: s.status.TunnelMode,
+		FakeIPRange: fake,
+		TunNetworks: s.cfg.Plan.Tun.Networks(),
+		KillSwitch:  s.status.KillSwitch,
+		Bypass:      append([]string(nil), s.status.Bypass...),
+		TunnelMode:  s.status.TunnelMode,
 	}
 }
 

@@ -12,7 +12,6 @@ import (
 	"github.com/tailscale/wf"
 	"golang.org/x/sys/windows"
 
-	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
@@ -20,10 +19,12 @@ import (
 // neighbor-discovery traffic. Windows removes filters on close or process exit,
 // allowing traffic after crashes, as WireGuard and Tailscale do.
 type WFP struct {
-	mu         sync.Mutex
-	enginesDir string
-	bypass     []netip.Prefix
-	session    *wf.Session
+	mu              sync.Mutex
+	enginesDir      string
+	bypass          []netip.Prefix
+	tunNetworks     []netip.Prefix
+	blockedNetworks []netip.Prefix
+	session         *wf.Session
 }
 
 // PlatformFirewall returns Windows WFP, matching engines by executable because
@@ -45,10 +46,26 @@ func PlatformFirewall(opts FirewallOptions) (Firewall, error) {
 	return &WFP{enginesDir: opts.EnginesDir, bypass: prefixes}, nil
 }
 
+// SetTunNetworks receives the selected session subnets before arming.
+func (w *WFP) SetTunNetworks(networks []netip.Prefix) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.tunNetworks = append([]netip.Prefix(nil), networks...)
+}
+
+// SetBlockedNetworks prevents tunnel destinations from falling through LAN permits.
+func (w *WFP) SetBlockedNetworks(networks []netip.Prefix) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.blockedNetworks = append([]netip.Prefix(nil), networks...)
+}
+
 // Rule weights inside the sublayer: every permit outranks the final block.
 const (
-	weightPermit = 10
-	weightBlock  = 0
+	weightPermit       = 10
+	weightTunnelBlock  = 40
+	weightTunnelPermit = 50
+	weightBlock        = 0
 )
 
 var outbound = []wf.LayerID{wf.LayerALEAuthConnectV4, wf.LayerALEAuthConnectV6}
@@ -112,6 +129,10 @@ func (w *WFP) install(session *wf.Session) error {
 	if err := session.AddSublayer(&wf.Sublayer{ID: sublayer, Name: "Sora kill switch", Weight: 0xffff}); err != nil {
 		return err
 	}
+	return w.rules(session.AddRule, sublayer)
+}
+
+func (w *WFP) rules(addRule func(*wf.Rule) error, sublayer wf.SublayerID) error {
 	add := func(name string, action wf.Action, weight uint64, conditions ...*wf.Match) error {
 		for _, layer := range outbound {
 			if !applies(layer, conditions) {
@@ -121,7 +142,7 @@ func (w *WFP) install(session *wf.Session) error {
 			if err != nil {
 				return err
 			}
-			if err := session.AddRule(&wf.Rule{
+			if err := addRule(&wf.Rule{
 				ID: wf.RuleID(guid), Name: "Sora: " + name, Layer: layer, Sublayer: sublayer,
 				Weight: weight, Conditions: conditions, Action: action,
 			}); err != nil {
@@ -149,20 +170,41 @@ func (w *WFP) install(session *wf.Session) error {
 		if err != nil {
 			return err
 		}
-		if err := permit(filepath.Base(file),
+		if err := add(filepath.Base(file), wf.ActionPermit, 30,
 			&wf.Match{Field: wf.FieldALEAppID, Op: wf.MatchTypeEqual, Value: id},
 			&wf.Match{Field: wf.FieldALEUserID, Op: wf.MatchTypeEqual, Value: owner},
 		); err != nil {
 			return err
 		}
 	}
-	if err := permit("loopback", &wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsLoopback}); err != nil {
+	if err := add("loopback", wf.ActionPermit, 30, &wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsLoopback}); err != nil {
 		return err
 	}
-	for _, network := range engine.TunNetworks {
-		if err := permit("through the tunnel", &wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: netip.MustParsePrefix(network)}); err != nil {
+	for _, network := range w.tunNetworks {
+		if err := add("through the tunnel", wf.ActionPermit, weightTunnelPermit, &wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: network},
+			// Wintun is IF_TYPE_PROP_VIRTUAL (53); a bound source on a
+			// physical adapter must not inherit the tunnel permit.
+			&wf.Match{Field: wf.FieldNexthopInterfaceType, Op: wf.MatchTypeEqual, Value: uint32(53)}); err != nil {
 			return err
 		}
+		// ALE_AUTH_CONNECT reauthorizes inbound replies too. Next-hop fields
+		// are FWP_EMPTY there; arrival type is available on both v4/v6 layers.
+		if err := add("reply through the tunnel", wf.ActionPermit, weightTunnelPermit,
+			&wf.Match{Field: wf.FieldIPLocalAddress, Op: wf.MatchTypeEqual, Value: network},
+			&wf.Match{Field: wf.FieldArrivalInterfaceType, Op: wf.MatchTypeEqual, Value: uint32(53)},
+			&wf.Match{Field: wf.FieldFlags, Op: wf.MatchTypeFlagsAllSet, Value: wf.ConditionFlagIsReauthorize}); err != nil {
+			return err
+		}
+	}
+	for _, network := range append([]netip.Prefix{netip.MustParsePrefix(legacyFakeIPNetwork)}, w.blockedNetworks...) {
+		if err := add("tunnel destination outside the tunnel", wf.ActionBlock, weightTunnelBlock,
+			&wf.Match{Field: wf.FieldIPRemoteAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {
+			return err
+		}
+	}
+	if err := add("DNS outside the tunnel", wf.ActionBlock, 20,
+		&wf.Match{Field: wf.FieldIPRemotePort, Op: wf.MatchTypeEqual, Value: uint16(53)}); err != nil {
+		return err
 	}
 	for _, network := range w.bypass {
 		if err := permit("local network", &wf.Match{Field: wf.FieldIPRemoteAddress, Op: wf.MatchTypeEqual, Value: network}); err != nil {

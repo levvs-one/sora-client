@@ -5,6 +5,7 @@ package guard
 
 import (
 	"context"
+	"net/netip"
 	"sync"
 
 	"github.com/levvs-one/sora-client/core/errs"
@@ -86,6 +87,16 @@ func (g *Guard) Apply(ctx context.Context, settings session.Settings) error {
 	if g.restoring {
 		return errs.Newf(errs.CodeFailedPrecondition, errs.KeyGuardFirewallFail,
 			"guard: the guard is being restored")
+	}
+	if f, ok := g.firewall.(interface{ SetTunNetworks([]netip.Prefix) }); ok {
+		f.SetTunNetworks(settings.TunNetworks)
+	}
+	if f, ok := g.firewall.(interface{ SetBlockedNetworks([]netip.Prefix) }); ok {
+		networks := append([]netip.Prefix(nil), settings.TunNetworks...)
+		if settings.FakeIPRange.IsValid() {
+			networks = append(networks, settings.FakeIPRange.Masked())
+		}
+		f.SetBlockedNetworks(networks)
 	}
 	if settings.KillSwitch && !g.applied.KillSwitch {
 		if err := g.firewall.Arm(ctx, g.opts.EnginePorts); err != nil {

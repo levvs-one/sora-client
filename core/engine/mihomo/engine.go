@@ -2,15 +2,21 @@ package mihomo
 
 import (
 	"context"
+	"errors"
 	"io"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/clashapi"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/engine/tunroute"
 )
 
 // Prober recognizes "mihomo -v" output such as "Mihomo Meta v1.19.32 linux
@@ -86,6 +92,22 @@ func (driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, erro
 // Reload replaces live configuration without restarting the tunnel or
 // listeners.
 func (driver) Reload(ctx context.Context, rt supervise.Runtime, cfg []byte) error {
+	var rendered config
+	if err := yaml.Unmarshal(cfg, &rendered); err != nil {
+		return err
+	}
+	if rendered.DNS != nil && rendered.DNS.EnhancedMode == "fake-ip" {
+		pool, err := netip.ParsePrefix(rendered.DNS.FakeIPRange)
+		if err != nil {
+			return err
+		}
+		previous, err := os.ReadFile(filepath.Join(rt.HomeDir, "fakeip-pool"))
+		if err != nil || string(previous) != pool.Masked().String() {
+			// Reload can clone the old in-memory pool. Restart so reset happens
+			// while no process holds cache.db open.
+			return supervise.ErrReloadUnsupported
+		}
+	}
 	return clashapi.For(rt).ReloadPayload(ctx, string(cfg))
 }
 
@@ -114,6 +136,31 @@ func (driver) Prepare(rt supervise.Runtime, b supervise.Binary) error {
 	return nil
 }
 
+// PrepareStart invalidates unversioned caches and caches from a different pool.
+// Remove the database before recording the pool so an interrupted reset retries.
+// This also resets stored group selections once when upgrading a legacy cache.
+func (driver) PrepareStart(p *engine.Plan, rt supervise.Runtime) error {
+	if !p.DNS.Enabled || p.DNS.Mode != string(engine.DNSFakeIP) {
+		return nil
+	}
+	pool, err := netip.ParsePrefix(orDefault(p.DNS.FakeIPRange, "198.18.0.1/16"))
+	if err != nil {
+		return err
+	}
+	marker := filepath.Join(rt.HomeDir, "fakeip-pool")
+	previous, err := os.ReadFile(marker) //nolint:gosec // fixed marker name inside the engine home
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if string(previous) == pool.Masked().String() {
+		return nil
+	}
+	if err := os.Remove(filepath.Join(rt.HomeDir, "cache.db")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return os.WriteFile(marker, []byte(pool.Masked().String()), 0o600)
+}
+
 // copyFile uses a temporary file so engines never read a partially written
 // database.
 func copyFile(src, dst string) error {
@@ -136,3 +183,13 @@ func copyFile(src, dst string) error {
 	}
 	return os.Rename(tmp.Name(), dst)
 }
+
+// Route owns Linux policy routing so every engine shares the same exclusions.
+func (driver) Route(ctx context.Context, p *engine.Plan) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+	return tunroute.Route(ctx, p.Tun, os.Getuid())
+}
+
+func (driver) Unroute(ctx context.Context) error { return tunroute.Unroute(ctx) }

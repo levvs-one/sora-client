@@ -315,6 +315,22 @@ jobs:
         run: CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.buildVersion=$SORA_VERSION" -o ../dist/sora-core ./cmd/sora-core
       - name: Fetch and verify the engines
         run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
+      - name: VPN coexistence in isolated namespaces
+        if: matrix.arch == 'amd64'
+        timeout-minutes: 20
+        run: sudo env "PATH=$PATH" "SORA_ENGINES_DIR=$PWD/dist/engines" bash core/testdata/coexist/run.sh
+      - uses: actions/upload-artifact@v6
+        if: always() && matrix.arch == 'amd64'
+        with:
+          name: coexistence-logs
+          path: |
+            /tmp/claude-1000/coexist-*/*.log
+            /tmp/claude-1000/coexist-*/*.tsv
+            /tmp/claude-1000/coexist-*/*/*.log
+            /tmp/claude-1000/coexist-*/*/addresses
+            /tmp/claude-1000/coexist-*/*/rules*
+            /tmp/claude-1000/coexist-*/*/routes*
+          if-no-files-found: ignore
       - name: Build zapret
         timeout-minutes: 15
         run: |

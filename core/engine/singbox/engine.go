@@ -5,12 +5,15 @@ package singbox
 
 import (
 	"context"
+	"os"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/clashapi"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/engine/tunroute"
 )
 
 // Prober recognizes "sing-box version" output such as "sing-box version 1.14.2"
@@ -68,3 +71,13 @@ func (driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, erro
 func (driver) Reload(context.Context, supervise.Runtime, []byte) error {
 	return supervise.ErrReloadUnsupported
 }
+
+// Route owns Linux policy routing so every engine shares the same exclusions.
+func (driver) Route(ctx context.Context, p *engine.Plan) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+	return tunroute.Route(ctx, p.Tun, os.Getuid())
+}
+
+func (driver) Unroute(ctx context.Context) error { return tunroute.Unroute(ctx) }

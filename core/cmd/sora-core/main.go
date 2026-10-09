@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/registry"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
+	"github.com/levvs-one/sora-client/core/engine/tunroute"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
 	"github.com/levvs-one/sora-client/core/guard"
@@ -42,6 +44,8 @@ var Version = control.Version{Major: 1, Minor: 6, MinSupportedMinor: 1}
 
 // Options configures a core instance.
 type Options struct {
+	// Diagnostic builds readiness information without owning or changing routing.
+	Diagnostic bool
 	// DataDir holds the token, the secret store and the engine home
 	// directory.
 	DataDir string
@@ -86,6 +90,7 @@ type App struct {
 	address  string
 	local    string
 	engines  *registry.Registry
+	instance io.Closer
 }
 
 // New builds a core from its options.
@@ -111,6 +116,38 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		return nil, errs.Wrap(err, errs.CodeInternal, errs.KeySecretStoreUnavailable)
 	}
 	app := &App{opts: opts, log: log}
+	app.address = opts.Socket
+	if app.address == "" {
+		app.address = ipc.ListenAddress()
+	}
+	if !opts.Diagnostic {
+		instance, err := lockInstance(app.address, opts.DataDir)
+		if err != nil {
+			return nil, err
+		}
+		app.instance = instance
+		// Binding before recovery also protects a core started by an older build.
+		listener, err := ipc.Listen(context.Background(), ipc.Options{Address: opts.Socket})
+		if err != nil {
+			_ = instance.Close()
+			return nil, err
+		}
+		app.listener = listener
+	}
+	built := false
+	defer func() {
+		if !built {
+			if app.store != nil {
+				_ = app.store.Close()
+			}
+			if app.listener != nil {
+				_ = app.listener.Close()
+			}
+			if app.instance != nil {
+				_ = app.instance.Close()
+			}
+		}
+	}()
 
 	local, err := localAddress(opts.LocalPort)
 	if err != nil {
@@ -140,6 +177,12 @@ func New(ctx context.Context, opts Options) (*App, error) {
 
 	factory := opts.Factory
 	if factory == nil {
+		if !opts.Diagnostic {
+			if err := tunroute.Cleanup(ctx); err != nil {
+				_ = store.Close()
+				return nil, err
+			}
+		}
 		app.engines = registry.Discover(ctx, opts.EnginesDir, supervise.Config{
 			HomeDir: filepath.Join(opts.DataDir, "engine"), LocalPort: int(tunnelPort), Logs: center,
 		})
@@ -213,13 +256,6 @@ func New(ctx context.Context, opts Options) (*App, error) {
 	plane.SetDiagnostics(app.report)
 	app.plane = plane
 
-	listener, err := ipc.Listen(ctx, ipc.Options{Address: opts.Socket})
-	if err != nil {
-		_ = store.Close()
-		return nil, err
-	}
-	app.listener = listener
-	app.address = listener.Address()
 	app.server = grpc.NewServer(
 		// The transport rejects requests above the four-megabyte plan
 		// limit before allocating their payload.
@@ -227,6 +263,7 @@ func New(ctx context.Context, opts Options) (*App, error) {
 		grpc.MaxSendMsgSize(control.MaxSendMsgBytes),
 	)
 	corev1.RegisterCoreControlServer(app.server, plane)
+	built = true
 	return app, nil
 }
 
@@ -329,6 +366,8 @@ func (s *source) EngineLines() []string {
 
 // Serve runs the control plane until the context ends.
 func (a *App) Serve(ctx context.Context) error {
+	stop := context.AfterFunc(ctx, func() { _ = a.listener.Close() })
+	defer stop()
 	a.log.Info("core listening", "endpoint", a.address, "tunnel", a.local)
 	// Subscription updates must continue without a connected UI.
 	go a.plane.Run(ctx)
@@ -366,6 +405,9 @@ func (a *App) Close() error {
 		if err := a.store.Close(); err != nil {
 			problems = append(problems, err)
 		}
+	}
+	if a.instance != nil {
+		problems = append(problems, a.instance.Close())
 	}
 	return errors.Join(problems...)
 }

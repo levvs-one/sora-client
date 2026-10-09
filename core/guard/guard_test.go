@@ -3,6 +3,8 @@ package guard_test
 import (
 	"context"
 	"errors"
+	"net/netip"
+	"slices"
 	"testing"
 
 	"github.com/levvs-one/sora-client/core/errs"
@@ -13,11 +15,13 @@ import (
 // memoryFirewall records armed state for tests without modifying the host
 // firewall.
 type memoryFirewall struct {
-	armed   bool
-	arms    int
-	disarms int
-	ports   []uint16
-	armErr  error
+	armed    bool
+	arms     int
+	disarms  int
+	ports    []uint16
+	armErr   error
+	networks []netip.Prefix
+	blocked  []netip.Prefix
 }
 
 func (f *memoryFirewall) Arm(_ context.Context, ports []uint16) error {
@@ -141,5 +145,54 @@ func TestGuardNameIsStable(t *testing.T) {
 	}
 	if system.Name() != "sora-guard" {
 		t.Errorf("Name() = %q, want sora-guard", system.Name())
+	}
+}
+
+func (f *memoryFirewall) SetTunNetworks(networks []netip.Prefix) {
+	f.networks = append([]netip.Prefix(nil), networks...)
+}
+
+func (f *memoryFirewall) SetBlockedNetworks(networks []netip.Prefix) {
+	f.blocked = append([]netip.Prefix(nil), networks...)
+}
+
+func TestGuardRetainsFakeIPAndAdapterBlocksDuringEngineRecovery(t *testing.T) {
+	firewall := &memoryFirewall{}
+	system, err := guard.New(testOptions(), firewall)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := session.Settings{KillSwitch: true,
+		TunNetworks: []netip.Prefix{netip.MustParsePrefix("192.0.2.0/30"), netip.MustParsePrefix("2001:db8:5340::/126")},
+		FakeIPRange: netip.MustParsePrefix("198.18.0.0/16")}
+	for range 2 {
+		if err := system.Apply(t.Context(), settings); err != nil {
+			t.Fatal(err)
+		}
+		want := append(append([]netip.Prefix(nil), settings.TunNetworks...), settings.FakeIPRange)
+		if !slices.Equal(firewall.blocked, want) || !firewall.armed || firewall.arms != 1 {
+			t.Fatalf("firewall lost session blocks: %+v", firewall)
+		}
+	}
+}
+
+func TestGuardReceivesSelectedTunNetworksBeforeArming(t *testing.T) {
+	firewall := &memoryFirewall{}
+	system, err := guard.New(testOptions(), firewall)
+	if err != nil {
+		t.Fatal(err)
+	}
+	networks := []netip.Prefix{netip.MustParsePrefix("172.20.0.0/30"), netip.MustParsePrefix("fdfe:dcba:9877::/126")}
+	if err := system.Apply(context.Background(), session.Settings{TunNetworks: networks}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(firewall.networks, networks) || firewall.armed {
+		t.Fatalf("firewall=%+v", firewall)
+	}
+	if err := system.Apply(context.Background(), session.Settings{KillSwitch: true, TunNetworks: networks}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(firewall.networks, networks) || !firewall.armed {
+		t.Fatalf("firewall=%+v", firewall)
 	}
 }

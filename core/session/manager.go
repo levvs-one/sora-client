@@ -96,6 +96,9 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 		}
 	}
 
+	if err := engine.PrepareTun(plan); err != nil {
+		return nil, errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyPlanTunnel)
+	}
 	built, err := m.cfg.Factory(ctx, plan)
 	if err != nil {
 		return nil, err

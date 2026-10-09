@@ -3,7 +3,9 @@ package singbox
 import (
 	"context"
 	"encoding/json"
+	"net/netip"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -84,6 +86,27 @@ func TestRenderRefusesWhatSingBoxCannotCarry(t *testing.T) {
 	p.Groups[0].Type = engine.GroupFallback
 	if _, err := Render(p, testRuntime); err == nil {
 		t.Fatal("fallback groups must be refused")
+	}
+}
+
+func TestTunUsesSessionAddressesAndLinuxPolicyRouting(t *testing.T) {
+	p := enginetest.Plan(engine.ProtocolVLESS)
+	p.Tun = engine.Tun{Enabled: true, IPv4: netip.MustParsePrefix("172.20.0.1/30"), IPv6: netip.MustParsePrefix("fdfe:dcba:9877::1/126")}
+	cfg := render(t, p)
+	var inbound map[string]any
+	for _, in := range cfg["inbounds"].([]any) {
+		if in.(map[string]any)["type"] == "tun" {
+			inbound = in.(map[string]any)
+		}
+	}
+	addresses := inbound["address"].([]any)
+	if addresses[0] != p.Tun.IPv4.String() || addresses[1] != p.Tun.IPv6.String() {
+		t.Fatalf("TUN addresses = %v", addresses)
+	}
+	if runtime.GOOS == "linux" {
+		if inbound["auto_route"] != false || cfg["route"].(map[string]any)["auto_detect_interface"] != false {
+			t.Fatal("Linux routing must belong to the core")
+		}
 	}
 }
 

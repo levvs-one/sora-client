@@ -195,7 +195,13 @@ class _Elapsed extends StatefulWidget {
 }
 
 class _ElapsedState extends State<_Elapsed> {
-  late final Timer _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  late final Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  }
 
   @override
   void dispose() {

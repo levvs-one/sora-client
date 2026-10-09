@@ -166,6 +166,34 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('connection timer ticks locally and stops when disconnected', (tester) async {
+    final sora = await start(tester);
+    final elapsed = find.descendant(of: find.byKey(const ValueKey('elapsed')), matching: find.byType(Text));
+    final before = tester.widget<Text>(elapsed);
+    final serverName = find.descendant(
+      of: find.byType(ServersScreen),
+      matching: find.text('🇳🇱 Нидерланды, Амстердам'),
+    );
+    final serverBefore = tester.widget<Text>(serverName);
+    var stateChanges = 0;
+    sora.addListener(() => stateChanges++);
+
+    // Elapsed time uses the wall clock; pumping advances only the test timer.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 1100)));
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.widget<Text>(elapsed).data, isNot(before.data));
+    expect(identical(tester.widget<Text>(serverName), serverBefore), isTrue);
+    expect(stateChanges, 0);
+
+    sora.phase = Phase.off;
+    sora.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('elapsed')), findsNothing);
+    await tester.pump(const Duration(seconds: 2));
+    expect(stateChanges, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   test('protocol line preserves all parts and does not guess profile protocol', () {
     expect(
       protocolLine(

@@ -6,8 +6,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/tailscale/wf v0.0.0-20240214030419-6fbb0a674ee6
-	golang.org/x/net v0.58.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/net v0.60.0
+	golang.org/x/sys v0.48.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1

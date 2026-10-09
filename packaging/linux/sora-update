@@ -40,10 +40,10 @@ esac
 work=$(mktemp -d /var/tmp/sora-update.XXXXXXXX)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 for name in SHA256SUMS $files; do
-    [ -f "$source/$name" ] && [ ! -L "$source/$name" ] || die 'downloads must be regular files'
+    if [ ! -f "$source/$name" ] || [ -L "$source/$name" ]; then die 'downloads must be regular files'; fi
     cp -P -- "$source/$name" "$work/$name"
     # cp -P preserves a symlink raced into the source, which is then rejected.
-    [ -f "$work/$name" ] && [ ! -L "$work/$name" ] || die 'a download changed during copying'
+    if [ ! -f "$work/$name" ] || [ -L "$work/$name" ]; then die 'a download changed during copying'; fi
 done
 cd "$work"
 for name in $files; do

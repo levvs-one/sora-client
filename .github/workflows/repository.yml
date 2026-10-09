@@ -330,19 +330,30 @@ jobs:
         run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
       - name: VPN coexistence in isolated namespaces
         if: matrix.arch == 'amd64'
-        timeout-minutes: 20
-        run: sudo env "PATH=$PATH" "SORA_ENGINES_DIR=$PWD/dist/engines" bash core/testdata/coexist/run.sh
+        timeout-minutes: 30
+        # The three neighbour variants run in their own namespaces, so they can
+        # run side by side; one long sequential run exceeded the job budget.
+        run: |
+          for vpn in none happ openvpn; do
+            sudo env "PATH=$PATH" "SORA_ENGINES_DIR=$PWD/dist/engines" "SORA_COEXIST_VPNS=$vpn" "SORA_COEXIST_WORK=$RUNNER_TEMP" \
+              bash core/testdata/coexist/run.sh > "coexist-$vpn.log" 2>&1 &
+          done
+          status=0
+          for job in $(jobs -p); do wait "$job" || status=1; done
+          cat coexist-*.log
+          exit $status
       - uses: actions/upload-artifact@v6
         if: always() && matrix.arch == 'amd64'
         with:
           name: coexistence-logs
           path: |
-            /tmp/claude-1000/coexist-*/*.log
-            /tmp/claude-1000/coexist-*/*.tsv
-            /tmp/claude-1000/coexist-*/*/*.log
-            /tmp/claude-1000/coexist-*/*/addresses
-            /tmp/claude-1000/coexist-*/*/rules*
-            /tmp/claude-1000/coexist-*/*/routes*
+            coexist-*.log
+            ${{ runner.temp }}/coexist-*/*.log
+            ${{ runner.temp }}/coexist-*/*.tsv
+            ${{ runner.temp }}/coexist-*/*/*.log
+            ${{ runner.temp }}/coexist-*/*/addresses
+            ${{ runner.temp }}/coexist-*/*/rules*
+            ${{ runner.temp }}/coexist-*/*/routes*
           if-no-files-found: ignore
       - name: Build zapret
         timeout-minutes: 15

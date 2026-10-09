@@ -6,8 +6,10 @@ set -euo pipefail
 if [[ ${1:-} != namespace ]]; then
     repo=$(cd "$(dirname "$0")/../../.." && pwd)
     engines=${SORA_ENGINES_DIR:?set SORA_ENGINES_DIR to installed engines}
-    mkdir -p "$HOME/.local/share/sora-dev/work"
-    work=$(mktemp -d "$HOME/.local/share/sora-dev/work/coexist-XXXXXX")
+    # SORA_COEXIST_WORK keeps artifacts somewhere that outlives a cleaned /tmp.
+    base=${SORA_COEXIST_WORK:-${TMPDIR:-/tmp}}
+    mkdir -p "$base"
+    work=$(mktemp -d "$base/coexist-XXXXXX")
     chmod 755 "$work"
     export TMPDIR="$work"
     echo "Artifacts: $work"

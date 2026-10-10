@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ffi';
+import 'dart:isolate';
 import 'dart:ui' show Locale, PlatformDispatcher;
 
 import 'package:app_links/app_links.dart';
@@ -10,10 +12,14 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:nativeapi/nativeapi.dart' show LaunchAtLogin;
 import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
+import 'package:ffi/ffi.dart';
+import 'package:win32/win32.dart';
 
 import '../../l10n/strings.dart';
 import '../groups.dart';
+import '../notifications.dart';
 import '../sora.dart';
+import '../updates.dart';
 import '../ui/kit.dart';
 import '../ui/servers.dart';
 import '../ui/subscription_sheet.dart';
@@ -161,6 +167,43 @@ class Desktop with WindowListener {
     await windowManager.destroy();
   }
 
+  Future<void> launchUpdate(File installer) async {
+    final path = installer.path;
+    await Isolate.run(
+      () => using((arena) {
+        final initialized = CoInitializeEx(COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        if (initialized.isError) throw const UpdateFailure(UpdateError.installation);
+        try {
+          final info = arena<SHELLEXECUTEINFO>();
+          info.ref
+            ..cbSize = sizeOf<SHELLEXECUTEINFO>()
+            // SEE_MASK_NOASYNC and SEE_MASK_FLAG_NO_UI are absent from win32's
+            // generated constants. Wait for handoff without a Shell error dialog.
+            ..fMask = 0x00000100 | 0x00000400
+            // Inno's unelevated loader must retain the original user's identity.
+            ..lpVerb = 'open'.toPwstr(allocator: arena)
+            ..lpFile = path.toPwstr(allocator: arena)
+            ..lpParameters = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'.toPwstr(allocator: arena)
+            ..nShow = SW_SHOWNORMAL;
+          if (!ShellExecuteEx(info).value) throw const UpdateFailure(UpdateError.installation);
+        } finally {
+          CoUninitialize();
+        }
+      }),
+    );
+  }
+
+  Future<void> restartAfterUpdate() async {
+    // Wait for this process to release Flutter's shared libraries before loading
+    // the newly installed ones. The watcher runs with the desktop user's UID.
+    await Process.start('/bin/sh', [
+      '-c',
+      'while kill -0 "\$1" 2>/dev/null; do sleep 1; done; exec /usr/bin/sora',
+      'sora-restart',
+      '$pid',
+    ], mode: ProcessStartMode.detached);
+  }
+
   // Login launches stay hidden to avoid interrupting the desktop.
 
   /// Applies the launch-at-login setting, starting Sora in the tray.
@@ -248,6 +291,7 @@ class Desktop with WindowListener {
     final key = [
       sora.phase,
       sora.selected,
+      sora.serverlessAvailable,
       sora.settings.tunnel,
       sora.settings.language,
       for (final e in entries) '${e.id}=${e.name}',
@@ -285,9 +329,9 @@ class Desktop with WindowListener {
     tray.MenuItem? item(String label, {tray.MenuItemType type = tray.MenuItemType.normal, void Function()? onTap}) {
       final made = tray.MenuItem.createWithLabelAndType(label, type);
       if (made == null) return null;
-      if (onTap == null) {
+      if (onTap == null && type != tray.MenuItemType.submenu) {
         made.isEnabled = false;
-      } else {
+      } else if (onTap != null) {
         made.addListener((event) {
           if (event is tray.MenuItemClickedEvent) onTap();
         });
@@ -322,20 +366,30 @@ class Desktop with WindowListener {
       for (final e in entries.take(40)) {
         servers.addItem(choice(e.name, checked: selected == e.id, group: 1, onTap: () => unawaited(sora.select(e.id))));
       }
-      servers.addItem(
-        choice(s.serverBypass, checked: selected == 'bypass', group: 1, onTap: () => unawaited(sora.select('bypass'))),
-      );
-      menu.addItem(item(s.trayServer, type: tray.MenuItemType.submenu, onTap: () {})?..submenu = servers);
+      menu.addItem(item(s.trayServer, type: tray.MenuItemType.submenu)?..submenu = servers);
     }
     final modes = tray.Menu.create();
     if (modes != null) {
-      void mode(String value) => unawaited(sora.change((x) => x.tunnel = value));
-      modes
-        ..addItem(choice(s.tunnelTun, checked: sora.settings.tunnel == 'tun', group: 2, onTap: () => mode('tun')))
-        ..addItem(
-          choice(s.tunnelProxy, checked: sora.settings.tunnel == 'proxy', group: 2, onTap: () => mode('proxy')),
-        );
-      menu.addItem(item(s.tunnelMode, type: tray.MenuItemType.submenu, onTap: () {})?..submenu = modes);
+      final current = sora.selected == 'bypass' ? 'bypass' : sora.settings.tunnel;
+      void mode(String value) => unawaited(
+        sora.change((x) {
+          if (value == 'bypass') {
+            x.server = 'bypass';
+            x.tunnel = 'tun';
+          } else {
+            if (x.server == 'bypass') x.server = 'auto';
+            x.tunnel = value;
+          }
+        }),
+      );
+      for (final (value, label) in [
+        ('tun', s.tunMode),
+        ('proxy', s.tunnelProxy),
+        if (sora.serverlessAvailable) ('bypass', s.serverBypass),
+      ]) {
+        modes.addItem(choice(label, checked: current == value, group: 2, onTap: () => mode(value)));
+      }
+      menu.addItem(item(s.modes, type: tray.MenuItemType.submenu)?..submenu = modes);
     }
     menu
       ..addSeparator()
@@ -381,7 +435,19 @@ class Desktop with WindowListener {
 
   // Focused windows already display events, so notices are suppressed.
 
-  Future<void> _tell(String title, String body, {bool always = false}) async {
+  Future<void> _tell(
+    String title,
+    String body, {
+    bool always = false,
+    bool record = true,
+    String action = '',
+    String argument = '',
+  }) async {
+    if (record) {
+      await sora.recordNotification(
+        AppNotification(time: DateTime.now(), title: title, body: body, action: action, argument: argument),
+      );
+    }
     // Suppress duplicate notifications when the focused window already shows
     // the event.
     if (!sora.settings.notifications || (!always && _visible && _focused)) return;
@@ -397,14 +463,8 @@ class Desktop with WindowListener {
   }
 
   void _notice(Notice notice) {
-    final s = _s;
-    unawaited(switch (notice) {
-      ConnectionLost() => _tell(s.noticeLost, s.noticeLostBody),
-      ConnectionRestored() => _tell(s.noticeRestored, _serverText(s)),
-      ConnectionFailed(:final failure) => _tell(s.noticeFailed, describe(s, failure)),
-      ServerSwitched(:final entry, :final backup) => _tell(entry, backup ? s.noticeBackup : s.noticeNext),
-      ServerReturned(:final entry) => _tell(entry, s.noticeMainBack),
-    });
+    final entry = sora.notificationFor(notice);
+    unawaited(_tell(entry.title, entry.body, record: false));
   }
 
   void _warnAboutSubscriptions() {
@@ -417,7 +477,7 @@ class Desktop with WindowListener {
         _warned.remove(id);
       } else if (_warned[id] != warning) {
         _warned[id] = warning;
-        unawaited(_tell(s.noticeSubscription, warning));
+        unawaited(_tell(s.noticeSubscription, warning, action: 'subscription', argument: id));
       }
     }
   }

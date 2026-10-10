@@ -70,6 +70,18 @@ SORA_ENGINES_DIR=/tmp/sora-engines \
 go test ./...
 ```
 
+На Linux воспроизведение совместной работы с другой VPN запускается без root на хосте:
+
+```sh
+SORA_ENGINES_DIR="$HOME/.local/share/sora-dev/engines" bash core/testdata/coexist/run.sh
+```
+
+Нужны user namespaces с диапазонами subordinate UID/GID, `ip`, `nft`, `unshare`, `nsenter`, `setpriv`, `curl` и Python 3. Скрипт создаёт отдельные сетевые пространства для клиента и сервера и проверяет все три ядра в TUN и proxy режимах, по 60 секунд, без другой VPN, с Happ-подобной VPN и с OpenVPN-подобными маршрутами `/1`. Вторая VPN запускается настоящим sing-box от отдельного UID. Ответы проверяются в HTTP-журнале и на входящем VLESS-соединении; отдельно проверяются явный LAN-маршрут, привязанные сокеты и адрес второй VPN.
+
+Дополнительно для каждого ядра и варианта второй VPN проверяются UDP/TCP DNS с `SO_BINDTODEVICE` при включённом kill switch, блокировка fake IP и peer после убийства ядра, а также восстановление после убийства службы и ядра с последующим proxy connect/disconnect. Пакеты утечек считает nftables на стороне получателя; положительные контроли проверяют достижимость до включения фильтрации. После отключения побайтно сравниваются правила и маршруты всех таблиц обеих IP-семей. Отдельная проверка восстановления старой версии сохраняет чужие адреса, правило на том же приоритете и таблицу другого ядра.
+
+Артефакты, временные сокеты ядер и копия запущенного скрипта остаются в `coexist-*` внутри `SORA_COEXIST_WORK`, по умолчанию во временной папке системы. Для воспроизведения на ранее собранной службе можно задать `SORA_COEXIST_CORE=/path/to/sora-core`; для короткого прогона `SORA_COEXIST_SECONDS=6`. `SORA_COEXIST_VPNS` выбирает варианты из `none happ openvpn`; это позволяет запустить три части полной матрицы параллельно в независимых пространствах. По умолчанию выполняются все варианты. Linux CI запускает тот же скрипт в отдельных network/PID namespaces.
+
 ## Приложение
 
 ```sh
@@ -108,8 +120,8 @@ Go-код попадает в `core/gen`, Dart-код в `app/lib/src/generated`
 Linux, после сборки службы, ядер, zapret и приложения:
 
 ```sh
-SORA_ARCH=amd64 SORA_VERSION=1.0.5 nfpm package --config packaging/linux/nfpm.yaml --packager deb --target dist/
-SORA_ARCH=amd64 SORA_VERSION=1.0.5 nfpm package --config packaging/linux/nfpm-app.yaml --packager deb --target dist/
+SORA_ARCH=amd64 SORA_VERSION=1.0.6 nfpm package --config packaging/linux/nfpm.yaml --packager deb --target dist/
+SORA_ARCH=amd64 SORA_VERSION=1.0.6 nfpm package --config packaging/linux/nfpm-app.yaml --packager deb --target dist/
 ```
 
 `--packager rpm` и `--packager archlinux` дают остальные форматы.
@@ -119,8 +131,8 @@ Windows, из корня репозитория:
 ```powershell
 cd core; go build -o ..\dist\windows\sora-core.exe .\cmd\sora-core; cd ..
 bash packaging/engines/fetch.sh windows-amd64 dist/windows/engines
-cd app; flutter build windows --release --dart-define=SORA_VERSION=1.0.5; cd ..
-iscc /DAppVersion=1.0.5 packaging\windows\sora.iss
+cd app; flutter build windows --release --dart-define=SORA_VERSION=1.0.6; cd ..
+iscc /DAppVersion=1.0.6 packaging\windows\sora.iss
 ```
 
 ## CI

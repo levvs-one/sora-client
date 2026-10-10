@@ -111,10 +111,15 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 	c.Rules = rules
 
 	if p.DNS.Enabled {
-		c.DNS = buildDNS(p.DNS, p.Options)
+		c.DNS, err = buildDNS(p.DNS, p.Options, byID)
+		if err != nil {
+			return "", err
+		}
 	}
 	if p.Tun.Enabled {
-		c.Tun = buildTun(p.Tun, p.DNS)
+		// Top-level tun derives IPv4 from fake-ip-range. A named listener
+		// accepts an independent adapter subnet on Linux and Windows.
+		c.Listeners = []*tunConfig{buildTun(p.Tun, p.DNS)}
 	}
 
 	out, err := yaml.Marshal(&c) //nolint:gosec // the config carries the controller secret by design and is never written to disk

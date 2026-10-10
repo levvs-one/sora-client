@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/levvs-one/sora-client/core/engine/singbox"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 	"github.com/levvs-one/sora-client/core/engine/xray"
+	"github.com/levvs-one/sora-client/core/engine/xraytun"
 	"github.com/levvs-one/sora-client/core/errs"
 )
 
@@ -80,7 +82,7 @@ func Discover(ctx context.Context, enginesDir string, base supervise.Config) *Re
 			continue
 		}
 		r.binaries[kind] = b
-		r.availability = append(r.availability, engine.Availability{Kind: kind, Path: b.Path, Version: b.Version, Usable: true})
+		r.availability = append(r.availability, engine.Availability{Kind: kind, Path: b.Path, Version: b.Version, BuildTags: b.BuildTags, Usable: true})
 	}
 	return r
 }
@@ -101,6 +103,11 @@ func (r *Registry) Binaries() []supervise.Binary {
 
 // Usable reports whether at least one engine can be started.
 func (r *Registry) Usable() bool { return len(r.binaries) > 0 }
+
+// BypassAvailable reports whether the serverless engine can run on this platform.
+func (r *Registry) BypassAvailable() bool {
+	return runtime.GOOS == "linux" && r.tpws != "" && r.Usable()
+}
 
 // LastSelection returns the latest engine choice and rejection reasons for
 // diagnostics.
@@ -158,17 +165,50 @@ func (r *Registry) Factory() func(context.Context, *engine.Plan) (engine.Engine,
 		}
 		// Select capabilities against the SOCKS5 plan produced by
 		// bypass rewriting.
-		sel, err := engine.SelectEngine(bypass.Rewrite(p, nil), r.availability, order)
+		selectPlan := bypass.Rewrite(p, nil)
+		bridge := len(order) == 1 && order[0] == engine.KindXray && p.Tun.Enabled &&
+			slices.Contains([]string{"system", "mixed", "mips"}, p.Tun.Stack)
+		if bridge {
+			packetEngine, installed := r.binaries[engine.KindMihomo]
+			if !installed {
+				return nil, errs.Newf(errs.CodeFailedPrecondition, errs.KeyEngineBinaryMissing,
+					"registry: Xray's selected TUN stack needs mihomo in the engines directory")
+			}
+			if packetEngine.Version.Less(engine.Version{Major: 1, Minor: 19, Patch: 32}) {
+				return nil, errs.Newf(errs.CodeFailedPrecondition, errs.KeyPlanEngineUnsupported,
+					"registry: Xray's selected TUN stack needs mihomo 1.19.32 or newer")
+			}
+			// Admit Xray's actual transports and routing independently of the
+			// packet stack supplied by the second installed engine.
+			selectPlan.Tun.Stack = "gvisor"
+			if selectPlan.DNS.Mode == string(engine.DNSFakeIP) {
+				selectPlan.DNS.Mode = "rule"
+			}
+		}
+		sel, err := engine.SelectEngine(selectPlan, r.availability, order)
 		r.mu.Lock()
 		r.last = sel
 		r.mu.Unlock()
 		if err != nil {
+			for _, kind := range order {
+				if _, installed := r.binaries[kind]; installed {
+					return nil, errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyPlanEngineUnsupported)
+				}
+			}
 			return nil, errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyEngineBinaryMissing)
 		}
 		cfg := r.base
 		cfg.Binary = r.binaries[sel.Kind]
 		cfg.HomeDir = filepath.Join(r.base.HomeDir, string(sel.Kind))
-		built, err := drivers[sel.Kind].build(cfg)
+		var built engine.Engine
+		if bridge {
+			tcfg := r.base
+			tcfg.Binary = r.binaries[engine.KindMihomo]
+			tcfg.HomeDir = filepath.Join(r.base.HomeDir, "xray-tun")
+			built, err = xraytun.New(cfg, tcfg)
+		} else {
+			built, err = drivers[sel.Kind].build(cfg)
+		}
 		if err != nil || !withBypass {
 			return built, err
 		}

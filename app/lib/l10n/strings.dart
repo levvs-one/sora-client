@@ -1171,6 +1171,546 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'нет ответа'**
   String get noAnswer;
+
+  /// No description provided for @home.
+  ///
+  /// In ru, this message translates to:
+  /// **'Главная'**
+  String get home;
+
+  /// No description provided for @navRules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила'**
+  String get navRules;
+
+  /// No description provided for @navConnections.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключения'**
+  String get navConnections;
+
+  /// No description provided for @navLogs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логи'**
+  String get navLogs;
+
+  /// No description provided for @navAbout.
+  ///
+  /// In ru, this message translates to:
+  /// **'О приложении'**
+  String get navAbout;
+
+  /// No description provided for @sidebarToggle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть меню'**
+  String get sidebarToggle;
+
+  /// No description provided for @more.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё'**
+  String get more;
+
+  /// No description provided for @less.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть'**
+  String get less;
+
+  /// No description provided for @currentServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущий сервер'**
+  String get currentServer;
+
+  /// No description provided for @trafficDown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Получено'**
+  String get trafficDown;
+
+  /// No description provided for @trafficUp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправлено'**
+  String get trafficUp;
+
+  /// No description provided for @perSecond.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value}/с'**
+  String perSecond(String value);
+
+  /// No description provided for @activeRules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активные правила: {count}'**
+  String activeRules(int count);
+
+  /// No description provided for @recentNotifications.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последние уведомления'**
+  String get recentNotifications;
+
+  /// No description provided for @notificationsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь появятся события подключения и подписок'**
+  String get notificationsEmpty;
+
+  /// No description provided for @retryConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключиться снова'**
+  String get retryConnect;
+
+  /// No description provided for @openLogs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть логи'**
+  String get openLogs;
+
+  /// No description provided for @tourReplay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать гайд снова'**
+  String get tourReplay;
+
+  /// No description provided for @tourStep.
+  ///
+  /// In ru, this message translates to:
+  /// **'Шаг {step} из 5'**
+  String tourStep(int step);
+
+  /// No description provided for @tourBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Назад'**
+  String get tourBack;
+
+  /// No description provided for @tourNext.
+  ///
+  /// In ru, this message translates to:
+  /// **'Далее'**
+  String get tourNext;
+
+  /// No description provided for @tourSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропустить'**
+  String get tourSkip;
+
+  /// No description provided for @tourFinish.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get tourFinish;
+
+  /// No description provided for @tourAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавьте ссылку на подписку от провайдера.'**
+  String get tourAdd;
+
+  /// No description provided for @tourServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите сервер. «Самый быстрый» подберёт его за вас.'**
+  String get tourServer;
+
+  /// No description provided for @tourConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите здесь, чтобы подключиться или отключиться.'**
+  String get tourConnect;
+
+  /// No description provided for @tourMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите режим. Kill switch блокирует интернет при обрыве VPN.'**
+  String get tourMode;
+
+  /// No description provided for @tourSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Откройте настройки. Здесь можно показать гайд снова.'**
+  String get tourSettings;
+
+  /// No description provided for @chooseProgram.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать программу'**
+  String get chooseProgram;
+
+  /// No description provided for @installedApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установленные программы'**
+  String get installedApps;
+
+  /// No description provided for @runningProcesses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запущенные процессы'**
+  String get runningProcesses;
+
+  /// No description provided for @programsFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось получить список программ'**
+  String get programsFailed;
+
+  /// No description provided for @programsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Программы не найдены. Попробуйте другое имя.'**
+  String get programsEmpty;
+
+  /// No description provided for @selectExe.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать файл .exe'**
+  String get selectExe;
+
+  /// No description provided for @trafficUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Счётчики пока недоступны'**
+  String get trafficUnavailable;
+
+  /// No description provided for @speedtest.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость'**
+  String get speedtest;
+
+  /// No description provided for @speedtestCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить скорость'**
+  String get speedtestCheck;
+
+  /// No description provided for @speedtestSearch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Найти сервис'**
+  String get speedtestSearch;
+
+  /// No description provided for @speedtestEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не найдено. Измените запрос.'**
+  String get speedtestEmpty;
+
+  /// No description provided for @speedtestBackToList.
+  ///
+  /// In ru, this message translates to:
+  /// **'К списку сервисов'**
+  String get speedtestBackToList;
+
+  /// No description provided for @speedtestOpenBrowser.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть в браузере'**
+  String get speedtestOpenBrowser;
+
+  /// No description provided for @speedtestUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Встроенный браузер не запустился. Откройте сервис в системном браузере.'**
+  String get speedtestUnavailable;
+
+  /// No description provided for @speedtestPageFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Страница не загрузилась. Обновите её или откройте сервис в системном браузере.'**
+  String get speedtestPageFailed;
+
+  /// No description provided for @speedtestExternalFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системный браузер не открылся. Попробуйте ещё раз.'**
+  String get speedtestExternalFailed;
+
+  /// No description provided for @modes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Режимы'**
+  String get modes;
+
+  /// No description provided for @proxyShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прокси'**
+  String get proxyShort;
+
+  /// No description provided for @tunMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Весь трафик (TUN)'**
+  String get tunMode;
+
+  /// No description provided for @checkUpdates.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять обновления'**
+  String get checkUpdates;
+
+  /// No description provided for @updates.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления приложения'**
+  String get updates;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна версия {version}'**
+  String updateAvailable(String version);
+
+  /// No description provided for @updateOpenAbout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Посмотреть обновление'**
+  String get updateOpenAbout;
+
+  /// No description provided for @updateNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что изменилось в {version}'**
+  String updateNotes(String version);
+
+  /// No description provided for @updateCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить обновления'**
+  String get updateCheck;
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверяем...'**
+  String get updateChecking;
+
+  /// No description provided for @updateNoNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автор релиза не добавил описание.'**
+  String get updateNoNotes;
+
+  /// No description provided for @updateDropWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'При обновлении Sora и ядра VPN-соединение прервётся на несколько секунд. Продолжить?'**
+  String get updateDropWarning;
+
+  /// No description provided for @updateWaitConnection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дождитесь завершения подключения и готовности службы Sora.'**
+  String get updateWaitConnection;
+
+  /// No description provided for @updateDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачиваем и проверяем файлы...'**
+  String get updateDownloading;
+
+  /// No description provided for @updateInstalling.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подготовка обновления или ожидание пароля администратора...'**
+  String get updateInstalling;
+
+  /// No description provided for @updateNetworkError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось скачать обновление. Попробуйте ещё раз.'**
+  String get updateNetworkError;
+
+  /// No description provided for @updateReleaseError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные релиза или нужные файлы отсутствуют либо некорректны.'**
+  String get updateReleaseError;
+
+  /// No description provided for @updateChecksumError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файл не совпадает с SHA256SUMS. Установка не запускалась.'**
+  String get updateChecksumError;
+
+  /// No description provided for @updateInstallError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление не завершилось. Возможно, запрос прав был отменён.'**
+  String get updateInstallError;
+
+  /// No description provided for @updateUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот файл приложения не принадлежит поддерживаемой паре пакетов Sora. Используйте инструкцию установки из описания релиза.'**
+  String get updateUnsupported;
+
+  /// No description provided for @updateManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выполните команду в терминале для установки обоих проверенных пакетов, затем откройте Sora снова. Файлы сохранены в каталоге загрузки. VPN-соединение прервётся.'**
+  String get updateManual;
+
+  /// No description provided for @updateCopyCommand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать команду'**
+  String get updateCopyCommand;
+
+  /// No description provided for @updateChecksDisabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматические проверки отключены в настройках.'**
+  String get updateChecksDisabled;
+
+  /// No description provided for @updateInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление установлено. Откройте Sora снова.'**
+  String get updateInstalled;
+
+  /// No description provided for @projectLinks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проект'**
+  String get projectLinks;
+
+  /// No description provided for @githubReleases.
+  ///
+  /// In ru, this message translates to:
+  /// **'Релизы и загрузки'**
+  String get githubReleases;
+
+  /// No description provided for @telegramChannel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Канал в Telegram'**
+  String get telegramChannel;
+
+  /// No description provided for @licenses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лицензии'**
+  String get licenses;
+
+  /// No description provided for @componentLicenses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лицензии компонентов'**
+  String get componentLicenses;
+
+  /// No description provided for @appCopyright.
+  ///
+  /// In ru, this message translates to:
+  /// **'© 2026 levvs-one и участники проекта'**
+  String get appCopyright;
+
+  /// No description provided for @collapseServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть серверы'**
+  String get collapseServers;
+
+  /// No description provided for @expandServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать серверы'**
+  String get expandServers;
+
+  /// No description provided for @hideDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть описание'**
+  String get hideDescription;
+
+  /// No description provided for @showDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать описание'**
+  String get showDescription;
+
+  /// No description provided for @pendingConnectionChanges.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чтобы применить изменения, переподключитесь.'**
+  String get pendingConnectionChanges;
+
+  /// No description provided for @reconnectNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Применить и переподключить'**
+  String get reconnectNow;
+
+  /// No description provided for @bypassLimitations.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот режим обходит DPI только для HTTP и TLS, не поддерживает UDP и не меняет IP. Для голоса Discord, звонков и заблокированных адресов Telegram используйте VPN-сервер.'**
+  String get bypassLimitations;
+
+  /// No description provided for @errEngineUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбранное ядро не поддерживает этот профиль или настройки. Выберите «Авто» либо совместимое ядро.'**
+  String get errEngineUnsupported;
+
+  /// No description provided for @errRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось полностью очистить подключение. Повторите отключение; подробности — в журнале.'**
+  String get errRestore;
+
+  /// No description provided for @errSessionEnded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта сессия уже завершена. Обновите состояние подключения.'**
+  String get errSessionEnded;
+
+  /// No description provided for @retryDisconnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить отключение'**
+  String get retryDisconnect;
+
+  /// No description provided for @tunStack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стек TUN'**
+  String get tunStack;
+
+  /// No description provided for @modesInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробнее о режимах'**
+  String get modesInfo;
+
+  /// No description provided for @modesGuideTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Режимы и ядра'**
+  String get modesGuideTitle;
+
+  /// No description provided for @modesGuide.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбирайте «Авто», если не знаете, какое ядро нужно серверу. Sora сверяет поддержку профиля и настроек перед подключением. Само ядро не меняет скорость тарифа: результат зависит от сервера, маршрута, протокола и сети.\n\n## Режимы\n\n### Весь трафик (TUN)\n\nSora создаёт виртуальный сетевой интерфейс и направляет через него трафик приложений, включая TCP и UDP. Это подходящий режим для Telegram, игр и голосовой связи Discord. Правила могут отправлять отдельные сайты и программы напрямую или блокировать их. Для работы нужны права сетевой службы и сервер, поддерживающий нужный протокол.\n\n### Системный прокси\n\nSora задаёт локальный HTTP/SOCKS-прокси. Его используют приложения, которые учитывают системные настройки прокси. Программа со своим сетевым стеком может пройти напрямую; UDP и голосовые звонки обычно требуют TUN. Этот режим удобен для браузеров и приложений с поддержкой прокси.\n\n### Без сервера\n\nВ Linux Sora использует [zapret](https://github.com/bol-van/zapret): разбивает и меняет HTTP/TLS-запросы, чтобы обходить некоторые проверки DPI. Адрес IP остаётся вашим, соединение идёт к сайту напрямую. Результат зависит от провайдера и способа блокировки.\n\nТекущая интеграция использует tpws и обрабатывает TCP для HTTP и TLS. Она не обходит блокировку по IP, не пересылает UDP и не гарантирует работу Telegram с MTProto. Для голоса Discord, звонков Telegram и таких блокировок выберите VPN-сервер и TUN.\n\n## Ядра\n\n### Авто\n\nSora выбирает установленное ядро, которое поддерживает весь план подключения. Важно всё сразу: протоколы серверов, транспорт, группы, фрагментация и режим. Если выбранный вручную движок несовместим, новое подключение отклоняется до отключения текущего. Выберите «Авто» или другое ядро и примените настройки снова.\n\n### sing-box\n\nВ новых пакетах Sora используется [sing-box-lx](https://github.com/Leadaxe/sing-box-lx), форк [sing-box](https://github.com/SagerNet/sing-box). Он добавляет клиентский XHTTP и VLESS Encryption. Sora распознаёт сборку и её возможности; стандартный sing-box без XHTTP не получает эту возможность по одному лишь названию.\n\nПоддерживаются VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, AnyTLS, WireGuard и параметры AmneziaWG 1.x/2.x, которые умеет импортировать Sora. Полные JSON-профили Xray требуют Xray. Новые параметры AWG 3.x ещё не импортируются. Управление sing-box использует защищённый паролем локальный порт; другие программы на компьютере могут заметить его наличие.\n\n### Xray\n\n[Xray-core](https://github.com/XTLS/Xray-core) подходит для VLESS, REALITY, XHTTP, VLESS Encryption и TLS-фрагментации. Он также запускает полные профили Xray от провайдера, сохраняя их маршрутизацию и группы. Профиль такого вида нельзя автоматически превратить в конфиг другого движка без изменения его поведения.\n\nВ поставляемом Xray удалён параметр отключения проверки TLS-сертификата (`allowInsecure`). Для таких обычных серверов «Авто» выбирает sing-box или mihomo. При ручном выборе Xray Sora сообщает о несовместимости до отключения текущего соединения. Для старого полного JSON-профиля нужен обновлённый профиль провайдера с проверяемым сертификатом или его отпечатком.\n\n### mihomo\n\n[mihomo](https://github.com/MetaCubeX/mihomo) поддерживает группы с последовательным резервом и балансировкой, а также XHTTP и AmneziaWG. Выбирайте его, если важен автоматический переход на запасной сервер. Фрагментация TLS из настроек Sora для этого ядра недоступна.\n\n## Совместимость в Sora\n\n| Возможность | sing-box-lx | Xray | mihomo |\n| --- | --- | --- | --- |\n| TUN и TCP/UDP в Linux | Да | Да | Да |\n| XHTTP | Да | Да | Да |\n| VLESS Encryption | Да | Да | Да |\n| Полный профиль Xray | Нет | Да | Нет |\n| TUIC / AnyTLS | Оба | Нет | TUIC |\n| TLS-фрагментация | Да | Да | Нет |\n| AmneziaWG 1.x/2.x | Да¹ | Нет | Да |\n| Группа с резервом | Нет | Нет² | Да |\n\n¹ Профили с J1/J2/J3/Itime направляются в mihomo; эти параметры нельзя молча отбрасывать. ² Для группы полных профилей Xray запасной профиль выбирает приложение. Точная поддержка зависит от установленной сборки. Её версию можно посмотреть в «О приложении».\n\n## Стек TUN\n\nСтек обрабатывает TCP и UDP внутри виртуального интерфейса. В панели режимов у Xray и mihomo можно выбрать gVisor, System, Mixed или MIPS. Выбор сохраняется отдельно для каждого ядра. В режиме системного прокси и «Без сервера» этот выбор не используется.\n\n- **Mixed** — TCP использует системный стек, UDP обрабатывает gVisor. Это вариант по умолчанию для mihomo.\n- **System** — использует системный стек. При проблемах с сетевыми программами попробуйте другой вариант.\n- **gVisor** — обрабатывает трафик в пользовательском пространстве.\n- **MIPS** — собственный IP-стек mihomo, доступный в поставляемой версии 1.19.32.\n\nВ Linux у Xray gVisor работает встроенно и выбран по умолчанию. System, Mixed и MIPS в Linux подключаются через TUN-движок mihomo: он передаёт TCP и UDP в Xray по защищённому локальному SOCKS. Протокол, профиль провайдера и маршрутизация остаются в Xray. Для этих трёх вариантов нужен установленный mihomo. В Windows TUN пока доступен через sing-box или mihomo; Xray работает в режиме системного прокси.\n\nСвязка запускает второй процесс. В трёх замерах в Linux без трафика она потребляла примерно на 32–36 МиБ больше физической памяти, чем встроенный TUN Xray. Это не оценка нагрузки при скачивании: расходы процессора и память зависят от соединений. Если другой стек не нужен, оставьте gVisor. Для sing-box переключатель не добавляется. Ни один вариант не гарантирует более высокую скорость во всех сетях. Смените стек и нажмите «Применить и переподключить», чтобы проверить результат в своей сети.\n\n## Когда применяются настройки\n\nВыбор режима, ядра, сервера, DNS и правил сохраняется сразу. Во время активного подключения Sora показывает предложение переподключиться. Нажмите «Применить и переподключить», чтобы запустить выбранный план. При перезапуске движка текущие загрузки и звонки могут прерваться. Повторные нажатия не запускают несколько подключений одновременно; отключение завершает смену и освобождает соединение.\n\n«Интернет только через VPN» блокирует прямой выход при обрыве туннеля. Это ограничение действует на всю машину, поэтому используйте его осознанно. При явном отключении Sora снимает свои правила. Если очистка не завершилась, повторите отключение и откройте журнал.\n\n## Документация проектов\n\n- [sing-box-lx: настройки и поддержка](https://github.com/Leadaxe/sing-box-lx/blob/lx/docs-lx/lx-config.ru.md)\n- [sing-box: документация](https://sing-box.sagernet.org/)\n- [Xray: документация](https://xtls.github.io/)\n- [mihomo: документация](https://wiki.metacubex.one/)\n- [zapret: описание и ограничения](https://github.com/bol-van/zapret/blob/master/docs/readme.md)\n'**
+  String get modesGuide;
+
+  /// No description provided for @probeServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить серверы'**
+  String get probeServers;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

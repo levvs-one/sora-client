@@ -3,17 +3,20 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 )
 
 // Availability describes an engine build found on this machine.
 type Availability struct {
-	Kind    Kind
-	Path    string
-	Version Version
-	Usable  bool
-	Reason  string
+	Kind      Kind
+	Path      string
+	Version   Version
+	Usable    bool
+	Reason    string
+	BuildTags []string
 }
 
 // Catalog holds upstream engine capabilities, separate from installed
@@ -75,6 +78,20 @@ var Catalog = map[Kind]Capabilities{
 	},
 }
 
+// BuildCapabilities keeps upstream and downstream builds distinct. A version
+// suffix alone cannot prove that an optional transport was compiled in.
+func BuildCapabilities(kind Kind, version Version, tags []string) Capabilities {
+	caps := Catalog[kind]
+	if kind == KindSingBox && strings.HasPrefix(version.PreRelease, "lx.") &&
+		!version.Less(Version{Major: 1, Minor: 14, Patch: 3}) {
+		caps.Features = maps.Clone(caps.Features)
+		caps.Features[FeatureXHTTP] = slices.Contains(tags, "with_xhttp")
+		caps.Features[FeatureVLESSEncrypt] = true
+		caps.Features[FeatureAmneziaWG] = slices.Contains(tags, "with_awg")
+	}
+	return caps
+}
+
 // DefaultPreference tries sing-box for low memory use, cross-platform TUN, and
 // native Android support, then Xray for XHTTP and VLESS Encryption, then mihomo
 // for fallback groups, providers, and routing.
@@ -126,6 +143,7 @@ func SelectEngine(p *Plan, available []Availability, preference []Kind) (Selecti
 			rejected = append(rejected, string(kind)+": no capability matrix")
 			continue
 		}
+		caps = BuildCapabilities(kind, avail.Version, avail.BuildTags)
 		if lowest, err := ParseVersion(caps.MinVersion); err == nil && avail.Version.Less(lowest) {
 			rejected = append(rejected, fmt.Sprintf("%s: version %s is older than %s", kind, avail.Version, caps.MinVersion))
 			continue
@@ -148,6 +166,27 @@ func SelectEngine(p *Plan, available []Availability, preference []Kind) (Selecti
 // Empty means the whole plan is supported.
 func (c Capabilities) Missing(p *Plan) []string {
 	var missing []string
+	if p.Tun.Enabled && p.Tun.Stack != "" {
+		if (c.Kind == KindXray && p.Tun.Stack != "gvisor") || (c.Kind == KindSingBox && p.Tun.Stack == "mips") {
+			missing = append(missing, "TUN stack "+p.Tun.Stack)
+		}
+	}
+	if c.Kind == KindXray {
+		for _, o := range p.Outbounds {
+			if o.TLS.Insecure && !o.TLS.Reality && (o.TLS.Enabled || o.Protocol == ProtocolTrojan || o.Protocol == ProtocolHysteria2) {
+				missing = append(missing, "TLS verification disabled (removed by Xray)")
+				break
+			}
+		}
+	}
+	if c.Kind == KindSingBox {
+		for _, o := range p.Outbounds {
+			if a := o.Amnezia; a != nil && (a.J1 != "" || a.J2 != "" || a.J3 != "" || a.Itime != 0) {
+				missing = append(missing, "AmneziaWG J1/J2/J3/Itime parameters")
+				break
+			}
+		}
+	}
 	for proto := range p.Protocols() {
 		if !c.SupportsProtocol(proto) {
 			missing = append(missing, "protocol "+string(proto))

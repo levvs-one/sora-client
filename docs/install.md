@@ -26,7 +26,7 @@ irm https://github.com/levvs-one/sora-client/releases/latest/download/install.ps
 Установщик не подписан сертификатом, поэтому SmartScreen при первом запуске покажет предупреждение. Подлинность файла можно проверить по `SHA256SUMS`:
 
 ```powershell
-Get-FileHash .\Sora-Setup-1.0.5-x64.exe
+Get-FileHash .\Sora-Setup-1.0.6-x64.exe
 ```
 
 Обновление: запустите установщик новой версии поверх старой или ещё раз выполните команду из начала раздела. Подписки и настройки сохранятся.
@@ -56,13 +56,13 @@ curl -fsSL https://github.com/levvs-one/sora-client/releases/latest/download/ins
 
 ```sh
 sha256sum -c SHA256SUMS --ignore-missing
-sudo pacman -U sora-core-1.0.5-1-x86_64.pkg.tar.zst sora-1.0.5-1-x86_64.pkg.tar.zst
+sudo pacman -U sora-core-1.0.6-1-x86_64.pkg.tar.zst sora-1.0.6-1-x86_64.pkg.tar.zst
 ```
 
 На Debian и Ubuntu:
 
 ```sh
-sudo apt install ./sora-core_1.0.5_amd64.deb ./sora_1.0.5_amd64.deb
+sudo apt install ./sora-core_1.0.6_amd64.deb ./sora_1.0.6_amd64.deb
 ```
 
 Что ставится:

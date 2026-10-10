@@ -20,13 +20,18 @@ depends:
   - sora-core (= ${SORA_VERSION})
 overrides:
   deb:
-    depends: ["sora-core (= ${SORA_VERSION})", libgtk-3-0]
+    depends: ["sora-core (= ${SORA_VERSION})", libgtk-3-0, libwebkit2gtk-4.1-0, gstreamer1.0-plugins-good]
   rpm:
-    depends: ["sora-core = ${SORA_VERSION}", gtk3]
+    depends: ["sora-core = ${SORA_VERSION}", gtk3, webkit2gtk4.1, gstreamer1-plugins-good]
   archlinux:
-    depends: ["sora-core=${SORA_VERSION}", gtk3]
+    depends: ["sora-core=${SORA_VERSION}", gtk3, webkit2gtk-4.1, gst-plugins-good]
 
 contents:
+  - src: ./packaging/linux/sora-update
+    dst: /usr/lib/sora/sora-update
+    file_info: {mode: 0755}
+  - src: ./packaging/linux/io.github.levvs-one.sora.update.policy
+    dst: /usr/share/polkit-1/actions/io.github.levvs-one.sora.update.policy
   - src: ./app/build/linux/x64/release/bundle/
     dst: /usr/lib/sora/app
     type: tree

@@ -1,6 +1,6 @@
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -137,6 +137,44 @@ void main() {
       expect(Sora.autoGroup, isNot(anyOf('a', 'b')));
       expect(Sora.autoGroup.startsWith('sora:'), isTrue);
     });
+
+    test('mihomo TUN stack survives only in its own TUN plans', () {
+      settings.mihomoTunStack = 'mips';
+      for (final engine in ['', 'sing-box', 'xray', 'mihomo']) {
+        settings.engine = engine;
+        expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, engine == 'mihomo' ? 'mips' : '');
+      }
+      settings.tunnel = 'proxy';
+      expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, isEmpty);
+      settings.tunnel = 'tun';
+      expect(buildPlan(servers: servers, choice: 'bypass', settings: settings).tunStack, isEmpty);
+      expect(settings.mihomoTunStack, 'mips');
+      settings.mihomoTunStack = 'unsupported';
+      expect(settings.mihomoTunStack, 'mixed');
+    });
+
+    test('Xray stacks stay isolated and native gVisor works with older cores', () {
+      expect(settings.xrayTunStack, 'gvisor');
+      settings.engine = 'xray';
+      expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, isEmpty);
+      settings.xrayTunStack = 'system';
+      settings.mihomoTunStack = 'mips';
+      for (final engine in ['', 'sing-box', 'xray', 'mihomo']) {
+        settings.engine = engine;
+        expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, switch (engine) {
+          'xray' => 'system',
+          'mihomo' => 'mips',
+          _ => '',
+        });
+      }
+      settings.engine = 'xray';
+      settings.tunnel = 'proxy';
+      expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, isEmpty);
+      settings.tunnel = 'tun';
+      expect(buildPlan(servers: servers, choice: 'bypass', settings: settings).tunStack, isEmpty);
+      settings.xrayTunStack = 'unknown';
+      expect(settings.xrayTunStack, 'gvisor');
+    });
   });
 
   group('settings', () {
@@ -159,7 +197,7 @@ void main() {
         ..fragment = true;
       await Future<void>.delayed(Duration.zero);
       await settings.reset();
-      expect(settings.theme, 'system');
+      expect(settings.theme, 'light');
       expect(settings.fragment, isFalse);
     });
 
@@ -207,10 +245,11 @@ void main() {
     tester.platformDispatcher.localesTestValue = const [Locale('ru')];
     late Sora sora;
     await tester.runAsync(() async => sora = Sora(await Settings.load()));
+    await sora.settings.completeTour();
     await tester.pumpWidget(SoraApp(sora: sora));
     await tester.pumpAndSettle();
     expect(find.text(SRu().coreMissing), findsOneWidget);
-    expect(find.text(SRu().addSubscription), findsOneWidget);
+    expect(find.text(SRu().addSubscription), findsWidgets);
     sora.dispose();
   });
 
@@ -237,7 +276,7 @@ void main() {
 
     await tester.pumpWidget(screen(const ServersScreen()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(CupertinoIcons.ellipsis));
+    await tester.tap(find.byIcon(Symbols.more_horiz_rounded));
     await tester.pumpAndSettle();
     expect(find.text('Сайт подписки'), findsOneWidget);
     expect(find.text('Сайт провайдера'), findsNothing);
@@ -274,13 +313,13 @@ void main() {
 
     test('a role at the end of a name is read in either language and shape', () {
       expect(splitRole('Нидерланды (основной)'), ('Нидерланды', Role.main));
-      expect(splitRole('Нидерланды · запасной'), ('Нидерланды', Role.backup));
+      expect(splitRole('Нидерланды \u00b7 запасной'), ('Нидерланды', Role.backup));
       expect(splitRole('🇳🇱 Netherlands [backup]'), ('🇳🇱 Netherlands', Role.backup));
       expect(splitRole('Germany - primary'), ('Germany', Role.main));
-      expect(splitRole('Белые списки · main'), ('Белые списки', Role.main));
+      expect(splitRole('Белые списки \u00b7 main'), ('Белые списки', Role.main));
       expect(splitRole('Белые списки: РЕЗЕРВНЫЙ'), ('Белые списки', Role.backup));
       expect(splitRole('Netherlands (Fallback)'), ('Netherlands', Role.backup));
-      expect(splitRole('Германия — главный'), ('Германия', Role.main));
+      expect(splitRole('Германия \u2014 главный'), ('Германия', Role.main));
       expect(splitRole('Белые списки +'), ('Белые списки +', null));
       expect(splitRole('Main'), ('Main', null), reason: 'a name that is only a role keeps it');
     });

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:protobuf/well_known_types/google/protobuf/duration.pb.dart' as pb;
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../design/theme.dart';
@@ -11,6 +12,7 @@ import '../sora.dart';
 import 'kit.dart';
 import 'servers.dart';
 import 'subscription_sheet.dart';
+import 'announcement.dart';
 
 /// Lists subscriptions with links to their settings.
 class SubscriptionsScreen extends StatelessWidget {
@@ -34,7 +36,7 @@ class SubscriptionsScreen extends StatelessWidget {
             Tile(
               title: s.addSubscription,
               onTap: () => showSubscriptionSheet(context),
-              trailing: Icon(CupertinoIcons.plus, size: 18, color: palette.ink),
+              trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
             ),
           ],
         ),
@@ -66,7 +68,7 @@ class SubscriptionScreen extends StatelessWidget {
       final next = chosen.deepCopy();
       apply(next);
       final failure = await sora.saveSubscription(next);
-      return failure == null ? null : describe(s, failure);
+      return failure == null ? null : '';
     }
 
     final hours = chosen.hasUpdateInterval() ? chosen.updateInterval.seconds.toInt() ~/ 3600 : 0;
@@ -124,10 +126,7 @@ class SubscriptionScreen extends StatelessWidget {
           ],
         ),
         if (state.info.announce.trim().isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
-            child: LinkedText(state.info.announce.trim(), style: Styles.secondary.copyWith(color: palette.ink)),
-          ),
+          Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 20), child: Announcement(state.info.announce.trim())),
         Group(
           children: [
             LinkTile(title: s.website, onTap: () => unawaited(sora.openSubscriptionPage(id))),
@@ -135,10 +134,10 @@ class SubscriptionScreen extends StatelessWidget {
               LinkTile(
                 title: s.providerWebsite,
                 value: Uri.tryParse(state.info.webPageUrl)?.host,
-                onTap: () => openLink(state.info.webPageUrl),
+                onTap: () => openLink(context, state.info.webPageUrl),
               ),
             if (state.info.supportUrl.isNotEmpty)
-              LinkTile(title: s.support, onTap: () => openLink(state.info.supportUrl)),
+              LinkTile(title: s.support, onTap: () => openLink(context, state.info.supportUrl)),
           ],
         ),
         Group(

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"net"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -196,24 +197,24 @@ func (s *Session) Start(ctx context.Context) error {
 	s.setStateLocked(StateConnecting, errs.Code(""), errs.Key(""), "")
 	s.mu.Unlock()
 
-	if err := s.eng.Validate(s.ctx, s.cfg.Plan); err != nil {
+	if err := s.eng.Validate(ctx, s.cfg.Plan); err != nil {
 		wrapped := errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanOutbounds)
-		s.fail(wrapped)
-		return wrapped
-	}
-	if err := s.guard.Apply(s.ctx, s.settings()); err != nil {
-		wrapped := errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyGuardFirewallFail)
 		s.fail(wrapped)
 		return wrapped
 	}
 	s.mu.Lock()
 	s.guardApplied = true
 	s.mu.Unlock()
-	err := s.eng.Apply(s.ctx, s.cfg.Plan)
+	if err := s.guard.Apply(ctx, s.settings()); err != nil {
+		wrapped := errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyGuardFirewallFail)
+		s.fail(wrapped)
+		return wrapped
+	}
+	err := s.eng.Apply(ctx, s.cfg.Plan)
 	if err != nil {
 		err = errs.Wrap(err, errs.CodeUnavailable, errs.KeyEngineStartFailed)
 	} else if tun := s.cfg.Plan.Tun; tun.Enabled && tun.DeviceName != "" {
-		if err = s.cfg.TunUp(s.ctx, tun.DeviceName); err != nil {
+		if err = s.cfg.TunUp(ctx, tun.DeviceName); err != nil {
 			_ = s.eng.Stop(context.WithoutCancel(ctx))
 		}
 	}
@@ -253,6 +254,14 @@ func (s *Session) Stop(ctx context.Context) error {
 	s.mu.Lock()
 	if s.stopping {
 		s.mu.Unlock()
+		if s.eng.State() != engine.StateStopped {
+			if err := s.eng.Stop(ctx); err != nil {
+				return errs.Wrap(err, errs.CodeInternal, errs.KeyGuardRestoreFailed)
+			}
+		}
+		if err := s.restoreGuard(context.WithoutCancel(ctx)); err != nil {
+			return errs.Wrap(err, errs.CodeInternal, errs.KeyGuardRestoreFailed)
+		}
 		return nil
 	}
 	s.stopping = true
@@ -276,7 +285,10 @@ func (s *Session) Stop(ctx context.Context) error {
 	}
 	_ = s.eng.Close()
 	s.mu.Unlock()
-	return stopErr
+	if stopErr != nil {
+		return errs.Wrap(stopErr, errs.CodeInternal, errs.KeyGuardRestoreFailed)
+	}
+	return nil
 }
 
 // restoreGuard reverts only settings this session armed, leaving unrelated
@@ -316,13 +328,13 @@ func (s *Session) SetKillSwitch(ctx context.Context, enabled bool) error {
 	}
 	settings := s.settingsLocked()
 	settings.KillSwitch = enabled
-	s.status.KillSwitch = enabled
 	s.mu.Unlock()
 	if err := s.guard.Apply(ctx, settings); err != nil {
 		return errs.Wrap(err, errs.CodeInternal, errs.KeyGuardFirewallFail)
 	}
 	s.mu.Lock()
 	s.guardApplied = true
+	s.status.KillSwitch = enabled
 	s.mu.Unlock()
 	return nil
 }
@@ -577,10 +589,13 @@ func (s *Session) settings() Settings {
 // settingsLocked reads settings with the session lock already held, avoiding
 // recursive lock acquisition.
 func (s *Session) settingsLocked() Settings {
+	fake, _ := netip.ParsePrefix(s.cfg.Plan.DNS.FakeIPRange)
 	return Settings{
-		KillSwitch: s.status.KillSwitch,
-		Bypass:     append([]string(nil), s.status.Bypass...),
-		TunnelMode: s.status.TunnelMode,
+		FakeIPRange: fake,
+		TunNetworks: s.cfg.Plan.Tun.Networks(),
+		KillSwitch:  s.status.KillSwitch,
+		Bypass:      append([]string(nil), s.status.Bypass...),
+		TunnelMode:  s.status.TunnelMode,
 	}
 }
 

@@ -2,9 +2,13 @@ package mihomo
 
 import (
 	"context"
+	"net/netip"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/enginetest"
@@ -145,6 +149,43 @@ func TestRenderRefusesTunWithoutDNS(t *testing.T) {
 	plan.DNS.Enabled = false
 	if _, err := Render(plan, testRuntime(t)); err == nil {
 		t.Fatal("a tun plan without a resolver must be refused before the engine is started")
+	}
+}
+
+func TestTunUsesSeparateAddressesEvenWithoutFakeDNS(t *testing.T) {
+	p := testPlan()
+	p.Tun.IPv4 = netip.MustParsePrefix("192.0.2.5/30")
+	p.Tun.IPv6 = netip.MustParsePrefix("2001:db8:5341::1/126")
+	p.DNS.Mode = "redir-host"
+	p.DNS.FakeIPRange = "198.18.0.0/16"
+	out, err := Render(p, testRuntime(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c config
+	if err := yaml.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Listeners) != 1 {
+		t.Fatal("missing TUN listener")
+	}
+	tun := c.Listeners[0]
+	if c.DNS.FakeIPRange != "" || tun.Type != "tun" || tun.Inet4Address[0] != p.Tun.IPv4.String() || tun.Inet6Address[0] != p.Tun.IPv6.String() {
+		t.Fatalf("DNS=%+v TUN=%+v", c.DNS, tun)
+	}
+	p.DNS.Mode = string(engine.DNSFakeIP)
+	out, err = Render(p, testRuntime(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal([]byte(out), &c); err != nil {
+		t.Fatal(err)
+	}
+	if c.DNS.FakeIPRange != p.DNS.FakeIPRange {
+		t.Fatal("fake-IP pool changed to adapter pool")
+	}
+	if runtime.GOOS == "linux" && (*tun.AutoRoute || *tun.AutoDetectInterface) {
+		t.Fatal("Linux routing must belong to the core")
 	}
 }
 

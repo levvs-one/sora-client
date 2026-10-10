@@ -108,7 +108,14 @@ case "$manager" in
 apt) $as_root apt-get install -y "$@" ;;
 dnf) $as_root dnf install -y "$@" ;;
 zypper) $as_root zypper --non-interactive install --allow-unsigned-rpm "$@" ;;
-pacman) $as_root pacman -U --noconfirm --needed "$@" ;;
+pacman)
+	# Unlike apt/dnf, pacman -U does not fetch missing repository dependencies.
+	deps="nftables iproute2 polkit libnetfilter_queue zlib"
+	if [ "$with_app" = yes ]; then deps="$deps gtk3 webkit2gtk-4.1 gst-plugins-good"; fi
+	# shellcheck disable=SC2086
+	$as_root pacman -S --noconfirm --needed $deps
+	$as_root pacman -U --noconfirm --needed "$@"
+	;;
 esac
 
 say "sora: installed. The core runs as the sora-core service; open Sora from the applications menu."

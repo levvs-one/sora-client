@@ -15,3 +15,6 @@ The repository workflow and the pull request autofix workflow use the pinned gen
 
 Contract 1.6 adds authenticated `GetSubscriptionLink` for opening a subscription page.
 Subscription states omit the bearer link; clients request it only for this action and never cache or log it.
+
+Contract 1.7 adds an explicit TUN stack to SessionPlan. Clients negotiate 1.7
+before sending it; older peers remain usable for plans without this field.

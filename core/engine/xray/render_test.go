@@ -85,6 +85,24 @@ func TestRenderRefusesUnreadableHysteriaObfs(t *testing.T) {
 	}
 }
 
+func TestRenderRefusesUnsupportedTLSVerificationSetting(t *testing.T) {
+	for _, protocol := range []engine.Protocol{engine.ProtocolVLESS, engine.ProtocolTrojan, engine.ProtocolHysteria2} {
+		p := hysteriaWithoutObfs(enginetest.Plan(protocol))
+		p.Outbounds[0].TLS = engine.TLS{Enabled: true, Insecure: true}
+		if _, err := Render(p, testRuntime, nil); err == nil {
+			t.Errorf("%s silently dropped disabled certificate verification", protocol)
+		}
+	}
+	for _, tls := range []engine.TLS{{Insecure: true}, {Enabled: true, Reality: true, Insecure: true, RealityPublicKey: "public-key"}} {
+		p := enginetest.Plan(engine.ProtocolVLESS)
+		p.Outbounds[0].TLS = tls
+		raw, err := Render(p, testRuntime, nil)
+		if err != nil || strings.Contains(string(raw), "allowInsecure") {
+			t.Errorf("an inactive TLS flag should not reject plaintext or REALITY: %s, %v", raw, err)
+		}
+	}
+}
+
 func TestTagsAreNeverPrefixesOfEachOther(t *testing.T) {
 	seen := map[string]bool{}
 	for i := 0; i < engine.MaxOutbounds; i++ {

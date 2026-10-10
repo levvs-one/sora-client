@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,7 +12,8 @@ import 'src/design/theme.dart';
 import 'src/desktop/desktop.dart';
 import 'src/settings.dart';
 import 'src/sora.dart';
-import 'src/ui/home.dart';
+import 'src/ui/shell.dart';
+import 'src/ui/toasts.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +23,7 @@ Future<void> main(List<String> args) async {
   final desktop = Platform.isLinux || Platform.isWindows ? Desktop(sora, navigator) : null;
   await desktop?.start(hidden: args.contains('--hidden'));
   runApp(SoraApp(sora: sora, navigator: navigator, desktop: desktop));
+  WidgetsBinding.instance.addPostFrameCallback((_) => sora.updates.start());
 }
 
 class SoraApp extends StatefulWidget {
@@ -34,7 +38,22 @@ class SoraApp extends StatefulWidget {
 }
 
 class _SoraAppState extends State<SoraApp> {
+  static bool _licensesRegistered = false;
   late final _navigator = widget.navigator ?? GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_licensesRegistered) {
+      _licensesRegistered = true;
+      LicenseRegistry.addLicense(() async* {
+        final entries = jsonDecode(await rootBundle.loadString('assets/licenses.json')) as Map<String, dynamic>;
+        for (final entry in entries.entries) {
+          yield LicenseEntryWithLineBreaks([entry.key], entry.value as String);
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +76,11 @@ class _SoraAppState extends State<SoraApp> {
               _ => ThemeMode.system,
             },
             locale: sora.settings.language == 'system' ? null : Locale(sora.settings.language),
-            themeAnimationDuration: const Duration(milliseconds: 300),
+            themeAnimationDuration:
+                sora.settings.animations &&
+                    !WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations
+                ? const Duration(milliseconds: 150)
+                : Duration.zero,
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,
@@ -66,13 +89,8 @@ class _SoraAppState extends State<SoraApp> {
             ],
             supportedLocales: S.supportedLocales,
             navigatorKey: _navigator,
-            builder: (context, child) => CallbackShortcuts(
-              bindings: {
-                const SingleActivator(LogicalKeyboardKey.escape): () => unawaited(_navigator.currentState?.maybePop()),
-              },
-              child: child!,
-            ),
-            home: const HomeScreen(),
+            builder: (_, child) => NotificationToasts(sora: sora, navigator: _navigator, child: child!),
+            home: const DesktopShell(),
           ),
         ),
       ),

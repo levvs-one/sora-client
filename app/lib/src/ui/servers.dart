@@ -4,9 +4,9 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
-import '../core/link.dart';
 import '../design/theme.dart';
 import '../generated/sora/core/v1/core_control.pb.dart';
 import '../groups.dart';
@@ -14,20 +14,24 @@ import '../sora.dart';
 import 'kit.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
+import 'tour.dart';
+import 'announcement.dart';
 
-/// Lists subscription servers with automatic fastest-server selection and a
-/// bypass option.
+/// Keeps subscription order while building only visible server rows.
 class ServersScreen extends StatefulWidget {
-  const ServersScreen({super.key});
+  const ServersScreen({super.key, this.embedded = false, this.scrollable = true});
+
+  final bool embedded;
+  final bool scrollable;
 
   @override
   State<ServersScreen> createState() => _ServersScreenState();
 }
 
 class _ServersScreenState extends State<ServersScreen> {
-  /// Server-count threshold for showing search.
-  static const _searchFrom = 12;
   final _search = TextEditingController();
+  bool _probed = false;
+  final _collapsed = <String>{};
 
   @override
   void dispose() {
@@ -39,10 +43,19 @@ class _ServersScreenState extends State<ServersScreen> {
   void initState() {
     super.initState();
     _search.addListener(() => setState(() {}));
-    // Measure latency on entry to support server selection.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(SoraScope.read(context).probe());
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final sora = SoraScope.of(context);
+    if (!_probed && sora.servers.isNotEmpty) {
+      // The desktop pane opens before the subscription stream arrives.
+      _probed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(sora.probe());
+      });
+    }
   }
 
   @override
@@ -51,56 +64,134 @@ class _ServersScreenState extends State<ServersScreen> {
     final s = S.of(context);
     final palette = Palette.of(context);
     final query = _search.text.trim().toLowerCase();
-    return Screen(
-      title: s.servers,
-      actions: [
-        if (sora.probing)
-          SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
-        else
-          RoundButton(icon: CupertinoIcons.arrow_clockwise, label: s.refresh, onTap: sora.probe),
-        const SizedBox(width: 4),
-        RoundButton(icon: CupertinoIcons.plus, label: s.addSubscription, onTap: () => showSubscriptionSheet(context)),
-      ],
+    final actions = [
+      if (sora.probing)
+        SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
+      else
+        RoundButton(icon: Symbols.network_ping_rounded, label: s.probeServers, onTap: () => unawaited(sora.probe())),
+      _tourTarget(
+        0,
+        RoundButton(icon: Symbols.add_rounded, label: s.addSubscription, onTap: () => showSubscriptionSheet(context)),
+      ),
+    ];
+    final search = Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        key: const ValueKey('server-search'),
+        controller: _search,
+        style: Styles.secondary.copyWith(color: palette.ink),
+        decoration: InputDecoration(
+          hintText: s.search,
+          hintStyle: Styles.secondary.copyWith(color: palette.ink3),
+          prefixIcon: Icon(Symbols.search_rounded, size: 18, color: palette.ink3),
+          isDense: true,
+          filled: true,
+          fillColor: palette.field,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+    final automatic = Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _tourTarget(
+        1,
+        DecoratedBox(
+          decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: sora.servers.isNotEmpty
+                ? _ServerRow(id: 'auto', name: s.serverAuto)
+                : Tile(
+                    title: s.addSubscription,
+                    onTap: () => showSubscriptionSheet(context),
+                    trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
+                  ),
+          ),
+        ),
+      ),
+    );
+    final toolbar = Row(
       children: [
-        if (sora.servers.length > _searchFrom)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: CupertinoSearchTextField(
-              controller: _search,
-              placeholder: s.search,
-              style: Styles.body.copyWith(color: palette.ink),
-              placeholderStyle: Styles.body.copyWith(color: palette.ink3),
-              backgroundColor: palette.field,
-              borderRadius: BorderRadius.circular(12),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
-              itemColor: palette.ink3,
-            ),
+        if (!widget.embedded)
+          RoundButton(
+            icon: Symbols.chevron_left_rounded,
+            label: MaterialLocalizations.of(context).backButtonTooltip,
+            onTap: () => Navigator.of(context).maybePop(),
           ),
-        if (query.isEmpty)
-          Group(
-            children: [
-              _ServerRow(id: 'auto', name: s.serverAuto),
-              _ServerRow(id: 'bypass', name: s.serverBypass),
-              if (sora.subscriptions.isEmpty)
-                Tile(
-                  title: s.addSubscription,
-                  onTap: () => showSubscriptionSheet(context),
-                  trailing: Icon(CupertinoIcons.plus, size: 18, color: palette.ink),
-                ),
-            ],
-          ),
-        for (final subscription in sora.subscriptions) ...[
-          if (query.isEmpty) _SubscriptionHeader(state: subscription),
-          if (_matching(entriesOf(subscription), query) case final shown when shown.isNotEmpty)
-            Group(
-              children: [for (final e in shown) _ServerRow(id: e.id, name: e.name, entry: e.isGroup ? e : null)],
-            )
-          else if (query.isEmpty)
-            const SizedBox(height: 20),
-        ],
+        const Spacer(),
+        ...actions,
       ],
     );
+    final slivers = <Widget>[
+      SliverToBoxAdapter(child: Column(children: [toolbar, const SizedBox(height: 8), search])),
+      SliverToBoxAdapter(child: automatic),
+    ];
+    final separator = palette.ink3.withValues(alpha: 0.28);
+    for (final subscription in sora.subscriptions) {
+      final entries = _matching(entriesOf(subscription), query);
+      if (query.isNotEmpty && entries.isEmpty) continue;
+      slivers.add(
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 16),
+          sliver: DecoratedSliver(
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: separator),
+            ),
+            sliver: SliverMainAxisGroup(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _SubscriptionHeader(
+                    key: ValueKey(subscription.settings.id),
+                    state: subscription,
+                    expanded: !_collapsed.contains(subscription.settings.id),
+                    onToggle: () => setState(() {
+                      final id = subscription.settings.id;
+                      if (!_collapsed.remove(id)) _collapsed.add(id);
+                    }),
+                  ),
+                ),
+                if (!_collapsed.contains(subscription.settings.id))
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+                    sliver: SliverList.separated(
+                      itemCount: entries.length,
+                      itemBuilder: (_, index) {
+                        final entry = entries[index];
+                        return _ServerRow(id: entry.id, name: entry.name, entry: entry);
+                      },
+                      separatorBuilder: (_, _) =>
+                          Divider(height: 1, thickness: 1, indent: 8, endIndent: 8, color: separator),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    if (!widget.scrollable) {
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        sliver: SliverMainAxisGroup(slivers: slivers),
+      );
+    }
+    final list = CustomScrollView(
+      key: const PageStorageKey('servers-list'),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          sliver: SliverMainAxisGroup(slivers: slivers),
+        ),
+      ],
+    );
+    return widget.embedded ? list : Scaffold(backgroundColor: palette.background, body: list);
   }
+
+  Widget _tourTarget(int step, Widget child) =>
+      widget.embedded ? TourTarget(step: step, radius: step == 0 ? 18 : 12, child: child) : child;
 }
 
 List<Entry> _matching(List<Entry> entries, String query) => query.isEmpty
@@ -130,56 +221,97 @@ class _ServerRow extends StatelessWidget {
     final measured = sora.latency.containsKey(measuredId);
     final ms = sora.latency[measuredId];
     final group = entry;
-    return Tile(
-      title: name,
-      detail: group == null
-          ? null
-          : group.ordered
-          ? s.groupOrdered(group.members.length)
-          : s.groupBest(group.members.length),
-      onTap: () => unawaited(sora.select(id)),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedSwitcher(
-            duration: Motion.of(context, Motion.medium),
-            child: Text(
-              !measured ? '' : (ms == null ? s.noAnswer : s.milliseconds(ms)),
-              key: ValueKey(ms ?? (measured ? -1 : -2)),
-              style: Styles.figures(Styles.secondary).copyWith(color: palette.ink),
+    final detail = group?.members.map(protocolLine).toSet().join(' | ');
+    return Semantics(
+      selected: chosen,
+      button: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: chosen ? palette.field : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Pressable(
+          onTap: () => unawaited(sora.select(id)),
+          radius: 8,
+          give: 1,
+          child: SizedBox(
+            height: entry == null ? 40 : 52,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Styles.row.copyWith(color: palette.ink),
+                        ),
+                        if (detail != null && detail.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 3),
+                            child: Text(
+                              detail,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Styles.caption.copyWith(color: palette.ink3),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 76,
+                    child: Text(
+                      !measured
+                          ? ''
+                          : ms == null
+                          ? s.noAnswer
+                          : s.milliseconds(ms),
+                      textAlign: TextAlign.right,
+                      style: Styles.figures(Styles.caption).copyWith(color: palette.ink2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 16, child: chosen ? Icon(Symbols.check_rounded, size: 16, color: palette.ink) : null),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          AnimatedScale(
-            scale: chosen ? 1 : 0.4,
-            duration: Motion.of(context, Motion.medium),
-            curve: Motion.curve,
-            child: AnimatedOpacity(
-              opacity: chosen ? 1 : 0,
-              duration: Motion.of(context, Motion.fast),
-              child: Icon(CupertinoIcons.checkmark_alt, size: 20, color: palette.ink),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _SubscriptionHeader extends StatelessWidget {
-  const _SubscriptionHeader({required this.state});
+class _SubscriptionHeader extends StatefulWidget {
+  const _SubscriptionHeader({super.key, required this.state, required this.expanded, required this.onToggle});
 
   final SubscriptionState state;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  State<_SubscriptionHeader> createState() => _SubscriptionHeaderState();
+}
+
+class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
+  SubscriptionState get state => widget.state;
+  bool _descriptionVisible = true;
 
   @override
   Widget build(BuildContext context) {
-    final sora = SoraScope.read(context);
+    final sora = SoraScope.of(context);
     final palette = Palette.of(context);
     final s = S.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
     final info = state.info;
     final facts = <String>[];
-    var alarm = false;
     if (info.hasUsage) {
       final used = formatBytes(s, info.uploadBytes + info.downloadBytes, locale);
       facts.add(info.totalBytes == Int64.ZERO ? used : s.usage(used, formatBytes(s, info.totalBytes, locale)));
@@ -188,7 +320,6 @@ class _SubscriptionHeader extends StatelessWidget {
       final expire = info.expire.toDateTime().toLocal();
       if (expire.isBefore(DateTime.now())) {
         facts.add(s.expired);
-        alarm = true;
       } else {
         // Include the year for expiry dates outside the current year to avoid
         // ambiguous dates.
@@ -196,13 +327,7 @@ class _SubscriptionHeader extends StatelessWidget {
         facts.add(s.until(format.format(expire)));
       }
     }
-    final error = state.hasLastError() && state.lastError.userMessageKey.isNotEmpty;
-    if (error) {
-      facts
-        ..clear()
-        ..add(describe(s, CoreFailure(state.lastError.userMessageKey)));
-    }
-    final factStyle = Styles.caption.copyWith(color: error || alarm ? palette.danger : palette.ink);
+    final factStyle = Styles.caption.copyWith(color: palette.ink3);
 
     final used = (info.uploadBytes + info.downloadBytes).toDouble();
     final share = info.hasUsage && info.totalBytes > Int64.ZERO
@@ -210,12 +335,22 @@ class _SubscriptionHeader extends StatelessWidget {
         : null;
     final announce = info.announce.trim();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 6, 4, 10),
+      padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Semantics(
+                expanded: widget.expanded,
+                child: RoundButton(
+                  key: ValueKey('collapse-subscription-${state.settings.id}'),
+                  icon: widget.expanded ? Symbols.keyboard_arrow_down_rounded : Symbols.keyboard_arrow_right_rounded,
+                  label: widget.expanded ? s.collapseServers : s.expandServers,
+                  onTap: widget.onToggle,
+                ),
+              ),
+              const SizedBox(width: 4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,42 +369,90 @@ class _SubscriptionHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              if (state.updating)
-                SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
+              if (sora.probing && (sora.probingSubscription == null || sora.probingSubscription == state.settings.id))
+                SizedBox.square(
+                  key: ValueKey('probe-subscription-${state.settings.id}'),
+                  dimension: 36,
+                  child: CupertinoActivityIndicator(color: palette.ink),
+                )
               else
-                MenuAnchor(
-                  alignmentOffset: const Offset(-150, 4),
-                  menuChildren: [
-                    _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
-                    _item(context, s.website, () => unawaited(sora.openSubscriptionPage(state.settings.id))),
-                    if (info.webPageUrl.isNotEmpty)
-                      _item(context, s.providerWebsite, () => unawaited(openLink(info.webPageUrl))),
-                    if (info.supportUrl.isNotEmpty)
-                      _item(context, s.support, () => unawaited(openLink(info.supportUrl))),
-                    _item(
-                      context,
-                      s.subscriptionSettings,
-                      () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
-                    ),
-                    _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
-                  ],
-                  builder: (context, controller, _) => RoundButton(
-                    icon: CupertinoIcons.ellipsis,
-                    label: state.displayName,
-                    onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                Tooltip(
+                  message: '${s.probeServers}: ${state.displayName}',
+                  child: RoundButton(
+                    key: ValueKey('probe-subscription-${state.settings.id}'),
+                    icon: Symbols.network_ping_rounded,
+                    label: '${s.probeServers}: ${state.displayName}',
+                    onTap: sora.probing || state.outbounds.isEmpty
+                        ? null
+                        : () => unawaited(sora.probe(subscriptionId: state.settings.id)),
                   ),
                 ),
+              if (state.updating)
+                SizedBox.square(
+                  key: ValueKey('refresh-subscription-${state.settings.id}'),
+                  dimension: 36,
+                  child: CupertinoActivityIndicator(color: palette.ink),
+                )
+              else
+                Tooltip(
+                  message: '${s.refresh}: ${state.displayName}',
+                  child: RoundButton(
+                    key: ValueKey('refresh-subscription-${state.settings.id}'),
+                    icon: Symbols.refresh_rounded,
+                    label: '${s.refresh}: ${state.displayName}',
+                    onTap: () => unawaited(sora.refreshSubscription(state.settings.id)),
+                  ),
+                ),
+              MenuAnchor(
+                alignmentOffset: const Offset(-150, 4),
+                menuChildren: [
+                  _item(context, s.website, () => unawaited(sora.openSubscriptionPage(state.settings.id))),
+                  if (info.webPageUrl.isNotEmpty)
+                    _item(context, s.providerWebsite, () => unawaited(openLink(context, info.webPageUrl))),
+                  if (info.supportUrl.isNotEmpty)
+                    _item(context, s.support, () => unawaited(openLink(context, info.supportUrl))),
+                  _item(
+                    context,
+                    s.subscriptionSettings,
+                    () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
+                  ),
+                  _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
+                ],
+                builder: (context, controller, _) => RoundButton(
+                  icon: Symbols.more_horiz_rounded,
+                  label: state.displayName,
+                  onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                ),
+              ),
             ],
           ),
-          if (share != null && !error)
+          if (share != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(0, 8, 10, 0),
-              child: UsageBar(share: share, alarm: share > 0.9),
+              child: UsageBar(share: share),
             ),
           if (announce.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(0, 10, 10, 0),
-              child: LinkedText(announce, style: Styles.caption.copyWith(color: palette.ink)),
+              padding: const EdgeInsets.only(right: 8, top: 4),
+              child: Column(
+                children: [
+                  Center(
+                    child: Semantics(
+                      expanded: _descriptionVisible,
+                      child: RoundButton(
+                        key: ValueKey('description-subscription-${state.settings.id}'),
+                        icon: _descriptionVisible
+                            ? Symbols.keyboard_arrow_up_rounded
+                            : Symbols.keyboard_arrow_down_rounded,
+                        label: _descriptionVisible ? s.hideDescription : s.showDescription,
+                        onTap: () => setState(() => _descriptionVisible = !_descriptionVisible),
+                      ),
+                    ),
+                  ),
+                  if (_descriptionVisible)
+                    Padding(padding: const EdgeInsets.only(top: 4), child: Announcement(announce)),
+                ],
+              ),
             ),
         ],
       ),
@@ -332,3 +515,13 @@ String? subscriptionWarning(S s, SubscriptionState sub, String locale) {
   }
   return null;
 }
+
+String protocolLine(OutboundSpec server) => [
+  if (server.displayProtocol.isNotEmpty)
+    server.displayProtocol.toUpperCase()
+  else if (server.protocol.isNotEmpty)
+    server.protocol == 'xray-profile' ? 'XRAY' : server.protocol.toUpperCase(),
+  if (server.transport.isNotEmpty) server.transport.toUpperCase(),
+  if (server.security.isNotEmpty && server.security.toLowerCase() != 'none') server.security.toUpperCase(),
+  if (isProfile(server)) 'JSON',
+].join(' | ');

@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -30,7 +31,6 @@ class _LogsScreenState extends State<LogsScreen> {
   List<LogEntry> _entries = [];
   StreamSubscription<LogEntry>? _watch;
   Timer? _debounce;
-  CoreFailure? _failure;
   bool _loaded = false;
 
   @override
@@ -58,8 +58,9 @@ class _LogsScreenState extends State<LogsScreen> {
     final link = SoraScope.read(context).link;
     await _watch?.cancel();
     _watch = null;
+    if (!mounted) return;
     if (link == null) {
-      setState(() => _failure = CoreFailure.unavailable);
+      SoraScope.read(context).reportFailure(CoreFailure.unavailable, source: 'logs');
       return;
     }
     try {
@@ -70,7 +71,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (!mounted) return;
       setState(() {
         _entries = page.entries.toList();
-        _failure = null;
+        SoraScope.read(context).recovered('logs');
         _loaded = true;
       });
       final after = _entries.isEmpty ? null : _entries.first.sequence;
@@ -86,11 +87,11 @@ class _LogsScreenState extends State<LogsScreen> {
           .listen(
             _arrive,
             onError: (Object e) {
-              if (mounted) setState(() => _failure = CoreFailure.from(e));
+              if (mounted) SoraScope.read(context).reportFailure(e, source: 'logs');
             },
           );
     } catch (error) {
-      if (mounted) setState(() => _failure = CoreFailure.from(error));
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'logs');
     }
   }
 
@@ -120,7 +121,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (place == null) return;
       await File(place.path).writeAsBytes(answer.data, flush: true);
     } catch (error) {
-      if (mounted) setState(() => _failure = CoreFailure.from(error));
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'logs');
     }
   }
 
@@ -134,7 +135,7 @@ class _LogsScreenState extends State<LogsScreen> {
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
       if (mounted) setState(() => _entries = []);
     } catch (error) {
-      if (mounted) setState(() => _failure = CoreFailure.from(error));
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'logs');
     }
   }
 
@@ -165,13 +166,13 @@ class _LogsScreenState extends State<LogsScreen> {
               ),
           ],
           builder: (context, controller, _) => RoundButton(
-            icon: CupertinoIcons.square_arrow_up,
+            icon: Symbols.ios_share_rounded,
             label: s.export,
             onTap: () => controller.isOpen ? controller.close() : controller.open(),
           ),
         ),
         const SizedBox(width: 4),
-        RoundButton(icon: CupertinoIcons.trash, label: s.clear, onTap: () => unawaited(_clear())),
+        RoundButton(icon: Symbols.delete_rounded, label: s.clear, onTap: () => unawaited(_clear())),
       ],
       fill: !_loaded
           ? const SizedBox()
@@ -211,11 +212,6 @@ class _LogsScreenState extends State<LogsScreen> {
           itemColor: palette.ink3,
         ),
         const SizedBox(height: 14),
-        if (_failure != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-            child: Text(describe(s, _failure!), style: Styles.caption.copyWith(color: palette.danger)),
-          ),
       ],
     );
   }
@@ -232,9 +228,9 @@ class _Entry extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = Palette.of(context);
     final color = switch (entry.level) {
-      LogLevel.LOG_LEVEL_ERROR => palette.danger,
+      LogLevel.LOG_LEVEL_ERROR => palette.ink,
       LogLevel.LOG_LEVEL_WARNING => palette.ink,
-      _ => palette.ink,
+      _ => palette.ink2,
     };
     final meta = [
       _time.format(entry.time.toDateTime().toLocal()),

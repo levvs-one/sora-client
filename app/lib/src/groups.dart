@@ -33,7 +33,7 @@ class Entry {
 const groupPrefix = 'group:';
 
 final _role = RegExp(
-  r'\s*[\(\[\-–—·|:,]?\s*(основн(?:ой|ая|ое)|главн(?:ый|ая|ое)|запасн(?:ой|ая|ое)|резерв(?:ный|ная|ное)?|main|primary|backup|reserve|fallback)\s*[\)\]]?\s*$',
+  r'\s*[\(\[\-–\u2014\u00b7|:,]?\s*(основн(?:ой|ая|ое)|главн(?:ый|ая|ое)|запасн(?:ой|ая|ое)|резерв(?:ный|ная|ное)?|main|primary|backup|reserve|fallback)\s*[\)\]]?\s*$',
   caseSensitive: false,
   unicode: true,
 );

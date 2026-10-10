@@ -88,11 +88,20 @@ func run(ctx context.Context, arguments []string) error {
 		return nil
 	}
 
+	if f.showToken {
+		token, err := printToken(f.dataDir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(token)
+		return nil
+	}
 	logger, err := newLogger(f.logLevel)
 	if err != nil {
 		return err
 	}
 	options := Options{
+		Diagnostic:    f.check,
 		DataDir:       f.dataDir,
 		EnginesDir:    f.enginesDir,
 		Engine:        engine.Kind(f.engine),
@@ -118,14 +127,6 @@ func run(ctx context.Context, arguments []string) error {
 			logger.Error("shutdown was not clean", "error", errs.Detail(closeErr))
 		}
 	}()
-	if f.showToken {
-		token, err := printToken(f.dataDir)
-		if err != nil {
-			return err
-		}
-		fmt.Println(token)
-		return nil
-	}
 	if f.check {
 		lines, ok := checkReport(app)
 		for _, line := range lines {

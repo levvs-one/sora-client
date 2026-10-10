@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Sora</vendor>
+  <vendor_url>https://github.com/levvs-one/sora-client</vendor_url>
+  <action id="io.github.levvs-one.sora.update">
+    <description>Update Sora and its core service</description>
+    <description xml:lang="ru">Обновление Sora и службы ядра</description>
+    <message>Administrator authentication is required to install the downloaded Sora and core packages</message>
+    <message xml:lang="ru">Для установки скачанных пакетов Sora и ядра нужен пароль администратора</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/sora/sora-update</annotate>
+  </action>
+</policyconfig>

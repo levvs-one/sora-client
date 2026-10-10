@@ -43,8 +43,8 @@ class Palette extends ThemeExtension<Palette> {
     surface: Color(0xFFFFFFFF),
     field: Color(0xFFEBEBEF),
     ink: Color(0xFF1D1D1F),
-    ink2: Color(0xFF6E6E73),
-    ink3: Color(0xFFAEAEB2),
+    ink2: Color(0xFF63666C),
+    ink3: Color(0xFF666B73),
     danger: Color(0xFFE5332A),
     shadow: Color(0x14000000),
     raised: Color(0xFFFFFFFF),
@@ -58,7 +58,7 @@ class Palette extends ThemeExtension<Palette> {
     field: Color(0xFF2C2C2E),
     ink: Color(0xFFF5F5F7),
     ink2: Color(0xFF98989F),
-    ink3: Color(0xFF5A5A5F),
+    ink3: Color(0xFF92949C),
     danger: Color(0xFFFF5147),
     shadow: Color(0x66000000),
     raised: Color(0xFF2C2C2E),
@@ -109,6 +109,11 @@ abstract final class Styles {
     fontFamily: 'Inter',
     fontFamilyFallback: _emoji,
     fontSize: size,
+    fontWeight: weight == 400
+        ? FontWeight.w400
+        : weight == 500
+        ? FontWeight.w500
+        : FontWeight.w600,
     height: height,
     letterSpacing: tracking,
     fontVariations: [FontVariation('wght', weight), FontVariation('opsz', size.clamp(14, 32))],
@@ -118,19 +123,22 @@ abstract final class Styles {
   /// selectively because this feature also widens hyphens and punctuation.
   static TextStyle figures(TextStyle style) => style.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 
-  static final status = _inter(34, 640, -0.9, 1.12);
-  static final title = _inter(28, 680, -0.6, 1.14);
-  static final body = _inter(17, 450, -0.25, 1.3);
-  static final bodyStrong = _inter(17, 560, -0.25, 1.3);
-  static final secondary = _inter(15, 450, -0.1, 1.33);
-  static final caption = _inter(13, 480, 0, 1.3);
+  static final status = _inter(28, 600, -0.6, 1.14);
+  static final title = _inter(28, 600, -0.6, 1.14);
+  static final heading = _inter(20, 600, -0.3, 1.2);
+  static final body = _inter(15, 400, -0.1, 1.33);
+  static final bodyStrong = _inter(15, 600, -0.1, 1.33);
+  static final row = _inter(15, 500, -0.1, 1.2);
+  static final secondary = _inter(13, 400, 0, 1.3);
+  static final caption = _inter(12, 400, 0, 1.3);
+  static const timestamp = TextStyle(fontFamily: 'NotoSansMono', fontSize: 12, height: 4 / 3);
 }
 
 /// Shared animation durations and curves that respect the motion setting.
 abstract final class Motion {
   static const fast = Duration(milliseconds: 160);
-  static const medium = Duration(milliseconds: 280);
-  static const slow = Duration(milliseconds: 520);
+  static const medium = Duration(milliseconds: 180);
+  static const slow = Duration(milliseconds: 220);
 
   /// Navigation curve approximating an Apple critically damped spring.
   static const curve = Cubic(0.2, 0.9, 0.25, 1);
@@ -178,13 +186,13 @@ ThemeData buildTheme(Brightness brightness) {
     focusColor: palette.hover,
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: palette.ink,
-      selectionColor: Palette.spectrum[2].withValues(alpha: 0.35),
+      selectionColor: palette.ink.withValues(alpha: 0.18),
     ),
     menuTheme: MenuThemeData(
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(palette.raised),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        elevation: const WidgetStatePropertyAll(24),
+        elevation: const WidgetStatePropertyAll(2),
         shadowColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: brightness == Brightness.dark ? 0.6 : 0.28)),
         padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),

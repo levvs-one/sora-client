@@ -48,9 +48,14 @@ class UserRule {
     // Recognize Windows .exe process names before treating dotted names as
     // domains.
     if (RegExp(r'^[A-Za-z0-9._+-]{1,64}\.exe$', caseSensitive: false).hasMatch(text)) return 'process:$text';
-    text = text.replaceFirst(RegExp(r'^\*?\.'), '').toLowerCase();
+    text = text.replaceFirst(RegExp(r'^\*?\.'), '');
+    if (RegExp(r'^[\x00-\x7f]+$').hasMatch(text)) text = text.toLowerCase();
     if (text.contains('.')) {
-      return RegExp(r'^[a-z0-9-]+(\.[a-z0-9-]+)+$').hasMatch(text) ? 'domain:$text' : null;
+      final labels = text.split('.');
+      final label = RegExp(r'^[\p{L}\p{Nd}](?:[\p{L}\p{M}\p{Nd}-]*[\p{L}\p{M}\p{Nd}])?$', unicode: true);
+      return text.runes.length <= 253 && labels.every((part) => part.runes.length <= 63 && label.hasMatch(part))
+          ? 'domain:$text'
+          : null;
     }
     return RegExp(r'^[A-Za-z0-9._+-]{1,64}$').hasMatch(input.trim()) ? 'process:${input.trim()}' : null;
   }

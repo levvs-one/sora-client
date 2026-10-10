@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"errors"
+	"net/netip"
 	"sync"
 
 	"github.com/levvs-one/sora-client/core/errs"
@@ -10,6 +12,8 @@ import (
 // Settings describes session-owned system changes. The platform guard applies
 // them and restores prior state on every exit path.
 type Settings struct {
+	TunNetworks []netip.Prefix
+	FakeIPRange netip.Prefix
 	// KillSwitch blocks non-session traffic and stays armed while the
 	// engine is down.
 	KillSwitch bool
@@ -86,11 +90,16 @@ func (c *compositeGuard) Apply(ctx context.Context, s Settings) error {
 	defer c.mu.Unlock()
 	applied := 0
 	for _, part := range c.parts {
+		c.active = applied + 1
 		if err := part.Apply(ctx, s); err != nil {
-			for i := applied - 1; i >= 0; i-- {
-				_ = c.parts[i].Restore(ctx)
+			var rollback error
+			for i := c.active - 1; i >= 0; i-- {
+				rollback = errors.Join(rollback, c.parts[i].Restore(context.WithoutCancel(ctx)))
 			}
-			return errs.Wrap(err, errs.CodeOf(err), errs.KeyOf(err))
+			if rollback == nil {
+				c.active = 0
+			}
+			return errs.Wrap(errors.Join(err, rollback), errs.CodeOf(err), errs.KeyOf(err))
 		}
 		applied++
 	}
@@ -109,7 +118,9 @@ func (c *compositeGuard) Restore(ctx context.Context) error {
 			first = err
 		}
 	}
-	c.active = 0
+	if first == nil {
+		c.active = 0
+	}
 	return first
 }
 

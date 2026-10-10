@@ -23,13 +23,13 @@ depends:
   - nftables
 overrides:
   deb:
-    depends: [nftables, libnetfilter-queue1, zlib1g]
+    depends: [nftables, iproute2, libnetfilter-queue1, zlib1g]
     recommends: [polkitd]
   rpm:
-    depends: [nftables, libnetfilter_queue, zlib]
+    depends: [nftables, iproute, libnetfilter_queue, zlib]
     recommends: [polkit]
   archlinux:
-    depends: [nftables, polkit, libnetfilter_queue, zlib]
+    depends: [nftables, iproute2, polkit, libnetfilter_queue, zlib]
 
 contents:
   - src: ./dist/sora-core

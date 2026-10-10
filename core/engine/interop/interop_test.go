@@ -5,7 +5,12 @@ package interop_test
 
 import (
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
@@ -20,6 +25,7 @@ import (
 	"time"
 
 	"github.com/levvs-one/sora-client/core/engine"
+	"github.com/levvs-one/sora-client/core/engine/enginetest"
 	"github.com/levvs-one/sora-client/core/engine/registry"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 	"github.com/levvs-one/sora-client/core/engine/xray"
@@ -72,6 +78,47 @@ func services(t *testing.T) []service {
 		engine.Outbound{Protocol: engine.ProtocolVLESS, UUID: uuid, Transport: engine.Transport{Type: "httpupgrade", Path: "/up"}})
 	add("vless-xhttp", vless(map[string]any{"network": "xhttp", "xhttpSettings": map[string]any{"path": "/x", "mode": "packet-up"}}),
 		engine.Outbound{Protocol: engine.ProtocolVLESS, UUID: uuid, Transport: engine.Transport{Type: "xhttp", Path: "/x", Mode: "packet-up"}})
+	encryptionKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, transport := range []string{"raw", "xhttp"} {
+		stream := map[string]any{"network": transport}
+		o := engine.Outbound{Protocol: engine.ProtocolVLESS, UUID: uuid,
+			Encryption: "mlkem768x25519plus.native.0rtt." + base64.RawURLEncoding.EncodeToString(encryptionKey.PublicKey().Bytes())}
+		if transport == "xhttp" {
+			stream["xhttpSettings"] = map[string]any{"path": "/encrypted", "mode": "packet-up"}
+			o.Transport = engine.Transport{Type: "xhttp", Path: "/encrypted", Mode: "packet-up"}
+		}
+		inbound := vless(stream)
+		inbound["settings"].(map[string]any)["decryption"] = "mlkem768x25519plus.native.600s." + base64.RawURLEncoding.EncodeToString(encryptionKey.Bytes())
+		add("vless-encryption-"+transport, inbound, o)
+	}
+	tlsServer := httptest.NewTLSServer(http.NotFoundHandler())
+	certificate := tlsServer.TLS.Certificates[0]
+	tlsServer.Close()
+	key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	certPath, keyPath := filepath.Join(dir, "cert.pem"), filepath.Join(dir, "key.pem")
+	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	enginetest.TrustCertificate(t, certPath)
+	for _, mode := range []string{"auto", "packet-up", "stream-up", "stream-one"} {
+		add("vless-xhttp-tls-"+mode, vless(map[string]any{
+			"network": "xhttp", "security": "tls",
+			"tlsSettings":   map[string]any{"alpn": []string{"h2"}, "certificates": []any{map[string]any{"certificateFile": certPath, "keyFile": keyPath}}},
+			"xhttpSettings": map[string]any{"path": "/x", "mode": mode},
+		}), engine.Outbound{Protocol: engine.ProtocolVLESS, UUID: uuid,
+			TLS:       engine.TLS{Enabled: true, ServerName: "example.com", ALPN: []string{"h2"}},
+			Transport: engine.Transport{Type: "xhttp", Path: "/x", Mode: mode}})
+	}
 	add("vmess-ws", map[string]any{"protocol": "vmess", "settings": map[string]any{"clients": []any{map[string]any{"id": uuid}}},
 		"streamSettings": map[string]any{"network": "ws", "wsSettings": map[string]any{"path": "/vm"}}},
 		engine.Outbound{Protocol: engine.ProtocolVMess, UUID: uuid, Transport: engine.Transport{Type: "ws", Path: "/vm"}})
@@ -80,16 +127,20 @@ func services(t *testing.T) []service {
 	return out
 }
 
-func startServer(t *testing.T, b supervise.Binary, svcs []service) {
+func startServer(t *testing.T, b supervise.Binary, svcs []service, redirect ...string) {
 	t.Helper()
 	inbounds := make([]any, 0, len(svcs))
 	for _, s := range svcs {
 		inbounds = append(inbounds, s.inbound)
 	}
+	freedom := map[string]any{"protocol": "freedom"}
+	if len(redirect) > 0 {
+		freedom["settings"] = map[string]any{"redirect": redirect[0]}
+	}
 	cfg, err := json.Marshal(map[string]any{
 		"log":       map[string]any{"loglevel": "warning"},
 		"inbounds":  inbounds,
-		"outbounds": []any{map[string]any{"protocol": "freedom"}},
+		"outbounds": []any{freedom},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -123,15 +174,29 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 	}
 	svcs := services(t)
 	startServer(t, server, svcs)
+	availability := registry.Discover(t.Context(), dir, supervise.Config{HomeDir: t.TempDir()}).Availability()
 
 	// Wrong credentials must fail to rule out traffic bypassing the proxy.
 	wrong := svcs[0]
 	wrong.outbound.UUID = "00000000-0000-4000-8000-000000000000"
 	wrong.name = "wrong-uuid"
 	wrong.outbound.ID = wrong.name
+	var encryptedWrong service
+	for _, svc := range svcs {
+		if svc.name == "vless-encryption-raw" {
+			encryptedWrong = svc
+			break
+		}
+	}
+	wrongKey, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encryptedWrong.name, encryptedWrong.outbound.ID = "wrong-encryption-key", "wrong-encryption-key"
+	encryptedWrong.outbound.Encryption = "mlkem768x25519plus.native.0rtt." + base64.RawURLEncoding.EncodeToString(wrongKey.PublicKey().Bytes())
 
 	for _, kind := range []engine.Kind{engine.KindSingBox, engine.KindXray, engine.KindMihomo} {
-		for _, svc := range append(svcs, wrong) {
+		for _, svc := range append(svcs, wrong, encryptedWrong) {
 			plan := &engine.Plan{
 				SessionID:  "interop",
 				LocalProxy: engine.LocalProxy{Enabled: true},
@@ -139,7 +204,7 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 				Rules:      []engine.Rule{{Type: engine.RuleMatchAll, Target: svc.name}},
 				Options:    engine.Options{LogLevel: "warning", TestURL: engine.TestURLProduction},
 			}
-			if missing := engine.Catalog[kind].Missing(plan); len(missing) > 0 {
+			if _, err := engine.SelectEngine(plan, availability, []engine.Kind{kind}); err != nil {
 				continue
 			}
 			t.Run(string(kind)+"/"+svc.name, func(t *testing.T) {
@@ -159,9 +224,9 @@ func TestEveryEngineCarriesTrafficThroughEveryTransport(t *testing.T) {
 					t.Fatalf("Apply: %v", err)
 				}
 				body, err := fetch(ctx, local, target.URL)
-				if svc.name == wrong.name {
+				if svc.name == wrong.name || svc.name == encryptedWrong.name {
 					if err == nil {
-						t.Fatalf("a wrong uuid reached the target through %s: the request bypassed the proxy", kind)
+						t.Fatalf("invalid credentials reached the target through %s: the request bypassed the proxy", kind)
 					}
 					return
 				}

@@ -690,6 +690,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     $core.Iterable<GroupSpec>? groups,
     RoutingOptions? routing,
     $core.bool? ipv6,
+    $core.String? tunStack,
   }) {
     final result = SessionPlan._();
     if (tunnelMode != null) result.tunnelMode = tunnelMode;
@@ -705,6 +706,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     if (groups != null) result.groups.addAll(groups);
     if (routing != null) result.routing = routing;
     if (ipv6 != null) result.ipv6 = ipv6;
+    if (tunStack != null) result.tunStack = tunStack;
     return result;
   }
 
@@ -732,6 +734,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     ..pPM<GroupSpec>(11, _omitFieldNames ? '' : 'groups', subBuilder: GroupSpec.$_createMessage)
     ..aOM<RoutingOptions>(12, _omitFieldNames ? '' : 'routing', subBuilder: RoutingOptions.$_createMessage)
     ..aOB(13, _omitFieldNames ? '' : 'ipv6')
+    ..aOS(14, _omitFieldNames ? '' : 'tunStack')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -870,6 +873,19 @@ class SessionPlan extends $pb.GeneratedMessage {
   $core.bool hasIpv6() => $_has(12);
   @$pb.TagNumber(13)
   void clearIpv6() => $_clearField(13);
+
+  /// Since 1.7. Empty keeps the engine default. mihomo accepts system, gvisor,
+  /// mixed and mips. Xray uses native gvisor or a mihomo TUN bridge for other
+  /// stacks. Clients must negotiate 1.7 before
+  /// sending an explicit value, so an older core cannot silently ignore it.
+  @$pb.TagNumber(14)
+  $core.String get tunStack => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set tunStack($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasTunStack() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearTunStack() => $_clearField(14);
 }
 
 /// GroupSpec is one group of outbounds.
@@ -1252,6 +1268,7 @@ class OutboundSpec extends $pb.GeneratedMessage {
     Endpoint? endpoint,
     CredentialsRef? credentials,
     BypassStrategy? bypass,
+    $core.String? displayProtocol,
   }) {
     final result = OutboundSpec._();
     if (id != null) result.id = id;
@@ -1262,6 +1279,7 @@ class OutboundSpec extends $pb.GeneratedMessage {
     if (endpoint != null) result.endpoint = endpoint;
     if (credentials != null) result.credentials = credentials;
     if (bypass != null) result.bypass = bypass;
+    if (displayProtocol != null) result.displayProtocol = displayProtocol;
     return result;
   }
 
@@ -1284,6 +1302,7 @@ class OutboundSpec extends $pb.GeneratedMessage {
     ..aOM<Endpoint>(6, _omitFieldNames ? '' : 'endpoint', subBuilder: Endpoint.$_createMessage)
     ..aOM<CredentialsRef>(7, _omitFieldNames ? '' : 'credentials', subBuilder: CredentialsRef.$_createMessage)
     ..aOM<BypassStrategy>(8, _omitFieldNames ? '' : 'bypass', subBuilder: BypassStrategy.$_createMessage)
+    ..aOS(9, _omitFieldNames ? '' : 'displayProtocol')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1385,6 +1404,16 @@ class OutboundSpec extends $pb.GeneratedMessage {
   void clearBypass() => $_clearField(8);
   @$pb.TagNumber(8)
   BypassStrategy ensureBypass() => $_ensure(7);
+
+  /// Display metadata for full profiles; protocol still selects the adapter.
+  @$pb.TagNumber(9)
+  $core.String get displayProtocol => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set displayProtocol($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasDisplayProtocol() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearDisplayProtocol() => $_clearField(9);
 }
 
 class Endpoint extends $pb.GeneratedMessage {

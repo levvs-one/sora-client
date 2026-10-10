@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
+import '../sora.dart';
 import '../design/theme.dart';
 
 /// A tappable surface with hover feedback and animated press scaling. A null
@@ -34,6 +36,7 @@ class Pressable extends StatefulWidget {
 class _PressableState extends State<Pressable> {
   bool _hover = false;
   bool _down = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -43,27 +46,49 @@ class _PressableState extends State<Pressable> {
         ? Colors.transparent
         : _down
         ? palette.pressed
-        : _hover
+        : _hover || _focused
         ? palette.hover
         : Colors.transparent;
-    return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = _down = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: enabled ? (_) => setState(() => _down = true) : null,
-        onTapUp: enabled ? (_) => setState(() => _down = false) : null,
-        onTapCancel: enabled ? () => setState(() => _down = false) : null,
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _down ? widget.give : 1,
-          duration: Motion.of(context, Motion.fast),
-          curve: Motion.curve,
-          child: AnimatedContainer(
+    return FocusableActionDetector(
+      enabled: enabled,
+      onShowFocusHighlight: (value) => setState(() => _focused = value),
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+        SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+      },
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onTap?.call();
+            return null;
+          },
+        ),
+      },
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = _down = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: enabled ? (_) => setState(() => _down = true) : null,
+          onTapUp: enabled ? (_) => setState(() => _down = false) : null,
+          onTapCancel: enabled ? () => setState(() => _down = false) : null,
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            scale: _down ? widget.give : 1,
             duration: Motion.of(context, Motion.fast),
-            decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(widget.radius)),
-            child: widget.child,
+            curve: Motion.curve,
+            child: AnimatedContainer(
+              duration: Motion.of(context, Motion.fast),
+              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(widget.radius)),
+              foregroundDecoration: _focused
+                  ? BoxDecoration(
+                      border: Border.all(color: palette.ink3, width: 2),
+                      borderRadius: BorderRadius.circular(widget.radius),
+                    )
+                  : null,
+              child: widget.child,
+            ),
           ),
         ),
       ),
@@ -115,8 +140,8 @@ class Screen extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = Palette.of(context);
     final heading = Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 22),
-      child: Text(title, style: Styles.title.copyWith(color: palette.ink)),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
+      child: Text(title, style: Styles.heading.copyWith(color: palette.ink)),
     );
     return Scaffold(
       body: SafeArea(
@@ -127,11 +152,12 @@ class Screen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
               child: Row(
                 children: [
-                  RoundButton(
-                    icon: CupertinoIcons.chevron_left,
-                    label: MaterialLocalizations.of(context).backButtonTooltip,
-                    onTap: () => Navigator.of(context).maybePop(),
-                  ),
+                  if (Navigator.of(context).canPop())
+                    RoundButton(
+                      icon: Symbols.chevron_left_rounded,
+                      label: MaterialLocalizations.of(context).backButtonTooltip,
+                      onTap: () => Navigator.of(context).maybePop(),
+                    ),
                   const Spacer(),
                   ...actions,
                 ],
@@ -140,7 +166,7 @@ class Screen extends StatelessWidget {
             Expanded(
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
+                  constraints: const BoxConstraints(maxWidth: 880),
                   child: fill == null
                       ? ListView(padding: const EdgeInsets.fromLTRB(20, 6, 20, 32), children: [heading, ...children])
                       : Padding(
@@ -174,9 +200,9 @@ class Group extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DecoratedBox(
-        decoration: BoxDecoration(color: Palette.of(context).surface, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: Palette.of(context).surface, borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
@@ -227,7 +253,7 @@ Future<bool> confirm(
     pageBuilder: (context, _, _) => Center(
       child: Material(
         color: palette.raised,
-        elevation: 24,
+        elevation: 0,
         shadowColor: palette.shadow,
         borderRadius: BorderRadius.circular(26),
         child: SizedBox(
@@ -309,12 +335,12 @@ class Tile extends StatelessWidget {
     final palette = Palette.of(context);
     return Pressable(
       onTap: onTap,
-      radius: 16,
+      radius: 8,
       give: 0.99,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 52),
+        constraints: const BoxConstraints(minHeight: 40),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             children: [
               Expanded(
@@ -400,7 +426,7 @@ class ChoiceTile<T> extends StatelessWidget {
               overlayColor: WidgetStatePropertyAll(palette.hover),
               padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12)),
             ),
-            trailingIcon: entry.key == value ? Icon(CupertinoIcons.checkmark_alt, size: 18, color: palette.ink) : null,
+            trailingIcon: entry.key == value ? Icon(Symbols.check_rounded, size: 18, color: palette.ink) : null,
             child: Text(entry.value, style: Styles.secondary.copyWith(color: palette.ink)),
           ),
       ],
@@ -412,7 +438,7 @@ class ChoiceTile<T> extends StatelessWidget {
           children: [
             Text(choices[value] ?? '', style: Styles.secondary.copyWith(color: palette.ink)),
             const SizedBox(width: 6),
-            Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: palette.ink3),
+            Icon(Symbols.unfold_more_rounded, size: 14, color: palette.ink3),
           ],
         ),
       ),
@@ -439,7 +465,7 @@ class LinkTile extends StatelessWidget {
         children: [
           if (value != null) Text(value!, style: Styles.secondary.copyWith(color: palette.ink)),
           const SizedBox(width: 6),
-          Icon(CupertinoIcons.chevron_right, size: 15, color: palette.ink3),
+          Icon(Symbols.chevron_right_rounded, size: 15, color: palette.ink3),
         ],
       ),
     );
@@ -489,14 +515,12 @@ class Segments<T> extends StatelessWidget {
                   child: Semantics(
                     button: true,
                     selected: key == value,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                       onTap: () => onChanged(key),
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: Center(
-                          child: Text(choices[key]!, style: Styles.caption.copyWith(color: palette.ink)),
-                        ),
+                      radius: 8,
+                      give: 1,
+                      child: Center(
+                        child: Text(choices[key]!, style: Styles.caption.copyWith(color: palette.ink)),
                       ),
                     ),
                   ),
@@ -551,62 +575,15 @@ class UsageBar extends StatelessWidget {
 
 /// Opens a provider link externally. Allows only HTTP, HTTPS and Telegram
 /// schemes, matching core validation.
-Future<void> openLink(String link) async {
+Future<void> openLink(BuildContext context, String link) async {
   final uri = Uri.tryParse(link.trim());
   if (uri == null || !const {'https', 'http', 'tg'}.contains(uri.scheme)) return;
-  await launchUrl(uri, mode: LaunchMode.externalApplication);
-}
-
-/// Provider text with clickable URLs and Telegram handles; @names open their
-/// t.me channel.
-class LinkedText extends StatefulWidget {
-  const LinkedText(this.text, {super.key, required this.style});
-
-  final String text;
-  final TextStyle style;
-
-  @override
-  State<LinkedText> createState() => _LinkedTextState();
-}
-
-class _LinkedTextState extends State<LinkedText> {
-  static final _links = RegExp(r'https?://[^\s]+[^\s.,!?)]|@[A-Za-z0-9_]{4,32}');
-  final _recognizers = <TapGestureRecognizer>[];
-
-  @override
-  void dispose() {
-    for (final r in _recognizers) {
-      r.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    for (final r in _recognizers) {
-      r.dispose();
-    }
-    _recognizers.clear();
-    final spans = <InlineSpan>[];
-    var at = 0;
-    for (final m in _links.allMatches(widget.text)) {
-      if (m.start > at) spans.add(TextSpan(text: widget.text.substring(at, m.start)));
-      final token = m.group(0)!;
-      final target = token.startsWith('@') ? 'https://t.me/${token.substring(1)}' : token;
-      final tap = TapGestureRecognizer()..onTap = () => unawaited(openLink(target));
-      _recognizers.add(tap);
-      spans.add(
-        TextSpan(
-          text: token,
-          recognizer: tap,
-          mouseCursor: SystemMouseCursors.click,
-          style: const TextStyle(fontVariations: [FontVariation('wght', 620)]),
-        ),
-      );
-      at = m.end;
-    }
-    if (at < widget.text.length) spans.add(TextSpan(text: widget.text.substring(at)));
-    return Text.rich(TextSpan(style: widget.style, children: spans));
+  final sora = SoraScope.read(context);
+  sora.recovered('browser');
+  try {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) throw const CoreFailure('app.browser_unavailable');
+  } catch (_) {
+    sora.reportFailure(const CoreFailure('app.browser_unavailable'), source: 'browser', action: '');
   }
 }
 
@@ -674,10 +651,14 @@ String describe(S s, CoreFailure failure) {
   return switch (key) {
     'app.core_unavailable' => s.errCore,
     'app.no_servers' => s.errNoServers,
+    'app.browser_unavailable' => s.speedtestExternalFailed,
     'core.auth.unauthenticated' || 'core.auth.permission_denied' => s.errAuth,
     'core.api.version_mismatch' => s.errVersion,
     'core.session.busy' => s.errBusy,
     'core.engine.binary_missing' => s.errEngineMissing,
+    'core.plan.engine_unsupported' => s.errEngineUnsupported,
+    'core.guard.restore_failed' => s.errRestore,
+    'core.session.unknown' || 'core.session.required' => s.errSessionEnded,
     'core.engine.start_failed' => s.errEngineStart,
     'core.engine.stopped' || 'core.engine.restart_budget_spent' => s.errEngineStopped,
     'core.plan.tunnel_unsupported' => s.errTunnel,

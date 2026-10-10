@@ -116,7 +116,7 @@ jobs:
           flutter-version: 3.47.6
           channel: stable
       - name: Install Linux build dependencies
-        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev bubblewrap shellcheck
       - name: Get packages
         run: flutter pub get
       - name: Check formatting
@@ -127,6 +127,14 @@ jobs:
         run: flutter test
       - name: Build for Linux
         run: flutter build linux --release
+      - name: Check the Linux update helper
+        working-directory: .
+        run: |
+          shellcheck packaging/linux/sora-update
+          # Ubuntu 24.04 runners keep unprivileged user namespaces behind
+          # AppArmor; the helper test runs inside one.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          python3 packaging/linux/test_update.py -v
 
   windows:
     name: Windows
@@ -206,6 +214,14 @@ jobs:
           "$((Get-FileHash -Algorithm SHA256 $setup.FullName).Hash.ToLowerInvariant())  $($setup.Name)" | Set-Content -Encoding ascii dist\SHA256SUMS
           $env:SORA_DIST = "$PWD\dist"
           & .\packaging\install\install.ps1
+          # Silent setup must reopen the app as well as install the service.
+          for ($i = 0; $i -lt 30; $i++) {
+            if (Get-Process sora -ErrorAction SilentlyContinue) { break }
+            Start-Sleep -Seconds 1
+          }
+          if (-not (Get-Process sora -ErrorAction SilentlyContinue)) { throw "Silent setup did not restart Sora" }
+          # Later pipe and traffic tests must own their desktop connection.
+          Get-Process sora | Stop-Process
           # A service reports StartPending before Running; give it time.
           for ($i = 0; $i -lt 30; $i++) {
             $service = Get-Service SoraCore -ErrorAction SilentlyContinue
@@ -315,6 +331,35 @@ jobs:
         run: CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.buildVersion=$SORA_VERSION" -o ../dist/sora-core ./cmd/sora-core
       - name: Fetch and verify the engines
         run: packaging/engines/fetch.sh ${{ matrix.arch }} dist/engines
+      - name: VPN coexistence in isolated namespaces
+        if: matrix.arch == 'amd64'
+        timeout-minutes: 30
+        # The three neighbour variants run in their own namespaces, so they can
+        # run side by side; one long sequential run exceeded the job budget.
+        run: |
+          for vpn in none happ openvpn; do
+            # The log stays owned by the runner user on purpose, for upload.
+            # shellcheck disable=SC2024
+            sudo env "PATH=$PATH" "SORA_ENGINES_DIR=$PWD/dist/engines" "SORA_COEXIST_VPNS=$vpn" "SORA_COEXIST_WORK=$RUNNER_TEMP" \
+              bash core/testdata/coexist/run.sh > "coexist-$vpn.log" 2>&1 &
+          done
+          status=0
+          for job in $(jobs -p); do wait "$job" || status=1; done
+          cat coexist-*.log
+          exit $status
+      - uses: actions/upload-artifact@v6
+        if: always() && matrix.arch == 'amd64'
+        with:
+          name: coexistence-logs
+          path: |
+            coexist-*.log
+            ${{ runner.temp }}/coexist-*/*.log
+            ${{ runner.temp }}/coexist-*/*.tsv
+            ${{ runner.temp }}/coexist-*/*/*.log
+            ${{ runner.temp }}/coexist-*/*/addresses
+            ${{ runner.temp }}/coexist-*/*/rules*
+            ${{ runner.temp }}/coexist-*/*/routes*
+          if-no-files-found: ignore
       - name: Build zapret
         timeout-minutes: 15
         run: |
@@ -332,7 +377,7 @@ jobs:
         if: matrix.arch == 'amd64'
         working-directory: app
         run: |
-          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
           flutter pub get
           flutter build linux --release --dart-define=SORA_VERSION=${{ env.SORA_VERSION }}
       - name: Package

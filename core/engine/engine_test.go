@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -121,5 +122,74 @@ func TestSelectEngineRespectsMinimumVersion(t *testing.T) {
 	}, []Kind{KindMihomo})
 	if err == nil || !strings.Contains(err.Error(), "older than") {
 		t.Fatalf("an outdated engine must be rejected: %v", err)
+	}
+}
+
+func TestSingBoxCapabilitiesFollowTheBuildRatherThanTheName(t *testing.T) {
+	p := validPlan()
+	p.Outbounds = p.Outbounds[:1]
+	p.Outbounds[0].Transport.Type = "xhttp"
+	for _, tc := range []struct {
+		version string
+		tags    []string
+		want    bool
+	}{
+		{"1.14.3", []string{"with_xhttp"}, false},
+		{"1.14.3-lx.14", nil, false},
+		{"1.14.3-lx.14", []string{"with_xhttp", "with_awg"}, true},
+		{"1.14.2-lx.14", []string{"with_xhttp"}, false},
+	} {
+		version := mustVersion(t, tc.version)
+		_, err := SelectEngine(p, []Availability{{Kind: KindSingBox, Usable: true, Version: version, BuildTags: tc.tags}}, []Kind{KindSingBox})
+		if (err == nil) != tc.want {
+			t.Errorf("version %s, tags %v: %v", tc.version, tc.tags, err)
+		}
+	}
+	if Catalog[KindSingBox].Supports(FeatureXHTTP) {
+		t.Fatal("discovering a fork changed upstream capabilities")
+	}
+	p.Outbounds[0].Transport.Type = "tcp"
+	p.Outbounds[0].Amnezia = &AmneziaWG{J1: "legacy"}
+	caps := BuildCapabilities(KindSingBox, mustVersion(t, "1.14.3-lx.14"), []string{"with_awg"})
+	if len(caps.Missing(p)) == 0 {
+		t.Fatal("legacy AWG fields must not be silently discarded")
+	}
+}
+
+func TestTLSVerificationSettingSelectsCompatibleEngine(t *testing.T) {
+	p := validPlan()
+	p.Outbounds = p.Outbounds[:1]
+	p.Outbounds[0].TLS = TLS{Enabled: true, Insecure: true}
+	available := []Availability{
+		{Kind: KindXray, Usable: true, Version: mustVersion(t, "26.3.27")},
+		{Kind: KindSingBox, Usable: true, Version: mustVersion(t, "1.14.3-lx.14"), BuildTags: []string{"with_xhttp"}},
+	}
+	if _, err := SelectEngine(p, available, []Kind{KindXray}); err == nil || !strings.Contains(err.Error(), "TLS verification") {
+		t.Fatalf("manual Xray must reject an unsupported setting before switching: %v", err)
+	}
+	selection, err := SelectEngine(p, available, []Kind{KindXray, KindSingBox})
+	if err != nil || selection.Kind != KindSingBox {
+		t.Fatalf("automatic selection should preserve the setting: %+v, %v", selection, err)
+	}
+	for _, tls := range []TLS{{Insecure: true}, {Enabled: true, Reality: true, Insecure: true}} {
+		p.Outbounds[0].TLS = tls
+		if _, err := SelectEngine(p, available, []Kind{KindXray}); err != nil {
+			t.Fatalf("an unused TLS flag rejected plaintext or REALITY: %v", err)
+		}
+	}
+}
+
+func TestTunStackNeverSilentlyChangesWithTheEngine(t *testing.T) {
+	p := validPlan()
+	p.Outbounds = p.Outbounds[:1]
+	p.Tun.Enabled = true
+	for _, stack := range []string{"system", "gvisor", "mixed", "mips"} {
+		p.Tun.Stack = stack
+		for _, kind := range []Kind{KindXray, KindSingBox, KindMihomo} {
+			want := (kind != KindXray || (runtime.GOOS == "linux" && stack == "gvisor")) && (kind != KindSingBox || stack != "mips")
+			if got := len(Catalog[kind].Missing(p)) == 0; got != want {
+				t.Errorf("%s stack %s: supported %t, want %t", kind, stack, got, want)
+			}
+		}
 	}
 }

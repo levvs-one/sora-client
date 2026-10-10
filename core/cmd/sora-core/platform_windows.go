@@ -3,7 +3,9 @@
 package main
 
 import (
+	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -58,4 +60,16 @@ func secureDataDir(dir string) error {
 	return windows.SetNamedSecurityInfo(dir, windows.SE_FILE_OBJECT,
 		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION,
 		system, nil, dacl, nil)
+}
+
+func lockInstance(_ string, dataDir string) (io.Closer, error) {
+	name, err := windows.UTF16PtrFromString(filepath.Join(dataDir, "core.lock"))
+	if err != nil {
+		return nil, err
+	}
+	handle, err := windows.CreateFile(name, windows.GENERIC_READ|windows.GENERIC_WRITE, 0, nil, windows.OPEN_ALWAYS, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(handle), "core.lock"), nil
 }

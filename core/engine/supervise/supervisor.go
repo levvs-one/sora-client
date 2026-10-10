@@ -31,6 +31,10 @@ type Runtime struct {
 	// LocalProxy indicates whether LocalPort is open, allowing
 	// controller-free drivers to check readiness through the listener.
 	LocalProxy bool
+	// TunDevice is the adapter that must exist before TUN routing is installed.
+	TunDevice string
+	// ProxyNames lets readiness check the loaded plan rather than just the API.
+	ProxyNames []string
 	// ControlAddr is host:port of the loopback controller or metrics
 	// endpoint.
 	ControlAddr string
@@ -92,6 +96,8 @@ type LogParser interface {
 // that would otherwise be downloaded.
 type Preparer interface {
 	Prepare(rt Runtime, b Binary) error
+	// PrepareStart may reset persistent state; validation must never do so.
+	PrepareStart(p *engine.Plan, rt Runtime) error
 }
 
 // Config configures one supervised engine instance.
@@ -121,6 +127,9 @@ type Supervisor struct {
 	redactor *engine.Redactor
 	backoff  engine.Backoff
 	budget   *engine.RestartBudget
+	// Lifecycle operations and a scheduled restart must not race: a late
+	// restart otherwise recreates a process after Stop released its routes.
+	lifecycle sync.Mutex
 
 	mu       sync.Mutex
 	state    engine.State
@@ -129,6 +138,7 @@ type Supervisor struct {
 	plan     *engine.Plan
 	proc     *Process
 	stopping bool
+	routed   bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -181,7 +191,7 @@ func (s *Supervisor) Kind() engine.Kind { return s.driver.Kind() }
 
 // Capabilities returns the capability matrix of the engine.
 func (s *Supervisor) Capabilities() engine.Capabilities {
-	caps := engine.Catalog[s.driver.Kind()]
+	caps := engine.BuildCapabilities(s.driver.Kind(), s.cfg.Binary.Version, s.cfg.Binary.BuildTags)
 	caps.MinVersion = s.Version().String()
 	return caps
 }
@@ -260,7 +270,7 @@ func (s *Supervisor) admit(p *engine.Plan) error {
 	if err := p.Validate(); err != nil {
 		return s.redactor.Err(err)
 	}
-	if missing := engine.Catalog[s.driver.Kind()].Missing(p); len(missing) > 0 {
+	if missing := s.Capabilities().Missing(p); len(missing) > 0 {
 		return fmt.Errorf("%s: this engine cannot carry %s", s.driver.Kind(), strings.Join(missing, ", "))
 	}
 	return nil
@@ -282,8 +292,13 @@ func (s *Supervisor) check(ctx context.Context, rt Runtime, cfg []byte) error {
 // Apply starts or reconfigures the engine. Supported live reloads preserve
 // existing flows.
 func (s *Supervisor) Apply(ctx context.Context, p *engine.Plan) error {
+	s.lifecycle.Lock()
+	defer s.lifecycle.Unlock()
 	if err := s.admit(p); err != nil {
 		return err
+	}
+	if err := engine.PrepareTun(p); err != nil {
+		return s.redactor.Err(err)
 	}
 	s.mu.Lock()
 	s.redactor.Add(p.Secrets()...)
@@ -307,6 +322,9 @@ func (s *Supervisor) Apply(ctx context.Context, p *engine.Plan) error {
 	if err := s.start(ctx, p); err != nil {
 		masked := s.redactor.Err(err)
 		s.setState(engine.StateFailed)
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), masked.Error())
+		}
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: masked})
 		return masked
 	}
@@ -334,6 +352,14 @@ func (s *Supervisor) reload(ctx context.Context, rt Runtime, p *engine.Plan) err
 func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	rt, err := s.reserve(p.PrivateControl)
 	rt.LocalProxy = p.LocalProxy.Enabled
+	if namer, ok := s.driver.(Namer); ok {
+		for name := range namer.PlanNames(p) {
+			rt.ProxyNames = append(rt.ProxyNames, name)
+		}
+	}
+	if p.Tun.Enabled {
+		rt.TunDevice = p.Tun.DeviceName
+	}
 	if err != nil {
 		return err
 	}
@@ -343,6 +369,12 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	}
 	if err := s.check(ctx, rt, cfg); err != nil {
 		return err
+	}
+
+	if preparer, ok := s.driver.(Preparer); ok {
+		if err := preparer.PrepareStart(p, rt); err != nil {
+			return fmt.Errorf("%s: prepare persistent state: %w", s.driver.Kind(), err)
+		}
 	}
 
 	s.setState(engine.StateStarting)
@@ -356,12 +388,21 @@ func (s *Supervisor) start(ctx context.Context, p *engine.Plan) error {
 	if err == nil && p.Tun.Enabled {
 		if r, ok := s.driver.(Router); ok {
 			err = r.Route(ctx, p)
+			if err == nil {
+				s.mu.Lock()
+				s.routed = true
+				s.mu.Unlock()
+			}
 		}
 	}
 	if err != nil {
-		_ = proc.Stop(context.WithoutCancel(ctx), s.cfg.StopGrace)
-		s.unroute(context.WithoutCancel(ctx))
-		return err
+		stopErr := proc.Stop(context.WithoutCancel(ctx), s.cfg.StopGrace)
+		if stopErr != nil && !proc.Exited() {
+			s.mu.Lock()
+			s.proc = proc
+			s.mu.Unlock()
+		}
+		return errors.Join(err, stopErr, s.unroute(context.WithoutCancel(ctx)))
 	}
 
 	s.mu.Lock()
@@ -440,7 +481,11 @@ func (s *Supervisor) waitReady(ctx context.Context, rt Runtime, proc *Process) (
 			return version, nil
 		}
 		lastErr = err
-		if reason := proc.Err(); reason != nil {
+		if proc.Exited() {
+			reason := proc.Err()
+			if reason == nil {
+				reason = fmt.Errorf("%s: engine exited with status 0 before readiness: %s", s.driver.Kind(), proc.Output().Last(8))
+			}
 			return "", reason
 		}
 		select {
@@ -455,29 +500,44 @@ func (s *Supervisor) waitReady(ctx context.Context, rt Runtime, proc *Process) (
 // Exhaustion sets the failed state.
 func (s *Supervisor) watch(proc *Process) {
 	err := proc.Wait(s.ctx)
+	s.lifecycle.Lock()
 	s.mu.Lock()
 	current, stopping, plan := s.proc == proc, s.stopping, s.plan
 	s.mu.Unlock()
 	if !current || stopping {
+		s.lifecycle.Unlock()
 		return
 	}
-	if err == nil || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) {
 		s.setState(engine.StateStopped)
+		s.lifecycle.Unlock()
 		return
 	}
 
+	if err == nil {
+		err = fmt.Errorf("%s: engine exited unexpectedly with status 0", s.driver.Kind())
+	}
 	masked := s.redactor.Err(err)
+	if s.cfg.Logs != nil {
+		s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()),
+			fmt.Sprintf("engine exited unexpectedly: %s", proc.cmd.ProcessState.String()))
+		for _, line := range strings.Split(proc.Output().Last(8), "\n") {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), s.redactor.String(line))
+		}
+	}
 	s.bus.Publish(engine.Event{Kind: engine.EventEngineDown, State: engine.StateRecovering,
 		Err: masked, Message: s.redactor.String(proc.Output().Last(5))})
 	if plan == nil {
 		s.setState(engine.StateStopped)
+		s.lifecycle.Unlock()
 		return
 	}
 	if !s.budget.Allow() {
-		s.unroute(context.WithoutCancel(s.ctx))
+		masked = s.redactor.Err(errors.Join(err, s.unroute(context.WithoutCancel(s.ctx))))
 		s.setState(engine.StateFailed)
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: masked,
 			Message: fmt.Sprintf("more than %d restarts within %s", s.cfg.RestartBudget, s.cfg.RestartWindow)})
+		s.lifecycle.Unlock()
 		return
 	}
 
@@ -485,6 +545,7 @@ func (s *Supervisor) watch(proc *Process) {
 	delay := s.backoff.Delay(s.budget.Used() - 1)
 	s.bus.Publish(engine.Event{Kind: engine.EventRestart, State: engine.StateRecovering,
 		Message: "restarting in " + delay.String()})
+	s.lifecycle.Unlock()
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	select {
@@ -492,7 +553,18 @@ func (s *Supervisor) watch(proc *Process) {
 		return
 	case <-timer.C:
 	}
+	s.lifecycle.Lock()
+	defer s.lifecycle.Unlock()
+	s.mu.Lock()
+	current, stopping = s.proc == proc, s.stopping
+	s.mu.Unlock()
+	if !current || stopping || s.ctx.Err() != nil {
+		return
+	}
 	if restartErr := s.start(s.ctx, plan); restartErr != nil {
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelError, string(s.driver.Kind()), s.redactor.String(restartErr.Error()))
+		}
 		s.setState(engine.StateFailed)
 		s.bus.Publish(engine.Event{Kind: engine.EventFatal, State: engine.StateFailed, Err: s.redactor.Err(restartErr)})
 	}
@@ -500,6 +572,8 @@ func (s *Supervisor) watch(proc *Process) {
 
 // Stop shuts the engine down and forgets the plan.
 func (s *Supervisor) Stop(ctx context.Context) error {
+	s.lifecycle.Lock()
+	defer s.lifecycle.Unlock()
 	s.mu.Lock()
 	s.stopping = true
 	proc := s.proc
@@ -509,21 +583,43 @@ func (s *Supervisor) Stop(ctx context.Context) error {
 	var err error
 	if proc != nil {
 		err = proc.Stop(ctx, s.cfg.StopGrace)
+		if err != nil && !proc.Exited() {
+			s.mu.Lock()
+			s.proc = proc
+			s.mu.Unlock()
+		}
 	}
-	s.unroute(ctx)
-	s.setState(engine.StateStopped)
+	err = errors.Join(err, s.unroute(ctx))
+	if err == nil {
+		s.setState(engine.StateStopped)
+	} else {
+		s.setState(engine.StateFailed)
+	}
 	return s.redactor.Err(err)
 }
 
-// unroute removes installed routes and logs errors without preventing shutdown.
-func (s *Supervisor) unroute(ctx context.Context) {
+// unroute retains ownership on failure so shutdown can retry route cleanup.
+func (s *Supervisor) unroute(ctx context.Context) error {
+	s.mu.Lock()
+	routed := s.routed
+	s.mu.Unlock()
+	if !routed {
+		return nil
+	}
 	r, ok := s.driver.(Router)
 	if !ok {
-		return
+		return nil
 	}
-	if err := r.Unroute(ctx); err != nil && s.cfg.Logs != nil {
-		s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+	if err := r.Unroute(ctx); err != nil {
+		if s.cfg.Logs != nil {
+			s.cfg.Logs.Write(time.Time{}, logs.LevelWarning, string(s.driver.Kind()), s.redactor.String(err.Error()))
+		}
+		return err
 	}
+	s.mu.Lock()
+	s.routed = false
+	s.mu.Unlock()
+	return nil
 }
 
 // Close stops the engine and releases the supervision context.

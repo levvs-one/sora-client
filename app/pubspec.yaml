@@ -1,7 +1,7 @@
 name: sora
 description: "Sora"
 publish_to: 'none'
-version: 1.0.5+6
+version: 1.0.7+8
 
 environment:
   sdk: ^3.13.5
@@ -13,6 +13,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  crypto: 3.0.7
   app_links: ^7.2.2
   cupertino_icons: ^2.0.0
   dbus: ^0.7.15
@@ -24,17 +25,28 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   flutter_localizations:
     sdk: flutter
+  flutter_markdown_plus: 1.0.12
   grpc: ^5.1.0
   http2: ^2.3.1
+  http: 1.6.0
   intl: any
+  jovial_svg: 1.1.31
+  material_symbols_icons: 4.2960.0
   nativeapi: ^0.3.0
   protobuf: ^6.1.0
+  pub_semver: 2.2.1
   retry: ^3.1.2
   shared_preferences: ^2.5.6
+  showcaseview: 5.1.0
+  toastification: 3.2.0
   tray_manager: ^0.7.0
   url_launcher: ^6.3.3
+  webview_all: 1.4.4
+  webview_all_linux: 1.4.4
+  webview_all_windows: 1.4.4
   win32: ^6.4.0
   window_manager: ^0.5.2
+  xdg_icons: 0.1.2
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -50,16 +62,24 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   shared_preferences_platform_interface: ^2.4.2
 
+dependency_overrides:
+  webview_all_linux:
+    path: third_party/webview_all_linux
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-  uses-material-design: false
+  uses-material-design: true
   generate: true
   assets:
     - assets/tray/
+    - assets/licenses.json
   fonts:
     - family: Inter
       fonts:
         - asset: assets/fonts/InterVariable.ttf
+    - family: NotoSansMono
+      fonts:
+        - asset: assets/fonts/NotoSansMono-Regular.ttf

@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/idna"
+
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/errs"
 	corev1 "github.com/levvs-one/sora-client/core/gen/sora/core/v1"
@@ -165,6 +167,7 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		// A TUN adapter needs routes to carry traffic.
 		Tun: engine.Tun{
 			Enabled:    in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+			Stack:      in.GetTunStack(),
 			AutoRoute:  true,
 			DeviceName: engine.TunDevice,
 			// Windows races DNS across adapters; strict routing
@@ -172,6 +175,9 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 			StrictRoute: runtime.GOOS == "windows",
 		},
 		PrivateControl: !in.GetNetworkControlAllowed(),
+	}
+	if plan.Tun.Stack != "" && !plan.Tun.Enabled {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanTunnel, "control: selecting a stack requires TUN mode")
 	}
 	// System proxy mode requires the configured listener and cannot use
 	// proxy authentication.
@@ -556,8 +562,19 @@ func ruleFromProto(route *corev1.RoutingRule) (engine.Rule, error) {
 			"control: rule %q has no target", destination)
 	}
 	kind := ruleTypeOf(destination)
-	return engine.Rule{Type: kind, Value: ruleValue(kind, destination), Target: target}, nil
+	value := ruleValue(kind, destination)
+	if kind == engine.RuleDomain || kind == engine.RuleDomainSuffix {
+		ascii, err := ruleIDNA.ToASCII(value)
+		if err != nil {
+			return engine.Rule{}, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanRuleInvalid)
+		}
+		value = ascii
+	}
+	return engine.Rule{Type: kind, Value: value, Target: target}, nil
 }
+
+// Convert only exact and suffix domains, preserving process names and patterns.
+var ruleIDNA = idna.New(idna.MapForLookup(), idna.StrictDomainName(true), idna.ValidateLabels(true), idna.VerifyDNSLength(true), idna.BidiRule())
 
 // ruleValue strips the type prefix: the engines add their own.
 func ruleValue(kind engine.RuleType, destination string) string {
@@ -688,13 +705,14 @@ func referenceOf(spec parser.OutboundSpec) (string, error) {
 // credential reference. The core resolves it when applying the plan.
 func outboundToProto(spec parser.OutboundSpec, reference string) *corev1.OutboundSpec {
 	return &corev1.OutboundSpec{
-		Id:          spec.StableKey(),
-		DisplayName: spec.DisplayName,
-		Protocol:    spec.Protocol,
-		Transport:   spec.Transport,
-		Security:    spec.Security,
-		Endpoint:    &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
-		Credentials: &corev1.CredentialsRef{Reference: reference},
+		Id:              spec.StableKey(),
+		DisplayName:     spec.DisplayName,
+		Protocol:        spec.Protocol,
+		DisplayProtocol: spec.DisplayProtocol,
+		Transport:       spec.Transport,
+		Security:        spec.Security,
+		Endpoint:        &corev1.Endpoint{Host: spec.Host, Port: uint32(spec.Port)},
+		Credentials:     &corev1.CredentialsRef{Reference: reference},
 	}
 }
 

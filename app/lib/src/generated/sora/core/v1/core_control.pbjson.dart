@@ -298,6 +298,7 @@ const SessionPlan$json = {
     {'1': 'groups', '3': 11, '4': 3, '5': 11, '6': '.sora.core.v1.GroupSpec', '10': 'groups'},
     {'1': 'routing', '3': 12, '4': 1, '5': 11, '6': '.sora.core.v1.RoutingOptions', '10': 'routing'},
     {'1': 'ipv6', '3': 13, '4': 1, '5': 8, '10': 'ipv6'},
+    {'1': 'tun_stack', '3': 14, '4': 1, '5': 9, '10': 'tunStack'},
   ],
 };
 
@@ -315,7 +316,7 @@ final $typed_data.Uint8List sessionPlanDescriptor =
         'xvd2VkEjkKC2xvY2FsX3Byb3h5GAogASgLMhguc29yYS5jb3JlLnYxLkxvY2FsUHJveHlSCmxv'
         'Y2FsUHJveHkSLwoGZ3JvdXBzGAsgAygLMhcuc29yYS5jb3JlLnYxLkdyb3VwU3BlY1IGZ3JvdX'
         'BzEjYKB3JvdXRpbmcYDCABKAsyHC5zb3JhLmNvcmUudjEuUm91dGluZ09wdGlvbnNSB3JvdXRp'
-        'bmcSEgoEaXB2NhgNIAEoCFIEaXB2Ng==');
+        'bmcSEgoEaXB2NhgNIAEoCFIEaXB2NhIbCgl0dW5fc3RhY2sYDiABKAlSCHR1blN0YWNr');
 
 @$core.Deprecated('Use groupSpecDescriptor instead')
 const GroupSpec$json = {
@@ -398,6 +399,7 @@ const OutboundSpec$json = {
     {'1': 'security', '3': 5, '4': 1, '5': 9, '10': 'security'},
     {'1': 'endpoint', '3': 6, '4': 1, '5': 11, '6': '.sora.core.v1.Endpoint', '10': 'endpoint'},
     {'1': 'credentials', '3': 7, '4': 1, '5': 11, '6': '.sora.core.v1.CredentialsRef', '10': 'credentials'},
+    {'1': 'display_protocol', '3': 9, '4': 1, '5': 9, '10': 'displayProtocol'},
   ],
 };
 
@@ -408,7 +410,8 @@ final $typed_data.Uint8List outboundSpecDescriptor =
         'UgZieXBhc3MSGgoIcHJvdG9jb2wYAyABKAlSCHByb3RvY29sEhwKCXRyYW5zcG9ydBgEIAEoCV'
         'IJdHJhbnNwb3J0EhoKCHNlY3VyaXR5GAUgASgJUghzZWN1cml0eRIyCghlbmRwb2ludBgGIAEo'
         'CzIWLnNvcmEuY29yZS52MS5FbmRwb2ludFIIZW5kcG9pbnQSPgoLY3JlZGVudGlhbHMYByABKA'
-        'syHC5zb3JhLmNvcmUudjEuQ3JlZGVudGlhbHNSZWZSC2NyZWRlbnRpYWxz');
+        'syHC5zb3JhLmNvcmUudjEuQ3JlZGVudGlhbHNSZWZSC2NyZWRlbnRpYWxzEikKEGRpc3BsYXlf'
+        'cHJvdG9jb2wYCSABKAlSD2Rpc3BsYXlQcm90b2NvbA==');
 
 @$core.Deprecated('Use endpointDescriptor instead')
 const Endpoint$json = {

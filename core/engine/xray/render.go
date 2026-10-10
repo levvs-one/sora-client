@@ -65,6 +65,9 @@ func Render(p *engine.Plan, rt supervise.Runtime, sel Selection) ([]byte, error)
 	if p == nil {
 		return nil, errors.New("xray: nil plan")
 	}
+	if p.Tun.Enabled && p.Tun.Stack != "" && p.Tun.Stack != "gvisor" {
+		return nil, fmt.Errorf("xray: TUN uses gvisor; stack %q is not supported", p.Tun.Stack)
+	}
 	if len(p.Outbounds) == 1 && p.Outbounds[0].Protocol == engine.ProtocolXrayProfile {
 		return renderProfile(p, rt)
 	}
@@ -186,6 +189,9 @@ func (r *renderer) outbounds() ([]obj, error) {
 }
 
 func (r *renderer) outbound(o engine.Outbound) (obj, error) {
+	if o.TLS.Insecure && !o.TLS.Reality && (o.TLS.Enabled || o.Protocol == engine.ProtocolTrojan || o.Protocol == engine.ProtocolHysteria2) {
+		return nil, fmt.Errorf("xray: outbound %s disables certificate verification; this build requires verification or certificate pinning", o.ID)
+	}
 	tag := r.tags[o.ID]
 	server := obj{"address": o.Server, "port": int(o.Port)}
 	var settings obj
@@ -265,7 +271,7 @@ func (r *renderer) stream(o engine.Outbound) (obj, error) {
 	case o.TLS.Enabled || needsTLS:
 		s["security"] = "tls"
 		s["tlsSettings"] = obj{}.set("serverName", o.TLS.ServerName).set("alpn", o.TLS.ALPN).
-			set("fingerprint", o.TLS.Fingerprint).set("allowInsecure", o.TLS.Insecure)
+			set("fingerprint", o.TLS.Fingerprint)
 	}
 	if r.plan.Options.Fragment.Enabled && s["security"] != nil {
 		// Dial proxy connections through the fragment outbound to split
@@ -277,7 +283,7 @@ func (r *renderer) stream(o engine.Outbound) (obj, error) {
 
 func (*renderer) hysteria(o engine.Outbound, tag string) obj {
 	hy := obj{"version": 2, "auth": o.Password}
-	tls := obj{}.set("serverName", o.TLS.ServerName).set("alpn", o.TLS.ALPN).set("allowInsecure", o.TLS.Insecure)
+	tls := obj{}.set("serverName", o.TLS.ServerName).set("alpn", o.TLS.ALPN)
 	stream := obj{"network": "hysteria", "hysteriaSettings": hy, "security": "tls", "tlsSettings": tls}
 	return obj{
 		"tag": tag, "protocol": "hysteria",

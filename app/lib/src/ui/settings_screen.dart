@@ -17,6 +17,8 @@ import 'logs.dart';
 import 'rules_screen.dart';
 import 'subscription.dart';
 import 'subscription_sheet.dart';
+import 'shell.dart';
+import 'modes.dart';
 
 /// App settings, with common options first and advanced options in named
 /// groups.
@@ -53,8 +55,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final answer = await link.stub.getLogSettings(
         GetLogSettingsRequest(apiVersion: apiVersion, controlAuthenticator: link.token),
       );
-      if (mounted && !answer.hasError()) setState(() => _log = answer.settings);
-    } catch (_) {
+      if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+      if (mounted) {
+        SoraScope.read(context).recovered('log-settings');
+        setState(() => _log = answer.settings);
+      }
+    } catch (error) {
+      if (mounted) SoraScope.read(context).reportFailure(error, source: 'log-settings');
       // Keep log navigation available when core settings cannot be loaded.
     }
   }
@@ -70,9 +77,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final answer = await link.stub.setLogSettings(
         SetLogSettingsRequest(apiVersion: apiVersion, controlAuthenticator: link.token, settings: next),
       );
-      if (mounted && !answer.hasError()) setState(() => _log = answer.settings);
-    } catch (_) {
-      if (mounted) setState(() => _log = current);
+      if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
+      if (mounted) {
+        SoraScope.read(context).recovered('log-settings');
+        setState(() => _log = answer.settings);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _log = current);
+        SoraScope.read(context).reportFailure(error, source: 'log-settings');
+      }
     }
   }
 
@@ -126,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Screen(
       title: s.settings,
       children: [
+        if (sora.needsReconnect) ...[const ConnectionChanges(), const SizedBox(height: 16)],
         Group(
           children: [
             ChoiceTile<String>(
@@ -134,12 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               choices: {'global': s.presetGlobal, 'ru': s.presetRu, 'ir': s.presetIr, 'cn': s.presetCn},
               onChanged: (v) => set((x) => x.preset = v),
             ),
-            ChoiceTile<String>(
-              title: s.tunnelMode,
-              value: settings.tunnel,
-              choices: {'tun': s.tunnelTun, 'proxy': s.tunnelProxy},
-              onChanged: (v) => set((x) => x.tunnel = v),
-            ),
+            LinkTile(title: s.modes, onTap: () => showModes(context)),
             if (settings.tunnel == 'proxy' && local != null)
               // Expose the endpoint for manual configuration when apps or
               // desktops do not use the system proxy.
@@ -154,15 +164,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             SwitchTile(title: s.blockAds, value: settings.blockAds, onChanged: (v) => set((x) => x.blockAds = v)),
-            SwitchTile(
-              title: s.killSwitch,
-              value: settings.killSwitch,
-              onChanged: (v) => unawaited(sora.setKillSwitch(v)),
-            ),
           ],
         ),
         Group(
           children: [
+            SwitchTile(
+              title: s.checkUpdates,
+              value: settings.checkUpdates,
+              onChanged: (v) => unawaited(sora.updates.setChecking(v)),
+            ),
             if (desktop != null)
               SwitchTile(
                 title: s.launchAtLogin,
@@ -212,34 +222,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.animations,
               onChanged: (v) => set((x) => x.animations = v, replan: false),
             ),
+            if (context.getInheritedWidgetOfExactType<ShellScope>() case final shell?)
+              LinkTile(title: s.tourReplay, onTap: shell.replayTour),
           ],
         ),
 
         Heading(s.sectionConnection),
         Group(
           children: [
-            ChoiceTile<String>(
-              title: s.engine,
-              value: settings.engine,
-              choices: {'': s.engineAuto, 'sing-box': 'sing-box', 'xray': 'Xray', 'mihomo': 'mihomo'},
-              onChanged: (v) async {
-                // sing-box requires a discoverable loopback control port;
-                // request consent before enabling it.
-                if (v == 'sing-box' && !settings.controlPort) {
-                  final yes = await confirm(
-                    context,
-                    question: s.controlPortQuestion('sing-box'),
-                    action: s.chooseEngine('sing-box'),
-                  );
-                  if (!yes) return;
-                }
-                set(
-                  (x) => x
-                    ..engine = v
-                    ..controlPort = v == 'sing-box',
-                );
-              },
-            ),
             LinkTile(
               title: s.rules,
               value: settings.rules.isEmpty ? null : '${settings.rules.length}',
@@ -297,31 +287,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
 
-        Heading(s.sectionNoServer),
-        Group(
-          children: [
-            LinkTile(
-              title: s.splitPos,
-              value: settings.splitPos.join(', '),
-              onTap: () => _edit(
+        if (sora.serverlessAvailable) ...[
+          Heading(s.sectionNoServer),
+          Group(
+            children: [
+              LinkTile(
                 title: s.splitPos,
-                hint: s.splitPosHint,
-                initial: settings.splitPos.join(', '),
-                valid: (v) => _parts(v).every(_position.hasMatch),
-                apply: (x, v) => x.splitPos = v.isEmpty ? const ['1', 'midsld'] : _parts(v),
+                value: settings.splitPos.join(', '),
+                onTap: () => _edit(
+                  title: s.splitPos,
+                  hint: s.splitPosHint,
+                  initial: settings.splitPos.join(', '),
+                  valid: (v) => _parts(v).every(_position.hasMatch),
+                  apply: (x, v) => x.splitPos = v.isEmpty ? const ['1', 'midsld'] : _parts(v),
+                ),
               ),
-            ),
-            SwitchTile(title: s.disorder, value: settings.disorder, onChanged: (v) => set((x) => x.disorder = v)),
-            ChoiceTile<String>(
-              title: s.tlsRecord,
-              value: settings.tlsRecord,
-              choices: {'': s.tlsRecordNo, 'sniext': s.tlsRecordSni, '1': s.tlsRecordFirst},
-              onChanged: (v) => set((x) => x.tlsRecord = v),
-            ),
-            SwitchTile(title: s.hostCase, value: settings.hostCase, onChanged: (v) => set((x) => x.hostCase = v)),
-          ],
-        ),
-
+              SwitchTile(title: s.disorder, value: settings.disorder, onChanged: (v) => set((x) => x.disorder = v)),
+              ChoiceTile<String>(
+                title: s.tlsRecord,
+                value: settings.tlsRecord,
+                choices: {'': s.tlsRecordNo, 'sniext': s.tlsRecordSni, '1': s.tlsRecordFirst},
+                onChanged: (v) => set((x) => x.tlsRecord = v),
+              ),
+              SwitchTile(title: s.hostCase, value: settings.hostCase, onChanged: (v) => set((x) => x.hostCase = v)),
+            ],
+          ),
+        ],
         Heading(s.sectionPing),
         Group(
           children: [
@@ -390,7 +381,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         Group(
           children: [
-            LinkTile(title: s.about, onTap: () => push<void>(context, const AboutScreen())),
+            LinkTile(
+              title: s.about,
+              value: sora.updates.hasUpdate ? s.updateAvailable(sora.updates.latest!.version) : null,
+              onTap: () => push<void>(context, const AboutScreen()),
+            ),
             Tile(
               title: s.reset,
               titleColor: palette.danger,

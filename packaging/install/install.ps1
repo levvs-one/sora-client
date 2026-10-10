@@ -51,7 +51,9 @@ try {
     if ($actual -ne $expected) { throw "$name does not match SHA256SUMS; nothing was installed." }
 
     Write-Output "sora: installing $version"
-    $setup = Start-Process (Join-Path $work $name) -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+    $setup = Start-Process (Join-Path $work $name) -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -PassThru
+    # Start-Process -Wait also waits for the Sora window the installer opens.
+    $setup.WaitForExit()
     if ($setup.ExitCode -ne 0) { throw "The installer ended with code $($setup.ExitCode)." }
     Write-Output 'sora: installed. Sora is in the Start menu; its icon lives in the tray.'
 } finally {

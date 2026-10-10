@@ -149,6 +149,28 @@ void main() {
     expect(styles, hasLength(1));
   });
 
+  testWidgets('first launch has one subscription action and no premature service failure', (tester) async {
+    final settings = await Settings.load();
+    await settings.completeTour();
+    settings
+      ..language = 'ru'
+      ..animations = false;
+    final sora = Sora(settings);
+    addTearDown(sora.dispose);
+    size(tester, 1440);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(SoraApp(sora: sora));
+    await tester.pumpAndSettle();
+    expect(find.text('Добавить подписку'), findsOneWidget);
+    expect(find.text('Служба Sora не отвечает'), findsNothing);
+    expect(find.text('Не подключено'), findsOneWidget);
+    sora.failure = CoreFailure.unavailable;
+    sora.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.text('Служба Sora не отвечает'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('toast supports right swipe, close and retry action', (tester) async {
     final sora = await start(tester, empty: true) as _EmptySora;
     final notice = await message(tester, sora);

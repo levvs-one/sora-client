@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,19 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('real websites survive repeated service changes and browser reopening', (tester) async {
+    Future<Set<int>> browserProcesses() async {
+      final processes = await Process.run('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        "ConvertTo-Json -Compress -InputObject @(Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Select-Object Id,WorkingSet64)",
+      ]);
+      expect(processes.exitCode, 0);
+      final values = jsonDecode('${processes.stdout}') as List;
+      debugPrint('WebView2 processes: $values');
+      return values.map((value) => (value as Map)['Id'] as int).toSet();
+    }
+
+    final baseline = Platform.isWindows ? await browserProcesses() : <int>{};
     final settings = await Settings.load();
     await settings.completeTour();
     settings.animations = false;
@@ -61,12 +75,13 @@ void main() {
         await tester.pump(const Duration(seconds: 2));
         expect(find.byType(WebViewWidget), findsNothing);
         if (Platform.isWindows) {
-          final processes = await Process.run('powershell.exe', [
-            '-NoProfile',
-            '-Command',
-            "Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Select-Object Id,WorkingSet64 | ConvertTo-Json -Compress",
-          ]);
-          debugPrint('WebView2 memory after close $reopen: ${processes.stdout}');
+          final deadline = Stopwatch()..start();
+          var remaining = await browserProcesses();
+          while (remaining.difference(baseline).isNotEmpty && deadline.elapsed < const Duration(seconds: 20)) {
+            await tester.pump(const Duration(milliseconds: 250));
+            remaining = await browserProcesses();
+          }
+          expect(remaining.difference(baseline), isEmpty, reason: 'Closing the browser must release its processes.');
         }
       }
     } finally {

@@ -39,6 +39,12 @@ void main() {
     });
     final capture = GlobalKey();
     Future<void> save(String path) async {
+      await tester.runAsync(() async {
+        for (final element in find.byType(Image).evaluate()) {
+          await precacheImage((element.widget as Image).image, element);
+        }
+      });
+      await tester.pumpAndSettle();
       final boundary = capture.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
         final rendered = await boundary.toImage(pixelRatio: 1);

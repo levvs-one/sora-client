@@ -9,6 +9,7 @@ import '../design/glow.dart';
 import '../design/logo.dart';
 import '../design/theme.dart';
 import '../groups.dart';
+import '../core/link.dart';
 import '../sora.dart';
 import 'kit.dart';
 import 'servers.dart';
@@ -150,7 +151,7 @@ class _Status extends StatelessWidget {
     final s = S.of(context);
     final palette = Palette.of(context);
     final title = switch (sora.phase) {
-      Phase.offline => s.coreMissing,
+      Phase.offline => sora.failure?.key == CoreFailure.unavailable.key ? s.coreMissing : s.stateOff,
       Phase.off => s.stateOff,
       Phase.connecting => s.stateConnecting,
       Phase.connected => s.stateConnected,
@@ -167,7 +168,11 @@ class _Status extends StatelessWidget {
             title,
             key: ValueKey(title),
             textAlign: TextAlign.center,
-            style: (sora.phase == Phase.offline ? Styles.bodyStrong : Styles.status).copyWith(color: palette.ink),
+            style:
+                (sora.phase == Phase.offline && sora.failure?.key == CoreFailure.unavailable.key
+                        ? Styles.bodyStrong
+                        : Styles.status)
+                    .copyWith(color: palette.ink),
           ),
         ),
         const SizedBox(height: 8),

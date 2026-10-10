@@ -192,8 +192,9 @@ func (c *Center) evict() {
 		return
 	}
 	c.dropped += uint64(drop)
-	// Copy retained entries so evicted messages can be garbage-collected.
-	c.entries = append(c.entries[:0:0], c.entries[drop:]...)
+	// Release discarded messages without copying the full log on every write.
+	clear(c.entries[:drop])
+	c.entries = c.entries[drop:]
 }
 
 // Clear removes entries without resetting sequence numbers, preserving cursor

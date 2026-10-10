@@ -337,10 +337,16 @@ class Sora extends ChangeNotifier {
   Future<void> run() async {
     _statsTimer ??= Timer.periodic(const Duration(seconds: 1), (_) => unawaited(readStats()));
     while (!_disposed) {
+      final opening = Stopwatch()..start();
       final CoreLink link;
       try {
         link = await CoreLink.open(
-          onRetry: (error) => reportFailure(error, source: 'core'),
+          onRetry: (error) {
+            if (_disposed || !_startedOnce && opening.elapsed < const Duration(seconds: 5)) return;
+            failure = CoreFailure.from(error);
+            reportFailure(error, source: 'core');
+            notifyListeners();
+          },
           canceled: () => _disposed,
         );
       } catch (error) {
@@ -365,6 +371,7 @@ class Sora extends ChangeNotifier {
         if (about.hasError()) throw CoreFailure(about.error.userMessageKey);
         serverlessAvailable = about.about.contract.capabilities.contains('serverless');
         localProxy = about.about.hasLocalProxy() ? about.about.localProxy : null;
+        if (failure?.key == CoreFailure.unavailable.key) failure = null;
         recovered('core');
         _watchSubscriptions();
         _watchSession();

@@ -162,6 +162,7 @@ void main() {
     await tester.pumpWidget(SoraApp(sora: sora));
     await tester.pumpAndSettle();
     expect(find.text('Добавить подписку'), findsOneWidget);
+    expect(find.byKey(const ValueKey('wide-layout')), findsNothing);
     expect(find.text('Служба Sora не отвечает'), findsNothing);
     expect(find.text('Не подключено'), findsOneWidget);
     sora.failure = CoreFailure.unavailable;

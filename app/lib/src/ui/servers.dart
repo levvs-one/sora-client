@@ -49,7 +49,7 @@ class _ServersScreenState extends State<ServersScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final sora = SoraScope.of(context);
-    if (!_probed && sora.servers.isNotEmpty) {
+    if (!_probed && sora.canProbe && sora.phase == Phase.off && sora.servers.isNotEmpty) {
       // The desktop pane opens before the subscription stream arrives.
       _probed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -71,7 +71,11 @@ class _ServersScreenState extends State<ServersScreen> {
       if (sora.probing)
         SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
       else
-        RoundButton(icon: Symbols.speed_rounded, label: s.probeServers, onTap: () => unawaited(sora.probe())),
+        RoundButton(
+          icon: Symbols.speed_rounded,
+          label: s.probeServers,
+          onTap: sora.canProbe ? () => unawaited(sora.probe()) : null,
+        ),
       _tourTarget(
         0,
         RoundButton(icon: Symbols.add_rounded, label: s.addSubscription, onTap: () => showSubscriptionSheet(context)),
@@ -310,8 +314,6 @@ class _ServerRow extends StatelessWidget {
                       style: Styles.figures(Styles.caption).copyWith(color: palette.ink2),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 16, child: chosen ? Icon(Symbols.check_rounded, size: 16, color: palette.ink) : null),
                 ],
               ),
             ),
@@ -415,7 +417,7 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
                     key: ValueKey('probe-subscription-${state.settings.id}'),
                     icon: Symbols.speed_rounded,
                     label: '${s.probeServers}: ${state.displayName}',
-                    onTap: sora.probing || state.outbounds.isEmpty
+                    onTap: !sora.canProbe || state.outbounds.isEmpty
                         ? null
                         : () => unawaited(sora.probe(subscriptionId: state.settings.id)),
                   ),

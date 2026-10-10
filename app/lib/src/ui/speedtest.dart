@@ -253,11 +253,11 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
       return;
     }
     try {
-      _releaseWork = switch (controller.platform) {
+      _releaseWork = (switch (controller.platform) {
         final LinuxWebViewController platform => platform.dispose(),
         final WindowsWebViewController platform => platform.dispose(),
         _ => null,
-      };
+      })?.catchError((Object error) => debugPrint('Speedtest browser cleanup failed: $error'));
       await _releaseWork;
     } catch (error) {
       debugPrint('Speedtest browser cleanup failed: $error');

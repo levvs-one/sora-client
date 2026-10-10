@@ -26,6 +26,7 @@ class _Core extends CoreControlServiceBase {
   int connects = 0, disconnects = 0, busyReplies = 0;
   final kills = <bool>[];
   final probeRequests = <ProbeServersRequest>[];
+  final probeCalls = <ServiceCall>[];
   Completer<void>? probeGate;
   final subscriptions = [
     SubscriptionState(
@@ -77,6 +78,7 @@ class _Core extends CoreControlServiceBase {
   @override
   Stream<ProbeResult> probeServers(ServiceCall call, ProbeServersRequest request) async* {
     probeRequests.add(request);
+    probeCalls.add(call);
     await probeGate?.future;
     for (final outbound in request.outbounds) {
       yield ProbeResult(serverId: outbound.id, reachable: true, latencyMs: 42);
@@ -236,6 +238,37 @@ void main() {
       expect(core.probeRequests.last.outbounds.single.id, 'c');
       expect(sora.latency['c'], 42);
     });
+
+    test('probing does not start while connection routes are changing', () async {
+      core.gate = Completer<void>();
+      final start = sora.connect();
+      await until(() => core.connects == 1);
+      await sora.probe();
+      expect(core.probeRequests, isEmpty);
+      core.gate!.complete();
+      await start;
+      await sora.probe(subscriptionId: 'second');
+      expect(sora.latency, {'c': 42});
+    });
+
+    for (final stop in [false, true]) {
+      test('${stop ? 'disconnect' : 'connect'} cancels probing and ignores its late results', () async {
+        if (stop) await sora.connect();
+        sora.latency['a'] = 17;
+        core.probeGate = Completer<void>();
+        final measurement = sora.probe();
+        await until(() => core.probeRequests.length == 1);
+        await (stop ? sora.disconnect() : sora.connect());
+        await until(() => core.probeCalls.single.isCanceled);
+        await measurement;
+        expect(sora.probing, isFalse);
+        expect(sora.probingSubscription, isNull);
+        core.probeGate!.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(sora.latency, {'a': 17});
+        expect(sora.history, isEmpty);
+      });
+    }
     test('a click burst starts once, and disconnect wins while connecting', () async {
       core.gate = Completer<void>();
       final starts = List.generate(30, (_) => sora.connect());

@@ -28,7 +28,7 @@ class HomeScreen extends StatelessWidget {
       autofocus: true,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (MediaQuery.sizeOf(context).width >= 1000) {
+          if (MediaQuery.sizeOf(context).width >= 1000 && SoraScope.of(context).subscriptions.isNotEmpty) {
             final width = (constraints.maxWidth * 0.43).clamp(360.0, 480.0);
             return Row(
               key: const ValueKey('wide-layout'),

@@ -338,6 +338,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('leaving during failed native cleanup does not raise an uncaught exception', (tester) async {
+      await start(tester);
+      release = Completer<void>();
+      await event(1, {'type': 'webResourceError', 'isForMainFrame': true, 'description': 'network failure'});
+      await tester.pump();
+      await flush(tester);
+      expect(disposals, {1: 1});
+      await tester.pumpWidget(const SizedBox());
+      release!.completeError(PlatformException(code: 'cleanup_failed'));
+      release = null;
+      await flush(tester);
+      await tester.pump(const Duration(seconds: 50));
+      expect(created, 1);
+      expect(disposals, {1: 1});
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('choosing another service cancels the pending retry of the old page', (tester) async {
       await start(tester);
       await event(1, {'type': 'webResourceError', 'isForMainFrame': true, 'description': 'network failure'});

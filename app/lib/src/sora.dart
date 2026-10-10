@@ -5,7 +5,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/io_client.dart';
-import 'package:grpc/grpc.dart' show CallOptions;
+import 'package:grpc/grpc.dart' show CallOptions, ResponseStream, GrpcError, StatusCode;
 import 'package:retry/retry.dart';
 
 import '../l10n/strings.dart';
@@ -292,6 +292,10 @@ class Sora extends ChangeNotifier {
   final Map<String, int?> latency = {};
   bool probing = false;
   String? probingSubscription;
+  ResponseStream<ProbeResult>? _probeCall;
+
+  bool get canProbe =>
+      !_disposed && _link != null && !probing && !busy && (phase == Phase.off || phase == Phase.connected);
 
   /// All subscription servers in list order, deduplicated by ID.
   List<OutboundSpec> get servers {
@@ -441,6 +445,7 @@ class Sora extends ChangeNotifier {
       ConnectionStateValue.CONNECTION_STATE_VALUE_RECONNECTING => Phase.reconnecting,
       _ => Phase.off,
     };
+    if (phase == Phase.connecting || phase == Phase.reconnecting) unawaited(_probeCall?.cancel());
     // Session events may omit the ID. Retain the known ID until the session
     // ends.
     if (phase == Phase.off) {
@@ -654,6 +659,7 @@ class Sora extends ChangeNotifier {
     final started = DateTime.now();
     var connected = false;
     try {
+      await _probeCall?.cancel();
       final answer = await link.stub.connect(
         // The core arms the kill switch before the engine starts, so nothing
         // leaves outside the tunnel while it comes up.
@@ -702,6 +708,7 @@ class Sora extends ChangeNotifier {
     _lostAnnounced = false;
     notifyListeners();
     try {
+      await _probeCall?.cancel();
       await _connectionWork?.future;
       if (_disposed || link != _link) return;
       final answer =
@@ -917,13 +924,12 @@ class Sora extends ChangeNotifier {
   Future<void> probe({String? subscriptionId}) async {
     final link = _link;
     final all = subscriptionId == null ? servers : _subscriptions[subscriptionId]?.outbounds.toList() ?? [];
-    if (_disposed || link == null || probing || all.isEmpty) return;
+    if (!canProbe || link == null || all.isEmpty) return;
     probing = true;
     probingSubscription = subscriptionId;
     recovered('probe');
-    notifyListeners();
     try {
-      await for (final r in link.stub.probeServers(
+      final call = _probeCall = link.stub.probeServers(
         ProbeServersRequest(
           apiVersion: apiVersion,
           outbounds: all,
@@ -937,19 +943,25 @@ class Sora extends ChangeNotifier {
             timeoutMs: settings.probeTimeout,
           ),
         ),
-      )) {
-        if (_disposed || link != _link) break;
+      );
+      notifyListeners();
+      await for (final r in call) {
+        if (_disposed || link != _link || busy || (phase != Phase.off && phase != Phase.connected)) break;
         latency[r.serverId] = r.reachable ? r.latencyMs : null;
         notifyListeners();
       }
     } catch (error) {
-      reportFailure(error, source: 'probe');
+      if (!_disposed && link == _link && !(error is GrpcError && error.code == StatusCode.cancelled)) {
+        reportFailure(error, source: 'probe');
+      }
       // Keep partial results; unmeasured servers remain unknown instead of
       // being marked unreachable.
+    } finally {
+      _probeCall = null;
+      probing = false;
+      probingSubscription = null;
+      notifyListeners();
     }
-    probing = false;
-    probingSubscription = null;
-    notifyListeners();
   }
 
   /// Core client and authentication token for direct screen requests, such as
@@ -971,6 +983,7 @@ class Sora extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_probeCall?.cancel());
     _drop(CoreFailure.unavailable);
     _statsTimer?.cancel();
     updates.dispose();

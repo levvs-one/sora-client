@@ -1,20 +1,22 @@
 // Requires SORA_CORE_LIVE and an installed core, as configured in CI. Uses the
 // Linux Unix socket or Windows named pipe to verify the service.
 import 'dart:io';
+import 'dart:ffi';
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sora/src/core/link.dart';
 import 'package:sora/src/generated/sora/core/v1/core_control.pb.dart';
 import 'package:grpc/grpc.dart' show CallOptions;
-import 'package:win32/win32.dart';
 
 void main() {
   final live = Platform.environment['SORA_CORE_LIVE'] != null;
 
   test('the interface reaches the core, is given the token and is answered', () async {
     if (Platform.isWindows && Platform.environment['SORA_CORE_UNELEVATED'] != null) {
-      expect(IsUserAnAdmin(), isFalse, reason: 'the client must run without administrator rights');
+      final isAdmin = DynamicLibrary.open('shell32.dll')
+          .lookupFunction<Int32 Function(), int Function()>('IsUserAnAdmin');
+      expect(isAdmin(), 0, reason: 'the client must run without administrator rights');
     }
     final link = await CoreLink.open().timeout(const Duration(seconds: 30));
     try {

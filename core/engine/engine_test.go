@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -185,7 +186,7 @@ func TestTunStackNeverSilentlyChangesWithTheEngine(t *testing.T) {
 	for _, stack := range []string{"system", "gvisor", "mixed", "mips"} {
 		p.Tun.Stack = stack
 		for _, kind := range []Kind{KindXray, KindSingBox, KindMihomo} {
-			want := (kind != KindXray || stack == "gvisor") && (kind != KindSingBox || stack != "mips")
+			want := (kind != KindXray || (runtime.GOOS == "linux" && stack == "gvisor")) && (kind != KindSingBox || stack != "mips")
 			if got := len(Catalog[kind].Missing(p)) == 0; got != want {
 				t.Errorf("%s stack %s: supported %t, want %t", kind, stack, got, want)
 			}

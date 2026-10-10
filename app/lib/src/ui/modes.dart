@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -245,7 +246,7 @@ class _Modes extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
               ],
-              if (current == 'tun' && settings.engine == 'xray') ...[
+              if (current == 'tun' && settings.engine == 'xray' && Platform.isLinux) ...[
                 ChoiceTile<String>(
                   key: const ValueKey('xray-tun-stack'),
                   title: s.tunStack,

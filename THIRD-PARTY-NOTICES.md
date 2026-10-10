@@ -19,6 +19,7 @@ Sora их не изменяет.
 | --- | --- | --- |
 | Flutter и Dart | 3.47.6 | BSD-3-Clause |
 | Inter | 4.1 | SIL Open Font License 1.1 |
+| Country Flags (Hampus Nilsson) | svg-country-flags 1.2.10 | Public Domain |
 | grpc | 5.1.0 | Apache-2.0 |
 | retry | 3.1.2 | Apache-2.0 |
 | cupertino_icons | 2.0.0 | MIT |

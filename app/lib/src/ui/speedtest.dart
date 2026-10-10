@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_all/webview_all.dart';
@@ -214,6 +215,8 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
   String? _failure;
   String? _mainUrl;
   Timer? _deadline;
+  Timer? _retryDelay;
+  int _automaticRetries = 0;
   Future<void>? _releaseWork;
   bool _starting = false;
   int _generation = 0;
@@ -232,6 +235,9 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.service.url != _url) {
       _deadline?.cancel();
+      _retryDelay?.cancel();
+      _retryDelay = null;
+      _automaticRetries = 0;
       _generation++;
       _failure = null;
       _mainUrl = null;
@@ -247,11 +253,11 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
       return;
     }
     try {
-      _releaseWork = switch (controller.platform) {
+      _releaseWork = (switch (controller.platform) {
         final LinuxWebViewController platform => platform.dispose(),
         final WindowsWebViewController platform => platform.dispose(),
         _ => null,
-      };
+      })?.catchError((Object error) => debugPrint('Speedtest browser cleanup failed: $error'));
       await _releaseWork;
     } catch (error) {
       debugPrint('Speedtest browser cleanup failed: $error');
@@ -264,18 +270,28 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
   void dispose() {
     _generation++;
     _deadline?.cancel();
+    _retryDelay?.cancel();
     unawaited(_release());
     super.dispose();
   }
 
-  void _failed(String message) {
+  void _failed(String message, {bool retry = true}) {
     if (!mounted || _failure != null) return;
     _deadline?.cancel();
     _generation++;
     setState(() {
-      _failure = message;
       _ready = false;
+      _failure = retry && _automaticRetries < 2 ? null : message;
     });
+    unawaited(_release());
+    if (_failure == null) {
+      _automaticRetries++;
+      _retryDelay = Timer(Duration(seconds: _automaticRetries), () {
+        _retryDelay = null;
+        if (mounted) unawaited(_start());
+      });
+      return;
+    }
     unawaited(
       SoraScope.read(context).recordNotification(
         AppNotification(
@@ -287,7 +303,6 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
         ),
       ),
     );
-    unawaited(_release());
   }
 
   Future<void> _start() async {
@@ -297,7 +312,7 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
     final s = S.of(context);
     _watchLoad();
     try {
-      await _releaseWork;
+      await _releaseWork?.timeout(const Duration(seconds: 10));
       if (!mounted || generation != _generation) return;
       final controller = _controller ??= WebViewPlatform.instance is LinuxWebViewPlatform
           ? WebViewController.fromPlatformCreationParams(
@@ -309,7 +324,7 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
             )
           : WebViewController();
       // Attach the initialization error handler before other asynchronous calls.
-      await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await controller.setJavaScriptMode(JavaScriptMode.unrestricted).timeout(const Duration(seconds: 25));
       if (!mounted || generation != _generation) return;
       await controller.setNavigationDelegate(
         NavigationDelegate(
@@ -318,18 +333,25 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
               : NavigationDecision.prevent,
           onPageStarted: (url) {
             if (!mounted || generation != _generation) return;
+            if (!const {'https', 'http'}.contains(Uri.tryParse(url)?.scheme)) return;
             _mainUrl = url;
             if (!mounted || _failure != null) return;
             _watchLoad();
           },
           onPageFinished: (url) {
-            if (mounted && generation == _generation && url == _mainUrl) _deadline?.cancel();
+            if (mounted && generation == _generation && url == _mainUrl) {
+              _deadline?.cancel();
+              _automaticRetries = 0;
+            }
           },
           onWebResourceError: (error) {
+            // WebView2 cancels the previous navigation when another service
+            // is selected; its callback can arrive after the delegate changes.
+            if (error is WindowsWebResourceError && error.description == 'WebErrorStatusOperationCanceled') return;
             if (generation == _generation &&
                 error.isForMainFrame == true &&
                 (error.url == null || error.url == (_mainUrl ?? _url))) {
-              _failed(s.speedtestPageFailed);
+              _failed(s.speedtestPageFailed, retry: error.errorType != WebResourceErrorType.failedSslHandshake);
             }
           },
           onHttpError: (error) {
@@ -340,14 +362,21 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
         ),
       );
       if (!mounted || generation != _generation) return;
-      await controller.loadRequest(Uri.parse(_url));
+      await controller.loadRequest(Uri.parse(_url)).timeout(const Duration(seconds: 5));
       if (!mounted || generation != _generation || _failure != null) return;
       setState(() => _ready = true);
-    } catch (_) {
-      if (generation == _generation) _failed(s.speedtestUnavailable);
+    } catch (error) {
+      if (generation == _generation) {
+        final missingRuntime =
+            error is MissingPluginException ||
+            (error is TimeoutException && _controller == null) ||
+            (error is PlatformException &&
+                const {'webkit_unavailable', 'webview2_runtime_unavailable'}.contains(error.code));
+        _failed(s.speedtestUnavailable, retry: !missingRuntime);
+      }
     } finally {
       _starting = false;
-      if (mounted && generation != _generation && _failure == null) unawaited(_start());
+      if (mounted && generation != _generation && _failure == null && _retryDelay == null) unawaited(_start());
     }
   }
 
@@ -358,6 +387,9 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
 
   Future<void> _retry() async {
     if (_starting || !mounted) return;
+    _retryDelay?.cancel();
+    _retryDelay = null;
+    _automaticRetries = 0;
     _generation++;
     setState(() => _failure = null);
     await _start();

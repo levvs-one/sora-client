@@ -17,27 +17,21 @@ class PipeConnector implements ClientTransportConnector {
   /// For example r"\\.\pipe\sora-core-v1".
   final String path;
 
-  /// Requires the pipe server to run as LocalSystem, like the Sora service.
+  /// Requires the pipe server to be the registered SoraCore service process.
   /// Disable only for a manually started core on a separate path.
   final bool requireService;
 
-  final _done = Completer<void>();
   _Pipe? _pipe;
 
   @override
   Future<ClientTransportConnection> connect() async {
     final pipe = await _Pipe.open(path, requireService: requireService);
     _pipe = pipe;
-    unawaited(
-      pipe.closed.whenComplete(() {
-        if (!_done.isCompleted) _done.complete();
-      }),
-    );
     return ClientTransportConnection.viaStreams(pipe.incoming, pipe.outgoing);
   }
 
   @override
-  Future<void> get done => _done.future;
+  Future<void> get done => _pipe!.closed;
 
   @override
   void shutdown() => unawaited(_pipe?.close());
@@ -55,35 +49,34 @@ final _serverProcessId = DynamicLibrary.open('kernel32.dll')
       'GetNamedPipeServerProcessId',
     );
 
-/// The binary LocalSystem SID, S-1-5-18.
-const _localSystem = [1, 1, 0, 0, 0, 0, 0, 5, 18, 0, 0, 0];
-
-/// Checks whether the server process for [pipe] runs as LocalSystem.
-bool _servedBySystem(HANDLE pipe) => using((arena) {
+/// Ordinary users can query service status, but cannot read a LocalSystem
+/// process token. The kernel pipe PID must match the trusted SCM service PID.
+bool _servedByService(HANDLE pipe) => using((arena) {
   final pid = arena<Uint32>();
   if (_serverProcessId(pipe.cast(), pid) == 0) return false;
-  final process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid.value).value;
-  if (!process.isValid) return false;
+  final manager = OpenSCManager(null, null, SC_MANAGER_CONNECT).value;
+  if (!manager.isValid) return false;
   try {
-    final token = arena<Pointer>();
-    if (!OpenProcessToken(process, TOKEN_QUERY, token).value) return false;
-    final tokenHandle = HANDLE(token.value);
+    final service = OpenService(manager, 'SoraCore'.toPcwstr(allocator: arena), SERVICE_QUERY_STATUS).value;
+    if (!service.isValid) return false;
     try {
-      const size = 256;
-      final info = arena<Uint8>(size);
+      final status = arena<SERVICE_STATUS_PROCESS>();
       final returned = arena<Uint32>();
-      if (!GetTokenInformation(tokenHandle, TokenUser, info, size, returned).value) return false;
-      // TOKEN_USER begins with a pointer to the SID inside the buffer.
-      final sid = info.cast<Pointer<Uint8>>().value;
-      for (final (i, byte) in _localSystem.indexed) {
-        if (sid[i] != byte) return false;
+      if (!QueryServiceStatusEx(
+        service,
+        SC_STATUS_PROCESS_INFO,
+        status.cast(),
+        sizeOf<SERVICE_STATUS_PROCESS>(),
+        returned,
+      ).value) {
+        return false;
       }
-      return true;
+      return status.ref.dwProcessId != 0 && status.ref.dwProcessId == pid.value;
     } finally {
-      CloseHandle(tokenHandle);
+      CloseServiceHandle(service);
     }
   } finally {
-    CloseHandle(process);
+    CloseServiceHandle(manager);
   }
 });
 
@@ -111,7 +104,7 @@ class _Pipe {
     final handle = await _create(path);
     // A signed-in user could create this pipe before the service, intercept
     // requests and supply a malicious local proxy endpoint.
-    if (requireService && !_servedBySystem(HANDLE(Pointer.fromAddress(handle)))) {
+    if (requireService && !_servedByService(HANDLE(Pointer.fromAddress(handle)))) {
       CloseHandle(HANDLE(Pointer.fromAddress(handle)));
       throw const GrpcError.unavailable('the core pipe is not served by the Sora service');
     }

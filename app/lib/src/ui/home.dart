@@ -9,6 +9,7 @@ import '../design/glow.dart';
 import '../design/logo.dart';
 import '../design/theme.dart';
 import '../groups.dart';
+import '../core/link.dart';
 import '../sora.dart';
 import 'kit.dart';
 import 'servers.dart';
@@ -27,7 +28,7 @@ class HomeScreen extends StatelessWidget {
       autofocus: true,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (MediaQuery.sizeOf(context).width >= 1000) {
+          if (MediaQuery.sizeOf(context).width >= 1000 && SoraScope.of(context).subscriptions.isNotEmpty) {
             final width = (constraints.maxWidth * 0.43).clamp(360.0, 480.0);
             return Row(
               key: const ValueKey('wide-layout'),
@@ -72,12 +73,17 @@ class _ConnectionPane extends StatelessWidget {
           const Center(child: TourTarget(step: 2, radius: 88, child: _Orb())),
           const SizedBox(height: 28),
           const Center(child: TourTarget(step: 3, child: ModeButton())),
-          if (SoraScope.of(context).needsReconnect) ...[const SizedBox(height: 12), const ConnectionChanges()],
           const SizedBox(height: 24),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: const _ServerCard(key: ValueKey('current-server')),
+              child: SoraScope.of(context).subscriptions.isEmpty
+                  ? const TourTarget(
+                      step: 0,
+                      radius: 12,
+                      child: TourTarget(step: 1, radius: 12, child: _ServerCard(key: ValueKey('current-server'))),
+                    )
+                  : const _ServerCard(key: ValueKey('current-server')),
             ),
           ),
         ],
@@ -145,7 +151,7 @@ class _Status extends StatelessWidget {
     final s = S.of(context);
     final palette = Palette.of(context);
     final title = switch (sora.phase) {
-      Phase.offline => s.coreMissing,
+      Phase.offline => sora.failure?.key == CoreFailure.unavailable.key ? s.coreMissing : s.stateOff,
       Phase.off => s.stateOff,
       Phase.connecting => s.stateConnecting,
       Phase.connected => s.stateConnected,
@@ -162,7 +168,11 @@ class _Status extends StatelessWidget {
             title,
             key: ValueKey(title),
             textAlign: TextAlign.center,
-            style: (sora.phase == Phase.offline ? Styles.bodyStrong : Styles.status).copyWith(color: palette.ink),
+            style:
+                (sora.phase == Phase.offline && sora.failure?.key == CoreFailure.unavailable.key
+                        ? Styles.bodyStrong
+                        : Styles.status)
+                    .copyWith(color: palette.ink),
           ),
         ),
         const SizedBox(height: 8),
@@ -265,8 +275,9 @@ class _ServerCard extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  name,
+                child: Text.rich(
+                  serverNameSpan(name),
+                  semanticsLabel: name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Styles.bodyStrong.copyWith(color: palette.ink),

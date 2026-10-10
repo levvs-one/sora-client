@@ -345,9 +345,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 12),
         Group(
           children: [
-            LinkTile(
+            Tile(
               title: s.subscriptions,
-              value: sora.subscriptions.isEmpty ? null : '${sora.subscriptions.length}',
+              titleStyle: Styles.bodyStrong,
+              trailing: Icon(Icons.chevron_right_rounded, size: 20, color: palette.ink),
               onTap: () => push<void>(context, const SubscriptionsScreen()),
             ),
           ],

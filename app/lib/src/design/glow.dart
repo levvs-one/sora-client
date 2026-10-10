@@ -143,13 +143,15 @@ class _GlowState extends State<Glow> with SingleTickerProviderStateMixin {
                 energy: energy,
                 scale: widget.scale,
               );
-        return CustomPaint(
-          painter: widget.inFront ? null : painter,
-          foregroundPainter: widget.inFront ? painter : null,
-          child: child,
+        return RepaintBoundary(
+          child: CustomPaint(
+            painter: widget.inFront ? null : painter,
+            foregroundPainter: widget.inFront ? painter : null,
+            child: child,
+          ),
         );
       },
-      child: widget.child,
+      child: RepaintBoundary(child: widget.child),
     );
   }
 }

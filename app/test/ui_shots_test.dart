@@ -24,7 +24,6 @@ void main() {
       final inter = FontLoader('Inter')
         ..addFont(Future.value(ByteData.sublistView(await File('assets/fonts/InterVariable.ttf').readAsBytes())));
       await inter.load();
-      await (FontLoader('NotoSansMono')..addFont(rootBundle.load('assets/fonts/NotoSansMono-Regular.ttf'))).load();
       final emoji = FontLoader('Noto Color Emoji')
         ..addFont(
           Future.value(ByteData.sublistView(await File('/usr/share/fonts/noto/NotoColorEmoji.ttf').readAsBytes())),
@@ -40,6 +39,12 @@ void main() {
     });
     final capture = GlobalKey();
     Future<void> save(String path) async {
+      await tester.runAsync(() async {
+        for (final element in find.byType(Image).evaluate()) {
+          await precacheImage((element.widget as Image).image, element);
+        }
+      });
+      await tester.pumpAndSettle();
       final boundary = capture.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
         final rendered = await boundary.toImage(pixelRatio: 1);

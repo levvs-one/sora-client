@@ -32,6 +32,8 @@ class _LogsScreenState extends State<LogsScreen> {
   StreamSubscription<LogEntry>? _watch;
   Timer? _debounce;
   bool _loaded = false;
+  CoreLink? _link;
+  int _revision = 0;
 
   @override
   void initState() {
@@ -40,11 +42,22 @@ class _LogsScreenState extends State<LogsScreen> {
       _debounce?.cancel();
       _debounce = Timer(const Duration(milliseconds: 250), _reload);
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final link = SoraScope.of(context).link;
+    if (_link == link) return;
+    _link = link;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_reload());
+    });
   }
 
   @override
   void dispose() {
+    _revision++;
     _debounce?.cancel();
     unawaited(_watch?.cancel());
     _search.dispose();
@@ -55,12 +68,12 @@ class _LogsScreenState extends State<LogsScreen> {
 
   Future<void> _reload() async {
     if (!mounted) return;
+    final revision = ++_revision;
     final link = SoraScope.read(context).link;
     await _watch?.cancel();
     _watch = null;
-    if (!mounted) return;
+    if (!mounted || revision != _revision) return;
     if (link == null) {
-      SoraScope.read(context).reportFailure(CoreFailure.unavailable, source: 'logs');
       return;
     }
     try {
@@ -68,7 +81,7 @@ class _LogsScreenState extends State<LogsScreen> {
         QueryLogsRequest(apiVersion: apiVersion, controlAuthenticator: link.token, filter: _filter, limit: 500),
       );
       if (page.hasError()) throw CoreFailure(page.error.userMessageKey);
-      if (!mounted) return;
+      if (!mounted || revision != _revision || link != SoraScope.read(context).link) return;
       setState(() {
         _entries = page.entries.toList();
         SoraScope.read(context).recovered('logs');
@@ -85,13 +98,15 @@ class _LogsScreenState extends State<LogsScreen> {
             ),
           )
           .listen(
-            _arrive,
+            (entry) {
+              if (mounted && revision == _revision) _arrive(entry);
+            },
             onError: (Object e) {
-              if (mounted) SoraScope.read(context).reportFailure(e, source: 'logs');
+              if (mounted && revision == _revision) SoraScope.read(context).reportFailure(e, source: 'logs');
             },
           );
     } catch (error) {
-      if (mounted) SoraScope.read(context).reportFailure(error, source: 'logs');
+      if (mounted && revision == _revision) SoraScope.read(context).reportFailure(error, source: 'logs');
     }
   }
 
@@ -175,7 +190,11 @@ class _LogsScreenState extends State<LogsScreen> {
         RoundButton(icon: Symbols.delete_rounded, label: s.clear, onTap: () => unawaited(_clear())),
       ],
       fill: !_loaded
-          ? const SizedBox()
+          ? Center(
+              child: _link == null
+                  ? Text(s.coreMissing, style: Styles.secondary.copyWith(color: palette.ink))
+                  : CupertinoActivityIndicator(color: palette.ink),
+            )
           : _entries.isEmpty
           ? Center(
               child: Text(s.logsEmpty, style: Styles.secondary.copyWith(color: palette.ink)),

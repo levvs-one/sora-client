@@ -124,7 +124,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('notification history has uniform cards and a separate date typeface', (tester) async {
+  testWidgets('notification dates use bold Inter on uniform cards', (tester) async {
     final sora = await start(tester);
     await section(tester, 5);
     expect(find.byIcon(Symbols.done_all_rounded), findsNothing);
@@ -132,7 +132,13 @@ void main() {
     expect(rows, findsNWidgets(3));
     final dates = find.descendant(
       of: rows,
-      matching: find.byWidgetPredicate((w) => w is Text && w.style?.fontFamily == 'NotoSansMono'),
+      matching: find.byWidgetPredicate(
+        (w) =>
+            w is Text &&
+            w.style?.fontFamily == 'Inter' &&
+            w.style?.fontWeight == FontWeight.w600 &&
+            w.style?.fontSize == 12,
+      ),
     );
     expect(dates, findsNWidgets(3));
     final styles = tester
@@ -141,6 +147,29 @@ void main() {
         .map((w) => w.style)
         .toSet();
     expect(styles, hasLength(1));
+  });
+
+  testWidgets('first launch has one subscription action and no premature service failure', (tester) async {
+    final settings = await Settings.load();
+    await settings.completeTour();
+    settings
+      ..language = 'ru'
+      ..animations = false;
+    final sora = Sora(settings);
+    addTearDown(sora.dispose);
+    size(tester, 1440);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(SoraApp(sora: sora));
+    await tester.pumpAndSettle();
+    expect(find.text('Добавить подписку'), findsOneWidget);
+    expect(find.byKey(const ValueKey('wide-layout')), findsNothing);
+    expect(find.text('Служба Sora не отвечает'), findsNothing);
+    expect(find.text('Не подключено'), findsOneWidget);
+    sora.failure = CoreFailure.unavailable;
+    sora.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.text('Служба Sora не отвечает'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('toast supports right swipe, close and retry action', (tester) async {
@@ -210,10 +239,7 @@ void main() {
     final sora = await start(tester);
     final elapsed = find.descendant(of: find.byKey(const ValueKey('elapsed')), matching: find.byType(Text));
     final before = tester.widget<Text>(elapsed);
-    final serverName = find.descendant(
-      of: find.byType(ServersScreen),
-      matching: find.text('🇳🇱 Нидерланды, Амстердам'),
-    );
+    final serverName = find.descendant(of: find.byType(ServersScreen), matching: find.text('￼Нидерланды, Амстердам'));
     final serverBefore = tester.widget<Text>(serverName);
     var stateChanges = 0;
     sora.addListener(() => stateChanges++);
@@ -411,7 +437,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
         await tester.pumpAndSettle();
-        expect(find.byType(TextField), findsNWidgets(2));
+        expect(find.byType(TextField), findsOneWidget);
       }
     });
   }
@@ -465,17 +491,17 @@ void main() {
     await tester.tap(toggle);
     await tester.pumpAndSettle();
     expect(find.byType(Announcement), findsNothing);
-    expect(find.text('🇳🇱 Нидерланды, Амстердам'), findsNWidgets(2));
+    expect(find.text('￼Нидерланды, Амстердам'), findsNWidgets(2));
     await tester.tap(toggle);
     await tester.pumpAndSettle();
     expect(find.byType(Announcement), findsOneWidget);
     await tester.tap(servers);
     await tester.pumpAndSettle();
     expect(find.byType(Announcement), findsOneWidget);
-    expect(find.text('🇳🇱 Нидерланды, Амстердам'), findsOneWidget);
+    expect(find.text('￼Нидерланды, Амстердам'), findsOneWidget);
     await tester.tap(servers);
     await tester.pumpAndSettle();
-    expect(find.text('🇳🇱 Нидерланды, Амстердам'), findsNWidgets(2));
+    expect(find.text('￼Нидерланды, Амстердам'), findsNWidgets(2));
   });
 
   testWidgets('tour cutout uses circle and card radii', (tester) async {

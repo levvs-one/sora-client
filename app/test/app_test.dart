@@ -246,6 +246,7 @@ void main() {
     late Sora sora;
     await tester.runAsync(() async => sora = Sora(await Settings.load()));
     await sora.settings.completeTour();
+    sora.failure = CoreFailure.unavailable;
     await tester.pumpWidget(SoraApp(sora: sora));
     await tester.pumpAndSettle();
     expect(find.text(SRu().coreMissing), findsOneWidget);

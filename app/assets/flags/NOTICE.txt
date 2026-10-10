@@ -1,0 +1,10 @@
+Country flag images
+
+Source: svg-country-flags 1.2.10 by Hampus Nilsson
+Repository: https://github.com/hampusborgos/country-flags
+Package: https://www.npmjs.com/package/svg-country-flags/v/1.2.10
+Package SHA-256: 2576650B4568C8EE1A2A6DDAA45C0246BE16735F229BB40B1A0A6F40424E5213
+
+The package declares the flag images to be public domain (license identifier: PD).
+Country laws can separately restrict how a national flag may be used. Sora displays
+flags only as compact geographic identifiers for server locations.

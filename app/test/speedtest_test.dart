@@ -277,10 +277,9 @@ void main() {
       });
       await tester.pump();
       await flush(tester);
-      expect(sora.history.length, before + 1);
+      expect(sora.history.length, before, reason: 'a transient failure recovers without a toast');
       expect(disposals, {1: 1});
-      await tester.tap(find.byKey(const ValueKey('speedtest-reload')));
-      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
       expect(created, 1, reason: 'retry waits for native cleanup');
       release!.complete();
       release = null;
@@ -295,6 +294,84 @@ void main() {
       await flush(tester);
       expect(disposals, {1: 1, 2: 1});
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('automatic recovery stops after two retries and records one notification', (tester) async {
+      final sora = await start(tester);
+      final before = sora.history.length;
+      final url = speedtestServices[0].url;
+      for (var id = 1; id <= 3; id++) {
+        await event(id, {
+          'type': 'webResourceError',
+          'url': url,
+          'isForMainFrame': true,
+          'description': 'network failure',
+        });
+        await tester.pump();
+        await flush(tester);
+        if (id < 3) {
+          expect(sora.history.length, before);
+          await tester.pump(Duration(seconds: id));
+          await tester.pumpAndSettle();
+          expect(created, id + 1);
+        }
+      }
+      await tester.pump(const Duration(seconds: 50));
+      expect(created, 3);
+      expect(sora.history.length, before + 1);
+      expect(find.byKey(const ValueKey('speedtest-reload')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await flush(tester);
+      expect(disposals, {1: 1, 2: 1, 3: 1});
+    });
+
+    testWidgets('leaving during the retry delay prevents another native browser', (tester) async {
+      await start(tester);
+      await event(1, {'type': 'webResourceError', 'isForMainFrame': true, 'description': 'network failure'});
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 50));
+      await flush(tester);
+      expect(created, 1);
+      expect(disposals, {1: 1});
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('leaving during failed native cleanup does not raise an uncaught exception', (tester) async {
+      await start(tester);
+      release = Completer<void>();
+      await event(1, {'type': 'webResourceError', 'isForMainFrame': true, 'description': 'network failure'});
+      await tester.pump();
+      await flush(tester);
+      expect(disposals, {1: 1});
+      await tester.pumpWidget(const SizedBox());
+      release!.completeError(PlatformException(code: 'cleanup_failed'));
+      release = null;
+      await flush(tester);
+      await tester.pump(const Duration(seconds: 50));
+      expect(created, 1);
+      expect(disposals, {1: 1});
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('choosing another service cancels the pending retry of the old page', (tester) async {
+      await start(tester);
+      await event(1, {'type': 'webResourceError', 'isForMainFrame': true, 'description': 'network failure'});
+      await tester.pump();
+      await flush(tester);
+      final yandex = speedtestServices[1].url;
+      await tester.tap(find.byKey(ValueKey('speedtest-service-$yandex')));
+      await tester.pumpAndSettle();
+      await event(2, {'type': 'pageStarted', 'url': yandex});
+      await event(2, {'type': 'pageFinished', 'url': yandex});
+      await tester.pump(const Duration(seconds: 50));
+      expect(created, 2);
+      expect(loads.last, yandex);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await flush(tester);
+      expect(disposals, {1: 1, 2: 1});
     });
 
     testWidgets('a terminated process after page completion releases the browser and allows recovery', (tester) async {
@@ -312,8 +389,8 @@ void main() {
       await tester.pump();
       await flush(tester);
       expect(disposals, {1: 1});
-      expect(find.byKey(const ValueKey('speedtest-reload')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('speedtest-reload')));
+      expect(find.byKey(const ValueKey('speedtest-reload')), findsNothing);
+      await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
       expect(created, 2);
       expect(loads.last, url);

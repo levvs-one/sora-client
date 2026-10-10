@@ -321,10 +321,12 @@ class Tile extends StatelessWidget {
     this.onTap,
     this.detailColor,
     this.titleColor,
+    this.titleStyle,
   });
 
   final String title;
   final Color? titleColor;
+  final TextStyle? titleStyle;
   final String? detail;
   final Color? detailColor;
   final Widget? trailing;
@@ -350,7 +352,7 @@ class Tile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Styles.body.copyWith(color: titleColor ?? palette.ink),
+                      style: (titleStyle ?? Styles.body).copyWith(color: titleColor ?? palette.ink),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

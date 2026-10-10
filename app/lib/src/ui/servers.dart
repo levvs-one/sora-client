@@ -49,7 +49,7 @@ class _ServersScreenState extends State<ServersScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final sora = SoraScope.of(context);
-    if (!_probed && sora.servers.isNotEmpty) {
+    if (!_probed && sora.canProbe && sora.phase == Phase.off && sora.servers.isNotEmpty) {
       // The desktop pane opens before the subscription stream arrives.
       _probed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -63,12 +63,19 @@ class _ServersScreenState extends State<ServersScreen> {
     final sora = SoraScope.of(context);
     final s = S.of(context);
     final palette = Palette.of(context);
+    if (widget.embedded && sora.subscriptions.isEmpty) {
+      return widget.scrollable ? const SizedBox.expand() : const SliverToBoxAdapter();
+    }
     final query = _search.text.trim().toLowerCase();
     final actions = [
       if (sora.probing)
         SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
       else
-        RoundButton(icon: Symbols.network_ping_rounded, label: s.probeServers, onTap: () => unawaited(sora.probe())),
+        RoundButton(
+          icon: Symbols.speed_rounded,
+          label: s.probeServers,
+          onTap: sora.canProbe ? () => unawaited(sora.probe()) : null,
+        ),
       _tourTarget(
         0,
         RoundButton(icon: Symbols.add_rounded, label: s.addSubscription, onTap: () => showSubscriptionSheet(context)),
@@ -201,6 +208,35 @@ List<Entry> _matching(List<Entry> entries, String query) => query.isEmpty
           if (e.name.toLowerCase().contains(query)) e,
       ];
 
+final _flagPrefix = RegExp(r'^([\u{1F1E6}-\u{1F1FF}]{2})\s*', unicode: true);
+
+InlineSpan serverNameSpan(String name) {
+  final flag = _flagPrefix.firstMatch(name);
+  if (flag == null) return TextSpan(text: name);
+  final code = String.fromCharCodes(flag.group(1)!.runes.map((r) => r - 0x1F1E6 + 97));
+  return TextSpan(
+    children: [
+      WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Image.asset(
+              'assets/flags/$code.png',
+              width: 22,
+              height: 14,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => SizedBox(width: 22, child: Text(code.toUpperCase(), style: Styles.caption)),
+            ),
+          ),
+        ),
+      ),
+      TextSpan(text: name.substring(flag.end)),
+    ],
+  );
+}
+
 class _ServerRow extends StatelessWidget {
   const _ServerRow({required this.id, required this.name, this.entry});
 
@@ -245,8 +281,9 @@ class _ServerRow extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          name,
+                        Text.rich(
+                          serverNameSpan(name),
+                          semanticsLabel: name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Styles.row.copyWith(color: palette.ink),
@@ -277,8 +314,6 @@ class _ServerRow extends StatelessWidget {
                       style: Styles.figures(Styles.caption).copyWith(color: palette.ink2),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 16, child: chosen ? Icon(Symbols.check_rounded, size: 16, color: palette.ink) : null),
                 ],
               ),
             ),
@@ -380,9 +415,9 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
                   message: '${s.probeServers}: ${state.displayName}',
                   child: RoundButton(
                     key: ValueKey('probe-subscription-${state.settings.id}'),
-                    icon: Symbols.network_ping_rounded,
+                    icon: Symbols.speed_rounded,
                     label: '${s.probeServers}: ${state.displayName}',
-                    onTap: sora.probing || state.outbounds.isEmpty
+                    onTap: !sora.canProbe || state.outbounds.isEmpty
                         ? null
                         : () => unawaited(sora.probe(subscriptionId: state.settings.id)),
                   ),

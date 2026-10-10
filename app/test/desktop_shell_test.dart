@@ -81,10 +81,10 @@ void main() {
     await tester.tap(travelCollapse);
     await tester.pumpAndSettle();
     expect(find.text('Нидерланды, работа'), findsOneWidget);
-    expect(find.text('🇩🇪 Германия, Франкфурт'), findsNothing);
+    expect(find.text('￼Германия, Франкфурт'), findsNothing);
     await tester.tap(travelCollapse);
     await tester.pumpAndSettle();
-    expect(find.text('🇩🇪 Германия, Франкфурт'), findsOneWidget);
+    expect(find.text('￼Германия, Франкфурт'), findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('server-search')), 'Нидерланды');
     await tester.pumpAndSettle();
     final travel = find.byKey(const ValueKey('refresh-subscription-travel'));
@@ -157,7 +157,7 @@ void main() {
     for (final package in [
       'Sora',
       'Inter',
-      'Noto Sans Mono',
+      'Country Flags',
       'sing-box',
       'mihomo',
       'Xray',

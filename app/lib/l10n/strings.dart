@@ -1199,7 +1199,7 @@ abstract class S {
   /// No description provided for @navAbout.
   ///
   /// In ru, this message translates to:
-  /// **'О программе'**
+  /// **'О приложении'**
   String get navAbout;
 
   /// No description provided for @sidebarToggle.
@@ -1255,12 +1255,6 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Последние уведомления'**
   String get recentNotifications;
-
-  /// No description provided for @markAllRead.
-  ///
-  /// In ru, this message translates to:
-  /// **'Прочитать все'**
-  String get markAllRead;
 
   /// No description provided for @notificationsEmpty.
   ///
@@ -1403,37 +1397,13 @@ abstract class S {
   /// No description provided for @speedtestSearch.
   ///
   /// In ru, this message translates to:
-  /// **'Сервис, страна или оператор'**
+  /// **'Найти сервис'**
   String get speedtestSearch;
-
-  /// No description provided for @speedtestAll.
-  ///
-  /// In ru, this message translates to:
-  /// **'Все'**
-  String get speedtestAll;
-
-  /// No description provided for @speedtestCis.
-  ///
-  /// In ru, this message translates to:
-  /// **'Россия и СНГ'**
-  String get speedtestCis;
-
-  /// No description provided for @speedtestWorld.
-  ///
-  /// In ru, this message translates to:
-  /// **'Мир'**
-  String get speedtestWorld;
-
-  /// No description provided for @speedtestCount.
-  ///
-  /// In ru, this message translates to:
-  /// **'Сервисов: {count}'**
-  String speedtestCount(int count);
 
   /// No description provided for @speedtestEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Ничего не найдено. Измените запрос или фильтр.'**
+  /// **'Ничего не найдено. Измените запрос.'**
   String get speedtestEmpty;
 
   /// No description provided for @speedtestBackToList.
@@ -1442,41 +1412,11 @@ abstract class S {
   /// **'К списку сервисов'**
   String get speedtestBackToList;
 
-  /// No description provided for @speedtestBack.
-  ///
-  /// In ru, this message translates to:
-  /// **'Назад по странице'**
-  String get speedtestBack;
-
   /// No description provided for @speedtestOpenBrowser.
   ///
   /// In ru, this message translates to:
   /// **'Открыть в браузере'**
   String get speedtestOpenBrowser;
-
-  /// No description provided for @speedtestViaVpn.
-  ///
-  /// In ru, this message translates to:
-  /// **'Через VPN: {server}'**
-  String speedtestViaVpn(String server);
-
-  /// No description provided for @speedtestNoVpn.
-  ///
-  /// In ru, this message translates to:
-  /// **'Без VPN'**
-  String get speedtestNoVpn;
-
-  /// No description provided for @speedtestStarting.
-  ///
-  /// In ru, this message translates to:
-  /// **'Запускаем встроенный браузер...'**
-  String get speedtestStarting;
-
-  /// No description provided for @speedtestLoading.
-  ///
-  /// In ru, this message translates to:
-  /// **'Загрузка страницы...'**
-  String get speedtestLoading;
 
   /// No description provided for @speedtestUnavailable.
   ///
@@ -1496,12 +1436,6 @@ abstract class S {
   /// **'Системный браузер не открылся. Попробуйте ещё раз.'**
   String get speedtestExternalFailed;
 
-  /// No description provided for @speedtestRoutingNote.
-  ///
-  /// In ru, this message translates to:
-  /// **'Маршрут зависит от правил Sora'**
-  String get speedtestRoutingNote;
-
   /// No description provided for @modes.
   ///
   /// In ru, this message translates to:
@@ -1519,48 +1453,6 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Весь трафик (TUN)'**
   String get tunMode;
-
-  /// No description provided for @tunExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'Все приложения через VPN'**
-  String get tunExplanation;
-
-  /// No description provided for @proxyExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'Трафик приложений с прокси'**
-  String get proxyExplanation;
-
-  /// No description provided for @bypassExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'Обход DPI через zapret, без VPN'**
-  String get bypassExplanation;
-
-  /// No description provided for @autoEngineExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'Ядро подбирает совместимый движок'**
-  String get autoEngineExplanation;
-
-  /// No description provided for @singboxExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'Гибкая маршрутизация и TUN'**
-  String get singboxExplanation;
-
-  /// No description provided for @xrayExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'VLESS, REALITY и TLS-фрагментация'**
-  String get xrayExplanation;
-
-  /// No description provided for @mihomoExplanation.
-  ///
-  /// In ru, this message translates to:
-  /// **'Группы серверов и авторезерв'**
-  String get mihomoExplanation;
 
   /// No description provided for @checkUpdates.
   ///
@@ -1595,7 +1487,7 @@ abstract class S {
   /// No description provided for @updateCheck.
   ///
   /// In ru, this message translates to:
-  /// **'Проверить сейчас'**
+  /// **'Проверить обновления'**
   String get updateCheck;
 
   /// No description provided for @updateChecking.
@@ -1687,6 +1579,138 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Обновление установлено. Откройте Sora снова.'**
   String get updateInstalled;
+
+  /// No description provided for @projectLinks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проект'**
+  String get projectLinks;
+
+  /// No description provided for @githubReleases.
+  ///
+  /// In ru, this message translates to:
+  /// **'Релизы и загрузки'**
+  String get githubReleases;
+
+  /// No description provided for @telegramChannel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Канал в Telegram'**
+  String get telegramChannel;
+
+  /// No description provided for @licenses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лицензии'**
+  String get licenses;
+
+  /// No description provided for @componentLicenses.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лицензии компонентов'**
+  String get componentLicenses;
+
+  /// No description provided for @appCopyright.
+  ///
+  /// In ru, this message translates to:
+  /// **'© 2026 levvs-one и участники проекта'**
+  String get appCopyright;
+
+  /// No description provided for @collapseServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть серверы'**
+  String get collapseServers;
+
+  /// No description provided for @expandServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать серверы'**
+  String get expandServers;
+
+  /// No description provided for @hideDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть описание'**
+  String get hideDescription;
+
+  /// No description provided for @showDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать описание'**
+  String get showDescription;
+
+  /// No description provided for @pendingConnectionChanges.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чтобы применить изменения, переподключитесь.'**
+  String get pendingConnectionChanges;
+
+  /// No description provided for @reconnectNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Применить и переподключить'**
+  String get reconnectNow;
+
+  /// No description provided for @bypassLimitations.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот режим обходит DPI только для HTTP и TLS, не поддерживает UDP и не меняет IP. Для голоса Discord, звонков и заблокированных адресов Telegram используйте VPN-сервер.'**
+  String get bypassLimitations;
+
+  /// No description provided for @errEngineUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбранное ядро не поддерживает этот профиль или настройки. Выберите «Авто» либо совместимое ядро.'**
+  String get errEngineUnsupported;
+
+  /// No description provided for @errRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось полностью очистить подключение. Повторите отключение; подробности — в журнале.'**
+  String get errRestore;
+
+  /// No description provided for @errSessionEnded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта сессия уже завершена. Обновите состояние подключения.'**
+  String get errSessionEnded;
+
+  /// No description provided for @retryDisconnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить отключение'**
+  String get retryDisconnect;
+
+  /// No description provided for @tunStack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стек TUN'**
+  String get tunStack;
+
+  /// No description provided for @modesInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробнее о режимах'**
+  String get modesInfo;
+
+  /// No description provided for @modesGuideTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Режимы и ядра'**
+  String get modesGuideTitle;
+
+  /// No description provided for @modesGuide.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбирайте «Авто», если не знаете, какое ядро нужно серверу. Sora сверяет поддержку профиля и настроек перед подключением. Само ядро не меняет скорость тарифа: результат зависит от сервера, маршрута, протокола и сети.\n\n## Режимы\n\n### Весь трафик (TUN)\n\nSora создаёт виртуальный сетевой интерфейс и направляет через него трафик приложений, включая TCP и UDP. Это подходящий режим для Telegram, игр и голосовой связи Discord. Правила могут отправлять отдельные сайты и программы напрямую или блокировать их. Для работы нужны права сетевой службы и сервер, поддерживающий нужный протокол.\n\n### Системный прокси\n\nSora задаёт локальный HTTP/SOCKS-прокси. Его используют приложения, которые учитывают системные настройки прокси. Программа со своим сетевым стеком может пройти напрямую; UDP и голосовые звонки обычно требуют TUN. Этот режим удобен для браузеров и приложений с поддержкой прокси.\n\n### Без сервера\n\nВ Linux Sora использует [zapret](https://github.com/bol-van/zapret): разбивает и меняет HTTP/TLS-запросы, чтобы обходить некоторые проверки DPI. Адрес IP остаётся вашим, соединение идёт к сайту напрямую. Результат зависит от провайдера и способа блокировки.\n\nТекущая интеграция использует tpws и обрабатывает TCP для HTTP и TLS. Она не обходит блокировку по IP, не пересылает UDP и не гарантирует работу Telegram с MTProto. Для голоса Discord, звонков Telegram и таких блокировок выберите VPN-сервер и TUN.\n\n## Ядра\n\n### Авто\n\nSora выбирает установленное ядро, которое поддерживает весь план подключения. Важно всё сразу: протоколы серверов, транспорт, группы, фрагментация и режим. Если выбранный вручную движок несовместим, новое подключение отклоняется до отключения текущего. Выберите «Авто» или другое ядро и примените настройки снова.\n\n### sing-box\n\nВ новых пакетах Sora используется [sing-box-lx](https://github.com/Leadaxe/sing-box-lx), форк [sing-box](https://github.com/SagerNet/sing-box). Он добавляет клиентский XHTTP и VLESS Encryption. Sora распознаёт сборку и её возможности; стандартный sing-box без XHTTP не получает эту возможность по одному лишь названию.\n\nПоддерживаются VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, AnyTLS, WireGuard и параметры AmneziaWG 1.x/2.x, которые умеет импортировать Sora. Полные JSON-профили Xray требуют Xray. Новые параметры AWG 3.x ещё не импортируются. Управление sing-box использует защищённый паролем локальный порт; другие программы на компьютере могут заметить его наличие.\n\n### Xray\n\n[Xray-core](https://github.com/XTLS/Xray-core) подходит для VLESS, REALITY, XHTTP, VLESS Encryption и TLS-фрагментации. Он также запускает полные профили Xray от провайдера, сохраняя их маршрутизацию и группы. Профиль такого вида нельзя автоматически превратить в конфиг другого движка без изменения его поведения.\n\nВ поставляемом Xray удалён параметр отключения проверки TLS-сертификата (`allowInsecure`). Для таких обычных серверов «Авто» выбирает sing-box или mihomo. При ручном выборе Xray Sora сообщает о несовместимости до отключения текущего соединения. Для старого полного JSON-профиля нужен обновлённый профиль провайдера с проверяемым сертификатом или его отпечатком.\n\n### mihomo\n\n[mihomo](https://github.com/MetaCubeX/mihomo) поддерживает группы с последовательным резервом и балансировкой, а также XHTTP и AmneziaWG. Выбирайте его, если важен автоматический переход на запасной сервер. Фрагментация TLS из настроек Sora для этого ядра недоступна.\n\n## Совместимость в Sora\n\n| Возможность | sing-box-lx | Xray | mihomo |\n| --- | --- | --- | --- |\n| TUN и TCP/UDP в Linux | Да | Да | Да |\n| XHTTP | Да | Да | Да |\n| VLESS Encryption | Да | Да | Да |\n| Полный профиль Xray | Нет | Да | Нет |\n| TUIC / AnyTLS | Оба | Нет | TUIC |\n| TLS-фрагментация | Да | Да | Нет |\n| AmneziaWG 1.x/2.x | Да¹ | Нет | Да |\n| Группа с резервом | Нет | Нет² | Да |\n\n¹ Профили с J1/J2/J3/Itime направляются в mihomo; эти параметры нельзя молча отбрасывать. ² Для группы полных профилей Xray запасной профиль выбирает приложение. Точная поддержка зависит от установленной сборки. Её версию можно посмотреть в «О приложении».\n\n## Стек TUN\n\nСтек обрабатывает TCP и UDP внутри виртуального интерфейса. В панели режимов у Xray и mihomo можно выбрать gVisor, System, Mixed или MIPS. Выбор сохраняется отдельно для каждого ядра. В режиме системного прокси и «Без сервера» этот выбор не используется.\n\n- **Mixed** — TCP использует системный стек, UDP обрабатывает gVisor. Это вариант по умолчанию для mihomo.\n- **System** — использует системный стек. При проблемах с сетевыми программами попробуйте другой вариант.\n- **gVisor** — обрабатывает трафик в пользовательском пространстве.\n- **MIPS** — собственный IP-стек mihomo, доступный в поставляемой версии 1.19.32.\n\nУ Xray gVisor работает встроенно и выбран по умолчанию. System, Mixed и MIPS подключаются через TUN-движок mihomo: он передаёт TCP и UDP в Xray по защищённому локальному SOCKS. Протокол, профиль провайдера и маршрутизация остаются в Xray. Для этих трёх вариантов нужен установленный mihomo.\n\nСвязка запускает второй процесс. В трёх замерах без трафика она потребляла примерно на 32–36 МиБ больше физической памяти, чем встроенный TUN Xray. Это не оценка нагрузки при скачивании: расходы процессора и память зависят от соединений. Если другой стек не нужен, оставьте gVisor. Для sing-box переключатель не добавляется. Ни один вариант не гарантирует более высокую скорость во всех сетях. Смените стек и нажмите «Применить и переподключить», чтобы проверить результат в своей сети.\n\n## Когда применяются настройки\n\nВыбор режима, ядра, сервера, DNS и правил сохраняется сразу. Во время активного подключения Sora показывает предложение переподключиться. Нажмите «Применить и переподключить», чтобы запустить выбранный план. При перезапуске движка текущие загрузки и звонки могут прерваться. Повторные нажатия не запускают несколько подключений одновременно; отключение завершает смену и освобождает соединение.\n\n«Интернет только через VPN» блокирует прямой выход при обрыве туннеля. Это ограничение действует на всю машину, поэтому используйте его осознанно. При явном отключении Sora снимает свои правила. Если очистка не завершилась, повторите отключение и откройте журнал.\n\n## Документация проектов\n\n- [sing-box-lx: настройки и поддержка](https://github.com/Leadaxe/sing-box-lx/blob/lx/docs-lx/lx-config.ru.md)\n- [sing-box: документация](https://sing-box.sagernet.org/)\n- [Xray: документация](https://xtls.github.io/)\n- [mihomo: документация](https://wiki.metacubex.one/)\n- [zapret: описание и ограничения](https://github.com/bol-van/zapret/blob/master/docs/readme.md)\n'**
+  String get modesGuide;
+
+  /// No description provided for @probeServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить серверы'**
+  String get probeServers;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

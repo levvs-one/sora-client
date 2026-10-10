@@ -21,11 +21,12 @@ import (
 
 // Binary is one engine build on disk that has been probed successfully.
 type Binary struct {
-	Kind    engine.Kind
-	Path    string
-	Version engine.Version
-	Goos    string
-	Goarch  string
+	Kind      engine.Kind
+	Path      string
+	Version   engine.Version
+	Goos      string
+	Goarch    string
+	BuildTags []string
 }
 
 // Prober describes how to recognize one engine binary.
@@ -66,6 +67,11 @@ func (pr Prober) Probe(ctx context.Context, path string) (Binary, error) {
 		return Binary{}, err
 	}
 	b := Binary{Kind: pr.Kind, Path: path, Version: version, Goos: runtime.GOOS, Goarch: runtime.GOARCH}
+	for _, line := range strings.Split(out.String(), "\n") {
+		if tags, ok := strings.CutPrefix(strings.TrimSpace(line), "Tags:"); ok {
+			b.BuildTags = strings.Split(strings.TrimSpace(tags), ",")
+		}
+	}
 	if len(match) > 3 && match[2] != "" && match[3] != "" {
 		b.Goos, b.Goarch = match[2], match[3]
 	}

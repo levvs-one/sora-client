@@ -194,6 +194,9 @@ func (r *renderer) outbound(o engine.Outbound) (obj, error) {
 		return out, nil
 	case engine.ProtocolVLESS:
 		out.set("type", "vless").set("uuid", o.UUID).set("flow", o.Flow).set("packet_encoding", "xudp")
+		if o.Encryption != "none" {
+			out.set("encryption", o.Encryption)
+		}
 	case engine.ProtocolVMess:
 		out.set("type", "vmess").set("uuid", o.UUID).set("security", orDefault(o.Cipher, "auto"))
 	case engine.ProtocolTrojan:
@@ -277,6 +280,12 @@ func transport(t engine.Transport) (obj, error) {
 		return out, nil
 	case "httpupgrade":
 		return obj{"type": "httpupgrade"}.set("host", t.Host).set("path", t.Path), nil
+	case "xhttp":
+		out := obj{"type": "xhttp", "mode": orDefault(t.Mode, "auto")}.set("host", t.Host).set("path", t.Path)
+		if len(t.Headers) > 0 {
+			out["headers"] = t.Headers
+		}
+		return out, nil
 	}
 	return nil, fmt.Errorf("transport %q is not supported by sing-box", t.Type)
 }
@@ -287,6 +296,16 @@ func wireguard(out obj, o engine.Outbound) (obj, error) {
 		return nil, fmt.Errorf("singbox: wireguard outbound %s has no interface address", o.ID)
 	}
 	out.set("type", "wireguard").set("address", o.Addresses).set("private_key", o.PrivateKey).set("mtu", 1420)
+	if a := o.Amnezia; a != nil {
+		if a.J1 != "" || a.J2 != "" || a.J3 != "" || a.Itime != 0 {
+			return nil, fmt.Errorf("singbox: AmneziaWG J1/J2/J3/Itime require another engine")
+		}
+		out["mtu"] = 1280
+		out.set("jc", a.Jc).set("jmin", a.Jmin).set("jmax", a.Jmax).
+			set("s1", a.S1).set("s2", a.S2).set("s3", a.S3).set("s4", a.S4).
+			set("h1", a.H1).set("h2", a.H2).set("h3", a.H3).set("h4", a.H4).
+			set("i1", a.I1).set("i2", a.I2).set("i3", a.I3).set("i4", a.I4).set("i5", a.I5)
+	}
 	peers := make([]obj, 0, len(o.Peers))
 	for _, peer := range o.Peers {
 		host, portText, err := net.SplitHostPort(peer.Endpoint)

@@ -314,6 +314,26 @@ func TestPlanCarriesTheIPv6Choice(t *testing.T) {
 	}
 }
 
+func TestTunStackReachesTheEngineAndRejectsInvalidChoices(t *testing.T) {
+	in := &corev1.SessionPlan{TunnelMode: corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+		Outbounds: []*corev1.OutboundSpec{{Id: "out", Protocol: "direct"}}}
+	for _, stack := range []string{"", "system", "gvisor", "mixed", "mips"} {
+		in.TunStack = stack
+		p, err := planFromProto(in, "stack", nil)
+		if err != nil || p.Tun.Stack != stack {
+			t.Fatalf("stack %q was lost: %+v, %v", stack, p, err)
+		}
+	}
+	in.TunStack = "unknown"
+	if _, err := planFromProto(in, "stack", nil); err == nil {
+		t.Fatal("an unknown stack must be refused")
+	}
+	in.TunStack, in.TunnelMode = "system", corev1.TunnelMode_TUNNEL_MODE_APPLICATION
+	if _, err := planFromProto(in, "stack", nil); err == nil {
+		t.Fatal("a stack cannot be silently ignored in proxy mode")
+	}
+}
+
 func TestAProfileSurvivesTheVault(t *testing.T) {
 	profile := `{"remarks":"x","outbounds":[{"protocol":"vless","tag":"proxy"}],"routing":{"rules":[]}}`
 	packed, err := packProfile(profile)

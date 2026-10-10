@@ -78,9 +78,9 @@ func TestRenderFragmentSkipsQUIC(t *testing.T) {
 
 func TestRenderRefusesWhatSingBoxCannotCarry(t *testing.T) {
 	p := enginetest.Plan(engine.ProtocolVLESS)
-	p.Outbounds[0].Transport = engine.Transport{Type: "xhttp"}
+	p.Outbounds[0].Transport = engine.Transport{Type: "not-a-transport"}
 	if _, err := Render(p, testRuntime); err == nil {
-		t.Fatal("xhttp must be refused")
+		t.Fatal("unknown transports must be refused")
 	}
 	p = enginetest.Plan(engine.ProtocolVLESS)
 	p.Groups[0].Type = engine.GroupFallback
@@ -126,7 +126,25 @@ func TestEngineAcceptsRenderedPlans(t *testing.T) {
 	fake.DNS.Mode = string(engine.DNSFakeIP)
 	fragment := enginetest.Plan(allProtocols...)
 	fragment.Options.Fragment.Enabled = true
-	for name, p := range map[string]*engine.Plan{"all protocols": enginetest.Plan(allProtocols...), "fake-ip": fake, "fragment": fragment} {
+	plans := map[string]*engine.Plan{"all protocols": enginetest.Plan(allProtocols...), "fake-ip": fake, "fragment": fragment}
+	caps := engine.BuildCapabilities(binary.Kind, binary.Version, binary.BuildTags)
+	if caps.Supports(engine.FeatureXHTTP) {
+		for _, mode := range []string{"auto", "packet-up", "stream-up", "stream-one"} {
+			p := enginetest.Plan(engine.ProtocolVLESS)
+			p.Outbounds[0].Flow = ""
+			p.Outbounds[0].Transport = engine.Transport{Type: "xhttp", Path: "/x?provider=1", Host: "cdn.example.com", Mode: mode, Headers: map[string]string{"User-Agent": "Sora-interop"}}
+			plans["xhttp-"+mode] = p
+		}
+		p := enginetest.Plan(engine.ProtocolVLESS)
+		p.Outbounds[0].Encryption = "mlkem768x25519plus.native.0rtt.Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw"
+		plans["vless-encryption"] = p
+	}
+	if caps.Supports(engine.FeatureAmneziaWG) {
+		p := enginetest.Plan(engine.ProtocolWireGuard)
+		p.Outbounds[0].Amnezia = enginetest.AmneziaWG().Amnezia
+		plans["amneziawg"] = p
+	}
+	for name, p := range plans {
 		t.Run(name, func(t *testing.T) {
 			raw, err := Render(p, testRuntime)
 			if err != nil {

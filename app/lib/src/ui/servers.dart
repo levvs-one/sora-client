@@ -31,6 +31,7 @@ class ServersScreen extends StatefulWidget {
 class _ServersScreenState extends State<ServersScreen> {
   final _search = TextEditingController();
   bool _probed = false;
+  final _collapsed = <String>{};
 
   @override
   void dispose() {
@@ -67,7 +68,7 @@ class _ServersScreenState extends State<ServersScreen> {
       if (sora.probing)
         SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
       else
-        RoundButton(icon: Symbols.refresh_rounded, label: s.refresh, onTap: sora.probe),
+        RoundButton(icon: Symbols.network_ping_rounded, label: s.probeServers, onTap: () => unawaited(sora.probe())),
       _tourTarget(
         0,
         RoundButton(icon: Symbols.add_rounded, label: s.addSubscription, onTap: () => showSubscriptionSheet(context)),
@@ -91,39 +92,25 @@ class _ServersScreenState extends State<ServersScreen> {
         ),
       ),
     );
-    final items = <Widget Function()>[
-      () => Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: _tourTarget(
-          1,
-          DecoratedBox(
-            decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: sora.servers.isNotEmpty
-                  ? _ServerRow(id: 'auto', name: s.serverAuto)
-                  : Tile(
-                      title: s.addSubscription,
-                      onTap: () => showSubscriptionSheet(context),
-                      trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
-                    ),
-            ),
+    final automatic = Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _tourTarget(
+        1,
+        DecoratedBox(
+          decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: sora.servers.isNotEmpty
+                ? _ServerRow(id: 'auto', name: s.serverAuto)
+                : Tile(
+                    title: s.addSubscription,
+                    onTap: () => showSubscriptionSheet(context),
+                    trailing: Icon(Symbols.add_rounded, size: 18, color: palette.ink),
+                  ),
           ),
         ),
       ),
-      for (final subscription in sora.subscriptions) ...[
-        if (query.isEmpty) () => _SubscriptionHeader(state: subscription),
-        for (final e in _matching(entriesOf(subscription), query))
-          () => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: palette.surface, borderRadius: BorderRadius.circular(8)),
-              child: _ServerRow(id: e.id, name: e.name, entry: e),
-            ),
-          ),
-        () => const SizedBox(height: 16),
-      ],
-    ];
+    );
     final toolbar = Row(
       children: [
         if (!widget.embedded)
@@ -138,8 +125,53 @@ class _ServersScreenState extends State<ServersScreen> {
     );
     final slivers = <Widget>[
       SliverToBoxAdapter(child: Column(children: [toolbar, const SizedBox(height: 8), search])),
-      SliverList.builder(itemCount: items.length, itemBuilder: (_, index) => items[index]()),
+      SliverToBoxAdapter(child: automatic),
     ];
+    final separator = palette.ink3.withValues(alpha: 0.28);
+    for (final subscription in sora.subscriptions) {
+      final entries = _matching(entriesOf(subscription), query);
+      if (query.isNotEmpty && entries.isEmpty) continue;
+      slivers.add(
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 16),
+          sliver: DecoratedSliver(
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: separator),
+            ),
+            sliver: SliverMainAxisGroup(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _SubscriptionHeader(
+                    key: ValueKey(subscription.settings.id),
+                    state: subscription,
+                    expanded: !_collapsed.contains(subscription.settings.id),
+                    onToggle: () => setState(() {
+                      final id = subscription.settings.id;
+                      if (!_collapsed.remove(id)) _collapsed.add(id);
+                    }),
+                  ),
+                ),
+                if (!_collapsed.contains(subscription.settings.id))
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+                    sliver: SliverList.separated(
+                      itemCount: entries.length,
+                      itemBuilder: (_, index) {
+                        final entry = entries[index];
+                        return _ServerRow(id: entry.id, name: entry.name, entry: entry);
+                      },
+                      separatorBuilder: (_, _) =>
+                          Divider(height: 1, thickness: 1, indent: 8, endIndent: 8, color: separator),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     if (!widget.scrollable) {
       return SliverPadding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -203,7 +235,7 @@ class _ServerRow extends StatelessWidget {
           radius: 8,
           give: 1,
           child: SizedBox(
-            height: 40,
+            height: entry == null ? 40 : 52,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
@@ -220,11 +252,14 @@ class _ServerRow extends StatelessWidget {
                           style: Styles.row.copyWith(color: palette.ink),
                         ),
                         if (detail != null && detail.isNotEmpty)
-                          Text(
-                            detail,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Styles.caption.copyWith(color: palette.ink3),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 3),
+                            child: Text(
+                              detail,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Styles.caption.copyWith(color: palette.ink3),
+                            ),
                           ),
                       ],
                     ),
@@ -255,9 +290,11 @@ class _ServerRow extends StatelessWidget {
 }
 
 class _SubscriptionHeader extends StatefulWidget {
-  const _SubscriptionHeader({required this.state});
+  const _SubscriptionHeader({super.key, required this.state, required this.expanded, required this.onToggle});
 
   final SubscriptionState state;
+  final bool expanded;
+  final VoidCallback onToggle;
 
   @override
   State<_SubscriptionHeader> createState() => _SubscriptionHeaderState();
@@ -265,10 +302,11 @@ class _SubscriptionHeader extends StatefulWidget {
 
 class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
   SubscriptionState get state => widget.state;
+  bool _descriptionVisible = true;
 
   @override
   Widget build(BuildContext context) {
-    final sora = SoraScope.read(context);
+    final sora = SoraScope.of(context);
     final palette = Palette.of(context);
     final s = S.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
@@ -297,12 +335,22 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
         : null;
     final announce = info.announce.trim();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 0, 12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Semantics(
+                expanded: widget.expanded,
+                child: RoundButton(
+                  key: ValueKey('collapse-subscription-${state.settings.id}'),
+                  icon: widget.expanded ? Symbols.keyboard_arrow_down_rounded : Symbols.keyboard_arrow_right_rounded,
+                  label: widget.expanded ? s.collapseServers : s.expandServers,
+                  onTap: widget.onToggle,
+                ),
+              ),
+              const SizedBox(width: 4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,31 +369,61 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
                   ],
                 ),
               ),
-              if (state.updating)
-                SizedBox.square(dimension: 36, child: CupertinoActivityIndicator(color: palette.ink))
+              if (sora.probing && (sora.probingSubscription == null || sora.probingSubscription == state.settings.id))
+                SizedBox.square(
+                  key: ValueKey('probe-subscription-${state.settings.id}'),
+                  dimension: 36,
+                  child: CupertinoActivityIndicator(color: palette.ink),
+                )
               else
-                MenuAnchor(
-                  alignmentOffset: const Offset(-150, 4),
-                  menuChildren: [
-                    _item(context, s.refresh, () => unawaited(sora.refreshSubscription(state.settings.id))),
-                    _item(context, s.website, () => unawaited(sora.openSubscriptionPage(state.settings.id))),
-                    if (info.webPageUrl.isNotEmpty)
-                      _item(context, s.providerWebsite, () => unawaited(openLink(context, info.webPageUrl))),
-                    if (info.supportUrl.isNotEmpty)
-                      _item(context, s.support, () => unawaited(openLink(context, info.supportUrl))),
-                    _item(
-                      context,
-                      s.subscriptionSettings,
-                      () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
-                    ),
-                    _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
-                  ],
-                  builder: (context, controller, _) => RoundButton(
-                    icon: Symbols.more_horiz_rounded,
-                    label: state.displayName,
-                    onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                Tooltip(
+                  message: '${s.probeServers}: ${state.displayName}',
+                  child: RoundButton(
+                    key: ValueKey('probe-subscription-${state.settings.id}'),
+                    icon: Symbols.network_ping_rounded,
+                    label: '${s.probeServers}: ${state.displayName}',
+                    onTap: sora.probing || state.outbounds.isEmpty
+                        ? null
+                        : () => unawaited(sora.probe(subscriptionId: state.settings.id)),
                   ),
                 ),
+              if (state.updating)
+                SizedBox.square(
+                  key: ValueKey('refresh-subscription-${state.settings.id}'),
+                  dimension: 36,
+                  child: CupertinoActivityIndicator(color: palette.ink),
+                )
+              else
+                Tooltip(
+                  message: '${s.refresh}: ${state.displayName}',
+                  child: RoundButton(
+                    key: ValueKey('refresh-subscription-${state.settings.id}'),
+                    icon: Symbols.refresh_rounded,
+                    label: '${s.refresh}: ${state.displayName}',
+                    onTap: () => unawaited(sora.refreshSubscription(state.settings.id)),
+                  ),
+                ),
+              MenuAnchor(
+                alignmentOffset: const Offset(-150, 4),
+                menuChildren: [
+                  _item(context, s.website, () => unawaited(sora.openSubscriptionPage(state.settings.id))),
+                  if (info.webPageUrl.isNotEmpty)
+                    _item(context, s.providerWebsite, () => unawaited(openLink(context, info.webPageUrl))),
+                  if (info.supportUrl.isNotEmpty)
+                    _item(context, s.support, () => unawaited(openLink(context, info.supportUrl))),
+                  _item(
+                    context,
+                    s.subscriptionSettings,
+                    () => unawaited(push<void>(context, SubscriptionScreen(id: state.settings.id))),
+                  ),
+                  _item(context, s.delete, () => unawaited(deleteSubscription(context, state)), danger: true),
+                ],
+                builder: (context, controller, _) => RoundButton(
+                  icon: Symbols.more_horiz_rounded,
+                  label: state.displayName,
+                  onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                ),
+              ),
             ],
           ),
           if (share != null)
@@ -354,7 +432,28 @@ class _SubscriptionHeaderState extends State<_SubscriptionHeader> {
               child: UsageBar(share: share),
             ),
           if (announce.isNotEmpty)
-            Padding(padding: const EdgeInsets.fromLTRB(0, 10, 10, 0), child: Announcement(announce)),
+            Padding(
+              padding: const EdgeInsets.only(right: 8, top: 4),
+              child: Column(
+                children: [
+                  Center(
+                    child: Semantics(
+                      expanded: _descriptionVisible,
+                      child: RoundButton(
+                        key: ValueKey('description-subscription-${state.settings.id}'),
+                        icon: _descriptionVisible
+                            ? Symbols.keyboard_arrow_up_rounded
+                            : Symbols.keyboard_arrow_down_rounded,
+                        label: _descriptionVisible ? s.hideDescription : s.showDescription,
+                        onTap: () => setState(() => _descriptionVisible = !_descriptionVisible),
+                      ),
+                    ),
+                  ),
+                  if (_descriptionVisible)
+                    Padding(padding: const EdgeInsets.only(top: 4), child: Announcement(announce)),
+                ],
+              ),
+            ),
         ],
       ),
     );

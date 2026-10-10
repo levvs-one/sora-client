@@ -28,6 +28,8 @@ class Settings {
     'failover',
     'connectOnStart',
     'tunnel',
+    'mihomoTunStack',
+    'xrayTunStack',
     'launchAtLogin',
     'closeToTray',
     'notifications',
@@ -37,7 +39,6 @@ class Settings {
     'tourDone',
     'notificationHistory',
     'speedtestService',
-    'speedtestFilter',
     'checkUpdates',
     'notifiedUpdate',
     'resumeAfterUpdate',
@@ -178,6 +179,18 @@ class Settings {
   String get tunnel => _store.getString('tunnel') ?? 'tun';
   set tunnel(String value) => _store.setString('tunnel', value);
 
+  String get mihomoTunStack => switch (_store.getString('mihomoTunStack')) {
+    final value? when const ['system', 'gvisor', 'mixed', 'mips'].contains(value) => value,
+    _ => 'mixed',
+  };
+  set mihomoTunStack(String value) => _store.setString('mihomoTunStack', value);
+
+  String get xrayTunStack => switch (_store.getString('xrayTunStack')) {
+    final value? when const ['system', 'gvisor', 'mixed', 'mips'].contains(value) => value,
+    _ => 'gvisor',
+  };
+  set xrayTunStack(String value) => _store.setString('xrayTunStack', value);
+
   /// Starts Sora in the tray at login.
   bool get launchAtLogin => _store.getBool('launchAtLogin') ?? true;
   set launchAtLogin(bool value) => _store.setBool('launchAtLogin', value);
@@ -212,13 +225,6 @@ class Settings {
 
   String get speedtestService => _store.getString('speedtestService') ?? '';
   Future<void> saveSpeedtestService(String value) => _store.setString('speedtestService', value);
-
-  String get speedtestFilter {
-    final value = _store.getString('speedtestFilter');
-    return const {'cis', 'world'}.contains(value) ? value! : 'all';
-  }
-
-  Future<void> saveSpeedtestFilter(String value) => _store.setString('speedtestFilter', value);
 
   bool get tourDone => _store.getBool('tourDone') ?? false;
   Future<void> completeTour() => _store.setBool('tourDone', true);

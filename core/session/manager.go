@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -83,18 +84,9 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 	}
 	m.busy = true
 	previous := m.current
-	m.current = nil
 	m.mu.Unlock()
 
 	defer m.release()
-
-	stopCtx := context.WithoutCancel(ctx)
-	if previous != nil {
-		if err := previous.Stop(stopCtx); err != nil {
-			m.setLast(previous.Status())
-			return nil, err
-		}
-	}
 
 	if err := engine.PrepareTun(plan); err != nil {
 		return nil, errs.Wrap(err, errs.CodeFailedPrecondition, errs.KeyPlanTunnel)
@@ -120,12 +112,38 @@ func (m *Manager) Connect(ctx context.Context, plan *engine.Plan, settings Setti
 		_ = built.Close()
 		return nil, err
 	}
+	if err := built.Validate(ctx, plan); err != nil {
+		_ = built.Close()
+		return nil, errs.Wrap(err, errs.CodeInvalidArgument, errs.KeyPlanOutbounds)
+	}
+	if err := ctx.Err(); err != nil {
+		_ = built.Close()
+		return nil, err
+	}
+	stopCtx := context.WithoutCancel(ctx)
+	if previous != nil {
+		if err := previous.Stop(stopCtx); err != nil {
+			_ = built.Close()
+			m.setLast(previous.Status())
+			return nil, err
+		}
+		m.setLast(previous.Status())
+	}
+	m.mu.Lock()
+	m.current = nil
+	m.mu.Unlock()
 	if err := created.Start(ctx); err != nil {
 		// Stop failed startups because they may still own an engine or
 		// device. Capture the failure status before Stop replaces it
 		// with disconnected.
 		status := created.Status()
-		_ = created.Stop(stopCtx)
+		cleanupErr := created.Stop(stopCtx)
+		if cleanupErr != nil {
+			m.mu.Lock()
+			m.current = created
+			m.mu.Unlock()
+			err = errs.Wrap(errors.Join(err, cleanupErr), errs.CodeOf(cleanupErr), errs.KeyOf(cleanupErr))
+		}
 		m.setLast(status)
 		return nil, err
 	}
@@ -147,16 +165,21 @@ func (m *Manager) Disconnect(ctx context.Context) error {
 	}
 	m.busy = true
 	current := m.current
-	m.current = nil
 	m.mu.Unlock()
 
 	defer m.release()
 
 	if current == nil {
+		m.setLast(Status{State: StateDisconnected, ChangedAt: m.cfg.Now()})
 		return nil
 	}
 	err := current.Stop(ctx)
 	m.setLast(current.Status())
+	if err == nil {
+		m.mu.Lock()
+		m.current = nil
+		m.mu.Unlock()
+	}
 	return err
 }
 

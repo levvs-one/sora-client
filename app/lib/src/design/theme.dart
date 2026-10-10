@@ -131,6 +131,7 @@ abstract final class Styles {
   static final row = _inter(15, 500, -0.1, 1.2);
   static final secondary = _inter(13, 400, 0, 1.3);
   static final caption = _inter(12, 400, 0, 1.3);
+  static const timestamp = TextStyle(fontFamily: 'NotoSansMono', fontSize: 12, height: 4 / 3);
 }
 
 /// Shared animation durations and curves that respect the motion setting.

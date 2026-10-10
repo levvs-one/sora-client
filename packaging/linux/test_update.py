@@ -37,13 +37,13 @@ class UpdateHelperTest(unittest.TestCase):
         (self.downloads / "SHA256SUMS").write_text("".join(checksums))
         return files
 
-    def run_helper(self, format, version="1.0.5", bad_metadata=False, zypper=False):
+    def run_helper(self, format, version="1.0.5", bad_metadata=False, zypper=False, dependency_failure=False):
         recorder = 'printf "%s\\n" "$@" > /tmp/test/calls'
         scripts = {
             "dpkg-query": 'case "$1" in -S) echo "sora: /usr/lib/sora/app/sora";; -W) echo installed;; *) exit 1;; esac',
             "dpkg-deb": 'case "$3" in Package) name=${2##*/}; echo "${name%%_*}";; Version) echo "${TEST_VERSION:-1.0.5}";; Architecture) echo amd64;; esac',
             "rpm": 'case "$1" in -qf) echo sora;; -q) printf "sora\\nsora-core\\n";; -qp) name=${4##*/}; printf "%s %s-1 x86_64\\n" "${name%-1.0.5-1.x86_64.rpm}" "${TEST_VERSION:-1.0.5}";; *) exit 1;; esac',
-            "pacman": 'case "$1" in -Qoq) echo sora;; -Q) printf "sora\\nsora-core\\n";; -Qp) name=${2##*/}; printf "%s %s-1\\n" "${name%-1.0.5-1-x86_64.pkg.tar.zst}" "${TEST_VERSION:-1.0.5}";; -U) ' + recorder + ';; *) exit 1;; esac',
+            "pacman": 'case "$1" in -Qoq) echo sora;; -Q) printf "sora\\nsora-core\\n";; -Qp) name=${2##*/}; printf "%s %s-1\\n" "${name%-1.0.5-1-x86_64.pkg.tar.zst}" "${TEST_VERSION:-1.0.5}";; -S) printf "%s\\n" "$@" > /tmp/test/dependencies; [ "${TEST_DEPENDENCY_FAILURE:-0}" = 0 ];; -U) ' + recorder + ';; *) exit 1;; esac',
             "apt-get": recorder,
             "zypper" if zypper else "dnf": recorder,
         }
@@ -59,6 +59,8 @@ class UpdateHelperTest(unittest.TestCase):
             command += ["--ro-bind", str(self.script(name, body)), "/usr/bin/" + name]
         if bad_metadata:
             command += ["--setenv", "TEST_VERSION", "1.0.4"]
+        if dependency_failure:
+            command += ["--setenv", "TEST_DEPENDENCY_FAILURE", "1"]
         command += ["--", "/bin/sh", "/tmp/test/sora-update", format, version, "/tmp/test/downloads"]
         return subprocess.run(command, capture_output=True, text=True, timeout=10)
 
@@ -73,6 +75,14 @@ class UpdateHelperTest(unittest.TestCase):
                 self.assertEqual([pathlib.Path(item).name for item in packages], files)
                 self.assertEqual(len(packages), 2)
                 (self.root / "calls").unlink()
+
+    def test_arch_dependency_failure_leaves_the_installed_pair_untouched(self):
+        self.prepare("arch")
+        result = self.run_helper("arch", dependency_failure=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "calls").exists())
+        arguments = (self.root / "dependencies").read_text().splitlines()
+        self.assertEqual(arguments, ["-S", "--noconfirm", "--needed", "gst-plugins-good"])
 
     def test_reject_corrupt_missing_duplicate_and_symlink_inputs(self):
         for problem in ["corrupt", "missing", "duplicate", "symlink", "metadata", "version", "format"]:

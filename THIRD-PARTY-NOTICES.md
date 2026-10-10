@@ -8,7 +8,7 @@ Sora их не изменяет.
 
 | Компонент | Версия | Где | Лицензия | Исходный код |
 | --- | --- | --- | --- | --- |
-| sing-box | 1.14.2 | Linux, Windows | GPL-3.0-or-later с условием автора о названии | https://github.com/SagerNet/sing-box/tree/v1.14.2 |
+| sing-box-lx (на базе sing-box 1.14.3) | 1.14.3-lx.14 | Linux, Windows | GPL-3.0-or-later с условием автора о названии | https://github.com/Leadaxe/sing-box-lx/tree/v1.14.3-lx.14 |
 | Xray-core | 26.3.27 | Linux, Windows | MPL-2.0 | https://github.com/XTLS/Xray-core/tree/v26.3.27 |
 | mihomo | 1.19.32 | Linux, Windows (сборка compatible) | GPL-3.0 | https://github.com/MetaCubeX/mihomo/tree/v1.19.32 |
 | zapret (tpws, nfqws) | 72.1 | Linux | MIT, © bol-van | [`third_party/zapret`](third_party/zapret) |
@@ -45,6 +45,10 @@ Sora их не изменяет.
 ## WebView All
 
 Исходный код: https://github.com/abandoft/webview_all/tree/1.4.4
+
+Linux-плагин сохранён в `app/third_party/webview_all_linux` с локальной правкой
+передачи события остановки процесса WebKit и отключения обработчиков при
+освобождении WebView. Происхождение и точный объём правки описаны в его `README.md`.
 
 Copyright 2021-2026 [Abandoft](https://github.com/abandoft)
 

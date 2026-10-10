@@ -447,7 +447,7 @@ void main() {
     expect(sora.history.single.action, 'update');
     final sidebar = find.byKey(const ValueKey('sidebar'));
     final badges = tester.widgetList<Badge>(find.descendant(of: sidebar, matching: find.byType(Badge)));
-    expect(badges.where((b) => b.isLabelVisible).length, 2);
+    expect(badges.where((b) => b.isLabelVisible).length, 1);
     final repeated = sora.updates.check();
     await finishCheck(tester, sora.updates);
     await repeated;
@@ -477,7 +477,7 @@ void main() {
       await checked;
       await tester.pump(const Duration(seconds: 6));
       await tester.pumpAndSettle();
-      await section(tester, 7);
+      await section(tester, 8);
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('install-update')),
         300,

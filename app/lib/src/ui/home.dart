@@ -63,10 +63,16 @@ class _ConnectionPane extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _Status(),
+          if (SoraScope.of(context).cleanupPending)
+            TextButton(
+              onPressed: SoraScope.of(context).busy ? null : () => unawaited(SoraScope.read(context).disconnect()),
+              child: Text(S.of(context).retryDisconnect),
+            ),
           const SizedBox(height: 24),
           const Center(child: TourTarget(step: 2, radius: 88, child: _Orb())),
           const SizedBox(height: 28),
           const Center(child: TourTarget(step: 3, child: ModeButton())),
+          if (SoraScope.of(context).needsReconnect) ...[const SizedBox(height: 12), const ConnectionChanges()],
           const SizedBox(height: 24),
           Center(
             child: ConstrainedBox(
@@ -91,7 +97,7 @@ class _Orb extends StatelessWidget {
     final phase = sora.phase;
     final on = phase == Phase.connected;
     final working = phase == Phase.connecting || phase == Phase.reconnecting || phase == Phase.disconnecting;
-    final reachable = phase != Phase.offline && !sora.busy && !sora.updateBlocked;
+    final reachable = phase != Phase.offline && phase != Phase.disconnecting && !sora.updateBlocked;
     return Semantics(
       button: true,
       toggled: on,

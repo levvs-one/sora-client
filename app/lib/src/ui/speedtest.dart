@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,7 +10,6 @@ import 'package:webview_all_windows/webview_all_windows.dart';
 
 import '../../l10n/strings.dart';
 import '../design/theme.dart';
-import '../settings.dart';
 import '../notifications.dart';
 import '../sora.dart';
 import '../speedtest_services.dart';
@@ -27,6 +27,7 @@ class SpeedtestScreen extends StatefulWidget {
 
 class _SpeedtestScreenState extends State<SpeedtestScreen> {
   final _search = TextEditingController();
+  final _browser = GlobalKey<_SpeedtestBrowserState>();
   SpeedtestService? _selected;
   bool _opened = false;
 
@@ -56,14 +57,13 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = Palette.of(context);
-    final settings = SoraScope.of(context).settings;
     final shell = context.dependOnInheritedWidgetOfExactType<ShellScope>();
     final toastVisible = ToastVisibility.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
         final browser = SpeedtestBrowser(
-          key: ValueKey(_selected!.url),
+          key: _browser,
           service: _selected!,
           visible: !toastVisible && (shell?.nativeContentVisible ?? true) && (wide || _opened),
           onReturn: wide ? null : () => setState(() => _opened = false),
@@ -77,7 +77,7 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
             child: browser,
           );
         }
-        final list = _list(settings);
+        final list = _list();
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -89,18 +89,11 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
     );
   }
 
-  Widget _list(Settings settings) {
+  Widget _list() {
     final palette = Palette.of(context), s = S.of(context);
     final query = _search.text.trim().toLowerCase();
-    final filter = settings.speedtestFilter;
     final shown = speedtestServices
-        .where(
-          (service) =>
-              (filter == 'all' || (filter == 'cis' ? service.isCis : !service.isCis)) &&
-              '${service.name} ${service.url} ${service.regions.join(' ')} ${service.operator} ${service.measures} ${service.note}'
-                  .toLowerCase()
-                  .contains(query),
-        )
+        .where((service) => '${service.name} ${service.url}'.toLowerCase().contains(query))
         .toList();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -127,35 +120,6 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              for (final (value, label) in [
-                ('all', s.speedtestAll),
-                ('cis', s.speedtestCis),
-                ('world', s.speedtestWorld),
-              ])
-                ChoiceChip(
-                  key: ValueKey('speedtest-filter-$value'),
-                  label: Text(label, style: Styles.caption.copyWith(color: palette.ink)),
-                  selected: filter == value,
-                  showCheckmark: false,
-                  backgroundColor: palette.background,
-                  selectedColor: palette.field,
-                  side: BorderSide(color: filter == value ? palette.ink3 : palette.field),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  visualDensity: VisualDensity.compact,
-                  onSelected: (_) async {
-                    await settings.saveSpeedtestFilter(value);
-                    if (mounted) setState(() {});
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(s.speedtestCount(shown.length), style: Styles.caption.copyWith(color: palette.ink3)),
-          const SizedBox(height: 8),
           Expanded(
             child: shown.isEmpty
                 ? Align(
@@ -170,29 +134,30 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
                       final service = shown[index];
                       final chosen = service == _selected;
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
+                        padding: const EdgeInsets.only(bottom: 8),
                         child: Semantics(
                           selected: chosen,
                           button: true,
                           child: Material(
-                            color: chosen ? palette.field : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
+                            color: chosen ? palette.field : palette.surface,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             child: InkWell(
                               key: ValueKey('speedtest-service-${service.url}'),
                               borderRadius: BorderRadius.circular(8),
                               onTap: () => _choose(service),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(service.name, style: Styles.row.copyWith(color: palette.ink)),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      service.regions.join(', '),
-                                      style: Styles.caption.copyWith(color: palette.ink3),
+                              child: SizedBox(
+                                height: 56,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Center(
+                                    child: Text(
+                                      service.name,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Styles.bodyStrong.copyWith(color: palette.ink),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -202,6 +167,30 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
                     },
                   ),
           ),
+          if (MediaQuery.sizeOf(context).width >= 1000)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  RoundButton(
+                    icon: Symbols.arrow_back_rounded,
+                    label: s.tourBack,
+                    onTap: () => unawaited(_browser.currentState?._back()),
+                  ),
+                  RoundButton(
+                    icon: Symbols.refresh_rounded,
+                    label: s.refresh,
+                    onTap: () => unawaited(_browser.currentState?._retry()),
+                  ),
+                  RoundButton(
+                    icon: Symbols.open_in_new_rounded,
+                    label: s.speedtestOpenBrowser,
+                    onTap: () => unawaited(_browser.currentState?._open()),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -222,11 +211,12 @@ class SpeedtestBrowser extends StatefulWidget {
 class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
   WebViewController? _controller;
   bool _ready = false;
-  bool _canGoBack = false;
   String? _failure;
-  int _progress = 0;
   String? _mainUrl;
   Timer? _deadline;
+  Future<void>? _releaseWork;
+  bool _starting = false;
+  int _generation = 0;
   String get _url => widget.service.url;
 
   @override
@@ -237,23 +227,42 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
     });
   }
 
+  @override
+  void didUpdateWidget(SpeedtestBrowser oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.service.url != _url) {
+      _deadline?.cancel();
+      _generation++;
+      _failure = null;
+      _mainUrl = null;
+      unawaited(_start());
+    }
+  }
+
   Future<void> _release() async {
     final controller = _controller;
     _controller = null;
+    if (controller == null) {
+      await _releaseWork;
+      return;
+    }
     try {
-      switch (controller?.platform) {
-        case final LinuxWebViewController platform:
-          await platform.dispose();
-        case final WindowsWebViewController platform:
-          await platform.dispose();
-      }
+      _releaseWork = switch (controller.platform) {
+        final LinuxWebViewController platform => platform.dispose(),
+        final WindowsWebViewController platform => platform.dispose(),
+        _ => null,
+      };
+      await _releaseWork;
     } catch (error) {
       debugPrint('Speedtest browser cleanup failed: $error');
+    } finally {
+      _releaseWork = null;
     }
   }
 
   @override
   void dispose() {
+    _generation++;
     _deadline?.cancel();
     unawaited(_release());
     super.dispose();
@@ -262,6 +271,7 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
   void _failed(String message) {
     if (!mounted || _failure != null) return;
     _deadline?.cancel();
+    _generation++;
     setState(() {
       _failure = message;
       _ready = false;
@@ -281,55 +291,63 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
   }
 
   Future<void> _start() async {
+    if (_starting || !mounted) return;
+    _starting = true;
+    final generation = _generation;
     final s = S.of(context);
     _watchLoad();
     try {
-      final controller = WebViewController();
-      _controller = controller;
+      await _releaseWork;
+      if (!mounted || generation != _generation) return;
+      final controller = _controller ??= WebViewPlatform.instance is LinuxWebViewPlatform
+          ? WebViewController.fromPlatformCreationParams(
+              const LinuxWebViewControllerCreationParams(
+                pageCacheEnabled: false,
+                mediaPlaybackRequiresUserGesture: true,
+                javascriptCanOpenWindowsAutomatically: false,
+              ),
+            )
+          : WebViewController();
       // Attach the initialization error handler before other asynchronous calls.
       await controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+      if (!mounted || generation != _generation) return;
       await controller.setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) => const {'https', 'http'}.contains(Uri.tryParse(request.url)?.scheme)
               ? NavigationDecision.navigate
               : NavigationDecision.prevent,
           onPageStarted: (url) {
+            if (!mounted || generation != _generation) return;
             _mainUrl = url;
             if (!mounted || _failure != null) return;
-            setState(() => _progress = 0);
             _watchLoad();
           },
-          onPageFinished: (_) async {
-            _deadline?.cancel();
-            try {
-              final back = await controller.canGoBack();
-              if (mounted && _failure == null) {
-                setState(() {
-                  _progress = 100;
-                  _canGoBack = back;
-                });
-              }
-            } catch (_) {
+          onPageFinished: (url) {
+            if (mounted && generation == _generation && url == _mainUrl) _deadline?.cancel();
+          },
+          onWebResourceError: (error) {
+            if (generation == _generation &&
+                error.isForMainFrame == true &&
+                (error.url == null || error.url == (_mainUrl ?? _url))) {
               _failed(s.speedtestPageFailed);
             }
           },
-          onProgress: (progress) {
-            if (mounted && _failure == null) setState(() => _progress = progress);
-          },
-          onWebResourceError: (error) {
-            if (error.isForMainFrame == true) _failed(s.speedtestPageFailed);
-          },
           onHttpError: (error) {
-            if (error.request?.uri.toString() == (_mainUrl ?? _url)) _failed(s.speedtestPageFailed);
+            if (generation == _generation && error.request?.uri.toString() == (_mainUrl ?? _url)) {
+              _failed(s.speedtestPageFailed);
+            }
           },
         ),
       );
+      if (!mounted || generation != _generation) return;
       await controller.loadRequest(Uri.parse(_url));
-      if (!mounted || _failure != null) return;
+      if (!mounted || generation != _generation || _failure != null) return;
       setState(() => _ready = true);
-      if (_progress < 100) _watchLoad();
     } catch (_) {
-      _failed(s.speedtestUnavailable);
+      if (generation == _generation) _failed(s.speedtestUnavailable);
+    } finally {
+      _starting = false;
+      if (mounted && generation != _generation && _failure == null) unawaited(_start());
     }
   }
 
@@ -338,21 +356,18 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
     _deadline = Timer(const Duration(seconds: 45), () => _failed(S.of(context).speedtestPageFailed));
   }
 
-  Future<void> _navigate({bool back = false}) async {
-    if (_failure != null) {
-      setState(() {
-        _failure = null;
-        _progress = 0;
-      });
-      await _start();
-      return;
-    }
+  Future<void> _retry() async {
+    if (_starting || !mounted) return;
+    _generation++;
+    setState(() => _failure = null);
+    await _start();
+  }
+
+  Future<void> _back() async {
+    final controller = _controller;
+    if (controller == null || _starting) return;
     try {
-      if (back) {
-        await _controller!.goBack();
-      } else {
-        await _controller!.reload();
-      }
+      if (await controller.canGoBack() && mounted && controller == _controller) await controller.goBack();
     } catch (_) {
       if (mounted) _failed(S.of(context).speedtestPageFailed);
     }
@@ -380,117 +395,51 @@ class _SpeedtestBrowserState extends State<SpeedtestBrowser> {
 
   @override
   Widget build(BuildContext context) {
-    final s = S.of(context), palette = Palette.of(context), sora = SoraScope.of(context);
-    final server = switch (sora.selected) {
-      'auto' => s.serverAuto,
-      'bypass' => s.serverBypass,
-      final id => sora.nameOf(id),
-    };
-    final route = switch (sora.phase) {
-      Phase.connected when sora.selected != 'bypass' => s.speedtestViaVpn(server),
-      Phase.connecting => s.stateConnecting,
-      Phase.reconnecting => s.stateReconnecting,
-      Phase.disconnecting => s.stateDisconnecting,
-      _ => s.speedtestNoVpn,
-    };
-    final service = widget.service;
+    final s = S.of(context), palette = Palette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Material(
-          color: palette.surface,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    if (widget.onReturn != null)
-                      RoundButton(
-                        key: const ValueKey('speedtest-return'),
-                        icon: Symbols.chevron_left_rounded,
-                        label: s.speedtestBackToList,
-                        onTap: widget.onReturn,
-                      ),
-                    Expanded(
-                      child: Text(
-                        service.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Styles.bodyStrong.copyWith(color: palette.ink),
-                      ),
-                    ),
-                    RoundButton(
-                      icon: Symbols.arrow_back_rounded,
-                      label: s.speedtestBack,
-                      onTap: _ready && _canGoBack ? () => unawaited(_navigate(back: true)) : null,
-                    ),
-                    RoundButton(
-                      key: const ValueKey('speedtest-reload'),
-                      icon: Symbols.refresh_rounded,
-                      label: s.refresh,
-                      onTap: _ready || _failure != null ? () => unawaited(_navigate()) : null,
-                    ),
-                    RoundButton(
-                      key: const ValueKey('speedtest-external'),
-                      icon: Symbols.open_in_new_rounded,
-                      label: s.speedtestOpenBrowser,
-                      onTap: () => unawaited(_open()),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  route,
-                  key: const ValueKey('speedtest-route'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Styles.caption.copyWith(color: palette.ink2),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _failure != null
-                      ? s.speedtestOpenBrowser
-                      : _progress < 100
-                      ? s.speedtestLoading
-                      : Uri.parse(_url).host,
-                  style: Styles.caption.copyWith(color: palette.ink3),
-                ),
-              ],
+        if (widget.onReturn != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: RoundButton(
+              key: const ValueKey('speedtest-return'),
+              icon: Symbols.chevron_left_rounded,
+              label: s.speedtestBackToList,
+              onTap: widget.onReturn,
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${service.operator}: ${service.measures}', style: Styles.caption.copyWith(color: palette.ink2)),
-              const SizedBox(height: 4),
-              Text('${service.note}. ${s.speedtestRoutingNote}', style: Styles.caption.copyWith(color: palette.ink3)),
-            ],
-          ),
-        ),
         Expanded(
           child: _failure != null
               ? Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: TextButton.icon(
-                      key: const ValueKey('speedtest-fallback'),
-                      onPressed: () => unawaited(_open()),
-                      icon: const Icon(Symbols.open_in_new_rounded, size: 18),
-                      label: Text(s.speedtestOpenBrowser),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _failure!,
+                          textAlign: TextAlign.center,
+                          style: Styles.secondary.copyWith(color: palette.ink2),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          key: const ValueKey('speedtest-reload'),
+                          onPressed: () => unawaited(_retry()),
+                          child: Text(s.refresh),
+                        ),
+                        TextButton.icon(
+                          key: const ValueKey('speedtest-fallback'),
+                          onPressed: () => unawaited(_open()),
+                          icon: const Icon(Symbols.open_in_new_rounded, size: 18),
+                          label: Text(s.speedtestOpenBrowser),
+                        ),
+                      ],
                     ),
                   ),
                 )
               : !_ready
-              ? Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(s.speedtestStarting, style: Styles.secondary.copyWith(color: palette.ink2)),
-                )
+              ? Center(child: CupertinoActivityIndicator(color: palette.ink))
               // Native GTK children cannot interleave with Flutter drawers or overlays.
               : widget.visible
               ? WebViewWidget(controller: _controller!)

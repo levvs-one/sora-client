@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
@@ -9,11 +10,15 @@ import '../sora.dart';
 import 'kit.dart';
 import 'subscription_sheet.dart';
 
-Future<void> showModes(BuildContext context) => showDialog<void>(context: context, builder: (_) => const _Modes());
+Future<void> showModes(BuildContext context) async {
+  final navigator = Navigator.of(context);
+  final info = await showDialog<bool>(context: context, builder: (_) => const _Modes());
+  if (info == true && navigator.mounted) await push<void>(navigator.context, const ModesGuideScreen());
+}
 
 Future<void> connectFromHome(BuildContext context) async {
   final sora = SoraScope.read(context);
-  if (sora.phase == Phase.off && sora.servers.isEmpty && sora.selected != 'bypass') {
+  if (sora.phase == Phase.off && !sora.cleanupPending && sora.servers.isEmpty && sora.selected != 'bypass') {
     final choice = await showDialog<String>(
       context: context,
       builder: (context) {
@@ -72,19 +77,44 @@ class ModeButton extends StatelessWidget {
       onPressed: () => showModes(context),
       style: OutlinedButton.styleFrom(
         foregroundColor: palette.ink,
-        side: BorderSide(color: palette.field),
+        side: BorderSide(color: palette.ink3.withValues(alpha: .35)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        minimumSize: const Size(0, 44),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: Styles.secondary.copyWith(color: palette.ink)),
+          Text(label, style: Styles.bodyStrong.copyWith(color: palette.ink)),
           const SizedBox(width: 8),
-          Icon(Symbols.expand_more_rounded, size: 16, color: palette.ink3),
+          Icon(Symbols.expand_more_rounded, size: 20, weight: 600, color: palette.ink),
         ],
       ),
+    );
+  }
+}
+
+class ConnectionChanges extends StatelessWidget {
+  const ConnectionChanges({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final sora = SoraScope.of(context), s = S.of(context), palette = Palette.of(context);
+    if (!sora.needsReconnect) return const SizedBox.shrink();
+    return Column(
+      children: [
+        Text(
+          s.pendingConnectionChanges,
+          textAlign: TextAlign.center,
+          style: Styles.secondary.copyWith(color: palette.ink2),
+        ),
+        TextButton.icon(
+          key: const ValueKey('apply-connection-changes'),
+          onPressed: sora.busy || sora.updateBlocked ? null : () => unawaited(sora.connect()),
+          icon: const Icon(Symbols.refresh_rounded, size: 20, weight: 600),
+          label: Text(s.reconnectNow),
+        ),
+      ],
     );
   }
 }
@@ -96,13 +126,19 @@ class _Modes extends StatelessWidget {
     final sora = SoraScope.of(context), s = S.of(context), palette = Palette.of(context);
     final settings = sora.settings;
     final current = sora.selected == 'bypass' ? 'bypass' : settings.tunnel;
-    Widget choice(String key, String title, String detail, bool selected, VoidCallback choose) => Tile(
+    Widget choice(String key, String title, bool selected, VoidCallback choose) => ListTile(
       key: ValueKey(key),
-      title: title,
-      detail: detail,
-      detailColor: palette.ink3,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      minTileHeight: 52,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      selected: selected,
+      selectedTileColor: palette.field,
+      title: Text(title, style: Styles.bodyStrong.copyWith(color: palette.ink)),
       onTap: choose,
-      trailing: SizedBox(width: 20, child: selected ? Icon(Symbols.check_rounded, size: 18, color: palette.ink) : null),
+      trailing: SizedBox(
+        width: 24,
+        child: selected ? Icon(Symbols.check_rounded, size: 22, weight: 700, color: palette.ink) : null,
+      ),
     );
     Future<void> mode(String value) => sora.change((x) {
       if (value == 'bypass') {
@@ -116,38 +152,42 @@ class _Modes extends StatelessWidget {
     final routes = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final (value, title, detail) in [
-          ('tun', s.tunMode, s.tunExplanation),
-          ('proxy', s.tunnelProxy, s.proxyExplanation),
-          if (sora.serverlessAvailable) ('bypass', s.serverBypass, s.bypassExplanation),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Text(s.tunnelMode, style: Styles.bodyStrong.copyWith(color: palette.ink)),
+        ),
+        for (final (value, title) in [
+          ('tun', s.tunMode),
+          ('proxy', s.tunnelProxy),
+          if (sora.serverlessAvailable) ('bypass', s.serverBypass),
         ])
-          choice('mode-$value', title, detail, current == value, () => unawaited(mode(value))),
-        const SizedBox(height: 12),
-        SwitchTile(title: s.killSwitch, value: settings.killSwitch, onChanged: (v) => unawaited(sora.setKillSwitch(v))),
+          choice('mode-$value', title, current == value, () => unawaited(mode(value))),
       ],
     );
     final engines = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(s.engine, style: Styles.bodyStrong.copyWith(color: palette.ink)),
         ),
-        for (final (value, title, detail) in [
-          ('', s.engineAuto, s.autoEngineExplanation),
-          ('sing-box', 'sing-box', s.singboxExplanation),
-          ('xray', 'Xray', s.xrayExplanation),
-          ('mihomo', 'mihomo', s.mihomoExplanation),
+        for (final (value, title) in [
+          ('', s.engineAuto),
+          ('sing-box', 'sing-box'),
+          ('xray', 'Xray'),
+          ('mihomo', 'mihomo'),
         ])
-          choice('engine-$value', title, detail, settings.engine == value, () async {
+          choice('engine-$value', title, settings.engine == value, () async {
             if (value == 'sing-box' && !settings.controlPort) {
               if (!await confirm(
                 context,
                 question: s.controlPortQuestion('sing-box'),
                 action: s.chooseEngine('sing-box'),
+                destructive: false,
               )) {
                 return;
               }
+              if (!context.mounted) return;
             }
             await sora.change(
               (x) => x
@@ -163,9 +203,9 @@ class _Modes extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 720, maxHeight: MediaQuery.sizeOf(context).height - 64),
+        constraints: BoxConstraints(maxWidth: 640, maxHeight: MediaQuery.sizeOf(context).height - 64),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,9 +218,9 @@ class _Modes extends StatelessWidget {
                   RoundButton(icon: Symbols.close_rounded, label: s.close, onTap: () => Navigator.pop(context)),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               LayoutBuilder(
-                builder: (_, constraints) => constraints.maxWidth >= 600
+                builder: (_, constraints) => constraints.maxWidth >= 540
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -191,13 +231,98 @@ class _Modes extends StatelessWidget {
                       )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [routes, const SizedBox(height: 16), engines],
+                        children: [routes, const SizedBox(height: 24), engines],
                       ),
+              ),
+              const SizedBox(height: 20),
+              if (current == 'tun' && settings.engine == 'mihomo') ...[
+                ChoiceTile<String>(
+                  key: const ValueKey('mihomo-tun-stack'),
+                  title: s.tunStack,
+                  value: settings.mihomoTunStack,
+                  choices: const {'mixed': 'Mixed', 'system': 'System', 'gvisor': 'gVisor', 'mips': 'MIPS'},
+                  onChanged: (value) => unawaited(sora.change((x) => x.mihomoTunStack = value)),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (current == 'tun' && settings.engine == 'xray') ...[
+                ChoiceTile<String>(
+                  key: const ValueKey('xray-tun-stack'),
+                  title: s.tunStack,
+                  value: settings.xrayTunStack,
+                  choices: const {'gvisor': 'gVisor', 'system': 'System', 'mixed': 'Mixed', 'mips': 'MIPS'},
+                  onChanged: (value) => unawaited(sora.change((x) => x.xrayTunStack = value)),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Divider(height: 1, color: palette.field),
+              const SizedBox(height: 8),
+              SwitchTile(
+                title: s.killSwitch,
+                value: settings.killSwitch,
+                onChanged: (v) => unawaited(sora.setKillSwitch(v)),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  TextButton.icon(
+                    key: const ValueKey('modes-info'),
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: Icon(Symbols.info_rounded, size: 20, weight: 600, color: palette.ink),
+                    label: Text(s.modesInfo, style: Styles.secondary.copyWith(color: palette.ink)),
+                  ),
+                  if (sora.needsReconnect)
+                    TextButton.icon(
+                      key: const ValueKey('apply-connection-changes'),
+                      onPressed: sora.busy || sora.updateBlocked ? null : () => unawaited(sora.connect()),
+                      icon: const Icon(Symbols.refresh_rounded, size: 20, weight: 600),
+                      label: Text(s.reconnectNow),
+                    ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class ModesGuideScreen extends StatelessWidget {
+  const ModesGuideScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context), palette = Palette.of(context);
+    return Screen(
+      key: const ValueKey('modes-guide'),
+      title: s.modesGuideTitle,
+      children: [
+        MarkdownBody(
+          data: s.modesGuide,
+          selectable: true,
+          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+            p: Styles.body.copyWith(color: palette.ink, height: 1.6),
+            h2: Styles.heading.copyWith(color: palette.ink),
+            h3: Styles.bodyStrong.copyWith(color: palette.ink),
+            h2Padding: const EdgeInsets.only(top: 24, bottom: 8),
+            h3Padding: const EdgeInsets.only(top: 16, bottom: 4),
+            a: Styles.body.copyWith(color: palette.ink, decoration: TextDecoration.underline),
+            listBullet: Styles.body.copyWith(color: palette.ink),
+            tableBody: Styles.secondary.copyWith(color: palette.ink),
+            tableHead: Styles.bodyStrong.copyWith(color: palette.ink),
+            tableCellsPadding: const EdgeInsets.all(10),
+            tableBorder: TableBorder(horizontalInside: BorderSide(color: palette.field)),
+          ),
+          onTapLink: (_, href, _) {
+            if (href != null) unawaited(openLink(context, href));
+          },
+        ),
+      ],
     );
   }
 }

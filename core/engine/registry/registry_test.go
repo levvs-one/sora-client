@@ -2,7 +2,11 @@ package registry
 
 import (
 	"context"
+	"encoding/pem"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -28,6 +32,10 @@ func TestFactoryPicksTheEngineThatCarriesThePlan(t *testing.T) {
 
 	xhttp := enginetest.Plan(engine.ProtocolVLESS)
 	xhttp.Outbounds[0].Transport.Type = "xhttp"
+	xhttpEngine := engine.KindXray
+	if b := r.binaries[engine.KindSingBox]; engine.BuildCapabilities(b.Kind, b.Version, b.BuildTags).Supports(engine.FeatureXHTTP) {
+		xhttpEngine = engine.KindSingBox
+	}
 	private := enginetest.Plan(engine.ProtocolVLESS)
 	private.PrivateControl = true
 	fallback := enginetest.Plan(engine.ProtocolTrojan)
@@ -37,7 +45,7 @@ func TestFactoryPicksTheEngineThatCarriesThePlan(t *testing.T) {
 		want engine.Kind
 	}{
 		"plain plan goes to the preferred engine":  {enginetest.Plan(engine.ProtocolVLESS, engine.ProtocolAnyTLS), engine.KindSingBox},
-		"xhttp needs xray":                         {xhttp, engine.KindXray},
+		"xhttp uses the first compatible build":    {xhttp, xhttpEngine},
 		"fallback groups need mihomo":              {fallback, engine.KindMihomo},
 		"private control needs a socket or a pipe": {private, engine.KindMihomo},
 	} {
@@ -78,14 +86,33 @@ func TestMeasureRoutesEachServerToAnEngine(t *testing.T) {
 	}
 	r := Discover(context.Background(), dir, supervise.Config{HomeDir: t.TempDir()})
 	dead := engine.Outbound{ID: "dead", Protocol: engine.ProtocolShadowsocks, Server: "127.0.0.1", Port: 9, Cipher: "aes-256-gcm", Password: "dead-test-password"}
+	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(5 * time.Millisecond)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(target.Close)
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	t.Cleanup(plain.Close)
+	certificate := filepath.Join(t.TempDir(), "cert.pem")
+	if err := os.WriteFile(certificate, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: target.TLS.Certificates[0].Certificate[0]}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	enginetest.TrustCertificate(t, certificate)
+	r = Discover(context.Background(), dir, supervise.Config{HomeDir: t.TempDir()})
 	xhttp := enginetest.Outbound(engine.ProtocolVLESS)
 	xhttp.ID, xhttp.Flow, xhttp.Server = "xhttp", "", "127.0.0.1"
 	xhttp.Transport = engine.Transport{Type: "xhttp", Path: "/x"}
 	for _, kind := range []engine.Kind{engine.KindSingBox, engine.KindXray, engine.KindMihomo} {
 		t.Run(string(kind), func(t *testing.T) {
 			live := engine.Outbound{ID: "live", Protocol: engine.ProtocolDirect}
+			probeURL := target.URL
+			if kind == engine.KindXray {
+				// Xray latency is timed by the Go client; its system trust is
+				// independent of the test-local certificate used by engines.
+				probeURL = plain.URL
+			}
 			results, err := r.Measure(context.Background(), []engine.Outbound{live, dead, xhttp},
-				engine.MeasureOptions{Timeout: 8 * time.Second, Engines: []engine.Kind{kind, engine.KindXray}})
+				engine.MeasureOptions{URL: probeURL, Timeout: 8 * time.Second, Engines: []engine.Kind{kind, engine.KindXray}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +127,7 @@ func TestMeasureRoutesEachServerToAnEngine(t *testing.T) {
 				t.Errorf("a dead server must not report a latency: %+v", m)
 			}
 			want := engine.KindXray
-			if engine.Catalog[kind].Supports(engine.FeatureXHTTP) {
+			if b := r.binaries[kind]; engine.BuildCapabilities(kind, b.Version, b.BuildTags).Supports(engine.FeatureXHTTP) {
 				want = kind
 			}
 			if m := got["xhttp"]; m.Engine != want {
@@ -141,5 +168,35 @@ func TestBypassAvailabilityRequiresPlatformReshaperAndEngine(t *testing.T) {
 		if got := r.BypassAvailable(); got != tc.want {
 			t.Errorf("tpws %q, engines %v: got %v, want %v", tc.tpws, tc.engines, got, tc.want)
 		}
+	}
+}
+
+func TestInstalledButIncompatibleEngineHasADifferentErrorFromMissing(t *testing.T) {
+	r := &Registry{
+		preference:   []engine.Kind{engine.KindSingBox},
+		binaries:     map[engine.Kind]supervise.Binary{engine.KindSingBox: {}},
+		availability: []engine.Availability{{Kind: engine.KindSingBox, Usable: true, Version: engine.Version{Major: 1, Minor: 14}}},
+	}
+	p := enginetest.Plan(engine.ProtocolVLESS)
+	p.Outbounds[0].Transport.Type = "xhttp"
+	if _, err := r.Factory()(t.Context(), p); errs.KeyOf(err) != errs.KeyPlanEngineUnsupported {
+		t.Fatalf("incompatible installed engine: %v", err)
+	}
+}
+
+func TestXrayBridgeRequiresTheInstalledPacketEngineBeforeConstruction(t *testing.T) {
+	p := enginetest.Plan(engine.ProtocolVLESS)
+	p.Engines = []engine.Kind{engine.KindXray}
+	p.Tun = engine.Tun{Enabled: true, Stack: "mips"}
+	r := &Registry{preference: engine.DefaultPreference, binaries: map[engine.Kind]supervise.Binary{}}
+	if _, err := r.Factory()(t.Context(), p); errs.KeyOf(err) != errs.KeyEngineBinaryMissing {
+		t.Fatalf("missing packet engine: %v", err)
+	}
+	r.binaries[engine.KindMihomo] = supervise.Binary{Version: engine.Version{Major: 1, Minor: 19, Patch: 0}}
+	if _, err := r.Factory()(t.Context(), p); errs.KeyOf(err) != errs.KeyPlanEngineUnsupported {
+		t.Fatalf("old packet engine: %v", err)
+	}
+	if p.Tun.Stack != "mips" {
+		t.Fatal("factory mutated the caller's TUN stack")
 	}
 }

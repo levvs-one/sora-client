@@ -15,7 +15,7 @@ import (
 // buildProxy converts an outbound to a mihomo proxy. The caller sets its name
 // to ensure plan-wide uniqueness.
 func buildProxy(o engine.Outbound) (proxy, error) {
-	udp := o.Protocol != engine.ProtocolHTTP && o.Protocol != engine.ProtocolSOCKS5
+	udp := o.Protocol != engine.ProtocolHTTP && (o.Protocol != engine.ProtocolSOCKS5 || o.SOCKSUDP)
 	px := proxy{Type: "ss", Tag: o.ID, UDP: &udp, IPVer: "dual"}
 	// WireGuard uses its peer's server address.
 	if o.Server == "" && o.Protocol != engine.ProtocolWireGuard {

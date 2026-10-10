@@ -100,6 +100,8 @@ type Outbound struct {
 	Protocol  Protocol
 	Transport Transport
 	TLS       TLS
+	// SOCKSUDP enables UDP on a SOCKS5 peer known to support associations.
+	SOCKSUDP bool
 
 	Server string
 	Port   uint16
@@ -229,7 +231,7 @@ type Tun struct {
 	IPv4             netip.Prefix
 	IPv6             netip.Prefix
 	Enabled          bool
-	Stack            string // system, gvisor, mixed
+	Stack            string // system, gvisor, mixed, mips (mihomo or Xray bridge)
 	DeviceName       string
 	MTU              int
 	StrictRoute      bool

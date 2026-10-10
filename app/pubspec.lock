@@ -885,10 +885,9 @@ packages:
   webview_all_linux:
     dependency: "direct main"
     description:
-      name: webview_all_linux
-      sha256: "7330af208db409d1c240ff08a4c7df647a204db536a4415a33b36f7b722acec9"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/webview_all_linux"
+      relative: true
+    source: path
     version: "1.4.4"
   webview_all_ohos:
     dependency: transitive

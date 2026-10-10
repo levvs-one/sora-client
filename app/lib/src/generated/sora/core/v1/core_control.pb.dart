@@ -690,6 +690,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     $core.Iterable<GroupSpec>? groups,
     RoutingOptions? routing,
     $core.bool? ipv6,
+    $core.String? tunStack,
   }) {
     final result = SessionPlan._();
     if (tunnelMode != null) result.tunnelMode = tunnelMode;
@@ -705,6 +706,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     if (groups != null) result.groups.addAll(groups);
     if (routing != null) result.routing = routing;
     if (ipv6 != null) result.ipv6 = ipv6;
+    if (tunStack != null) result.tunStack = tunStack;
     return result;
   }
 
@@ -732,6 +734,7 @@ class SessionPlan extends $pb.GeneratedMessage {
     ..pPM<GroupSpec>(11, _omitFieldNames ? '' : 'groups', subBuilder: GroupSpec.$_createMessage)
     ..aOM<RoutingOptions>(12, _omitFieldNames ? '' : 'routing', subBuilder: RoutingOptions.$_createMessage)
     ..aOB(13, _omitFieldNames ? '' : 'ipv6')
+    ..aOS(14, _omitFieldNames ? '' : 'tunStack')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -870,6 +873,19 @@ class SessionPlan extends $pb.GeneratedMessage {
   $core.bool hasIpv6() => $_has(12);
   @$pb.TagNumber(13)
   void clearIpv6() => $_clearField(13);
+
+  /// Since 1.7. Empty keeps the engine default. mihomo accepts system, gvisor,
+  /// mixed and mips. Xray uses native gvisor or a mihomo TUN bridge for other
+  /// stacks. Clients must negotiate 1.7 before
+  /// sending an explicit value, so an older core cannot silently ignore it.
+  @$pb.TagNumber(14)
+  $core.String get tunStack => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set tunStack($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasTunStack() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearTunStack() => $_clearField(14);
 }
 
 /// GroupSpec is one group of outbounds.

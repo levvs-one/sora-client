@@ -121,8 +121,12 @@ observe() {
 NFT
 }
 no_leak() {
-    nsenter -t "$server" -n nft list table inet observe | tee -a "$casework/packets"
-    nsenter -t "$server" -n nft list table inet observe | grep -q 'counter packets 0 bytes 0'
+    local observed
+    observed=$(nsenter -t "$server" -n nft list table inet observe) || return 1
+    printf '%s\n' "$observed" | tee -a "$casework/packets"
+    # grep -q can close its pipe before nft finishes printing, turning a
+    # zero-packet result into SIGPIPE under pipefail. Check the saved sample.
+    [[ $observed == *'counter packets 0 bytes 0'* ]]
 }
 regressions() {
     local engine=$1 other=$2 core children adapter peer fake result

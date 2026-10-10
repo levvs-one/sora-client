@@ -111,7 +111,10 @@ func Render(p *engine.Plan, rt Runtime) (string, error) {
 	c.Rules = rules
 
 	if p.DNS.Enabled {
-		c.DNS = buildDNS(p.DNS, p.Options)
+		c.DNS, err = buildDNS(p.DNS, p.Options, byID)
+		if err != nil {
+			return "", err
+		}
 	}
 	if p.Tun.Enabled {
 		// Top-level tun derives IPv4 from fake-ip-range. A named listener

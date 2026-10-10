@@ -62,12 +62,24 @@ class _NotificationToastsState extends State<NotificationToasts> {
         animationDuration: Motion.of(context, const Duration(milliseconds: 180)),
         animationBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
         style: ToastificationStyle.flat,
-        title: Text(
-          notice.title,
-          key: ObjectKey(notice),
-          style: Styles.bodyStrong.copyWith(color: palette.ink),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              notice.title,
+              key: ObjectKey(notice),
+              style: Styles.bodyStrong.copyWith(color: palette.ink, height: 4 / 3),
+            ),
+            if (notice.body.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                notice.body,
+                style: Styles.secondary.copyWith(color: palette.ink2, height: 16 / 13),
+              ),
+            ],
+          ],
         ),
-        description: Text(notice.body, style: Styles.secondary.copyWith(color: palette.ink2)),
         showIcon: false,
         showProgressBar: false,
         backgroundColor: palette.raised,
@@ -76,12 +88,23 @@ class _NotificationToastsState extends State<NotificationToasts> {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: palette.field),
         boxShadow: const [],
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(15),
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        sizeConstraints: BoxConstraints(maxWidth: (MediaQuery.sizeOf(context).width - 24).clamp(0, 360)),
+        sizeConstraints: BoxConstraints(
+          minHeight: 80,
+          minWidth: (MediaQuery.sizeOf(context).width - 24).clamp(0, 360),
+          maxWidth: (MediaQuery.sizeOf(context).width - 24).clamp(0, 360),
+        ),
         closeButton: ToastCloseButton(
-          buttonBuilder: (_, close) =>
-              RoundButton(icon: Symbols.close_rounded, label: S.of(context).close, onTap: close),
+          buttonBuilder: (_, close) => Semantics(
+            button: true,
+            label: S.of(context).close,
+            child: Pressable(
+              onTap: close,
+              radius: 8,
+              child: SizedBox.square(dimension: 30, child: Icon(Symbols.close_rounded, size: 18, color: palette.ink2)),
+            ),
+          ),
         ),
         pauseOnHover: true,
         dragToClose: true,

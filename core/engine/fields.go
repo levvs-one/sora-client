@@ -45,7 +45,7 @@ func (t Tun) validate() error {
 	}
 	var errs []error
 	switch t.Stack {
-	case "", "system", "gvisor", "mixed":
+	case "", "system", "gvisor", "mixed", "mips":
 	default:
 		errs = append(errs, fmt.Errorf("tun: unknown stack %q", t.Stack))
 	}

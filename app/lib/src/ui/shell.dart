@@ -18,6 +18,7 @@ import 'rules_screen.dart';
 import 'settings_screen.dart';
 import 'tour.dart';
 import 'speedtest.dart';
+import 'kit.dart';
 
 class ShellScope extends InheritedWidget {
   const ShellScope({
@@ -42,6 +43,7 @@ class DesktopShell extends StatefulWidget {
 }
 
 class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver {
+  static const _sectionOrder = [0, 6, 4, 1, 3, 5, 7, 2];
   final _scaffold = GlobalKey<ScaffoldState>();
   final _tourKeys = List.generate(5, (_) => GlobalKey());
   final _focus = FocusNode();
@@ -158,7 +160,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       _contentNavigator.currentState?.popUntil((route) => route.isFirst);
     } else {
       setState(() {
-        _instantSectionChange = _section == 7 || value == 7;
+        _instantSectionChange = _section == 6 || value == 6;
         _nativeContentVisible = true;
         _section = value;
         _contentNavigator = GlobalKey();
@@ -168,7 +170,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
 
   void _toggle() {
     if (MediaQuery.sizeOf(context).width < 720) {
-      if (_section == 7) {
+      if (_section == 6) {
         setState(() => _nativeContentVisible = false);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _scaffold.currentState?.openDrawer();
@@ -224,7 +226,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
     ];
     final index = numbers.indexOf(key);
     if (index >= 0) {
-      _select(index);
+      _select(_sectionOrder[index]);
       return true;
     }
     if (key == LogicalKeyboardKey.keyB) {
@@ -262,8 +264,8 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       const LogsScreen(),
       const NotificationsScreen(),
       const SettingsScreen(),
-      const AboutScreen(),
       const SpeedtestScreen(),
+      const AboutScreen(),
     ];
     final page = pages[_section];
     final content = KeyedSubtree(
@@ -274,7 +276,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       ),
     );
     // Native views must detach immediately when switching sections.
-    final pane = _section == 7 || _instantSectionChange
+    final pane = _section == 6 || _instantSectionChange
         ? content
         : AnimatedSwitcher(duration: Motion.of(context, const Duration(milliseconds: 150)), child: content);
     return ShellScope(
@@ -290,9 +292,9 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
           autofocus: true,
           child: Scaffold(
             key: _scaffold,
-            drawerEnableOpenDragGesture: _section != 7,
+            drawerEnableOpenDragGesture: _section != 6,
             onDrawerChanged: (opened) {
-              if (_section == 7 && !opened) setState(() => _nativeContentVisible = true);
+              if (_section == 6 && !opened) setState(() => _nativeContentVisible = true);
             },
             drawer: compact
                 ? Drawer(
@@ -319,14 +321,14 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
                       child: _sidebar(expanded),
                     ),
                   Expanded(
-                    child: compact && _section == 7
+                    child: compact && _section == 6
                         ? Column(
                             children: [
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: IconButton(
                                   key: const ValueKey('speedtest-menu'),
-                                  icon: const Icon(Symbols.menu_rounded),
+                                  icon: Icon(Symbols.left_panel_open_rounded, color: palette.ink, weight: 600),
                                   onPressed: _toggle,
                                 ),
                               ),
@@ -339,7 +341,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
               ),
             ),
             floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-            floatingActionButton: compact && _section != 7
+            floatingActionButton: compact && _section != 6
                 ? TourTarget(
                     step: 4,
                     radius: 12,
@@ -350,7 +352,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
                       child: IconButton(
                         key: const ValueKey('drawer-button'),
                         tooltip: S.of(context).sidebarToggle,
-                        icon: const Icon(Symbols.menu_rounded),
+                        icon: Icon(Symbols.left_panel_open_rounded, color: palette.ink, weight: 600),
                         onPressed: _toggle,
                       ),
                     ),
@@ -371,8 +373,8 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       s.navLogs,
       s.notifications,
       s.settings,
-      s.navAbout,
       s.speedtest,
+      s.navAbout,
     ];
     const icons = [
       Symbols.home_rounded,
@@ -381,8 +383,8 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
       Symbols.terminal_rounded,
       Symbols.notifications_rounded,
       Symbols.settings_rounded,
-      Symbols.info_rounded,
       Symbols.speed_rounded,
+      Symbols.info_rounded,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -394,11 +396,28 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
             children: [
               SizedBox(
                 width: 56,
-                child: IconButton(
-                  key: const ValueKey('sidebar-toggle'),
-                  tooltip: s.sidebarToggle,
-                  onPressed: drawer ? () => _scaffold.currentState?.closeDrawer() : _toggle,
-                  icon: Icon(drawer ? Symbols.close_rounded : Symbols.menu_rounded, color: palette.ink, size: 22),
+                child: Center(
+                  child: Tooltip(
+                    message: s.sidebarToggle,
+                    child: Semantics(
+                      button: true,
+                      label: s.sidebarToggle,
+                      child: Pressable(
+                        key: const ValueKey('sidebar-toggle'),
+                        radius: 8,
+                        onTap: drawer ? () => _scaffold.currentState?.closeDrawer() : _toggle,
+                        child: SizedBox.square(
+                          dimension: 36,
+                          child: Icon(
+                            drawer || expanded ? Symbols.left_panel_close_rounded : Symbols.left_panel_open_rounded,
+                            color: palette.ink,
+                            size: 22,
+                            weight: 600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               if (expanded)
@@ -409,7 +428,7 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
           ),
         ),
         const SizedBox(height: 20),
-        for (var index = 0; index < labels.length; index++)
+        for (final index in _sectionOrder.take(6))
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             child: index == 5 && !drawer
@@ -417,6 +436,10 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
                 : _navItem(index, labels[index], icons[index], expanded, sora, palette),
           ),
         const Spacer(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 8, 6, 16),
+          child: _navItem(7, labels[7], icons[7], expanded, sora, palette),
+        ),
         Padding(
           padding: const EdgeInsets.only(bottom: 20),
           child: SoraMark(size: 20, color: palette.ink3),
@@ -427,9 +450,9 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
 
   Widget _navItem(int index, String label, IconData icon, bool expanded, Sora sora, Palette palette) =>
       TooltipVisibility(
-        visible: _section != 7,
+        visible: _section != 6,
         child: Tooltip(
-          message: '$label (Ctrl+${index + 1})',
+          message: '$label (Ctrl+${_sectionOrder.indexOf(index) + 1})',
           child: Semantics(
             selected: _section == index,
             child: Material(
@@ -446,13 +469,16 @@ class _DesktopShellState extends State<DesktopShell> with WidgetsBindingObserver
                         width: 44,
                         child: Center(
                           child: Badge(
-                            isLabelVisible: index == 4 && sora.unreadCount > 0 || index == 6 && sora.updates.hasUpdate,
+                            isLabelVisible: index == 7 && sora.updates.hasUpdate,
                             backgroundColor: palette.ink,
                             textColor: palette.surface,
-                            label: index == 4
-                                ? Text('${sora.unreadCount}', style: Styles.caption.copyWith(color: palette.surface))
-                                : null,
-                            child: Icon(icon, size: 22, color: _section == index ? palette.ink : palette.ink2),
+                            child: Icon(
+                              icon,
+                              size: 22,
+                              color: palette.ink,
+                              weight: 600,
+                              fill: _section == index ? 1 : 0,
+                            ),
                           ),
                         ),
                       ),

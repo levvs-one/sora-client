@@ -640,9 +640,6 @@ class SEn extends S {
   String get recentNotifications => 'Recent notifications';
 
   @override
-  String get markAllRead => 'Mark all read';
-
-  @override
   String get notificationsEmpty => 'Connection and subscription events will appear here';
 
   @override
@@ -714,47 +711,16 @@ class SEn extends S {
   String get speedtestCheck => 'Check speed';
 
   @override
-  String get speedtestSearch => 'Service, country or operator';
+  String get speedtestSearch => 'Find a service';
 
   @override
-  String get speedtestAll => 'All';
-
-  @override
-  String get speedtestCis => 'Russia and CIS';
-
-  @override
-  String get speedtestWorld => 'World';
-
-  @override
-  String speedtestCount(int count) {
-    return 'Services: $count';
-  }
-
-  @override
-  String get speedtestEmpty => 'No matches. Change the search or filter.';
+  String get speedtestEmpty => 'No matches. Change the search.';
 
   @override
   String get speedtestBackToList => 'Back to services';
 
   @override
-  String get speedtestBack => 'Back in page history';
-
-  @override
   String get speedtestOpenBrowser => 'Open in browser';
-
-  @override
-  String speedtestViaVpn(String server) {
-    return 'Through VPN: $server';
-  }
-
-  @override
-  String get speedtestNoVpn => 'Without VPN';
-
-  @override
-  String get speedtestStarting => 'Starting the embedded browser...';
-
-  @override
-  String get speedtestLoading => 'Loading page...';
 
   @override
   String get speedtestUnavailable => 'The embedded browser could not start. Open the service in your system browser.';
@@ -766,9 +732,6 @@ class SEn extends S {
   String get speedtestExternalFailed => 'The system browser could not open. Try again.';
 
   @override
-  String get speedtestRoutingNote => 'Routing follows Sora rules';
-
-  @override
   String get modes => 'Modes';
 
   @override
@@ -776,27 +739,6 @@ class SEn extends S {
 
   @override
   String get tunMode => 'All traffic (TUN)';
-
-  @override
-  String get tunExplanation => 'Every application through the VPN';
-
-  @override
-  String get proxyExplanation => 'Apps that use the system proxy';
-
-  @override
-  String get bypassExplanation => 'DPI bypass with zapret, without a VPN';
-
-  @override
-  String get autoEngineExplanation => 'The core picks a compatible engine';
-
-  @override
-  String get singboxExplanation => 'Flexible routing and TUN';
-
-  @override
-  String get xrayExplanation => 'VLESS, REALITY and TLS fragmentation';
-
-  @override
-  String get mihomoExplanation => 'Server groups and automatic failover';
 
   @override
   String get checkUpdates => 'Check for updates';
@@ -818,7 +760,7 @@ class SEn extends S {
   }
 
   @override
-  String get updateCheck => 'Check now';
+  String get updateCheck => 'Check for updates';
 
   @override
   String get updateChecking => 'Checking...';
@@ -867,4 +809,73 @@ class SEn extends S {
 
   @override
   String get updateInstalled => 'Update installed. Reopen Sora.';
+
+  @override
+  String get projectLinks => 'Project';
+
+  @override
+  String get githubReleases => 'Releases and downloads';
+
+  @override
+  String get telegramChannel => 'Telegram channel';
+
+  @override
+  String get licenses => 'Licenses';
+
+  @override
+  String get componentLicenses => 'Component licenses';
+
+  @override
+  String get appCopyright => '© 2026 levvs-one and contributors';
+
+  @override
+  String get collapseServers => 'Collapse servers';
+
+  @override
+  String get expandServers => 'Expand servers';
+
+  @override
+  String get hideDescription => 'Hide description';
+
+  @override
+  String get showDescription => 'Show description';
+
+  @override
+  String get pendingConnectionChanges => 'Reconnect to apply these changes.';
+
+  @override
+  String get reconnectNow => 'Apply and reconnect';
+
+  @override
+  String get bypassLimitations =>
+      'This mode bypasses DPI only for HTTP and TLS, does not support UDP or change your IP. Use a VPN server for Discord voice, calls and blocked Telegram addresses.';
+
+  @override
+  String get errEngineUnsupported =>
+      'The selected engine does not support this profile or settings. Choose Auto or a compatible engine.';
+
+  @override
+  String get errRestore => 'Connection cleanup was incomplete. Retry disconnecting; see the log for details.';
+
+  @override
+  String get errSessionEnded => 'This session has already ended. Refresh the connection state.';
+
+  @override
+  String get retryDisconnect => 'Retry disconnecting';
+
+  @override
+  String get tunStack => 'TUN stack';
+
+  @override
+  String get modesInfo => 'About modes';
+
+  @override
+  String get modesGuideTitle => 'Modes and engines';
+
+  @override
+  String get modesGuide =>
+      'Choose Auto if you are unsure which engine your server needs. Sora checks the profile and settings before connecting. An engine cannot increase your plan’s bandwidth: performance depends on the server, route, protocol and network.\n\n## Modes\n\n### All traffic (TUN)\n\nSora creates a virtual network interface and routes application traffic through it, including TCP and UDP. Use this mode for Telegram, games and Discord voice. Rules can send specific sites or programs directly or block them. The network service needs permission and a server that supports the required protocol.\n\n### System proxy\n\nSora configures a local HTTP/SOCKS proxy. Applications that respect system proxy settings use it. Applications with their own network stack may connect directly; UDP and voice calls generally need TUN. This mode suits browsers and applications with proxy support.\n\n### No server\n\nOn Linux, Sora uses [zapret](https://github.com/bol-van/zapret) to split and reshape HTTP/TLS requests and bypass some DPI checks. Your IP stays the same and connections go directly to the website. Results depend on your provider and the blocking method.\n\nThe current integration uses tpws for HTTP and TLS over TCP. It does not bypass IP blocking or relay UDP, and cannot guarantee Telegram’s MTProto connections. Use a VPN server with TUN for Discord voice, Telegram calls and these kinds of restrictions.\n\n## Engines\n\n### Auto\n\nSora selects an installed engine that supports the entire connection plan: server protocols, transports, groups, fragmentation and mode. An incompatible manual choice is rejected before stopping the current connection. Choose Auto or another engine and apply the settings again.\n\n### sing-box\n\nNew Sora packages include [sing-box-lx](https://github.com/Leadaxe/sing-box-lx), a fork of [sing-box](https://github.com/SagerNet/sing-box), adding client-side XHTTP and VLESS Encryption. Sora recognizes the build and its capabilities. An upstream build without XHTTP does not gain this capability from its name alone.\n\nSupported protocols include VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, AnyTLS, WireGuard and the AmneziaWG 1.x/2.x parameters Sora can import. Full Xray JSON profiles require Xray. New AWG 3.x fields cannot be imported yet. sing-box uses a password-protected local control port, which other applications on the computer can detect.\n\n### Xray\n\n[Xray-core](https://github.com/XTLS/Xray-core) supports VLESS, REALITY, XHTTP, VLESS Encryption and TLS fragmentation. It also runs complete provider Xray profiles while preserving their routing and groups. Such profiles cannot be automatically converted to another engine without changing their behavior.\n\nThe bundled Xray removed the setting that disables TLS certificate verification (`allowInsecure`). Auto selects sing-box or mihomo for ordinary servers requiring this setting. Selecting Xray manually reports incompatibility before stopping the current connection. Older full JSON profiles need an updated provider profile with a verifiable certificate or certificate pin.\n\n### mihomo\n\n[mihomo](https://github.com/MetaCubeX/mihomo) supports ordered fallback and load-balancing groups, XHTTP and AmneziaWG. Choose it when automatic failover to a backup server matters. Sora’s TLS fragmentation setting is unavailable with this engine.\n\n## Compatibility in Sora\n\n| Feature | sing-box-lx | Xray | mihomo |\n| --- | --- | --- | --- |\n| Linux TUN and TCP/UDP | Yes | Yes | Yes |\n| XHTTP | Yes | Yes | Yes |\n| VLESS Encryption | Yes | Yes | Yes |\n| Full Xray profile | No | Yes | No |\n| TUIC / AnyTLS | Both | No | TUIC |\n| TLS fragmentation | Yes | Yes | No |\n| AmneziaWG 1.x/2.x | Yes¹ | No | Yes |\n| Ordered fallback group | No | No² | Yes |\n\n¹ Profiles with J1/J2/J3/Itime use mihomo; these fields must never be silently discarded. ² For a group of complete Xray profiles, the app selects a backup profile. Support depends on the installed build; check its version in About.\n\n## TUN stack\n\nThe stack handles TCP and UDP inside the virtual interface. In the modes panel, Xray and mihomo offer gVisor, System, Mixed and MIPS. Each engine saves its own preference. System proxy and Serverless modes do not use this preference.\n\n- **Mixed** — TCP uses the system stack, while gVisor handles UDP. This is the default for mihomo.\n- **System** — uses the system stack. Try another option if network applications encounter problems.\n- **gVisor** — handles traffic in userspace.\n- **MIPS** — mihomo’s own IP stack, available in the bundled version 1.19.32.\n\nXray uses its built-in gVisor by default. System, Mixed and MIPS use mihomo as the TUN engine, forwarding TCP and UDP to Xray over an authenticated local SOCKS link. Xray retains the protocol, provider profile and routing. These three options require an installed mihomo.\n\nThe bridge runs a second process. In three idle measurements, it used about 32–36 MiB more physical memory than native Xray TUN. This does not measure download load: CPU and memory costs depend on connections. Keep gVisor unless you need another stack. sing-box has no stack selector. No stack guarantees better performance in every network. Choose a stack and select Apply and reconnect to try it in your network.\n\n## Applying settings\n\nMode, engine, server, DNS and rule selections are saved immediately. During an active connection, Sora prompts you to reconnect. Click Apply and reconnect to start the selected plan. Restarting an engine may interrupt current downloads and calls. Repeated clicks do not start parallel connections; disconnecting finishes the transition and releases the connection.\n\nInternet only through VPN blocks direct traffic when a tunnel drops. It affects the whole machine. An explicit disconnect removes Sora’s rules. If cleanup does not finish, retry disconnecting and open the log.\n\n## Project documentation\n\n- [sing-box-lx: configuration and support](https://github.com/Leadaxe/sing-box-lx/blob/lx/docs-lx/lx-config.md)\n- [sing-box documentation](https://sing-box.sagernet.org/)\n- [Xray documentation](https://xtls.github.io/)\n- [mihomo documentation](https://wiki.metacubex.one/)\n- [zapret: operation and limitations](https://github.com/bol-van/zapret/blob/master/docs/readme.md)\n';
+
+  @override
+  String get probeServers => 'Check servers';
 }

@@ -25,11 +25,6 @@ class NotificationsScreen extends StatelessWidget {
       title: s.notifications,
       actions: [
         RoundButton(
-          icon: Symbols.done_all_rounded,
-          label: s.markAllRead,
-          onTap: sora.unreadCount == 0 ? null : sora.markNotificationsRead,
-        ),
-        RoundButton(
           icon: Symbols.delete_rounded,
           label: s.clear,
           onTap: sora.history.isEmpty ? null : sora.clearNotifications,
@@ -37,9 +32,11 @@ class NotificationsScreen extends StatelessWidget {
       ],
       fill: sora.history.isEmpty
           ? null
-          : ListView.builder(
+          : ListView.separated(
+              padding: const EdgeInsets.only(bottom: 24),
               itemCount: sora.history.length,
               itemBuilder: (_, index) => NotificationRow(notice: sora.history[index]),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
             ),
       children: [
         if (sora.history.isEmpty)
@@ -64,37 +61,35 @@ class NotificationRow extends StatelessWidget {
       'update' => s.updateOpenAbout,
       _ => null,
     };
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.field),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (!notice.read) ...[
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(color: palette.ink, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(notice.title, style: Styles.bodyStrong.copyWith(color: palette.ink)),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                DateFormat('dd.MM HH:mm').format(notice.time.toLocal()),
-                style: Styles.figures(Styles.caption).copyWith(color: palette.ink3),
-              ),
-            ],
+          Text(
+            DateFormat('dd.MM.yyyy  HH:mm').format(notice.time.toLocal()),
+            style: Styles.timestamp.copyWith(color: palette.ink3),
           ),
+          const SizedBox(height: 8),
+          Text(notice.title, style: Styles.bodyStrong.copyWith(color: palette.ink)),
           const SizedBox(height: 4),
           Text(notice.body, style: Styles.secondary.copyWith(color: palette.ink2)),
           if (action != null)
-            TextButton(
-              onPressed: () => runNotificationAction(context, notice),
-              child: Text(action, style: Styles.secondary.copyWith(color: palette.ink)),
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Pressable(
+                onTap: () => runNotificationAction(context, notice),
+                radius: 8,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(action, style: Styles.secondary.copyWith(color: palette.ink)),
+                ),
+              ),
             ),
         ],
       ),

@@ -167,6 +167,7 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 		// A TUN adapter needs routes to carry traffic.
 		Tun: engine.Tun{
 			Enabled:    in.GetTunnelMode() == corev1.TunnelMode_TUNNEL_MODE_SYSTEM,
+			Stack:      in.GetTunStack(),
 			AutoRoute:  true,
 			DeviceName: engine.TunDevice,
 			// Windows races DNS across adapters; strict routing
@@ -174,6 +175,9 @@ func planFromProto(in *corev1.SessionPlan, sessionID string, secrets resolver) (
 			StrictRoute: runtime.GOOS == "windows",
 		},
 		PrivateControl: !in.GetNetworkControlAllowed(),
+	}
+	if plan.Tun.Stack != "" && !plan.Tun.Enabled {
+		return nil, errs.Newf(errs.CodeInvalidArgument, errs.KeyPlanTunnel, "control: selecting a stack requires TUN mode")
 	}
 	// System proxy mode requires the configured listener and cannot use
 	// proxy authentication.

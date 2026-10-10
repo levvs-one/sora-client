@@ -22,17 +22,18 @@ const (
 	KeyDeadlineExceeded   Key = "core.request.deadline_exceeded"
 
 	// Plans.
-	KeyPlanEmpty         Key = "core.plan.empty"
-	KeyPlanTooLarge      Key = "core.plan.too_large"
-	KeyPlanOutbounds     Key = "core.plan.outbounds_invalid"
-	KeyPlanDuplicateID   Key = "core.plan.duplicate_id"
-	KeyPlanUnknownTarget Key = "core.plan.unknown_target"
-	KeyPlanRuleInvalid   Key = "core.plan.rule_invalid"
-	KeyPlanTunnel        Key = "core.plan.tunnel_unsupported"
-	KeyPlanDNSInvalid    Key = "core.plan.dns_invalid"
-	KeyPlanBypassInvalid Key = "core.plan.bypass_invalid"
-	KeyPlanGroupsInvalid Key = "core.plan.groups_invalid"
-	KeyPlanLocalProxy    Key = "core.plan.local_proxy_invalid"
+	KeyPlanEmpty             Key = "core.plan.empty"
+	KeyPlanTooLarge          Key = "core.plan.too_large"
+	KeyPlanOutbounds         Key = "core.plan.outbounds_invalid"
+	KeyPlanDuplicateID       Key = "core.plan.duplicate_id"
+	KeyPlanUnknownTarget     Key = "core.plan.unknown_target"
+	KeyPlanRuleInvalid       Key = "core.plan.rule_invalid"
+	KeyPlanTunnel            Key = "core.plan.tunnel_unsupported"
+	KeyPlanDNSInvalid        Key = "core.plan.dns_invalid"
+	KeyPlanBypassInvalid     Key = "core.plan.bypass_invalid"
+	KeyPlanGroupsInvalid     Key = "core.plan.groups_invalid"
+	KeyPlanLocalProxy        Key = "core.plan.local_proxy_invalid"
+	KeyPlanEngineUnsupported Key = "core.plan.engine_unsupported"
 
 	KeyLogsUnavailable        Key = "core.logs.unavailable"
 	KeyLogFilterInvalid       Key = "core.logs.filter_invalid"
@@ -113,17 +114,18 @@ var catalog = map[Key]Entry{
 	KeyDeadlineExceeded:   {CodeDeadlineExceeded, true, "the request ran out of its deadline"},
 
 	// Plans.
-	KeyPlanEmpty:         {CodeInvalidArgument, false, "the plan has no outbounds"},
-	KeyPlanTooLarge:      {CodeResourceExhausted, false, "the plan is larger than the contract allows"},
-	KeyPlanOutbounds:     {CodeInvalidArgument, false, "an outbound is missing fields or holds impossible values"},
-	KeyPlanDuplicateID:   {CodeInvalidArgument, false, "two outbounds share one id"},
-	KeyPlanUnknownTarget: {CodeInvalidArgument, false, "a rule points at an outbound or group that does not exist"},
-	KeyPlanRuleInvalid:   {CodeInvalidArgument, false, "a rule has an unknown type or an unsafe value"},
-	KeyPlanTunnel:        {CodeInvalidArgument, false, "the requested tunnel mode is not supported"},
-	KeyPlanDNSInvalid:    {CodeInvalidArgument, false, "a resolver address or transport is not usable"},
-	KeyPlanBypassInvalid: {CodeInvalidArgument, false, "a bypass entry is not a domain, address or CIDR"},
-	KeyPlanGroupsInvalid: {CodeInvalidArgument, false, "a group is empty, cyclic or measures latency without a url"},
-	KeyPlanLocalProxy:    {CodeInvalidArgument, false, "the local proxy needs a login the system proxy cannot carry, or half a login"},
+	KeyPlanEmpty:             {CodeInvalidArgument, false, "the plan has no outbounds"},
+	KeyPlanTooLarge:          {CodeResourceExhausted, false, "the plan is larger than the contract allows"},
+	KeyPlanOutbounds:         {CodeInvalidArgument, false, "an outbound is missing fields or holds impossible values"},
+	KeyPlanDuplicateID:       {CodeInvalidArgument, false, "two outbounds share one id"},
+	KeyPlanUnknownTarget:     {CodeInvalidArgument, false, "a rule points at an outbound or group that does not exist"},
+	KeyPlanRuleInvalid:       {CodeInvalidArgument, false, "a rule has an unknown type or an unsafe value"},
+	KeyPlanTunnel:            {CodeInvalidArgument, false, "the requested tunnel mode is not supported"},
+	KeyPlanDNSInvalid:        {CodeInvalidArgument, false, "a resolver address or transport is not usable"},
+	KeyPlanBypassInvalid:     {CodeInvalidArgument, false, "a bypass entry is not a domain, address or CIDR"},
+	KeyPlanGroupsInvalid:     {CodeInvalidArgument, false, "a group is empty, cyclic or measures latency without a url"},
+	KeyPlanLocalProxy:        {CodeInvalidArgument, false, "the local proxy needs a login the system proxy cannot carry, or half a login"},
+	KeyPlanEngineUnsupported: {CodeFailedPrecondition, false, "installed engines in the requested order cannot carry this plan"},
 
 	KeyLogsUnavailable:        {CodeUnsupported, false, "this core keeps no log record"},
 	KeyLogFilterInvalid:       {CodeInvalidArgument, false, "the log filter has an invalid expression or range"},

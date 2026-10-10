@@ -140,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Screen(
       title: s.settings,
       children: [
+        if (sora.needsReconnect) ...[const ConnectionChanges(), const SizedBox(height: 16)],
         Group(
           children: [
             ChoiceTile<String>(

@@ -43,7 +43,7 @@ func main() {
 	must(err)
 	defer conn.Close()
 	c := corev1.NewCoreControlClient(conn)
-	api := &corev1.ApiVersion{Major: 1, Minor: 5, MinSupportedMinor: 1}
+	api := &corev1.ApiVersion{Major: 1, Minor: 7, MinSupportedMinor: 1}
 	h, err := c.Handshake(ctx, &corev1.HandshakeRequest{ClientVersion: api})
 	must(err)
 	auth := h.GetControlAuthenticator()
@@ -63,6 +63,8 @@ func main() {
 		p.TunnelMode = corev1.TunnelMode_TUNNEL_MODE_SYSTEM
 		if os.Args[4] == "proxy" {
 			p.TunnelMode = corev1.TunnelMode_TUNNEL_MODE_APPLICATION
+		} else if os.Args[3] == "xray" {
+			p.TunStack = os.Getenv("SORA_XRAY_TUN_STACK")
 		}
 		p.Routing = &corev1.RoutingOptions{ProxyTarget: p.GetOutbounds()[0].GetId()}
 		p.DnsPolicy = &corev1.DnsPolicy{Servers: []string{"192.168.0.1"}}

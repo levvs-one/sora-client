@@ -24,6 +24,7 @@ void main() {
       final inter = FontLoader('Inter')
         ..addFont(Future.value(ByteData.sublistView(await File('assets/fonts/InterVariable.ttf').readAsBytes())));
       await inter.load();
+      await (FontLoader('NotoSansMono')..addFont(rootBundle.load('assets/fonts/NotoSansMono-Regular.ttf'))).load();
       final emoji = FontLoader('Noto Color Emoji')
         ..addFont(
           Future.value(ByteData.sublistView(await File('/usr/share/fonts/noto/NotoColorEmoji.ttf').readAsBytes())),
@@ -70,7 +71,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         for (var index = 0; index < names.length; index++) {
-          await section(tester, index + 1);
+          await section(tester, index == 6 ? 8 : index + 1);
           await tester.pump(const Duration(seconds: 6));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull, reason: '${names[index]} $theme $width');
@@ -79,16 +80,14 @@ void main() {
         }
         await section(tester, 1);
         await tester.scrollUntilVisible(
-          find.text('Ещё'),
+          find.byKey(const ValueKey('description-subscription-travel')),
           180,
           scrollable: width == 420
               ? find.descendant(of: find.byType(HomeScreen), matching: find.byType(Scrollable)).first
               : find.descendant(of: find.byType(ServersScreen), matching: find.byType(Scrollable)).first,
         );
-        await tester.tap(find.text('Ещё'));
-        await tester.pumpAndSettle();
         await save('$output/announcement-expanded-${width.toInt()}x${height.toInt()}-$theme.png');
-        await tester.tap(find.text('Свернуть'));
+        await tester.tap(find.byKey(const ValueKey('description-subscription-travel')));
         await tester.pumpAndSettle();
         if (width == 420) {
           await tester.scrollUntilVisible(

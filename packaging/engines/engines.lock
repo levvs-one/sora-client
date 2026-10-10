@@ -1,23 +1,24 @@
 # Engine builds Sora ships, one line per engine and architecture:
+# sing-box is the unmodified sing-box-lx release, with client XHTTP and AWG.
 #   engine  arch  sha256  url
 # The SHA-256 is the digest GitHub publishes for the release asset; for Xray it
 # also matches the .dgst file of the release. Changing a version means changing
 # the URL and the digest together, and the tests of core/engine against the new
 # build (see core/README.md).
-sing-box  amd64  a684484d7477d1437282ee411f4d131d0340aaad60a7868841ebd5d87dd8a0c6  https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-amd64.tar.gz
-sing-box  arm64  b43a1fb1bda131c6653576741ce527eb2bdeab7c9308ca90ee8b972abb7e4a7f  https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-linux-arm64.tar.gz
+sing-box  amd64  5f9d7bbc975723259d75ca87f08990b6067772d4658dcc3a26c3faa354fdefd3  https://github.com/Leadaxe/sing-box-lx/releases/download/v1.14.3-lx.14/sing-box-1.14.3-lx.14-linux-amd64.tar.gz
+sing-box  arm64  2ca42ef565666a9c36335c9e7e32862af7079278833ae862ca4468c67db4eabf  https://github.com/Leadaxe/sing-box-lx/releases/download/v1.14.3-lx.14/sing-box-1.14.3-lx.14-linux-arm64.tar.gz
 xray      amd64  23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae  https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip
 xray      arm64  4d30283ae614e3057f730f67cd088a42be6fdf91f8639d82cb69e48cde80413c  https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-arm64-v8a.zip
 mihomo    amd64  8451100836c9eda194331c2babfad490b2faf30cebc1a04b0e76fd8ac2d35d10  https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-amd64-v1.19.32.gz
 mihomo    arm64  9dd862e28b46ff7d775f169cceebc28deccaa0a9e804237d421cd2571e0caba0  https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm64-v1.19.32.gz
 # Windows 10 and 11. mihomo is the "compatible" build: it needs no AVX, so it
 # starts on the older and weaker processors Sora is meant to run on too.
-sing-box  windows-amd64  c2d8bfff918755808781dfdeeb8581b6c91eb3a243d9a7b55483cfc0c0684d32  https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-windows-amd64.zip
+sing-box  windows-amd64  aad452f17c528f3310c84e92f83ce8cebcf559e0125ee4453722e50d66264d14  https://github.com/Leadaxe/sing-box-lx/releases/download/v1.14.3-lx.14/sing-box-1.14.3-lx.14-windows-amd64.zip
 xray      windows-amd64  d004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad  https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-windows-64.zip
 mihomo    windows-amd64  974a4d7ad69aed27aa2e8f91d61113573c14dadb14562c63e58effabf59816f0  https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-windows-amd64-compatible-v1.19.32.zip
 # Windows 7 SP1, 32-bit: the builds each project makes for it: sing-box's
 # legacy-windows-7, Xray's win7, and mihomo built with Go 1.20, the last Go
 # that runs there.
-sing-box  win7-386       b6a3e03c23f3a2d9510fa91fe89d3c432224869febd07140ce941b93651594ce  https://github.com/SagerNet/sing-box/releases/download/v1.14.2/sing-box-1.14.2-windows-386-legacy-windows-7.zip
+sing-box  win7-386  399fc669d9f637265c6bb2b5949a802cb098ee5e16683251f30c2a8056a9f7ff  https://github.com/Leadaxe/sing-box-lx/releases/download/v1.14.3-lx.14/sing-box-1.14.3-lx.14-windows-386-legacy-windows-7.zip
 xray      win7-386       33bc2686a77f6fe438616982b347f852eb7f9572dbe97adc1459f8fb639aea13  https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-win7-32.zip
 mihomo    win7-386       b8b777fa03db26934d944cb9689f8836c97bd62b215c177971456e99425484d7  https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-windows-386-go120-v1.19.32.zip

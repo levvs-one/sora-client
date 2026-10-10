@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/strings.dart';
@@ -35,7 +38,22 @@ class SoraApp extends StatefulWidget {
 }
 
 class _SoraAppState extends State<SoraApp> {
+  static bool _licensesRegistered = false;
   late final _navigator = widget.navigator ?? GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_licensesRegistered) {
+      _licensesRegistered = true;
+      LicenseRegistry.addLicense(() async* {
+        final entries = jsonDecode(await rootBundle.loadString('assets/licenses.json')) as Map<String, dynamic>;
+        for (final entry in entries.entries) {
+          yield LicenseEntryWithLineBreaks([entry.key], entry.value as String);
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

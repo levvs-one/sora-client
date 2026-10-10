@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,11 +10,14 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 import 'package:showcaseview/showcaseview.dart';
 import 'package:sora/main.dart';
 import 'package:sora/src/notifications.dart';
+import 'package:sora/src/core/link.dart';
+import 'package:sora/src/generated/sora/core/v1/core_control.pb.dart';
 import 'package:sora/src/desktop/programs.dart';
 import 'package:sora/src/rules.dart';
 import 'package:sora/src/settings.dart';
 import 'package:sora/src/sora.dart';
 import 'package:sora/src/ui/kit.dart';
+import 'package:sora/src/ui/about.dart';
 import 'package:sora/src/ui/tour.dart';
 
 import 'fixtures/desktop_state.dart';
@@ -28,7 +32,7 @@ Future<void> section(WidgetTester tester, int number) async {
     LogicalKeyboardKey.digit6,
     LogicalKeyboardKey.digit7,
     LogicalKeyboardKey.digit8,
-  ][number - 1];
+  ][const [0, 3, 7, 4, 2, 5, 1, 6][number - 1]];
   await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
   await tester.sendKeyEvent(key);
   await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
@@ -40,8 +44,138 @@ void size(WidgetTester tester, double width, [double height = 900]) {
   tester.view.physicalSize = Size(width, height);
 }
 
+class _SubscriptionsSora extends DesktopState {
+  _SubscriptionsSora(super.settings);
+  final refreshed = <String>[];
+  final second = SubscriptionState(
+    settings: SubscriptionSettings(id: 'work', name: 'Work'),
+    displayName: 'Work',
+    outbounds: [OutboundSpec(id: 'work-nl', displayName: 'Нидерланды, работа', protocol: 'vless')],
+  );
+
+  @override
+  List<SubscriptionState> get subscriptions => [subscription, second];
+  @override
+  List<OutboundSpec> get servers => subscriptions.expand((s) => s.outbounds).toList();
+  @override
+  Future<CoreFailure?> refreshSubscription(String id) async {
+    refreshed.add(id);
+    return null;
+  }
+}
+
 void main() {
   setUp(() => SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty());
+
+  testWidgets('matching subscriptions retain independent refresh buttons during search and updates', (tester) async {
+    size(tester, 1440);
+    addTearDown(tester.view.reset);
+    final settings = await Settings.load();
+    await settings.completeTour();
+    settings.animations = false;
+    final sora = _SubscriptionsSora(settings);
+    addTearDown(sora.dispose);
+    await tester.pumpWidget(SoraApp(sora: sora));
+    await tester.pumpAndSettle();
+    final travelCollapse = find.byKey(const ValueKey('collapse-subscription-travel'));
+    await tester.tap(travelCollapse);
+    await tester.pumpAndSettle();
+    expect(find.text('Нидерланды, работа'), findsOneWidget);
+    expect(find.text('🇩🇪 Германия, Франкфурт'), findsNothing);
+    await tester.tap(travelCollapse);
+    await tester.pumpAndSettle();
+    expect(find.text('🇩🇪 Германия, Франкфурт'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('server-search')), 'Нидерланды');
+    await tester.pumpAndSettle();
+    final travel = find.byKey(const ValueKey('refresh-subscription-travel'));
+    final work = find.byKey(const ValueKey('refresh-subscription-work'));
+    expect(travel, findsOneWidget);
+    expect(work, findsOneWidget);
+    await tester.tap(travel);
+    await tester.pumpAndSettle();
+    expect(sora.refreshed, ['travel']);
+    sora.subscription.updating = true;
+    sora.notifyListeners();
+    await tester.pump();
+    expect(find.descendant(of: travel, matching: find.byType(RoundButton)), findsNothing);
+    await tester.tap(work);
+    await tester.pump();
+    expect(sora.refreshed, ['travel', 'work']);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('last navigation item opens About with project links and bundled license texts', (tester) async {
+    size(tester, 1440);
+    addTearDown(tester.view.reset);
+    final settings = await Settings.load();
+    await settings.completeTour();
+    settings
+      ..language = 'ru'
+      ..animations = false
+      ..sidebarExpanded = true;
+    final sora = Sora(settings);
+    addTearDown(sora.dispose);
+    const channel = MethodChannel('plugins.flutter.io/url_launcher');
+    final opened = <String>[];
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'launch');
+      opened.add((call.arguments as Map)['url'] as String);
+      return true;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    await tester.pumpWidget(SoraApp(sora: sora));
+    await tester.pumpAndSettle();
+    final sidebar = find.byKey(const ValueKey('sidebar'));
+    final navigation = find.descendant(of: sidebar, matching: find.byType(Text));
+    expect(navigation.evaluate().map((e) => (e.widget as Text).data).whereType<String>().toList(), [
+      'Sora',
+      'Главная',
+      'Скорость',
+      'Уведомления',
+      'Правила',
+      'Логи',
+      'Настройки',
+      'О приложении',
+    ]);
+    expect(tester.getSize(find.byKey(const ValueKey('sidebar-toggle'))), const Size(36, 36));
+    await section(tester, 8);
+    expect(find.byType(AboutScreen), findsOneWidget);
+    for (final title in ['Релизы и загрузки', 'Канал в Telegram', 'Исходный код']) {
+      await tester.tap(find.text(title));
+      await tester.pumpAndSettle();
+    }
+    expect(opened, [
+      'https://github.com/levvs-one/sora-client/releases',
+      'https://t.me/sora_client',
+      'https://github.com/levvs-one/sora-client',
+    ]);
+    expect(find.text('GPL-3.0-only'), findsOneWidget);
+    final licenses = await tester.runAsync(() => LicenseRegistry.licenses.toList());
+    for (final package in [
+      'Sora',
+      'Inter',
+      'Noto Sans Mono',
+      'sing-box',
+      'mihomo',
+      'Xray',
+      'zapret',
+      'Go',
+      'google.golang.org/grpc',
+    ]) {
+      final entries = licenses!.where((entry) => entry.packages.contains(package)).toList();
+      expect(entries, hasLength(1), reason: package);
+      expect(entries.single.paragraphs, isNotEmpty);
+    }
+    await tester.tap(find.text('Лицензии компонентов'));
+    await tester.pump();
+    expect(find.byType(LicensePage), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 
   for (final (width, layout, sidebar) in [
     (719.0, 'compact-layout', false),

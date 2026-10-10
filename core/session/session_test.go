@@ -399,6 +399,40 @@ func TestKillSwitchFollowsTheSession(t *testing.T) {
 	}
 }
 
+func TestKillSwitchRefusalPreservesTheReportedProtection(t *testing.T) {
+	for _, armed := range []bool{false, true} {
+		eng, guard := newFakeEngine(), &fakeGuard{}
+		cfg := testConfig(eng, guard)
+		cfg.Settings.KillSwitch = armed
+		session, err := New(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := session.Start(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = session.Stop(context.Background()) })
+		guard.mu.Lock()
+		guard.applyErr = errors.New("firewall transaction refused")
+		guard.mu.Unlock()
+		if err := session.SetKillSwitch(context.Background(), !armed); errs.KeyOf(err) != errs.KeyGuardFirewallFail {
+			t.Fatalf("toggle error = %v, want firewall refusal", err)
+		}
+		if session.Status().KillSwitch != guard.Current().KillSwitch {
+			t.Fatalf("reported protection changed after a refused firewall transaction: armed=%v", armed)
+		}
+		guard.mu.Lock()
+		guard.applyErr = nil
+		guard.mu.Unlock()
+		if err := session.SetKillSwitch(context.Background(), !armed); err != nil {
+			t.Fatal(err)
+		}
+		if session.Status().KillSwitch != !armed || guard.Current().KillSwitch != !armed {
+			t.Fatal("successful retry did not update protection and its reported state")
+		}
+	}
+}
+
 func TestFallbackMovesAreJournaled(t *testing.T) {
 	eng, guard := newFakeEngine(), &fakeGuard{}
 	cfg := testConfig(eng, guard)

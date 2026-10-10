@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../l10n/strings.dart';
 import '../core/link.dart';
@@ -55,32 +56,54 @@ class _AboutScreenState extends State<AboutScreen> {
     final release = updates.latest;
     final desktop = DesktopScope.maybeOf(context);
     final canInstall = !sora.busy && sora.phase != Phase.reconnecting && sora.phase != Phase.offline;
+    final updateButton = TextButton.icon(
+      key: const ValueKey('check-app-updates'),
+      onPressed: updates.checking || updates.busy ? null : () => unawaited(updates.check(manual: true)),
+      icon: updates.checking
+          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Symbols.system_update_alt_rounded, size: 20, weight: 600),
+      label: Text(s.updateCheck),
+    );
+    final updateTitle = Text(
+      updates.hasUpdate
+          ? s.updateAvailable(release!.version)
+          : updates.installed
+          ? s.updateInstalled
+          : s.updates,
+      style: Styles.body.copyWith(color: palette.ink),
+    );
     return Screen(
       title: s.about,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 32),
+          padding: const EdgeInsets.fromLTRB(12, 32, 12, 32),
           child: Column(
             children: [
-              SoraMark(size: 64, color: palette.ink),
-              const SizedBox(height: 18),
+              SoraMark(size: 48, color: palette.ink),
+              const SizedBox(height: 12),
               Text('Sora', style: Styles.title.copyWith(color: palette.ink)),
               const SizedBox(height: 4),
-              Text(s.appVersion(updates.version), style: Styles.secondary.copyWith(color: palette.ink)),
+              Text(s.appVersion(updates.version), style: Styles.secondary.copyWith(color: palette.ink2)),
             ],
           ),
         ),
         Group(
           children: [
-            Tile(
-              title: updates.hasUpdate
-                  ? s.updateAvailable(release!.version)
-                  : updates.installed
-                  ? s.updateInstalled
-                  : s.updates,
-              trailing: TextButton(
-                onPressed: updates.checking || updates.busy ? null : () => unawaited(updates.check(manual: true)),
-                child: Text(updates.checking ? s.updateChecking : s.updateCheck),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: LayoutBuilder(
+                builder: (_, constraints) => constraints.maxWidth >= 480
+                    ? Row(
+                        children: [
+                          Expanded(child: updateTitle),
+                          const SizedBox(width: 12),
+                          updateButton,
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [updateTitle, const SizedBox(height: 8), updateButton],
+                      ),
               ),
             ),
             if (release != null) ...[
@@ -217,14 +240,59 @@ class _AboutScreenState extends State<AboutScreen> {
                 ),
             ],
           ),
-          Group(
-            children: [
-              if (about.sourceUrl.startsWith('https://'))
-                LinkTile(title: s.sourceCode, onTap: () => unawaited(openLink(context, about.sourceUrl))),
-              Tile(title: s.license, trailing: _value(context, about.license)),
-            ],
-          ),
         ],
+        Heading(s.projectLinks),
+        Group(
+          children: [
+            LinkTile(
+              title: s.githubReleases,
+              value: 'GitHub',
+              onTap: () => unawaited(openLink(context, 'https://github.com/levvs-one/sora-client/releases')),
+            ),
+            LinkTile(
+              title: s.telegramChannel,
+              value: '@sora_client',
+              onTap: () => unawaited(openLink(context, 'https://t.me/sora_client')),
+            ),
+            LinkTile(
+              title: s.sourceCode,
+              value: 'GitHub',
+              onTap: () => unawaited(openLink(context, 'https://github.com/levvs-one/sora-client')),
+            ),
+          ],
+        ),
+        Heading(s.licenses),
+        Group(
+          children: [
+            Tile(title: 'Sora', trailing: _value(context, 'GPL-3.0-only')),
+            LinkTile(
+              title: s.componentLicenses,
+              onTap: () => unawaited(
+                push(
+                  context,
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      textTheme: Theme.of(context).textTheme.copyWith(
+                        headlineSmall: Styles.heading.copyWith(color: palette.ink),
+                        titleLarge: Styles.heading.copyWith(color: palette.ink),
+                        titleMedium: Styles.bodyStrong.copyWith(color: palette.ink),
+                        bodyLarge: Styles.body.copyWith(color: palette.ink),
+                        bodyMedium: Styles.secondary.copyWith(color: palette.ink2),
+                        bodySmall: Styles.caption.copyWith(color: palette.ink2),
+                      ),
+                    ),
+                    child: LicensePage(
+                      applicationName: 'Sora',
+                      applicationVersion: updates.version,
+                      applicationIcon: SoraMark(size: 40, color: palette.ink),
+                      applicationLegalese: s.appCopyright,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

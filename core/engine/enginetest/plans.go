@@ -1,7 +1,16 @@
 // Package enginetest builds shared plans for validation by each engine binary.
 package enginetest
 
-import "github.com/levvs-one/sora-client/core/engine"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+
+	"github.com/levvs-one/sora-client/core/engine"
+)
 
 // Outbound returns a test outbound for p with keys matching engine-required
 // lengths.
@@ -94,4 +103,29 @@ func AmneziaWG() engine.Outbound {
 		I1: "<b 0xf6ab3267fa><c><b 0xf6ab><t><r 10><wt 10>",
 	}
 	return o
+}
+
+// TrustCertificate uses the real engines with a test-local CA after SafeEnv
+// filtering. It never changes the host certificate store or production trust.
+func TrustCertificate(t *testing.T, certificate string) {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("local CA wrapper requires Linux")
+	}
+	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'" }
+	dir := t.TempDir()
+	for _, core := range []struct{ name, env string }{
+		{"sing-box", "SORA_SINGBOX_BIN"}, {"xray", "SORA_XRAY_BIN"}, {"mihomo", "SORA_MIHOMO_BIN"},
+	} {
+		binary := os.Getenv(core.env)
+		if binary == "" {
+			binary = filepath.Join(os.Getenv("SORA_ENGINES_DIR"), core.name)
+		}
+		wrapper := filepath.Join(dir, core.name)
+		script := fmt.Sprintf("#!/bin/sh\nSSL_CERT_FILE=%s exec %s \"$@\"\n", quote(certificate), quote(binary))
+		if err := os.WriteFile(wrapper, []byte(script), 0700); err != nil { //nolint:gosec // test-local wrapper must be executable
+			t.Fatal(err)
+		}
+		t.Setenv(core.env, wrapper)
+	}
 }

@@ -84,5 +84,9 @@ rpm)
         die 'dnf or zypper is required'
     fi
     ;;
-arch) pacman -U --noconfirm "$@" ;;
+arch)
+    # Existing installations may predate the browser's audio dependency.
+    pacman -S --noconfirm --needed gst-plugins-good
+    pacman -U --noconfirm "$@"
+    ;;
 esac

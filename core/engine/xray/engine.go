@@ -96,6 +96,13 @@ func (*driver) ControlAddress(rt supervise.Runtime, private bool) (string, error
 // Handshake waits for metrics and retains the probed version. Without metrics,
 // readiness uses the local proxy or the session's TUN adapter check.
 func (*driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, error) {
+	// Private TUN plans have no listener to prove startup. Routing must wait
+	// for Xray to create the adapter rather than racing its process launch.
+	if rt.TunDevice != "" {
+		if _, err := net.InterfaceByName(rt.TunDevice); err != nil {
+			return "", fmt.Errorf("xray: the TUN adapter is not ready yet: %w", err)
+		}
+	}
 	if rt.ControlAddr == "" {
 		if !rt.LocalProxy {
 			return "", nil

@@ -81,7 +81,7 @@ func ruleTarget(target string, byID map[string]string) (string, error) {
 
 // buildDNS renders resolvers. default-nameserver bootstraps resolver hostnames
 // and must never use a proxy.
-func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
+func buildDNS(d engine.DNS, o engine.Options, byID map[string]string) (*dnsConfig, error) {
 	out := &dnsConfig{
 		Enable:         true,
 		IPv6:           &o.IPv6,
@@ -95,13 +95,15 @@ func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 	default:
 		out.EnhancedMode = "redir-host"
 	}
-	var direct, remote, system []string
+	var direct, remote, system, bootstrap []string
 	for _, s := range d.Servers {
 		addr := s.Address
 		if s.Port != 0 && s.Transport != engine.DNSSystem {
 			addr = fmt.Sprintf("%s:%d", s.Address, s.Port)
 		}
 		switch s.Transport {
+		case engine.DNSTCP:
+			addr = "tcp://" + addr
 		case engine.DNSTLS:
 			addr = "tls://" + addr
 		case engine.DNSHTTPS:
@@ -111,17 +113,26 @@ func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 		case engine.DNSSystem:
 			system = append(system, "system")
 		}
+		if s.Dialer == "" || s.Dialer == "direct" {
+			bootstrap = append(bootstrap, addr)
+		} else {
+			name, ok := byID[s.Dialer]
+			if !ok {
+				return nil, fmt.Errorf("mihomo: DNS resolver %q references unknown outbound %q", s.Tag, s.Dialer)
+			}
+			addr += "#" + name
+		}
 		if s.ProxyOnly {
 			remote = append(remote, addr)
 		} else {
 			direct = append(direct, addr)
 		}
 	}
-	out.Nameserver = direct
+	out.Nameserver = firstNonEmpty(direct, remote, system, []string{"223.5.5.5"})
 	// Map proxy-only resolvers to proxy-server-nameserver for proxy
 	// hostname resolution.
 	out.ProxyServerNameserver = firstNonEmpty(remote, direct, system, []string{"223.5.5.5"})
-	out.DefaultNameserver = firstNonEmpty(system, direct, []string{"223.5.5.5"})
+	out.DefaultNameserver = firstNonEmpty(system, bootstrap, []string{"223.5.5.5"})
 	out.DirectNameserver = firstNonEmpty(system, direct)
 	if len(d.NameserverPolicy) > 0 {
 		out.NameserverPolicy = d.NameserverPolicy
@@ -129,7 +140,7 @@ func buildDNS(d engine.DNS, o engine.Options) *dnsConfig {
 	if len(d.HijackTun) > 0 {
 		out.Listen = strings.Join(d.HijackTun, ",")
 	}
-	return out
+	return out, nil
 }
 
 // buildTun defaults to the upstream-recommended mixed stack: system TCP and

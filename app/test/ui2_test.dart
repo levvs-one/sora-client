@@ -18,6 +18,8 @@ import 'package:sora/src/ui/home.dart';
 import 'package:sora/src/ui/servers.dart';
 import 'package:sora/src/ui/speedtest.dart';
 import 'package:sora/src/ui/tour.dart';
+import 'package:sora/src/ui/notifications_screen.dart';
+import 'package:sora/src/ui/modes.dart';
 
 import 'desktop_shell_test.dart' show section, size;
 import 'fixtures/desktop_state.dart';
@@ -101,6 +103,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(ObjectKey(notice)), findsNothing);
     await mouse.removePointer();
+  });
+
+  testWidgets('toast uses an 80 pixel frame with equal text insets', (tester) async {
+    final sora = await start(tester, empty: true);
+    final notice = await message(tester, sora);
+    final title = find.byKey(ObjectKey(notice));
+    final card = find.ancestor(
+      of: title,
+      matching: find.byWidgetPredicate((w) => w is Container && w.constraints?.maxWidth == 360),
+    );
+    final frame = tester.getRect(card);
+    final text = tester.getRect(title);
+    final body = tester.getRect(find.text('Подробности события'));
+    expect(frame.size, const Size(360, 80));
+    expect(text.left - frame.left, 16);
+    expect(body.top - text.bottom, closeTo(4, .01));
+    expect(text.top - frame.top, closeTo(frame.bottom - body.bottom, .01));
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('notification history has uniform cards and a separate date typeface', (tester) async {
+    final sora = await start(tester);
+    await section(tester, 5);
+    expect(find.byIcon(Symbols.done_all_rounded), findsNothing);
+    final rows = find.byType(NotificationRow);
+    expect(rows, findsNWidgets(3));
+    final dates = find.descendant(
+      of: rows,
+      matching: find.byWidgetPredicate((w) => w is Text && w.style?.fontFamily == 'NotoSansMono'),
+    );
+    expect(dates, findsNWidgets(3));
+    final styles = tester
+        .widgetList<Text>(find.descendant(of: rows, matching: find.byType(Text)))
+        .where((w) => sora.history.any((n) => n.title == w.data))
+        .map((w) => w.style)
+        .toSet();
+    expect(styles, hasLength(1));
   });
 
   testWidgets('toast supports right swipe, close and retry action', (tester) async {
@@ -262,6 +302,77 @@ void main() {
     expect(sora.selected, 'auto');
   });
 
+  for (final width in [1440.0, 420.0]) {
+    testWidgets('TUN stack menus save each engine selection at $width', (tester) async {
+      final sora = await start(tester, width: width);
+      await tester.tap(find.byKey(const ValueKey('mode-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('engine-mihomo')));
+      await tester.pumpAndSettle();
+      final menu = find.byKey(const ValueKey('mihomo-tun-stack'));
+      await tester.ensureVisible(menu);
+      await tester.tap(find.descendant(of: menu, matching: find.text('Mixed')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MenuItemButton), findsNWidgets(4));
+      await tester.tap(find.text('MIPS'));
+      await tester.pumpAndSettle();
+      expect(sora.settings.mihomoTunStack, 'mips');
+      expect((await Settings.load()).mihomoTunStack, 'mips');
+      await tester.ensureVisible(find.byKey(const ValueKey('mode-proxy')));
+      await tester.tap(find.byKey(const ValueKey('mode-proxy')));
+      await tester.pumpAndSettle();
+      expect(menu, findsNothing);
+      expect(find.text('Стек TUN'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('mode-tun')));
+      await tester.pumpAndSettle();
+      expect(menu, findsOneWidget);
+      await tester.ensureVisible(find.byKey(const ValueKey('engine-xray')));
+      await tester.tap(find.byKey(const ValueKey('engine-xray')));
+      await tester.pumpAndSettle();
+      expect(menu, findsNothing);
+      expect(find.text('gVisor'), findsOneWidget);
+      final xrayMenu = find.byKey(const ValueKey('xray-tun-stack'));
+      await tester.ensureVisible(xrayMenu);
+      await tester.tap(find.descendant(of: xrayMenu, matching: find.text('gVisor')));
+      await tester.pumpAndSettle();
+      expect(find.byType(MenuItemButton), findsNWidgets(4));
+      await tester.tap(find.text('System'));
+      await tester.pumpAndSettle();
+      expect(sora.settings.xrayTunStack, 'system');
+      expect((await Settings.load()).xrayTunStack, 'system');
+      await tester.tap(find.byKey(const ValueKey('engine-')));
+      await tester.pumpAndSettle();
+      expect(find.text('Стек TUN'), findsNothing);
+      expect(sora.settings.mihomoTunStack, 'mips');
+      expect(sora.settings.xrayTunStack, 'system');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('mode details open as a page and return safely at $width', (tester) async {
+      await start(tester, width: width);
+      await tester.tap(find.byKey(const ValueKey('mode-button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Все приложения через VPN'), findsNothing);
+      expect(find.text('Ядро подбирает совместимый движок'), findsNothing);
+      expect(find.textContaining('sing-box не поддерживает XHTTP'), findsNothing);
+      final info = find.byKey(const ValueKey('modes-info'));
+      await tester.ensureVisible(info);
+      await tester.tap(info);
+      await tester.pumpAndSettle();
+      expect(find.byType(ModesGuideScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('mode-panel')), findsNothing);
+      final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+      expect(body.data, contains('sing-box-lx'));
+      expect(body.data, contains('https://github.com/bol-van/zapret'));
+      expect(body.onTapLink, isNotNull);
+      expect(tester.takeException(), isNull);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(ModesGuideScreen), findsNothing);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+  }
+
   for (final available in [false, true]) {
     testWidgets('empty connect offers subscription and supported bypass: $available', (tester) async {
       final sora = await start(tester, empty: true, bypass: available) as _EmptySora;
@@ -305,7 +416,38 @@ void main() {
     });
   }
 
-  testWidgets('announcement renders markdown, emoji, link and lists with three-line preview', (tester) async {
+  testWidgets('mode guide survives repeated desktop and compact layout changes', (tester) async {
+    await start(tester);
+    await tester.tap(find.byKey(const ValueKey('mode-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('modes-info')));
+    await tester.pumpAndSettle();
+    for (final width in [420.0, 1440.0, 1000.0, 420.0, 1440.0]) {
+      size(tester, width, 900);
+      await tester.pumpAndSettle();
+      expect(find.byType(ModesGuideScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('mode information still opens after resizing the open dialog', (tester) async {
+    await start(tester);
+    await tester.tap(find.byKey(const ValueKey('mode-button')));
+    await tester.pumpAndSettle();
+    size(tester, 420, 900);
+    await tester.pumpAndSettle();
+    final info = find.byKey(const ValueKey('modes-info'));
+    await tester.ensureVisible(info);
+    await tester.tap(info);
+    await tester.pumpAndSettle();
+    expect(find.byType(ModesGuideScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('description starts fully open and toggles independently of server collapse', (tester) async {
     await start(tester);
     final announcement = find.byType(Announcement).first;
     final body = tester.widget<MarkdownBody>(find.descendant(of: announcement, matching: find.byType(MarkdownBody)));
@@ -315,11 +457,25 @@ void main() {
     expect(body.styleSheet!.em!.fontStyle, FontStyle.italic);
     expect(body.onTapLink, isNotNull);
     expect(find.descendant(of: announcement, matching: find.byType(RichText)), findsWidgets);
-    expect(tester.getSize(find.byKey(const ValueKey('announcement-preview'))).height, closeTo(46.8, .1));
-    await tester.tap(find.descendant(of: announcement, matching: find.text('Ещё')));
-    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('announcement-preview')), findsNothing);
-    expect(find.descendant(of: announcement, matching: find.text('Свернуть')), findsOneWidget);
+    expect(find.text('Ещё'), findsNothing);
+    final toggle = find.byKey(const ValueKey('description-subscription-travel'));
+    final servers = find.byKey(const ValueKey('collapse-subscription-travel'));
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(find.byType(Announcement), findsNothing);
+    expect(find.text('🇳🇱 Нидерланды, Амстердам'), findsNWidgets(2));
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(find.byType(Announcement), findsOneWidget);
+    await tester.tap(servers);
+    await tester.pumpAndSettle();
+    expect(find.byType(Announcement), findsOneWidget);
+    expect(find.text('🇳🇱 Нидерланды, Амстердам'), findsOneWidget);
+    await tester.tap(servers);
+    await tester.pumpAndSettle();
+    expect(find.text('🇳🇱 Нидерланды, Амстердам'), findsNWidgets(2));
   });
 
   testWidgets('tour cutout uses circle and card radii', (tester) async {
@@ -339,7 +495,7 @@ void main() {
 
   testWidgets('native browser yields to toast and returns after timeout', (tester) async {
     final sora = await start(tester);
-    await section(tester, 8);
+    await section(tester, 7);
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     final notice = await message(tester, sora);

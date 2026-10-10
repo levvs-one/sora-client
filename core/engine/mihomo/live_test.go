@@ -2,6 +2,7 @@ package mihomo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,6 +16,30 @@ import (
 	"github.com/levvs-one/sora-client/core/engine"
 	"github.com/levvs-one/sora-client/core/engine/supervise"
 )
+
+func TestHandshakeWaitsForTheLoadedPlan(t *testing.T) {
+	loaded := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			_, _ = w.Write([]byte(`{"meta":true,"version":"v1.19.32"}`))
+			return
+		}
+		proxies := map[string]any{}
+		if loaded {
+			proxies["probe-1"] = map[string]string{"type": "Direct"}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"proxies": proxies})
+	}))
+	defer server.Close()
+	rt := supervise.Runtime{ControlAddr: strings.TrimPrefix(server.URL, "http://"), ProxyNames: []string{"probe-1"}}
+	if _, err := (driver{}).Handshake(t.Context(), rt); err == nil {
+		t.Fatal("API readiness cannot prove that the requested proxies are loaded")
+	}
+	loaded = true
+	if _, err := (driver{}).Handshake(t.Context(), rt); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // TestLiveEngineLifecycle checks render, -t validation, startup, handshake,
 // groups, counters, hot apply, and shutdown. It runs when a mihomo binary is

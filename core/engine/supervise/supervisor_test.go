@@ -264,10 +264,35 @@ func TestRequestedStopDoesNotLogAnUnexpectedExit(t *testing.T) {
 type routingDriver struct {
 	fakeDriver
 	routes, removals int
+	removeErr        error
 }
 
 func (d *routingDriver) Route(context.Context, *engine.Plan) error { d.routes++; return nil }
-func (d *routingDriver) Unroute(context.Context) error             { d.removals++; return nil }
+func (d *routingDriver) Unroute(context.Context) error             { d.removals++; return d.removeErr }
+
+func TestStopRetriesFailedRouteRemoval(t *testing.T) {
+	sup := newFake(t, fakeConfig{}, 1)
+	driver := &routingDriver{removeErr: errors.New("route cleanup failed")}
+	sup.driver = driver
+	p := plan()
+	p.Tun.Enabled = true
+	if err := sup.Apply(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	if err := sup.Stop(context.Background()); err == nil {
+		t.Fatal("route cleanup failure was hidden")
+	}
+	if !sup.routed || sup.State() != engine.StateFailed {
+		t.Fatal("failed cleanup lost route ownership")
+	}
+	driver.removeErr = nil
+	if err := sup.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if sup.routed || driver.removals != 2 || sup.State() != engine.StateStopped {
+		t.Fatal("stop did not retry route cleanup")
+	}
+}
 
 func TestOnlyTunOwnerRemovesRouting(t *testing.T) {
 	for _, tun := range []bool{false, true} {

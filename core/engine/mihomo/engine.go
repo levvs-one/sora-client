@@ -3,6 +3,7 @@ package mihomo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/netip"
 	"os"
@@ -85,8 +86,21 @@ func (driver) CheckArgs(rt supervise.Runtime) []string {
 }
 
 func (driver) Handshake(ctx context.Context, rt supervise.Runtime) (string, error) {
-	info, err := clashapi.For(rt).Version(ctx)
-	return info.Version, err
+	client := clashapi.For(rt)
+	info, err := client.Version(ctx)
+	if err != nil {
+		return "", err
+	}
+	proxies, err := client.Proxies(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, name := range rt.ProxyNames {
+		if _, loaded := proxies[name]; !loaded {
+			return "", fmt.Errorf("mihomo: proxy %q is not loaded yet", name)
+		}
+	}
+	return info.Version, nil
 }
 
 // Reload replaces live configuration without restarting the tunnel or

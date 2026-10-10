@@ -137,6 +137,44 @@ void main() {
       expect(Sora.autoGroup, isNot(anyOf('a', 'b')));
       expect(Sora.autoGroup.startsWith('sora:'), isTrue);
     });
+
+    test('mihomo TUN stack survives only in its own TUN plans', () {
+      settings.mihomoTunStack = 'mips';
+      for (final engine in ['', 'sing-box', 'xray', 'mihomo']) {
+        settings.engine = engine;
+        expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, engine == 'mihomo' ? 'mips' : '');
+      }
+      settings.tunnel = 'proxy';
+      expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, isEmpty);
+      settings.tunnel = 'tun';
+      expect(buildPlan(servers: servers, choice: 'bypass', settings: settings).tunStack, isEmpty);
+      expect(settings.mihomoTunStack, 'mips');
+      settings.mihomoTunStack = 'unsupported';
+      expect(settings.mihomoTunStack, 'mixed');
+    });
+
+    test('Xray stacks stay isolated and native gVisor works with older cores', () {
+      expect(settings.xrayTunStack, 'gvisor');
+      settings.engine = 'xray';
+      expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, isEmpty);
+      settings.xrayTunStack = 'system';
+      settings.mihomoTunStack = 'mips';
+      for (final engine in ['', 'sing-box', 'xray', 'mihomo']) {
+        settings.engine = engine;
+        expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, switch (engine) {
+          'xray' => 'system',
+          'mihomo' => 'mips',
+          _ => '',
+        });
+      }
+      settings.engine = 'xray';
+      settings.tunnel = 'proxy';
+      expect(buildPlan(servers: servers, choice: 'a', settings: settings).tunStack, isEmpty);
+      settings.tunnel = 'tun';
+      expect(buildPlan(servers: servers, choice: 'bypass', settings: settings).tunStack, isEmpty);
+      settings.xrayTunStack = 'unknown';
+      expect(settings.xrayTunStack, 'gvisor');
+    });
   });
 
   group('settings', () {

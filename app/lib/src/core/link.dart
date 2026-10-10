@@ -8,16 +8,17 @@ import '../generated/sora/core/v1/core_control.pbgrpc.dart';
 import 'pipe.dart';
 
 /// API 1.6 is required to open subscription pages without exposing links in states.
-final apiVersion = ApiVersion(major: 1, minor: 6, minSupportedMinor: 6);
+final apiVersion = ApiVersion(major: 1, minor: 7, minSupportedMinor: 6);
 
 /// A gRPC channel to the core over a Unix socket or Windows named pipe, with
 /// the Handshake authentication token.
 class CoreLink {
-  CoreLink._(this._channel, this.stub, this.token);
+  CoreLink._(this._channel, this.stub, this.token, this.minor);
 
   final api.ClientChannel _channel;
   final CoreControlClient stub;
   final List<int> token;
+  final int minor;
 
   /// The installed service endpoint: Unix socket on Linux, named pipe on
   /// Windows. SORA_CORE_SOCKET overrides it for a manually started core using
@@ -28,11 +29,12 @@ class CoreLink {
 
   /// Opens a core connection with increasing retry delays while the service
   /// starts or restarts after an update.
-  static Future<CoreLink> open({void Function(Exception)? onRetry}) {
-    return const RetryOptions(
-      maxAttempts: 1 << 30,
-      maxDelay: Duration(seconds: 5),
-    ).retry(_openOnce, retryIf: (e) => e is GrpcError && e.code != StatusCode.permissionDenied, onRetry: onRetry);
+  static Future<CoreLink> open({void Function(Exception)? onRetry, bool Function()? canceled}) {
+    return const RetryOptions(maxAttempts: 1 << 30, maxDelay: Duration(seconds: 5)).retry(
+      _openOnce,
+      retryIf: (e) => !(canceled?.call() ?? false) && e is GrpcError && e.code != StatusCode.permissionDenied,
+      onRetry: onRetry,
+    );
   }
 
   static Future<CoreLink> _openOnce() async {
@@ -50,7 +52,7 @@ class CoreLink {
         options: CallOptions(timeout: const Duration(seconds: 5)),
       );
       if (answer.hasError()) throw CoreFailure(answer.error.userMessageKey);
-      return CoreLink._(channel, stub, answer.controlAuthenticator);
+      return CoreLink._(channel, stub, answer.controlAuthenticator, answer.negotiatedVersion.minor);
     } catch (_) {
       await channel.shutdown();
       rethrow;

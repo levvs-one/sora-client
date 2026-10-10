@@ -132,7 +132,13 @@ class LinuxInstallation {
 
   String manualCommand(List<String> files) {
     final arguments = installArguments(files);
-    return ['sudo', manager, ...arguments.take(arguments.length - files.length), ...files.map(shellQuote)].join(' ');
+    final command = [
+      'sudo',
+      manager,
+      ...arguments.take(arguments.length - files.length),
+      ...files.map(shellQuote),
+    ].join(' ');
+    return manager == 'pacman' ? 'sudo pacman -S --needed gst-plugins-good && $command' : command;
   }
 
   /// Query ownership of this executable, not merely which managers are present.

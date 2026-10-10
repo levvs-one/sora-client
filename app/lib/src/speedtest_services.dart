@@ -37,14 +37,6 @@ const speedtestServices = <SpeedtestService>[
     note: "Показывает сведения о подключении",
   ),
   SpeedtestService(
-    name: "Cloudflare Speed Test",
-    url: "https://speed.cloudflare.com/",
-    regions: ["Мир"],
-    measures: "Скачивание, отдача, задержка, jitter, потери",
-    operator: "Cloudflare",
-    note: "Проверяет качество связи с сетью Cloudflare",
-  ),
-  SpeedtestService(
     name: "FAST.com",
     url: "https://fast.com/",
     regions: ["Мир"],
@@ -186,14 +178,6 @@ const speedtestServices = <SpeedtestService>[
     regions: ["Америка", "США"],
     measures: "Скачивание и отдача",
     operator: "AT&T",
-    note: "Проверка домашнего подключения",
-  ),
-  SpeedtestService(
-    name: "Verizon",
-    url: "https://www.verizon.com/speedtest/",
-    regions: ["Америка", "США"],
-    measures: "Скачивание и отдача",
-    operator: "Verizon",
     note: "Проверка домашнего подключения",
   ),
   SpeedtestService(

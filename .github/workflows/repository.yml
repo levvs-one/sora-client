@@ -243,6 +243,30 @@ jobs:
           SORA_CORE_LIVE: "1"
           SORA_CORE_ENGINES: sing-box,xray,mihomo
         run: flutter test test/live_core_test.dart
+      - name: The pipe works without administrator rights
+        working-directory: app
+        shell: pwsh
+        run: |
+          $flutter = (Get-Command flutter).Source
+          $script = "$env:RUNNER_TEMP\sora-user-check.ps1"
+          $result = "$env:RUNNER_TEMP\sora-user-result.txt"
+          $output = "$env:RUNNER_TEMP\sora-user-output.txt"
+          @"
+          Set-Location '$PWD'
+          `$env:SORA_CORE_LIVE = '1'
+          `$env:SORA_CORE_ENGINES = 'sing-box,xray,mihomo'
+          `$env:SORA_CORE_UNELEVATED = '1'
+          & '$flutter' test test/live_core_test.dart *> '$output'
+          `$LASTEXITCODE | Set-Content '$result'
+          "@ | Set-Content $script
+          Start-Service seclogon
+          $command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$script`""
+          & runas.exe /trustlevel:0x20000 $command
+          for ($i = 0; $i -lt 120 -and -not (Test-Path $result); $i++) { Start-Sleep -Seconds 1 }
+          Get-Content $output -ErrorAction SilentlyContinue
+          if (-not (Test-Path $result) -or (Get-Content $result) -ne '0') {
+            throw 'The ordinary Windows user cannot reach SoraCore'
+          }
       - name: Real traffic through the tunnel and the system proxy
         # A VLESS server on this machine, Xray from the installed engines; its
         # access log shows the traffic reached it through Sora.

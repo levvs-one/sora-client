@@ -2,13 +2,19 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart' show SizedBox;
+import 'package:fixnum/fixnum.dart';
 import 'package:grpc/grpc.dart' show Server, ServiceCall;
+import 'package:sora/main.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:sora/src/core/link.dart';
 import 'package:sora/src/generated/sora/core/v1/core_control.pbgrpc.dart';
 import 'package:sora/src/settings.dart';
 import 'package:sora/src/sora.dart';
+import 'package:sora/src/ui/logs.dart';
+
+import 'desktop_shell_test.dart' show section;
 
 class _Core extends CoreControlServiceBase {
   ConnectionState state = ConnectionState(value: ConnectionStateValue.CONNECTION_STATE_VALUE_DISCONNECTED);
@@ -36,8 +42,12 @@ class _Core extends CoreControlServiceBase {
   ];
   SessionPlan? plan;
   final events = StreamController<CoreEvent>.broadcast();
+  final logs = StreamController<LogEntry>.broadcast();
 
-  Future<void> close() => events.close();
+  Future<void> close() async {
+    await events.close();
+    await logs.close();
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError('${invocation.memberName}');
@@ -75,6 +85,18 @@ class _Core extends CoreControlServiceBase {
 
   @override
   Stream<CoreEvent> watchEvents(ServiceCall call, WatchEventsRequest request) => events.stream;
+
+  @override
+  Future<QueryLogsResponse> queryLogs(ServiceCall call, QueryLogsRequest request) async {
+    return QueryLogsResponse(
+      entries: [
+        LogEntry(sequence: Int64(1), source: 'core', message: 'Service started', level: LogLevel.LOG_LEVEL_INFO),
+      ],
+    );
+  }
+
+  @override
+  Stream<LogEntry> watchLogs(ServiceCall call, WatchLogsRequest request) => logs.stream;
 
   @override
   Future<ConnectResponse> connect(ServiceCall call, ConnectRequest request) async {
@@ -156,6 +178,44 @@ void main() {
   });
 
   group('commands over an isolated RPC socket', () {
+    testWidgets('logs opened before the service link arrives load and continue streaming', (tester) async {
+      final waiting = Sora(sora.settings);
+      await waiting.settings.completeTour();
+      waiting.settings.animations = false;
+      Future<void>? waitingWork;
+      try {
+        await tester.pumpWidget(SoraApp(sora: waiting));
+        await section(tester, 4);
+        expect(find.byType(LogsScreen), findsOneWidget);
+        await tester.runAsync(() async {
+          waitingWork = waiting.run();
+          await until(() => waiting.serverlessAvailable);
+        });
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        for (var i = 0; i < 30 && !core.logs.hasListener; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(core.logs.hasListener, isTrue);
+        await tester.pump();
+        expect(find.text('Service started'), findsOneWidget);
+        core.logs.add(
+          LogEntry(sequence: Int64(2), source: 'xray', message: 'Engine started', level: LogLevel.LOG_LEVEL_INFO),
+        );
+        for (var i = 0; i < 30 && find.text('Engine started').evaluate().isEmpty; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(find.text('Engine started'), findsOneWidget);
+        expect(waiting.history, isEmpty);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        waiting.dispose();
+        await tester.runAsync(() async => await waitingWork?.timeout(const Duration(seconds: 10)));
+      }
+    });
+
     test('subscription probing stays scoped and a click burst starts one request', () async {
       await until(() => sora.servers.length == 3);
       core.probeGate = Completer<void>();
@@ -205,6 +265,63 @@ void main() {
       await sora.connect();
       expect(core.plan!.engines, ['xray']);
       expect(sora.needsReconnect, isFalse);
+    });
+
+    test('location clicks coalesce to the last choice while a replacement is starting', () async {
+      await sora.select('a');
+      await sora.connect();
+      core.gate = Completer<void>();
+      final first = sora.select('b');
+      await until(() => core.connects == 2);
+      final burst = List.generate(100, (i) => sora.select(['a', 'b', 'c'][i % 3]));
+      core.gate!.complete();
+      await Future.wait([first, ...burst]);
+      expect(core.connects, 3);
+      expect(core.plan!.groups.single.members.first, 'a');
+      expect(sora.phase, Phase.connected);
+      expect(sora.needsReconnect, isFalse);
+      expect(sora.history, isEmpty);
+    });
+
+    test('explicit disconnect cancels queued location changes without restarting', () async {
+      await sora.select('a');
+      await sora.connect();
+      core.gate = Completer<void>();
+      final replacement = sora.select('b');
+      await until(() => core.connects == 2);
+      final choice = sora.select('c');
+      final stop = sora.disconnect();
+      core.gate!.complete();
+      await Future.wait([replacement, choice, stop]);
+      expect(core.connects, 2);
+      expect(core.disconnects, 1);
+      expect(sora.phase, Phase.off);
+      expect(sora.history, isEmpty);
+    });
+
+    test('a location selected during the first connection applies automatically', () async {
+      await sora.select('a');
+      core.gate = Completer<void>();
+      final start = sora.connect();
+      await until(() => core.connects == 1);
+      final choice = sora.select('c');
+      core.gate!.complete();
+      await Future.wait([start, choice]);
+      expect(core.connects, 2);
+      expect(core.plan!.groups.single.members.first, 'c');
+      expect(sora.needsReconnect, isFalse);
+    });
+
+    test('an unsupported location keeps the working connection and reports the error once', () async {
+      await sora.select('a');
+      await sora.connect();
+      final id = sora.sessionId;
+      core.reject = true;
+      await sora.select('b');
+      expect(sora.phase, Phase.connected);
+      expect(sora.sessionId, id);
+      expect(core.disconnects, 0);
+      expect(sora.history, hasLength(1));
     });
 
     for (final selectedEngine in ['mihomo', 'xray']) {

@@ -273,6 +273,9 @@ jobs:
           if (-not (Test-Path $result) -or (Get-Content $result) -ne '0') {
             throw 'The ordinary Windows user cannot reach SoraCore'
           }
+      - name: Real websites in WebView2
+        working-directory: app
+        run: flutter test integration_test/live_browser_test.dart -d windows
       - name: Real traffic through the tunnel and the system proxy
         # A VLESS server on this machine, Xray from the installed engines; its
         # access log shows the traffic reached it through Sora.

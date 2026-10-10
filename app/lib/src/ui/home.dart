@@ -72,12 +72,17 @@ class _ConnectionPane extends StatelessWidget {
           const Center(child: TourTarget(step: 2, radius: 88, child: _Orb())),
           const SizedBox(height: 28),
           const Center(child: TourTarget(step: 3, child: ModeButton())),
-          if (SoraScope.of(context).needsReconnect) ...[const SizedBox(height: 12), const ConnectionChanges()],
           const SizedBox(height: 24),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: const _ServerCard(key: ValueKey('current-server')),
+              child: SoraScope.of(context).subscriptions.isEmpty
+                  ? const TourTarget(
+                      step: 0,
+                      radius: 12,
+                      child: TourTarget(step: 1, radius: 12, child: _ServerCard(key: ValueKey('current-server'))),
+                    )
+                  : const _ServerCard(key: ValueKey('current-server')),
             ),
           ),
         ],
@@ -265,8 +270,9 @@ class _ServerCard extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  name,
+                child: Text.rich(
+                  serverNameSpan(name),
+                  semanticsLabel: name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Styles.bodyStrong.copyWith(color: palette.ink),

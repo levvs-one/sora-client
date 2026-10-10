@@ -24,7 +24,6 @@ void main() {
       final inter = FontLoader('Inter')
         ..addFont(Future.value(ByteData.sublistView(await File('assets/fonts/InterVariable.ttf').readAsBytes())));
       await inter.load();
-      await (FontLoader('NotoSansMono')..addFont(rootBundle.load('assets/fonts/NotoSansMono-Regular.ttf'))).load();
       final emoji = FontLoader('Noto Color Emoji')
         ..addFont(
           Future.value(ByteData.sublistView(await File('/usr/share/fonts/noto/NotoColorEmoji.ttf').readAsBytes())),

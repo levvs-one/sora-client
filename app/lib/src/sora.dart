@@ -214,6 +214,8 @@ class Sora extends ChangeNotifier {
   bool _stopping = false;
   Completer<void>? _connectionWork;
   SessionPlan? _activePlan;
+  Future<void> _locationWork = Future.value();
+  int _selectionRevision = 0;
   bool needsReconnect = false;
   bool cleanupPending = false;
 
@@ -682,6 +684,7 @@ class Sora extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _selectionRevision++;
     final link = _link;
     if (link == null || _stopping) return;
     failure = null;
@@ -732,6 +735,22 @@ class Sora extends ChangeNotifier {
     settings.server = server;
     notifyListeners();
     await _replan();
+    if (_stopping ||
+        _disposed ||
+        (phase != Phase.connected && phase != Phase.reconnecting && _connectionWork == null)) {
+      return;
+    }
+    final revision = ++_selectionRevision;
+    final link = _link;
+    // Collapse queued clicks to the last selection. Core Connect validates
+    // the replacement before stopping the old session.
+    await (_locationWork = _locationWork.then((_) async {
+      await _connectionWork?.future;
+      if (_disposed || _stopping || link != _link || revision != _selectionRevision) return;
+      if ((phase == Phase.connected || phase == Phase.reconnecting) && currentPlan != _activePlan) {
+        await connect();
+      }
+    }));
   }
 
   /// Applies settings and stages connection changes. Disable [replan] for

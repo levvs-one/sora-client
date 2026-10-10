@@ -19,6 +19,7 @@ class Announcement extends StatelessWidget {
         fitContent: false,
         styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
           p: style,
+          code: style.copyWith(fontWeight: FontWeight.w600),
           a: style.copyWith(color: palette.ink, decoration: TextDecoration.underline),
           strong: style.copyWith(fontWeight: FontWeight.w600),
           em: style.copyWith(fontStyle: FontStyle.italic),

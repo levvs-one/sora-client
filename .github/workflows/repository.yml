@@ -251,6 +251,12 @@ jobs:
           $script = "$env:RUNNER_TEMP\sora-user-check.ps1"
           $result = "$env:RUNNER_TEMP\sora-user-result.txt"
           $output = "$env:RUNNER_TEMP\sora-user-output.txt"
+          # runas disables the administrator SID, including inherited build
+          # directory access; the ordinary Users group must own test outputs.
+          foreach ($path in @($PWD.Path, $env:FLUTTER_ROOT, $env:PUB_CACHE, $env:RUNNER_TEMP)) {
+            & icacls.exe $path /grant '*S-1-5-32-545:(OI)(CI)M' /T /Q | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Cannot prepare ordinary-user access to $path" }
+          }
           @"
           Set-Location '$PWD'
           `$env:SORA_CORE_LIVE = '1'
